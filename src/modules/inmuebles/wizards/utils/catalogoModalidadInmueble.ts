@@ -11,6 +11,7 @@
 // está dado de alta (el consumidor filtra los ya creados · ver `restarYaDados`).
 
 import { conceptoPorId } from '../../../../services/conceptos/catalogoConceptos';
+import { esCortaEstancia, type SubtipoAlquiler } from '../../../../services/db/types-alquiler';
 import { resolverConcepto } from '../../../../services/conceptos/mapaLegacy';
 
 /** Referencia a una entrada del catálogo (tipo + subtipo). */
@@ -24,8 +25,8 @@ export interface CatalogoModalidad {
   disponibles: ConceptoInmuebleRef[];
 }
 
-// Los tres «kinds» de catálogo de §3.3. `temporada` y `vacacional` comparten el
-// de turístico.
+// Los tres «kinds» de catálogo de §3.3. Temporada y turístico comparten el de
+// turístico.
 export type CatalogoKind = 'viviendaCompleta' | 'habitaciones' | 'turistico';
 
 const c = (tipoId: string, subtipoId: string): ConceptoInmuebleRef => ({ tipoId, subtipoId });
@@ -92,14 +93,14 @@ const TURISTICO: CatalogoModalidad = {
 };
 
 /**
- * Decide qué catálogo aplica. `temporada`/`vacacional` mandan sobre `unidadTipo`
- * (un piso completo alquilado por temporada usa el catálogo turístico).
+ * Decide qué catálogo aplica. La corta estancia manda sobre `unidadTipo` (un
+ * piso completo alquilado por temporada usa el catálogo turístico).
  */
 export function catalogoKindDeModalidad(
-  modalidad: 'habitual' | 'temporada' | 'vacacional' | undefined,
+  modalidad: SubtipoAlquiler | undefined,
   unidadTipo: 'vivienda' | 'habitacion' | undefined,
 ): CatalogoKind {
-  if (modalidad === 'temporada' || modalidad === 'vacacional') return 'turistico';
+  if (esCortaEstancia(modalidad)) return 'turistico';
   if (unidadTipo === 'habitacion') return 'habitaciones';
   return 'viviendaCompleta';
 }
@@ -110,7 +111,7 @@ export function catalogoKindDeModalidad(
  * (verificable con `findSubtipoInmueble`).
  */
 export function catalogoSugeridoPorModalidad(
-  modalidad: 'habitual' | 'temporada' | 'vacacional' | undefined,
+  modalidad: SubtipoAlquiler | undefined,
   unidadTipo: 'vivienda' | 'habitacion' | undefined,
 ): CatalogoModalidad {
   switch (catalogoKindDeModalidad(modalidad, unidadTipo)) {

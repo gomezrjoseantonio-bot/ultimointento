@@ -29,7 +29,7 @@ describe('el mismo contrato, los dos caminos', () => {
     rendimientoAntes: RENDIMIENTO,
   });
   const enCurso = desgloseEnCurso(
-    [{ tipo: 'vivienda_habitual', pct: 60, ingresos: 19675 }],
+    [{ tipo: 'larga_estancia', pct: 60, ingresos: 19675 }],
     RENDIMIENTO,
   );
 
@@ -54,7 +54,7 @@ describe('el mixto · los dos caminos coinciden en el importe y en los chips que
   // no reduce. El importe es el mismo por los dos caminos.
   const enCurso = desgloseEnCurso(
     [
-      { tipo: 'vivienda_habitual', pct: 60, ingresos: 10000 },
+      { tipo: 'larga_estancia', pct: 60, ingresos: 10000 },
       { tipo: 'temporada', pct: 0, ingresos: 10000 },
     ],
     RENDIMIENTO,

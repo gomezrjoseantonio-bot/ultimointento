@@ -36,7 +36,7 @@ const c = (id: number, overrides: Partial<Contract> = {}): Contract & { id: numb
     id,
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'A', apellidos: 'B', dni: '', telefono: '', email: '' },
     fechaInicio: '2026-05-01',
     fechaFin: '2099-12-31',
@@ -101,8 +101,8 @@ describe('generarPropiedadGroupData', () => {
     expect(overlaysCompletos).toHaveLength(0);
   });
 
-  test('propiedad bedrooms=5 + 1 contrato piso (vacacional verano) · overlay generado', () => {
-    const contratos = [c(1, { unidadTipo: 'vivienda', modalidad: 'vacacional' })];
+  test('propiedad bedrooms=5 + 1 contrato piso (turístico de verano) · overlay generado', () => {
+    const contratos = [c(1, { unidadTipo: 'vivienda', modalidad: 'turistico' })];
     const { lineas, overlaysCompletos } = generarPropiedadGroupData(
       prop(5),
       contratos,
@@ -174,8 +174,8 @@ describe('generarPropiedadGroupData', () => {
     expect(textoBarraContrato(ren, HOY)).toContain('renovado');
   });
 
-  test('contrato corta vacacional · clase vigente-c', () => {
-    const corta = c(1, { modalidad: 'vacacional' });
+  test('contrato corta turístico · clase vigente-c', () => {
+    const corta = c(1, { modalidad: 'turistico' });
     expect(claseBarraContrato(corta, HOY)).toBe('vigente-c');
   });
 
@@ -183,7 +183,7 @@ describe('generarPropiedadGroupData', () => {
     const contratos = [
       c(10, {
         unidadTipo: 'vivienda',
-        modalidad: 'vacacional',
+        modalidad: 'turistico',
         fechaInicio: dayOffset(30),
         fechaFin: dayOffset(90),
       }),

@@ -774,7 +774,7 @@ export async function recopilarDatosInmuebles(
         const contractIncome = ingresosDelContratoEnEjercicio(contract, ejercicio);
         ingresosIntegros += contractIncome;
 
-        if (contract.modalidad === 'habitual') esHabitual = true;
+        if (contract.modalidad === 'larga_estancia') esHabitual = true;
 
         // Determine reduction % for THIS contract using Ley 12/2023 rules
         const pctReduccion = calcularPorcentajeReduccionContrato(contract);

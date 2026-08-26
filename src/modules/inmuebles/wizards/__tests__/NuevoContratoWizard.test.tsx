@@ -138,7 +138,7 @@ describe('NuevoContratoWizard · persistencia', () => {
     const payload = mockSaveContract.mock.calls[0][0];
     expect(payload).toMatchObject({
       inmuebleId: 1,
-      modalidad: 'habitual',
+      modalidad: 'larga_estancia',
       fechaFin: calculateHabitualEndDate(payload.fechaInicio),
       rentaMensual: 1350,
       diaPago: 1,
@@ -216,7 +216,7 @@ describe('NuevoContratoWizard · persistencia', () => {
       id: 5,
       inmuebleId: 1,
       unidadTipo: 'vivienda',
-      modalidad: 'habitual',
+      modalidad: 'larga_estancia',
       inquilino: { nombre: 'Ivan', apellidos: 'Gomez', dni: '53069494F', telefono: '600', email: 'i@v.es' },
       fechaInicio: '2025-01-01',
       fechaFin: '2027-01-01',

@@ -48,24 +48,32 @@ describe('MAPEO_TIPO_RENTILA_ATLAS', () => {
     expect(Object.keys(MAPEO_TIPO_RENTILA_ATLAS)).toHaveLength(5);
   });
 
+  // Lo que dice temporada se importa como TEMPORADA. Antes acababa en el
+  // turístico, porque ATLAS solo distinguía dos modalidades: el eje fiscal
+  // coincidía —los dos al 0 %— pero un piso alquilado a un estudiante por el
+  // curso quedaba registrado como apartamento turístico, con su tope de seis
+  // meses y su catálogo de gastos.
   it('mapea correctamente los 5 tipos cortos', () => {
-    expect(mapTipoRentilaToAtlas('vivienda')).toBe('habitual');
-    expect(mapTipoRentilaToAtlas('habitación')).toBe('habitual');
-    expect(mapTipoRentilaToAtlas('habitación temporada')).toBe('vacacional');
-    expect(mapTipoRentilaToAtlas('temporada')).toBe('vacacional');
-    expect(mapTipoRentilaToAtlas('Otro')).toBe('habitual');
+    expect(mapTipoRentilaToAtlas('vivienda')).toBe('larga_estancia');
+    expect(mapTipoRentilaToAtlas('habitación')).toBe('larga_estancia');
+    expect(mapTipoRentilaToAtlas('habitación temporada')).toBe('temporada');
+    expect(mapTipoRentilaToAtlas('temporada')).toBe('temporada');
+    expect(mapTipoRentilaToAtlas('Otro')).toBe('larga_estancia');
   });
 
   it('tolera las frases largas de Rentila', () => {
-    expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de vivienda')).toBe('habitual');
-    expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de temporada')).toBe('vacacional');
+    expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de vivienda')).toBe('larga_estancia');
+    expect(mapTipoRentilaToAtlas('Contrato de arrendamiento de temporada')).toBe('temporada');
   });
 
   it('mapea los tipos de la plantilla ATLAS', () => {
-    expect(mapTipoAtlasToModalidad('Vivienda LAU')).toBe('habitual');
-    expect(mapTipoAtlasToModalidad('Habitación larga')).toBe('habitual');
-    expect(mapTipoAtlasToModalidad('Vivienda temporada')).toBe('vacacional');
-    expect(mapTipoAtlasToModalidad('Vacacional')).toBe('vacacional');
+    expect(mapTipoAtlasToModalidad('Vivienda LAU')).toBe('larga_estancia');
+    expect(mapTipoAtlasToModalidad('Habitación larga')).toBe('larga_estancia');
+    expect(mapTipoAtlasToModalidad('Vivienda temporada')).toBe('temporada');
+    // `Vacacional` es el nombre viejo del turístico · las plantillas de fuera
+    // lo siguen trayendo aunque el código ya no lo escriba.
+    expect(mapTipoAtlasToModalidad('Vacacional')).toBe('turistico');
+    expect(mapTipoAtlasToModalidad('Turístico')).toBe('turistico');
   });
 });
 

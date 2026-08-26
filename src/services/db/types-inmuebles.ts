@@ -3,6 +3,7 @@
 // importan del barril ./types (import de tipos · ciclo permitido en TS).
 
 import type { AEATFiscalType, AEATBox } from './types-contratos';
+import type { SubtipoAlquiler } from './types-alquiler';
 import type { TipoActivo } from '../../types/tipoActivo';
 
 
@@ -125,14 +126,22 @@ export interface Property {
     tieneTerraza?: boolean;
     tieneAscensor?: boolean;
   };
-  /** S-WIZARD-INMUEBLE-V4 · uso fiscal del inmueble · `vendido` no entra (flujo aparte) */
-  usoTipo?:
-    | 'larga_estancia'
-    | 'temporada'
-    | 'turistico'
-    | 'mixto'
-    | 'vivienda_habitual'
-    | 'disponible';
+  /**
+   * S-WIZARD-INMUEBLE-V4 · uso fiscal del inmueble · `vendido` no entra (flujo
+   * aparte).
+   *
+   * Los tres primeros valores SON el subtipo de alquiler, y vienen de
+   * `types-alquiler` en vez de repetirse aquí: era la copia que se descolgaba
+   * del contrato, donde el turístico se llamaba de otra manera.
+   *
+   * Los otros tres no son subtipos y por eso siguen siendo propios de este
+   * campo: `mixto` es «varios subtipos a la vez», y `disponible` y
+   * `vivienda_habitual` son situaciones sin contrato. Ojo con el último: aquí
+   * significa que el titular VIVE en el inmueble —está exento y no se alquila—,
+   * lo contrario del arrendamiento de vivienda del art. 2 LAU, que es
+   * `larga_estancia`.
+   */
+  usoTipo?: SubtipoAlquiler | 'mixto' | 'vivienda_habitual' | 'disponible';
   /** S-WIZARD-INMUEBLE-V4 · alquiler por habitaciones (sólo Piso · usos larga/temporada/turístico/mixto) */
   alquilerPorHabitaciones?: {
     activo: boolean;
@@ -142,7 +151,7 @@ export interface Property {
    * V77 · wizard import XML V2 (pilar 1) · bloque de explotación · sólo los conceptos que NO existen
    * ya en el modelo. El resto se mapea sobre campos existentes:
    *   · modoExplotacion (piso_completo/por_habitaciones) → `alquilerPorHabitaciones.activo`
-   *   · tipoAlquilerDominante (larga/temporada/vacacional/mixto) → `usoTipo`
+   *   · tipoAlquilerDominante (larga/temporada/turistico/mixto) → `usoTipo`
    *   · esAlquilable → derivable de `usoTipo` (≠ 'vivienda_habitual'/'disponible')
    * Opcional · inmuebles pre-V77 quedan con el bloque undefined.
    */

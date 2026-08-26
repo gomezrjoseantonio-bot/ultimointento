@@ -2,6 +2,7 @@
 // fiscalSummaries store eliminated in phase F
 
 import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
+import { esCortaEstancia } from './db/types-alquiler';
 import { getExerciseStatus } from './aeatClassificationService';
 import { esContratoDelInmueble } from './inmuebleDelContrato';
 import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
@@ -556,8 +557,10 @@ function detectarModoDeclaracion(
 
   const habitaciones = contractsDelAño.some((c) => c.unidadTipo === 'habitacion');
   const modalidades = new Set(contractsDelAño.map((c) => c.modalidad).filter(Boolean));
-  const tieneCorta = modalidades.has('vacacional') || modalidades.has('temporada');
-  const tieneLarga = modalidades.has('habitual');
+  // Preguntado por el concepto: enumerar los dos literales de corta estancia es
+  // justo donde se olvidaba uno y un turístico contaba como larga.
+  const tieneCorta = [...modalidades].some(esCortaEstancia);
+  const tieneLarga = modalidades.has('larga_estancia');
 
   if (property?.alquilerPorHabitaciones?.activo || habitaciones) return 'III';
   if (tieneLarga && tieneCorta) return 'III';

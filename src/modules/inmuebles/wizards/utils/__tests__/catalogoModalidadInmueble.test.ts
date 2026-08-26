@@ -14,19 +14,19 @@ const has = (list: ConceptoInmuebleRef[], tipoId: string, subtipoId: string): bo
   list.some((r) => r.tipoId === tipoId && r.subtipoId === subtipoId);
 
 describe('catalogoKindDeModalidad · precedencia', () => {
-  it('temporada/vacacional mandan sobre unidadTipo', () => {
+  it('temporada/turístico mandan sobre unidadTipo', () => {
     expect(catalogoKindDeModalidad('temporada', 'vivienda')).toBe('turistico');
-    expect(catalogoKindDeModalidad('vacacional', 'habitacion')).toBe('turistico');
+    expect(catalogoKindDeModalidad('turistico', 'habitacion')).toBe('turistico');
   });
   it('habitacion → habitaciones · vivienda habitual → vivienda completa', () => {
-    expect(catalogoKindDeModalidad('habitual', 'habitacion')).toBe('habitaciones');
-    expect(catalogoKindDeModalidad('habitual', 'vivienda')).toBe('viviendaCompleta');
+    expect(catalogoKindDeModalidad('larga_estancia', 'habitacion')).toBe('habitaciones');
+    expect(catalogoKindDeModalidad('larga_estancia', 'vivienda')).toBe('viviendaCompleta');
     expect(catalogoKindDeModalidad(undefined, undefined)).toBe('viviendaCompleta');
   });
 });
 
 describe('§3.3 · vivienda completa · precarga 7 SIN suministros', () => {
-  const cat = catalogoSugeridoPorModalidad('habitual', 'vivienda');
+  const cat = catalogoSugeridoPorModalidad('larga_estancia', 'vivienda');
   it('precarga exactamente 7 conceptos', () => {
     expect(cat.precargados).toHaveLength(7);
   });
@@ -48,7 +48,7 @@ describe('§3.3 · vivienda completa · precarga 7 SIN suministros', () => {
 });
 
 describe('§3.3 · habitaciones · precarga 13', () => {
-  const cat = catalogoSugeridoPorModalidad('habitual', 'habitacion');
+  const cat = catalogoSugeridoPorModalidad('larga_estancia', 'habitacion');
   it('precarga exactamente 13 conceptos', () => {
     expect(cat.precargados).toHaveLength(13);
   });
@@ -83,11 +83,11 @@ describe('§3.3 · temporada/turístico · precarga 16', () => {
 
 describe('integridad · toda ref del mapa existe en el catálogo', () => {
   it('ninguna sugerencia apunta a un subtipo inexistente', () => {
-    const kinds: Array<['habitual' | 'temporada' | 'vacacional', 'vivienda' | 'habitacion']> = [
-      ['habitual', 'vivienda'],
-      ['habitual', 'habitacion'],
+    const kinds: Array<['larga_estancia' | 'temporada' | 'turistico', 'vivienda' | 'habitacion']> = [
+      ['larga_estancia', 'vivienda'],
+      ['larga_estancia', 'habitacion'],
       ['temporada', 'vivienda'],
-      ['vacacional', 'habitacion'],
+      ['turistico', 'habitacion'],
     ];
     for (const [modalidad, unidad] of kinds) {
       const cat = catalogoSugeridoPorModalidad(modalidad, unidad);
@@ -100,7 +100,7 @@ describe('integridad · toda ref del mapa existe en el catálogo', () => {
 
 describe('restarYaDados · el catálogo ofrece solo lo que aún no está', () => {
   it('quita los conceptos ya dados de alta', () => {
-    const cat = catalogoSugeridoPorModalidad('habitual', 'vivienda');
+    const cat = catalogoSugeridoPorModalidad('larga_estancia', 'vivienda');
     const yaDados: ConceptoInmuebleRef[] = [{ tipoId: 'tributos', subtipoId: 'ibi' }];
     const restantes = restarYaDados(cat.precargados, yaDados);
     expect(has(restantes, 'tributos', 'ibi')).toBe(false);

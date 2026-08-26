@@ -103,7 +103,7 @@ describe('alquileres v3 · verificación end-to-end (commits 2-5)', () => {
     // ── Extra1 · contrato CB habitual con fechaFin LAU (inicio+5y, futuro) ─────
     const cb = contracts1.find((c) => c.inmuebleId === 1);
     expect(cb.inquilino.dni).toBe('00000001A');
-    expect(cb.modalidad).toBe('habitual');
+    expect(cb.modalidad).toBe('larga_estancia');
     expect(cb.fechaFin).toBe(`${ESTE_AÑO + 5}-02-01`);
     expect(cb.fechaFin).not.toBe(FECHA_FIN_INDEFINIDO);
     expect(cb.rentaMensual).toBe(1000); // round(12000/12) · sin dividir entre NIFs

@@ -398,7 +398,7 @@ const PasoInmuebles: React.FC<{ s: WizardImportState }> = ({ s }) => {
                               <option value="">Selecciona…</option>
                               <option value="larga_estancia">Larga estancia</option>
                               <option value="temporada">Temporada</option>
-                              <option value="turistico">Turístico / vacacional</option>
+                              <option value="turistico">Turístico</option>
                               <option value="mixto">Mixto</option>
                             </select>
                           </div>

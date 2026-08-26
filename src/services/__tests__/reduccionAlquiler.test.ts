@@ -17,7 +17,7 @@ import {
 
 /** Habitual firmado bajo la Ley de Vivienda, sin ninguna condición especial. */
 const base = (extra?: Partial<CondicionesReduccion>): CondicionesReduccion => ({
-  regimen: 'habitual',
+  regimen: 'larga_estancia',
   fechaFirma: '2026-08-15',
   ...extra,
 });
@@ -130,7 +130,7 @@ describe('qué reducción propone ATLAS', () => {
   });
 
   it('sin fecha de firma se aplica el régimen vigente, no se inventa una anterior', () => {
-    const r = proponerReduccion({ regimen: 'habitual' });
+    const r = proponerReduccion({ regimen: 'larga_estancia' });
     expect(r.porcentaje).toBe(50);
   });
 

@@ -703,7 +703,7 @@ const Overlay: React.FC<{
 const Leyenda: React.FC = () => (
   <div className={styles.leyenda}>
     <LegendItem className="bar-vigente-l" label="Vigente · larga" />
-    <LegendItem className="bar-vigente-c" label="Vigente · corta/vacacional" />
+    <LegendItem className="bar-vigente-c" label="Vigente · corta estancia" />
     <LegendItem className="bar-renovado" label="Renovado · últimos 30 d" />
     <LegendItem className="bar-pendiente-firma" label="Firma pendiente" />
     <LegendItem className="bar-impago" label="Impago" />

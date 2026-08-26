@@ -1,3 +1,5 @@
+import type { SubtipoAlquiler } from './types-alquiler';
+
 // Frente C · troceo de db.ts · tipos de dominio (types-contratos).
 // Extraídos literalmente. Referencias cruzadas a otros dominios se
 // importan del barril ./types (import de tipos · ciclo permitido en TS).
@@ -191,7 +193,8 @@ export interface Contract {
   habitacionId?: string; // Specific room ID if type is 'habitacion'
   
   // NEW FIELDS: Contract modality
-  modalidad: 'habitual' | 'temporada' | 'vacacional'; // Dwelling type: habitual, seasonal or vacation rentals
+  /** El subtipo de alquiler · vocabulario único en `types-alquiler.ts`. */
+  modalidad: SubtipoAlquiler;
   
   // NEW FIELDS: Tenant information (complete as required)
   inquilino: {
@@ -289,7 +292,7 @@ export interface Contract {
 
   // NEW FIELDS: Document preparation for PDF generation
   documentoContrato?: {
-    plantilla: 'habitual' | 'temporada' | 'vacacional' | 'habitacion';
+    plantilla: SubtipoAlquiler | 'habitacion';
     incluirInventario?: boolean;
     incluirCertificadoEnergetico?: boolean;
     clausulasAdicionales?: string;

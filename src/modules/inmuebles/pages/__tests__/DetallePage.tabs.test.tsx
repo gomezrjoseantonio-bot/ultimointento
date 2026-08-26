@@ -149,7 +149,7 @@ const crearContrato = (overrides: Partial<Contract> = {}): Contract => ({
   id: 11,
   inmuebleId: 1,
   unidadTipo: 'vivienda',
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   inquilino: {
     nombre: 'Lucía',
     apellidos: 'Pérez',

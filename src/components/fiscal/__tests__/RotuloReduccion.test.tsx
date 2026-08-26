@@ -29,7 +29,7 @@ describe('rótulo de reducción', () => {
   it('un chip por tramo, con su nominal', () => {
     render(<RotuloReduccion desglose={desgloseEnCurso(
       [
-        { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
+        { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
         { tipo: 'temporada', pct: 0, ingresos: 4000 },
       ],
       5000,

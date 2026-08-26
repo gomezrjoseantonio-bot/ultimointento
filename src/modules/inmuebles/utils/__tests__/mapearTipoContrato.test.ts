@@ -6,15 +6,15 @@ const make = (modalidad: Contract['modalidad']): Contract =>
 
 describe('mapearTipoContrato', () => {
   test('habitual → larga', () => {
-    expect(mapearTipoContrato(make('habitual'))).toBe('larga');
+    expect(mapearTipoContrato(make('larga_estancia'))).toBe('larga');
   });
 
   test('temporada → corta', () => {
     expect(mapearTipoContrato(make('temporada'))).toBe('corta');
   });
 
-  test('vacacional → corta', () => {
-    expect(mapearTipoContrato(make('vacacional'))).toBe('corta');
+  test('turístico → corta', () => {
+    expect(mapearTipoContrato(make('turistico'))).toBe('corta');
   });
 
   test('modalidad desconocida fallback a larga', () => {

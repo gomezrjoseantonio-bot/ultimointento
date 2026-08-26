@@ -26,19 +26,19 @@ interface Ancla {
 const ANCLAS: Ancla[] = [
   {
     alias: 'FA32 larga estancia',
-    condiciones: { regimen: 'habitual', fechaFirma: '2023-05-01' },
+    condiciones: { regimen: 'larga_estancia', fechaFirma: '2023-05-01' },
     esperado: 60,
     porque: 'firmado 25 días antes de la Ley de Vivienda · régimen transitorio',
   },
   {
     alias: 'Sant Joan',
-    condiciones: { regimen: 'habitual', fechaFirma: '2022-01-01' },
+    condiciones: { regimen: 'larga_estancia', fechaFirma: '2022-01-01' },
     esperado: 60,
     porque: 'muy anterior a la Ley · mismo transitorio',
   },
   {
     alias: 'Carles Buigas',
-    condiciones: { regimen: 'habitual', fechaFirma: '2024-01-01', rehabilitada2a: true },
+    condiciones: { regimen: 'larga_estancia', fechaFirma: '2024-01-01', rehabilitada2a: true },
     esperado: 60,
     porque: 'ya bajo la Ley, pero rehabilitada en los 2 años previos · art. 23.2.c)',
   },

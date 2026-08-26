@@ -32,7 +32,7 @@ const contrato = (nombre: string, apellidos: string): Omit<Contract, 'id'> =>
   ({
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre, apellidos, dni: 'X1234567L', telefono: '', email: '' },
     fechaInicio: '2020-01-01',
     fechaFin: '2099-12-31',

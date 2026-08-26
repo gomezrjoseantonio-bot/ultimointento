@@ -75,7 +75,7 @@ const c = (id: number, overrides: Partial<Contract> = {}): Contract & { id: numb
     id,
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'Juan', apellidos: 'Calvo', dni: '', telefono: '', email: '' },
     fechaInicio: '2024-01-01',
     fechaFin: '2099-12-31',

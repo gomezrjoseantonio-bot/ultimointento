@@ -39,7 +39,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 
     expect(d.origen).toBe('declarado');
     expect(d.importe).toBe(3200.81);
-    expect(d.tramos).toEqual([{ tipo: 'vivienda_habitual', pct: 60, base: 5334.69 }]);
+    expect(d.tramos).toEqual([{ tipo: 'larga_estancia', pct: 60, base: 5334.69 }]);
   });
 
   it('dos tramos · el reducible va SIN cifra, porque 0150÷0149 los mezcla', () => {
@@ -57,7 +57,7 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 
     expect(d.importe).toBe(1390.94);
     expect(pcts(d)).toEqual([null, 0]);
-    expect(tipos(d)).toEqual(['vivienda_habitual', 'temporada_o_turistico']);
+    expect(tipos(d)).toEqual(['larga_estancia', 'temporada_o_turistico']);
     // Y el 26 no aparece por ninguna parte de la estructura.
     expect(JSON.stringify(d)).not.toContain('26');
   });
@@ -153,12 +153,12 @@ describe('año declarado · el importe manda y el % solo si es exacto', () => {
 describe('año en curso · el nominal lo da el motor, no una división', () => {
   it('un habitual al 60 % · importe y tramo', () => {
     const d = desgloseEnCurso(
-      [{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }],
+      [{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }],
       5000,
     );
     expect(d.origen).toBe('atlas');
     expect(d.importe).toBe(3000);
-    expect(d.tramos).toEqual([{ tipo: 'vivienda_habitual', pct: 60, base: 5000 }]);
+    expect(d.tramos).toEqual([{ tipo: 'larga_estancia', pct: 60, base: 5000 }]);
   });
 
   it('habitual + temporada · el 0 % de temporada es explícito y no diluye el 60', () => {
@@ -166,13 +166,13 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
     // 60 % se aplica SOLO sobre la parte de vivienda habitual.
     const d = desgloseEnCurso(
       [
-        { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
+        { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
         { tipo: 'temporada', pct: 0, ingresos: 4000 },
       ],
       5000,
     );
 
-    expect(tipos(d)).toEqual(['vivienda_habitual', 'temporada']);
+    expect(tipos(d)).toEqual(['larga_estancia', 'temporada']);
     expect(pcts(d)).toEqual([60, 0]);
     expect(d.tramos[0].base).toBe(3000);
     expect(d.tramos[1].base).toBe(2000);
@@ -184,8 +184,8 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
     // saldría de promediarlos no existe en el art. 23.2.
     const d = desgloseEnCurso(
       [
-        { tipo: 'vivienda_habitual', pct: 60, ingresos: 5000 },
-        { tipo: 'vivienda_habitual', pct: 50, ingresos: 5000 },
+        { tipo: 'larga_estancia', pct: 60, ingresos: 5000 },
+        { tipo: 'larga_estancia', pct: 50, ingresos: 5000 },
       ],
       4000,
     );
@@ -194,19 +194,21 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
   });
 
   it('rendimiento negativo · no se reduce una pérdida', () => {
-    const d = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], -800);
+    const d = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], -800);
     expect(d.importe).toBe(0);
     expect(d.tramos[0].pct).toBe(60);
   });
 
   it('sin ingresos no hay reparto posible · importe 0, no un número inventado', () => {
-    const d = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 0 }], 5000);
+    const d = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 0 }], 5000);
     expect(d.importe).toBe(0);
   });
 
   it('el tipo sale de la modalidad del contrato', () => {
-    expect(tipoDeModalidad('habitual')).toBe('vivienda_habitual');
+    expect(tipoDeModalidad('habitual')).toBe('larga_estancia');
     expect(tipoDeModalidad('temporada')).toBe('temporada');
+    // El nombre viejo se sigue leyendo: un contrato guardado antes del
+    // renombrado no puede cambiar de fiscalidad al abrirlo.
     expect(tipoDeModalidad('vacacional')).toBe('turistico');
     expect(tipoDeModalidad('turistico')).toBe('turistico');
     // Una modalidad que no reconocemos no reduce, y no sabemos cuál de las dos
@@ -218,8 +220,8 @@ describe('año en curso · el nominal lo da el motor, no una división', () => {
     const d = desgloseEnCurso(
       [
         { tipo: 'temporada', pct: 0, ingresos: 1000 },
-        { tipo: 'vivienda_habitual', pct: 90, ingresos: 1000 },
-        { tipo: 'vivienda_habitual', pct: 50, ingresos: 1000 },
+        { tipo: 'larga_estancia', pct: 90, ingresos: 1000 },
+        { tipo: 'larga_estancia', pct: 50, ingresos: 1000 },
       ],
       3000,
     );
@@ -239,7 +241,7 @@ describe('dato ausente · se dice, no se rellena', () => {
   });
 
   it('en curso sin rendimiento conocido · ausente, no cero', () => {
-    const d = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], null);
+    const d = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], null);
     expect(hayDato(d)).toBe(false);
     expect(d.importe).toBeNull();
   });
@@ -248,20 +250,20 @@ describe('dato ausente · se dice, no se rellena', () => {
 // ───────────────────────────────────────────────────────────────────────────
 describe('el rótulo · un solo lenguaje para importado y en curso', () => {
   it('con cifra cuando el nominal se conoce', () => {
-    expect(etiquetaTramo({ tipo: 'vivienda_habitual', pct: 60 })).toBe('60% vivienda habitual');
+    expect(etiquetaTramo({ tipo: 'larga_estancia', pct: 60 })).toBe('60% vivienda habitual');
     expect(etiquetaTramo({ tipo: 'temporada', pct: 0 })).toBe('0% temporada');
     expect(etiquetaTramo({ tipo: 'turistico', pct: 0 })).toBe('0% turístico');
   });
 
   it('sin cifra cuando no se conoce · el nombre del tramo, y ya', () => {
-    expect(etiquetaTramo({ tipo: 'vivienda_habitual', pct: null })).toBe('vivienda habitual');
+    expect(etiquetaTramo({ tipo: 'larga_estancia', pct: null })).toBe('vivienda habitual');
     expect(etiquetaTramo({ tipo: 'temporada_o_turistico', pct: 0 })).toBe('0% temporada/turístico');
   });
 
   it('el mismo perfil declarado y en curso dice lo mismo', () => {
     // Un único habitual al 60 %: lo que ATLAS calcula y lo que se declaró tienen
     // que rotularse igual, o el usuario ve dos verdades del mismo contrato.
-    const enCurso = desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], 5000);
+    const enCurso = desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], 5000);
     const declarado = desgloseDeclarado({
       arrendamientos: [{ conReduccion: true }],
       reduccion: 3000,
@@ -277,7 +279,7 @@ describe('el rótulo · un solo lenguaje para importado y en curso', () => {
 // ───────────────────────────────────────────────────────────────────────────
 describe('de contratos a tramos · el puente que usan las pantallas', () => {
   const habitual = (extra: Record<string, unknown> = {}) => ({
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     fechaInicio: '2025-01-01',
     fechaFin: '2030-12-31',
     rentaMensual: 500,
@@ -302,7 +304,7 @@ describe('de contratos a tramos · el puente que usan las pantallas', () => {
     );
 
     expect(tramos).toEqual([
-      { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
+      { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
       { tipo: 'temporada', pct: 0, ingresos: 9600 },
     ]);
   });
@@ -329,7 +331,7 @@ describe('de contratos a tramos · el puente que usan las pantallas', () => {
 describe('escalar · el simulador cambia la base, no las condiciones', () => {
   const base = desgloseEnCurso(
     [
-      { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
+      { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
       { tipo: 'temporada', pct: 0, ingresos: 4000 },
     ],
     5000,

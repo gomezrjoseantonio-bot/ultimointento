@@ -1,3 +1,4 @@
+import { SUBTIPOS_ALQUILER, type SubtipoAlquiler } from './db/types-alquiler';
 import { initDB, Contract, HistoricoRenta } from './db';
 
 type SignatureMetadata = NonNullable<Contract['firma']>;
@@ -65,11 +66,21 @@ export const calculateDuration = (fechaInicio: string, fechaFin: string): string
   return `${months}m ${days}d`;
 };
 
+/**
+ * La plantilla de documento que corresponde a un subtipo.
+ *
+ * La plantilla lleva los mismos nombres que el subtipo (más `habitacion`, que
+ * es forma de unidad y no subtipo) para que no vuelva a haber dos vocabularios
+ * describiendo el mismo contrato.
+ */
+export const plantillaDelSubtipo = (
+  subtipo: SubtipoAlquiler | undefined,
+): NonNullable<Contract['documentoContrato']>['plantilla'] => subtipo ?? 'larga_estancia';
+
 const normaliseDocumentMetadata = (contract: ContractMetadataInput): Contract['documentoContrato'] => {
   const plantillaBase = contract.documentoContrato?.plantilla
     || (contract.unidadTipo === 'habitacion' ? 'habitacion'
-    : contract.modalidad === 'vacacional' ? 'vacacional'
-    : contract.modalidad === 'temporada' ? 'temporada' : 'habitual');
+    : plantillaDelSubtipo(contract.modalidad));
 
   return {
     plantilla: plantillaBase,
@@ -453,8 +464,8 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
     errors.push('La fecha de fin es obligatoria');
   }
 
-  if (!contract.modalidad || !['habitual', 'temporada', 'vacacional'].includes(contract.modalidad)) {
-    errors.push('Debe seleccionar una modalidad válida (habitual, temporada o vacacional)');
+  if (!contract.modalidad || !SUBTIPOS_ALQUILER.includes(contract.modalidad)) {
+    errors.push('Debe seleccionar un tipo de alquiler válido: vivienda habitual, temporada o turístico');
   }
 
   if (!contract.documentoContrato?.plantilla) {
@@ -482,11 +493,18 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
       errors.push('La fecha de fin debe ser posterior a la fecha de inicio');
     }
 
-    if (contract.modalidad === 'vacacional') {
+    // El tope de duración es del TURÍSTICO y solo del turístico. Estaba atado
+    // a su nombre viejo como literal suelto; ahora al subtipo.
+    //
+    // No se extiende a temporada aunque las dos tributen igual: el
+    // arrendamiento de temporada del art. 3.2 LAU cubre el curso de un
+    // estudiante o un traslado de trabajo, que pasan de los seis meses con toda
+    // normalidad. Un tope de 180 días ahí rechazaría el caso más común.
+    if (contract.modalidad === 'turistico') {
       const diffTime = end.getTime() - start.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       if (diffDays > 180) {
-        errors.push('Los contratos vacacionales no deberían exceder los 6 meses de duración');
+        errors.push('Un alquiler turístico no debería exceder los 6 meses de duración');
       }
     }
   }

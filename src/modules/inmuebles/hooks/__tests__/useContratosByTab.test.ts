@@ -14,7 +14,7 @@ const c = (over: Partial<Contract>): Contract =>
   ({
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'Real', apellidos: 'Inquilino', dni: '1', telefono: '', email: '' },
     fechaInicio: iso(-400),
     fechaFin: iso(400),

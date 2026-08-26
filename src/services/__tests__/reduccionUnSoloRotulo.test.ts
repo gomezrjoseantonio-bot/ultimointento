@@ -102,7 +102,7 @@ const montarBase = (opciones: {
 const contratoHabitual = (extra: Record<string, unknown> = {}) => ({
   id: 1,
   inmuebleId: 1,
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   fechaInicio: '2025-01-01',
   fechaFin: '2030-12-31',
   rentaMensual: 1000,

@@ -151,7 +151,7 @@ export const TechnicalTermTooltip: React.FC<TechnicalTermTooltipProps> = ({
 export const TECHNICAL_TERMS = {
   // Financial & Property Management (Top 10)
   'inmueble': 'Propiedad inmobiliaria gestionada en el sistema. Incluye datos de ubicación, coste, rentabilidad y documentación.',
-  'vacacional': 'Inmueble destinado al alquiler por periodos cortos (días o semanas) para turismo.',
+  'turistico': 'Inmueble destinado al alquiler por periodos cortos (días o semanas) para turismo.',
   'lar': 'Alquiler de larga duración. Contrato de arrendamiento de mínimo 12 meses.',
   'rentabilidad': 'Porcentaje de ganancia obtenida sobre la inversión inicial. Se calcula dividiendo beneficio neto entre inversión.',
   'reforma': 'Obras de mejora o modificación realizadas en un inmueble. Se capitalizan en el valor del inmueble.',

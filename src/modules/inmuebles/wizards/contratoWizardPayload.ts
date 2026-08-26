@@ -41,7 +41,7 @@ export function construirPayloadCompleto(form: FormState): PayloadResult {
     return { ok: false, error: 'El email del inquilino es obligatorio' };
   const fechaFin =
     form.fechaFin.trim() ||
-    (form.modalidad === 'habitual' ? calculateHabitualEndDate(form.fechaInicio) : '');
+    (form.modalidad === 'larga_estancia' ? calculateHabitualEndDate(form.fechaInicio) : '');
   if (!fechaFin) return { ok: false, error: 'La fecha de fin es obligatoria' };
   if (new Date(fechaFin) <= new Date(form.fechaInicio))
     return { ok: false, error: 'La fecha de fin debe ser posterior a la fecha de inicio' };

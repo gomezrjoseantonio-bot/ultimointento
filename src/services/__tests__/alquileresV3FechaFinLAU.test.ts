@@ -48,15 +48,15 @@ describe('recalcularFechaFinContratosAEAT · alcance y idempotencia', () => {
   it('recalcula solo habitual+AEAT+indefinido con inicio futuro; respeta el resto', async () => {
     await seedContracts([
       // 1) habitual AEAT, inicio 2024 → debe pasar a 2029-06-01
-      { id: 1, modalidad: 'habitual', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2024) },
+      { id: 1, modalidad: 'larga_estancia', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2024) },
       // 2) habitual AEAT pero inicio antiguo → sigue indefinido (no-op)
-      { id: 2, modalidad: 'habitual', fechaInicio: '2018-01-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2018) },
+      { id: 2, modalidad: 'larga_estancia', fechaInicio: '2018-01-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2018) },
       // 3) habitual MANUAL indefinido → NO se toca (sin fuente xml_aeat)
-      { id: 3, modalidad: 'habitual', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: {} },
+      { id: 3, modalidad: 'larga_estancia', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: {} },
       // 4) temporada AEAT → NO se toca
       { id: 4, modalidad: 'temporada', fechaInicio: '2024-06-01', fechaFin: FECHA_FIN_INDEFINIDO, ejerciciosFiscales: aeat(2024) },
       // 5) habitual AEAT con fecha ya concreta → NO se pisa
-      { id: 5, modalidad: 'habitual', fechaInicio: '2024-06-01', fechaFin: '2027-12-31', ejerciciosFiscales: aeat(2024) },
+      { id: 5, modalidad: 'larga_estancia', fechaInicio: '2024-06-01', fechaFin: '2027-12-31', ejerciciosFiscales: aeat(2024) },
     ]);
 
     const { recalcularFechaFinContratosAEAT } = require('../alquileresV3FixService');

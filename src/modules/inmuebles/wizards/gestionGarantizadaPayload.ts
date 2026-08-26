@@ -122,7 +122,7 @@ export function construirPayloadGestion(form: GestionForm): PayloadResult {
   const payload: ContratoPayload = {
     inmuebleId: form.inmuebleId,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: form.agenciaNombre.trim(), apellidos: '', dni: agenciaNif, telefono: '', email: '' },
     fechaInicio: form.fechaInicio,
     fechaFin: form.fechaFin.trim(),

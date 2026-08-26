@@ -60,7 +60,7 @@ describe('la casilla 0150 rotula por tramo', () => {
   it('el año en curso dice el nominal exacto', () => {
     const enCurso = desgloseEnCurso(
       [
-        { tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 },
+        { tipo: 'larga_estancia', pct: 60, ingresos: 6000 },
         { tipo: 'temporada', pct: 0, ingresos: 4000 },
       ],
       5334.69,
@@ -80,7 +80,7 @@ describe('la casilla 0150 rotula por tramo', () => {
 
 describe('el texto del modo ya no inventa un porcentaje', () => {
   it('modo I · describe el régimen, sin cifra', () => {
-    const label = getModoLabel('I', desgloseEnCurso([{ tipo: 'vivienda_habitual', pct: 60, ingresos: 6000 }], 5000));
+    const label = getModoLabel('I', desgloseEnCurso([{ tipo: 'larga_estancia', pct: 60, ingresos: 6000 }], 5000));
     expect(label.body).not.toMatch(/\d+%/);
     expect(label.tag).toBe('Larga estancia');
   });

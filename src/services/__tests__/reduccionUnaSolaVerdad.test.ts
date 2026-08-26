@@ -27,22 +27,22 @@ const contrato = (c: CondicionesReduccion & { reduccion?: unknown }): Record<str
 const RAMAS: Array<[string, CondicionesReduccion]> = [
   ['temporada', { regimen: 'temporada', fechaFirma: '2026-01-01' }],
   ['turístico', { regimen: 'turistico', fechaFirma: '2026-01-01' }],
-  ['pre-ley', { regimen: 'habitual', fechaFirma: '2022-06-01' }],
-  ['frontera · 25 may 2023', { regimen: 'habitual', fechaFirma: '2023-05-25' }],
-  ['frontera · 26 may 2023', { regimen: 'habitual', fechaFirma: '2023-05-26' }],
-  ['general', { regimen: 'habitual', fechaFirma: '2026-01-01' }],
+  ['pre-ley', { regimen: 'larga_estancia', fechaFirma: '2022-06-01' }],
+  ['frontera · 25 may 2023', { regimen: 'larga_estancia', fechaFirma: '2023-05-25' }],
+  ['frontera · 26 may 2023', { regimen: 'larga_estancia', fechaFirma: '2023-05-26' }],
+  ['general', { regimen: 'larga_estancia', fechaFirma: '2026-01-01' }],
   [
     'tensionada + rebaja + había anterior',
-    { regimen: 'habitual', fechaFirma: '2026-01-01', zonaTensionada: true, primeraVez: false, rebajaMas5: true },
+    { regimen: 'larga_estancia', fechaFirma: '2026-01-01', zonaTensionada: true, primeraVez: false, rebajaMas5: true },
   ],
   [
     'tensionada + primera vez + joven',
-    { regimen: 'habitual', fechaFirma: '2026-01-01', zonaTensionada: true, primeraVez: true, joven18a35: true },
+    { regimen: 'larga_estancia', fechaFirma: '2026-01-01', zonaTensionada: true, primeraVez: true, joven18a35: true },
   ],
-  ['rehabilitación', { regimen: 'habitual', fechaFirma: '2026-01-01', rehabilitada2a: true }],
+  ['rehabilitación', { regimen: 'larga_estancia', fechaFirma: '2026-01-01', rehabilitada2a: true }],
   [
     'tensionada + rebaja PERO primera vez',
-    { regimen: 'habitual', fechaFirma: '2026-01-01', zonaTensionada: true, primeraVez: true, rebajaMas5: true },
+    { regimen: 'larga_estancia', fechaFirma: '2026-01-01', zonaTensionada: true, primeraVez: true, rebajaMas5: true },
   ],
 ];
 
@@ -58,7 +58,7 @@ describe('una sola verdad · el lector fiscal delega en el motor', () => {
     // leerlo convertiría un cambio de reglas en una declaración distinta a la
     // que el usuario aprobó.
     const conManual = contrato({
-      regimen: 'habitual',
+      regimen: 'larga_estancia',
       fechaFirma: '2026-01-01',
       reduccion: { activa: true, porcentaje: 90, motivo: 'zona_tensionada_rebaja' },
     });
@@ -67,7 +67,7 @@ describe('una sola verdad · el lector fiscal delega en el motor', () => {
 
   it('una reducción guardada como inactiva no pisa el cálculo', () => {
     const inactiva = contrato({
-      regimen: 'habitual',
+      regimen: 'larga_estancia',
       fechaFirma: '2026-01-01',
       reduccion: { activa: false, porcentaje: 90 },
     });
@@ -77,15 +77,15 @@ describe('una sola verdad · el lector fiscal delega en el motor', () => {
 
 describe('lo que el lector conserva de su forma vieja', () => {
   it('la fecha se busca en cascada · firma del contrato, firma digital, inicio', () => {
-    const soloInicio = { modalidad: 'habitual', fechaInicio: '2022-03-01' };
+    const soloInicio = { modalidad: 'larga_estancia', fechaInicio: '2022-03-01' };
     expect(calcularPorcentajeReduccionContrato(soloInicio)).toBe(60);
 
-    const firmaDigital = { modalidad: 'habitual', firma: { fechaFirma: '2022-03-01' } };
+    const firmaDigital = { modalidad: 'larga_estancia', firma: { fechaFirma: '2022-03-01' } };
     expect(calcularPorcentajeReduccionContrato(firmaDigital)).toBe(60);
 
     // La del contrato manda sobre las demás.
     const ambas = {
-      modalidad: 'habitual',
+      modalidad: 'larga_estancia',
       fechaFirmaContrato: '2026-01-01',
       fechaInicio: '2022-03-01',
     };
@@ -111,6 +111,6 @@ describe('lo que el lector conserva de su forma vieja', () => {
     // Antes se asumía «pre-ley por seguridad» y salía un 60 %. Presumir que un
     // contrato del que no sabemos la fecha es anterior a 2023 es reclamar más
     // reducción de la que consta: lo prudente frente a Hacienda es lo vigente.
-    expect(calcularPorcentajeReduccionContrato({ modalidad: 'habitual' })).toBe(50);
+    expect(calcularPorcentajeReduccionContrato({ modalidad: 'larga_estancia' })).toBe(50);
   });
 });

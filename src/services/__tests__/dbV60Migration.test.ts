@@ -316,7 +316,7 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
       const contract: Partial<import('../db').Contract> = {
         inmuebleId: 1,
         unidadTipo: 'vivienda',
-        modalidad: 'habitual',
+        modalidad: 'larga_estancia',
         inquilino: { nombre: 'Test', apellidos: 'User', dni: '00000000T', telefono: '600', email: 'a@b.c' },
         fechaInicio: '2024-01-01',
         fechaFin: '2029-01-01',

@@ -40,7 +40,7 @@ function makeContract(id: number, propertyId: number, rentaMensual: number, mesI
     rentaMensual,
     fechaInicio: `${EJERCICIO}-${String(mesInicio).padStart(2, '0')}-01`,
     fechaFin: `${EJERCICIO}-${String(mesFin).padStart(2, '0')}-28`,
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
   };
 }
 
@@ -222,7 +222,7 @@ describe('conciliarEjercicioFiscal', () => {
       rentaMensual: 1200,
       fechaInicio: `${futuro}-01-01`,
       fechaFin: `${futuro}-12-31`,
-      modalidad: 'habitual',
+      modalidad: 'larga_estancia',
     });
     // Ingreso "cobrado" en mes futuro — no debería usarse
     await db.add('ingresos', {

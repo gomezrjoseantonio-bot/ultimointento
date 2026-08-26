@@ -5,6 +5,7 @@
 // le cobra la agencia, no el propietario), sin firma.
 
 import type { Contract } from '../../../services/db';
+import type { SubtipoAlquiler } from '../../../services/db/types-alquiler';
 
 export interface AnexarSubcontratoForm {
   /** Piso al que pertenece el subcontrato · debe tener contrato de gestión.
@@ -15,7 +16,7 @@ export interface AnexarSubcontratoForm {
   dni: string; // opcional · se permite pero no se exige
   habitacionId: string; // '' si el piso es completo
   /** Uso del alquiler · decide la fiscalidad (reducción LAU de vivienda habitual). */
-  modalidad: 'habitual' | 'temporada' | 'vacacional';
+  modalidad: SubtipoAlquiler;
   fechaInicio: string;
   fechaFin: string;
   rentaMensual: string;

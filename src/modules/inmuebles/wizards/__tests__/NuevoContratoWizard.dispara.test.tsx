@@ -162,7 +162,7 @@ describe('guardar en el alta regenera las previsiones', () => {
       id: 7,
       inmuebleId: 1,
       unidadTipo: 'vivienda',
-      modalidad: 'habitual',
+      modalidad: 'larga_estancia',
       inquilino: {
         nombre: 'PRUEBA', apellidos: 'PRUEBA', dni: '53069494F',
         telefono: '600123123', email: 'prueba@example.com',
