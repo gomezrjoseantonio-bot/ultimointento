@@ -82,6 +82,17 @@ const cobroDesdeExtracto = (contratoId: number): Omit<TreasuryEvent, 'id'> =>
     updatedAt: new Date().toISOString(),
   }) as Omit<TreasuryEvent, 'id'>;
 
+/**
+ * El mismo evento del extracto, pero AÚN SIN CONCILIAR: la línea del banco se
+ * asignó al contrato y todavía no se ha punteado contra el movimiento.
+ */
+const cobroDesdeExtractoSinConciliar = (contratoId: number): Omit<TreasuryEvent, 'id'> => {
+  const { executedMovementId, actualDate, actualAmount, ...resto } = cobroDesdeExtracto(
+    contratoId,
+  ) as TreasuryEvent;
+  return { ...resto, status: 'predicted' } as Omit<TreasuryEvent, 'id'>;
+};
+
 /** Rentas vivas de ese contrato en el mes objetivo, venga el evento de donde venga. */
 const rentasDelMes = async (contratoId: number): Promise<TreasuryEvent[]> => {
   const db = await initDB();
@@ -136,6 +147,23 @@ describe('la renta del mes no se cuenta dos veces', () => {
     await db.add('treasuryEvents', cobroDesdeExtracto(contratoId) as never);
 
     await generateMonthlyForecasts(objetivo.year, objetivo.month);
+    await generateMonthlyForecasts(objetivo.year, objetivo.month);
+
+    expect(await rentasDelMes(contratoId)).toHaveLength(1);
+  });
+
+  // El residuo del mismo fallo, un nivel más abajo.
+  //
+  // `isDuplicate` ya mira los dos nombres de la renta, pero solo corta cuando el
+  // evento está CONCILIADO. Un `'contract'` todavía sin puntear no lo frena, así
+  // que la ejecución llega a `insertEvent` — y ese emparejaba por `sourceType`
+  // EXACTO, no veía el `'contract'`, y añadía la previsión `'contrato'` al lado.
+  // Resultado: la misma renta dos veces, la asignada desde el extracto y una
+  // previsión nueva encima.
+  it('si el cobro del extracto aún NO está conciliado, tampoco emite una segunda renta', async () => {
+    const db = await initDB();
+    await db.add('treasuryEvents', cobroDesdeExtractoSinConciliar(contratoId) as never);
+
     await generateMonthlyForecasts(objetivo.year, objetivo.month);
 
     expect(await rentasDelMes(contratoId)).toHaveLength(1);

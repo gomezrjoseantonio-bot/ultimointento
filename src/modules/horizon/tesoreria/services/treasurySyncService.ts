@@ -14,6 +14,7 @@ import { getFiscalContextSafe } from '../../../../services/fiscalContextService'
 import { nominaService } from '../../../../services/nominaService';
 import { calcularNetoMesNomina } from '../../../../services/nominaCalculoService';
 import { getAllContracts } from '../../../../services/contractService';
+import { importeDeLaRentaDelMes } from '../../../../services/rentaDelMes';
 import { prestamosService } from '../../../../services/prestamosService';
 import { autonomoService } from '../../../../services/autonomoService';
 import { inversionesService } from '../../../../services/inversionesService';
@@ -202,19 +203,46 @@ export async function generateMonthlyForecasts(
   }
 
   // Helper: upsert an event by sourceType/sourceId for the month
-  async function insertEvent(event: TreasuryEvent): Promise<void> {
+  //
+  // `alias` son los otros nombres con los que ESE MISMO concepto puede estar ya
+  // guardado. Es el residuo del mismo fallo que arregló `isDuplicate`, un nivel
+  // más abajo: aquel ya mira los dos nombres de la renta, pero solo corta cuando
+  // el evento está CONCILIADO. Un `'contract'` asignado desde el extracto y aún
+  // sin puntear no lo frenaba, la ejecución llegaba aquí, y esto emparejaba por
+  // `sourceType` EXACTO — no veía el `'contract'` y añadía la previsión
+  // `'contrato'` al lado. La misma renta, dos veces.
+  //
+  // Por defecto no hay alias: cada origen (nómina, hipoteca, préstamo, comisión)
+  // se sigue emparejando solo consigo mismo.
+  async function insertEvent(
+    event: TreasuryEvent,
+    alias?: ReadonlySet<string>,
+  ): Promise<void> {
     const sourceId = (event as { sourceId?: number | string }).sourceId;
     const sourceType = (event as { sourceType?: string }).sourceType;
     if (sourceId != null && sourceType) {
       const existing = await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId);
-      const currentMonthEvent = existing.find(
-        e => e.sourceType === sourceType && e.predictedDate.startsWith(monthPrefix),
-      );
+      const delMes = existing.filter(e => e.predictedDate.startsWith(monthPrefix));
+      // Manda el evento del MISMO nombre —es la previsión propia, y refrescarla
+      // es lo que hace que un importe recalculado (p. ej. el prorrateo) llegue
+      // al evento ya emitido—. Si no lo hay, vale uno del grupo.
+      const currentMonthEvent =
+        delMes.find(e => e.sourceType === sourceType) ??
+        (alias ? delMes.find(e => e.sourceType != null && alias.has(e.sourceType)) : undefined);
       if (currentMonthEvent) {
         if (isReconciled(currentMonthEvent) || currentMonthEvent.descartado === true) {
           // NO revertir un evento conciliado a `predicted` · se respeta la realidad.
           // Un DESCARTADO tampoco se reescribe: el usuario ya dijo que no ocurre
           // y no se le vuelve a proponer (V84 · D1).
+          skipped++;
+          return;
+        }
+        if (currentMonthEvent.sourceType !== sourceType) {
+          // Del grupo, pero con otro nombre: es rastro de algo que YA ocurrió por
+          // otra vía (una línea del banco asignada al contrato). No se emite una
+          // segunda renta encima, y tampoco se pisa: la descripción y el origen
+          // de ese evento son el dato real, y la previsión no tiene nada mejor
+          // que ofrecer que un `Renta – <inquilino>` genérico.
           skipped++;
           return;
         }
@@ -345,7 +373,16 @@ export async function generateMonthlyForecasts(
 
       // rentaMensual store eliminado en V62 — usar contract.rentaMensual directamente.
       // El plan puede forzar el importe (padre neto en flujo A · %/fees).
-      const amount = planGestion.importePorContrato.get(contract.id) ?? contract.rentaMensual ?? 0;
+      const importeMensual =
+        planGestion.importePorContrato.get(contract.id) ?? contract.rentaMensual ?? 0;
+
+      // El primer mes y el último van POR DÍAS. Un contrato que empieza el 16
+      // no debe nada del 1 al 15, y aquí se emitía el mes entero: la previsión
+      // del mes de entrada pedía más dinero del que el inquilino debe.
+      // `importeDeLaRentaDelMes` es el punto ÚNICO donde se decide el importe
+      // del mes — ahí entrará también el primer-mes personalizado cuando el
+      // campo exista. Este generador no calcula importes por su cuenta.
+      const amount = importeDeLaRentaDelMes(contract, year, month, importeMensual);
       // Los subcontratos llevan cuentaCobroId=0 y heredan la del padre (flujo B).
       const cuentaCobro = planGestion.cuentaPorContrato.get(contract.id) ?? contract.cuentaCobroId;
 
@@ -389,7 +426,9 @@ export async function generateMonthlyForecasts(
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
-      });
+        // Segundo argumento: los dos nombres de la renta, también aquí · ver
+        // la cabecera de `insertEvent`.
+      }, RENT_SOURCE_TYPES);
     }
 
     // ── 3b. COMISIÓN DE LA AGENCIA (gestión delegada · flujo B) ──────────────
