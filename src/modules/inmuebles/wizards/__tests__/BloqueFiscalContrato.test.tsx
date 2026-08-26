@@ -63,7 +63,7 @@ describe('bloque fiscal · propuesta', () => {
   });
 
   it('temporada · sin reducción y se tributa por todo', () => {
-    pintar({ modalidad: 'temporada' });
+    pintar({ modalidad: 'media_estancia' });
     expect(screen.getByText('0%')).toBeInTheDocument();
     expect(texto(document.body.textContent ?? '')).toContain('no cubre una necesidad permanente');
   });
@@ -157,9 +157,9 @@ describe('bloque fiscal · confirmar y ajustar', () => {
       value: yaConfirmado({ reduccion: { activa: true, porcentaje: 50 } }),
     });
 
-    fireEvent.click(screen.getByRole('radio', { name: /Temporada/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /Media estancia/i }));
 
-    expect(onModalidadChange).toHaveBeenCalledWith('temporada');
+    expect(onModalidadChange).toHaveBeenCalledWith('media_estancia');
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ reduccion: { activa: false, porcentaje: 0 } }),
     );

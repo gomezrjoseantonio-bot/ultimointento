@@ -29,10 +29,20 @@
 // en `avisos` en vez de callárselo.
 // ============================================================================
 
+import { type SubtipoAlquiler, normalizarSubtipo } from './db/types-alquiler';
+
 /** El día en que empieza a regir la Ley 12/2023. Antes, régimen transitorio. */
 const VIGENCIA_LEY_VIVIENDA = '2023-05-26';
 
-export type RegimenAlquiler = 'habitual' | 'temporada' | 'turistico';
+/**
+ * El régimen del art. 23.2 es el subtipo de alquiler · no son dos cosas.
+ *
+ * Era una lista propia (`habitual | temporada | turistico`) que decía lo mismo
+ * que `Contract.modalidad` con otras palabras, y por eso hacía falta un puente
+ * para pasar de una a otra. Ahora es un alias del vocabulario único: el puente
+ * sobra y no puede volver a descuadrarse.
+ */
+export type RegimenAlquiler = SubtipoAlquiler;
 
 /**
  * Por qué sale ese porcentaje · clave estable, para guardarla con el contrato.
@@ -96,7 +106,7 @@ const soloFecha = (iso: string | undefined | null): string | null => {
  * delante del 70 % cuando se cumplen los dos.
  */
 export function proponerReduccion(cond: CondicionesReduccion): PropuestaReduccion {
-  if (cond.regimen === 'temporada') {
+  if (cond.regimen === 'media_estancia') {
     return {
       porcentaje: 0,
       motivo: 'sin_reduccion',
@@ -107,7 +117,7 @@ export function proponerReduccion(cond: CondicionesReduccion): PropuestaReduccio
     };
   }
 
-  if (cond.regimen === 'turistico') {
+  if (cond.regimen === 'corta_estancia') {
     return {
       porcentaje: 0,
       motivo: 'sin_reduccion',
@@ -239,10 +249,5 @@ export function calcularPorcentajeReduccionContrato(contract: any): number {
 
 /** `null` cuando el contrato no dice de qué tipo de alquiler es. */
 export function regimenDelContrato(contract: any): RegimenAlquiler | null {
-  const modalidad = contract.modalidad ?? contract.type;
-  if (modalidad === 'habitual') return 'habitual';
-  if (modalidad === 'temporada') return 'temporada';
-  // `vacacional` es como se llamaba el turístico en el modelo viejo.
-  if (modalidad === 'vacacional' || modalidad === 'turistico') return 'turistico';
-  return null;
+  return normalizarSubtipo(contract.modalidad ?? contract.type) ?? null;
 }

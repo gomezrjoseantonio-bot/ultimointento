@@ -17,27 +17,27 @@ import {
 
 /** Habitual firmado bajo la Ley de Vivienda, sin ninguna condición especial. */
 const base = (extra?: Partial<CondicionesReduccion>): CondicionesReduccion => ({
-  regimen: 'habitual',
+  regimen: 'larga_estancia',
   fechaFirma: '2026-08-15',
   ...extra,
 });
 
 describe('qué reducción propone ATLAS', () => {
   it('temporada · no hay reducción, no cubre una necesidad permanente de vivienda', () => {
-    const r = proponerReduccion(base({ regimen: 'temporada' }));
+    const r = proponerReduccion(base({ regimen: 'media_estancia' }));
     expect(r.porcentaje).toBe(0);
     expect(r.motivo).toBe('sin_reduccion');
   });
 
   it('turístico · tampoco', () => {
-    expect(proponerReduccion(base({ regimen: 'turistico' })).porcentaje).toBe(0);
+    expect(proponerReduccion(base({ regimen: 'corta_estancia' })).porcentaje).toBe(0);
   });
 
   it('el régimen manda sobre cualquier condición marcada', () => {
     // Un turístico en zona tensionada con inquilino joven sigue sin reducción:
     // marcar condiciones no convierte en vivienda habitual lo que no lo es.
     const r = proponerReduccion(
-      base({ regimen: 'turistico', zonaTensionada: true, primeraVez: true, joven18a35: true }),
+      base({ regimen: 'corta_estancia', zonaTensionada: true, primeraVez: true, joven18a35: true }),
     );
     expect(r.porcentaje).toBe(0);
   });
@@ -130,7 +130,7 @@ describe('qué reducción propone ATLAS', () => {
   });
 
   it('sin fecha de firma se aplica el régimen vigente, no se inventa una anterior', () => {
-    const r = proponerReduccion({ regimen: 'habitual' });
+    const r = proponerReduccion({ regimen: 'larga_estancia' });
     expect(r.porcentaje).toBe(50);
   });
 

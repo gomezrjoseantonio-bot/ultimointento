@@ -28,7 +28,7 @@ export const Glossary: React.FC<GlossaryProps> = ({
     const categories = {
       'financial': {
         name: 'Financiero y Propiedades',
-        terms: ['inmueble', 'vacacional', 'lar', 'rentabilidad', 'reforma', 'tesorería', 'conciliación', 'extracto']
+        terms: ['inmueble', 'turistico', 'lar', 'rentabilidad', 'reforma', 'tesorería', 'conciliación', 'extracto']
       },
       'modules': {
         name: 'Módulos ATLAS',

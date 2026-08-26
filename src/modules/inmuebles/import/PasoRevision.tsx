@@ -3,6 +3,7 @@
 // La creación efectiva de Contracts (saveContract + postContractCreated) la
 // inyecta el wizard vía onCrear; aquí solo se gestiona la UI y la edición.
 import React, { useMemo, useState } from 'react';
+import { NOMBRE_SUBTIPO } from '../../../services/db/types-alquiler';
 import {
   ArrowLeft, ArrowRight, AlertTriangle, Check, CheckCircle2, Copy, Info,
 } from 'lucide-react';
@@ -55,8 +56,9 @@ const formatFechaCorta = (iso: string | null): string => {
 const formatEuro = (n: number): string =>
   `${n.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
 
-const modalidadLabel = (m: ContractDraft['modalidadAtlas']): string =>
-  m === 'vacacional' ? 'Vacacional' : 'Habitual';
+// El nombre sale del vocabulario único · antes solo distinguía dos y la
+// temporada se enseñaba como «Habitual».
+const modalidadLabel = (m: ContractDraft['modalidadAtlas']): string => NOMBRE_SUBTIPO[m];
 
 const PasoRevision: React.FC<PasoRevisionProps> = ({
   drafts, inmuebleOpciones, origen, onCrear, onContinuar, onAtras,

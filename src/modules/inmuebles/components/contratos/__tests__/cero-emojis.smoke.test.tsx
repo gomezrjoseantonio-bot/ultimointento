@@ -18,7 +18,7 @@ const contract = (
     id,
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: {
       nombre: 'Juan',
       apellidos: 'Calvo',

@@ -12,9 +12,9 @@ import { catalogoSugeridoPorModalidad } from '../../wizards/utils/catalogoModali
 
 describe('argsCatalogoDeModo', () => {
   it('mapea el modo de explotación al catálogo correcto', () => {
-    expect(argsCatalogoDeModo('completo')).toEqual({ modalidad: 'habitual', unidadTipo: 'vivienda' });
-    expect(argsCatalogoDeModo('habitaciones')).toEqual({ modalidad: 'habitual', unidadTipo: 'habitacion' });
-    expect(argsCatalogoDeModo('turistico')).toEqual({ modalidad: 'temporada', unidadTipo: 'vivienda' });
+    expect(argsCatalogoDeModo('completo')).toEqual({ modalidad: 'larga_estancia', unidadTipo: 'vivienda' });
+    expect(argsCatalogoDeModo('habitaciones')).toEqual({ modalidad: 'larga_estancia', unidadTipo: 'habitacion' });
+    expect(argsCatalogoDeModo('turistico')).toEqual({ modalidad: 'media_estancia', unidadTipo: 'vivienda' });
   });
 });
 
@@ -81,8 +81,8 @@ describe('construirSkeletonOpex', () => {
   // filtraría y re-sembrar duplicaría. Se comprueba sobre TODOS los precargados.
   it('round-trip: cada precargado vuelve a su propia ref (dedup seguro)', () => {
     const modalidades = [
-      catalogoSugeridoPorModalidad('habitual', 'vivienda'),
-      catalogoSugeridoPorModalidad('habitual', 'habitacion'),
+      catalogoSugeridoPorModalidad('larga_estancia', 'vivienda'),
+      catalogoSugeridoPorModalidad('larga_estancia', 'habitacion'),
       catalogoSugeridoPorModalidad('temporada', 'vivienda'),
     ];
     for (const cat of modalidades) {

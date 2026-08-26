@@ -1,7 +1,8 @@
 // fiscalSummaryService — operates on gastosInmueble (unified store)
 // fiscalSummaries store eliminated in phase F
 
-import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
+import { initDB, FiscalSummary, Document, AEATCarryForward, type Property } from './db';
+import { esCortaEstancia, type SubtipoAlquiler } from './db/types-alquiler';
 import { getExerciseStatus } from './aeatClassificationService';
 import { esContratoDelInmueble } from './inmuebleDelContrato';
 import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
@@ -533,8 +534,12 @@ export interface FiscalSummaryExtended extends FiscalSummary {
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 function detectarModoDeclaracion(
-  property: { usoTipo?: string; alquilerPorHabitaciones?: { activo: boolean } } | null,
-  contractsDelAño: Array<{ modalidad?: string; unidadTipo?: string; fechaInicio?: string; fechaFin?: string }>,
+  // `usoTipo` y `modalidad` van tipados, no como `string`: con el tipo abierto,
+  // renombrar el vocabulario dejaba estas comparaciones apuntando a un literal
+  // que ya no existe y el compilador no decía nada — el modo se calculaba mal en
+  // silencio, que es justo el fallo que este vocabulario único viene a cerrar.
+  property: { usoTipo?: Property['usoTipo']; alquilerPorHabitaciones?: { activo: boolean } } | null,
+  contractsDelAño: Array<{ modalidad?: SubtipoAlquiler; unidadTipo?: string; fechaInicio?: string; fechaFin?: string }>,
   diasArrendado: number,
   diasTotal: number,
   inmDecl?: DeclaracionInmuebleSnapshot | null,
@@ -556,8 +561,10 @@ function detectarModoDeclaracion(
 
   const habitaciones = contractsDelAño.some((c) => c.unidadTipo === 'habitacion');
   const modalidades = new Set(contractsDelAño.map((c) => c.modalidad).filter(Boolean));
-  const tieneCorta = modalidades.has('vacacional') || modalidades.has('temporada');
-  const tieneLarga = modalidades.has('habitual');
+  // Preguntado por el concepto: enumerar los dos literales de corta estancia es
+  // justo donde se olvidaba uno y un turístico contaba como larga.
+  const tieneCorta = [...modalidades].some(esCortaEstancia);
+  const tieneLarga = modalidades.has('larga_estancia');
 
   if (property?.alquilerPorHabitaciones?.activo || habitaciones) return 'III';
   if (tieneLarga && tieneCorta) return 'III';
@@ -567,7 +574,7 @@ function detectarModoDeclaracion(
     return 'I';
   }
   if (property?.usoTipo === 'mixto') return 'III';
-  if (property?.usoTipo === 'turistico' || property?.usoTipo === 'temporada') return 'V';
+  if (esCortaEstancia(property?.usoTipo)) return 'V';
   if (property?.usoTipo === 'larga_estancia') return 'I';
   if (diasArrendado > 0 && diasArrendado < diasTotal - 7) return 'II';
   return 'I';

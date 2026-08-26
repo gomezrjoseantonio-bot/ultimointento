@@ -12,7 +12,7 @@ const form = (over: Partial<AnexarSubcontratoForm> = {}): AnexarSubcontratoForm 
   nombre: 'Ana',
   apellidos: 'García',
   dni: '',
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   habitacionId: '',
   fechaInicio: '2026-01-01',
   fechaFin: '2026-12-31',
@@ -47,10 +47,10 @@ describe('construirPayloadSubcontrato', () => {
   });
 
   it('modalidad · se refleja en el contrato (fiscalidad: vivienda habitual vs temporada)', () => {
-    const habitual = construirPayloadSubcontrato(form({ modalidad: 'habitual' }), padre);
-    expect(habitual.ok && habitual.payload.modalidad).toBe('habitual');
-    const temporada = construirPayloadSubcontrato(form({ modalidad: 'temporada' }), padre);
-    expect(temporada.ok && temporada.payload.modalidad).toBe('temporada');
+    const habitual = construirPayloadSubcontrato(form({ modalidad: 'larga_estancia' }), padre);
+    expect(habitual.ok && habitual.payload.modalidad).toBe('larga_estancia');
+    const temporada = construirPayloadSubcontrato(form({ modalidad: 'media_estancia' }), padre);
+    expect(temporada.ok && temporada.payload.modalidad).toBe('media_estancia');
   });
 
   it('con habitación · unidadTipo habitacion + habitacionId', () => {

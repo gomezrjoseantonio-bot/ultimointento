@@ -10,7 +10,8 @@ import type { ExtraccionCompleta } from './aeatParserService';
 import type { Prestamo } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
 import { prestamosService } from './prestamosService';
-import { saveContract, updateContract, getContractsByProperty, getContract, calcularFechaFinLAUImport, FECHA_FIN_INDEFINIDO } from './contractService';
+import { subtipoDeclarado } from './db/types-alquiler';
+import { saveContract, updateContract, getContractsByProperty, getContract, calcularFechaFinLAUImport, FECHA_FIN_INDEFINIDO, plantillaDelSubtipo } from './contractService';
 import { declararEjercicio, ejercicioFiscalService } from './ejercicioFiscalService';
 import { ejecutarOnboardingPersonal, analizarDatosPersonales } from './personalOnboardingService';
 import type { AnalisisPersonal } from './personalOnboardingService';
@@ -1005,7 +1006,7 @@ export async function crearOActualizarContrato(params: {
     contratoId = await saveContract({
       inmuebleId: propertyId,
       unidadTipo: esVivienda ? 'vivienda' : 'habitacion',
-      modalidad: esVivienda ? 'habitual' : 'temporada',
+      modalidad: subtipoDeclarado(tipoArrendamiento),
       inquilino: {
         nombre: '',
         apellidos: '',
@@ -1028,7 +1029,7 @@ export async function crearOActualizarContrato(params: {
       estadoContrato: 'activo',
       reduccion: tieneReduccion ? { activa: true, porcentaje: 60, motivo: 'general_post_2023' as const } : undefined,
       documentoContrato: {
-        plantilla: esVivienda ? 'habitual' : 'temporada',
+        plantilla: plantillaDelSubtipo(subtipoDeclarado(tipoArrendamiento)),
         incluirInventario: false,
         incluirCertificadoEnergetico: false,
       },
@@ -1082,7 +1083,7 @@ export async function crearOActualizarContrato(params: {
 
 /**
  * Crea un contrato sin_identificar para arrendamientos del XML sin NIF de inquilino.
- * Estos contratos representan ingresos declarados (vacacionales, corta estancia, etc.)
+ * Estos contratos representan ingresos declarados (corta estancia, etc.)
  * que el usuario puede vincular posteriormente a un contrato gestionado.
  */
 export async function crearContratoPendienteIdentificar(params: {
@@ -1154,8 +1155,7 @@ export async function crearContratoPendienteIdentificar(params: {
     : `${ejercicio}-01-01`;
   const fechaFin = '2099-12-31';
 
-  // Inferir modalidad desde tipoArrendamiento del XML
-  const modalidad = tipoArrendamiento === 'no_vivienda' ? 'vacacional' : 'habitual';
+  const modalidad = subtipoDeclarado(tipoArrendamiento);
 
   // Obtener cuenta bancaria por defecto
   const db = await initDB();
@@ -1200,7 +1200,7 @@ export async function crearContratoPendienteIdentificar(params: {
       },
     },
     documentoContrato: {
-      plantilla: modalidad === 'vacacional' ? 'vacacional' : 'habitual',
+      plantilla: plantillaDelSubtipo(modalidad),
       incluirInventario: false,
       incluirCertificadoEnergetico: false,
     },

@@ -19,7 +19,7 @@ const c = (overrides: Partial<Contract> = {}): Contract =>
     id: 1,
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'Ana', apellidos: 'García', dni: '', telefono: '', email: '' },
     fechaInicio: '2023-01-01',
     fechaFin: '2024-01-01',
@@ -164,8 +164,8 @@ describe('calcularDistribucionMotivosSalida', () => {
 describe('calcularDuracionPorTipo', () => {
   it('separa larga y corta', () => {
     const rows = calcularDuracionPorTipo([
-      c({ id: 1, modalidad: 'habitual' }),
-      c({ id: 2, modalidad: 'temporada', fechaCierre: '2023-04-01' }),
+      c({ id: 1, modalidad: 'larga_estancia' }),
+      c({ id: 2, modalidad: 'media_estancia', fechaCierre: '2023-04-01' }),
     ]);
     const larga = rows.find((r) => r.tipo === 'larga');
     const corta = rows.find((r) => r.tipo === 'corta');

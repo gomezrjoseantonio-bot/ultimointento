@@ -4,6 +4,7 @@
 // visual del wizard para verse nativo.
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { NOMBRE_SUBTIPO, SUBTIPOS_ALQUILER, normalizarSubtipo } from '../../../services/db/types-alquiler';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { PageHead, Icons, showToastV5 } from '../../../design-system/v5';
 import type { Contract, Property } from '../../../services/db';
@@ -58,7 +59,7 @@ const AnexarSubcontratoForm: React.FC = () => {
     nombre: '',
     apellidos: '',
     dni: '',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     habitacionId: '',
     fechaInicio: hoyISO(),
     fechaFin: '',
@@ -80,7 +81,7 @@ const AnexarSubcontratoForm: React.FC = () => {
             nombre: c.inquilino?.nombre ?? '',
             apellidos: c.inquilino?.apellidos ?? '',
             dni: c.inquilino?.dni ?? '',
-            modalidad: (c.modalidad as FormState['modalidad']) ?? 'habitual',
+            modalidad: normalizarSubtipo(c.modalidad) ?? 'larga_estancia',
             habitacionId: c.habitacionId ?? '',
             fechaInicio: c.fechaInicio || hoyISO(),
             fechaFin: c.fechaFin ?? '',
@@ -243,9 +244,9 @@ const AnexarSubcontratoForm: React.FC = () => {
                 value={form.modalidad}
                 onChange={(e) => set('modalidad', e.target.value as FormState['modalidad'])}
               >
-                <option value="habitual">Vivienda habitual</option>
-                <option value="temporada">Temporada</option>
-                <option value="vacacional">Vacacional / turístico</option>
+                {SUBTIPOS_ALQUILER.map((s) => (
+                  <option key={s} value={s}>{NOMBRE_SUBTIPO[s]}</option>
+                ))}
               </select>
               <span className={styles.help}>Decide la reducción fiscal aplicable.</span>
             </div>

@@ -15,7 +15,7 @@ const base = (over: Partial<Contract> = {}): Omit<Contract, 'id' | 'createdAt' |
   ({
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'Real', apellidos: 'Inquilino', dni: 'X', telefono: '', email: '' },
     fechaInicio: '2025-01-01',
     fechaFin: '2027-01-01',

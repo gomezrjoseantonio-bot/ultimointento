@@ -8,7 +8,7 @@ const base = (over: Partial<Contract>): Contract & { id: number } =>
     id: 1,
     inmuebleId: 9,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'Agencia XYZ', apellidos: '', dni: '', telefono: '', email: '' },
     fechaInicio: '2026-01-01',
     fechaFin: '2029-01-01',

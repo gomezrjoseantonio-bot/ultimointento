@@ -24,9 +24,14 @@ import {
   proponerReduccion,
   rendimientoTrasReduccion,
   type CondicionesReduccion,
-  type RegimenAlquiler,
 } from '../../../services/reduccionAlquiler';
 import type { Contract } from '../../../services/db';
+import {
+  NOMBRE_SUBTIPO,
+  SUBTIPOS_ALQUILER,
+  reduceElSubtipo,
+  type SubtipoAlquiler,
+} from '../../../services/db/types-alquiler';
 import styles from './BloqueFiscalContrato.module.css';
 
 const euro = new Intl.NumberFormat('es-ES', {
@@ -65,11 +70,11 @@ const CONDICIONES: Array<{ clave: Condicion; nombre: string; detalle: string }> 
   },
 ];
 
-const REGIMENES: Array<{ clave: RegimenAlquiler; etiqueta: string }> = [
-  { clave: 'habitual', etiqueta: 'Vivienda habitual' },
-  { clave: 'temporada', etiqueta: 'Temporada' },
-  { clave: 'turistico', etiqueta: 'Turístico' },
-];
+// Los tres subtipos y su nombre salen del vocabulario único: si mañana se
+// añade uno, aparece aquí solo.
+const REGIMENES: Array<{ clave: SubtipoAlquiler; etiqueta: string }> = SUBTIPOS_ALQUILER.map(
+  (clave) => ({ clave, etiqueta: NOMBRE_SUBTIPO[clave] }),
+);
 
 /** Lo que el bloque devuelve al wizard para que lo persista con el contrato. */
 export interface DatosFiscalesContrato {
@@ -93,13 +98,6 @@ interface Props {
   onChange: (v: DatosFiscalesContrato | undefined) => void;
 }
 
-/** `vacacional` es como se llama el turístico en el modelo de contratos. */
-const aRegimen = (m: Contract['modalidad']): RegimenAlquiler =>
-  m === 'temporada' ? 'temporada' : m === 'vacacional' ? 'turistico' : 'habitual';
-
-const aModalidad = (r: RegimenAlquiler): Contract['modalidad'] =>
-  r === 'temporada' ? 'temporada' : r === 'turistico' ? 'vacacional' : 'habitual';
-
 export default function BloqueFiscalContrato({
   modalidad,
   onModalidadChange,
@@ -111,7 +109,9 @@ export default function BloqueFiscalContrato({
   const [ajustando, setAjustando] = useState(false);
   const [textoManual, setTextoManual] = useState('');
 
-  const regimen = aRegimen(modalidad);
+  // El régimen del art. 23.2 y la modalidad del contrato son el mismo dato:
+  // antes había que traducir entre los dos vocabularios y ya no.
+  const regimen = modalidad;
   const fechaFirma = value?.fechaFirmaContrato || fechaInicio;
 
   const condiciones: CondicionesReduccion = useMemo(
@@ -195,7 +195,7 @@ export default function BloqueFiscalContrato({
     });
   };
 
-  const esHabitual = regimen === 'habitual';
+  const esHabitual = reduceElSubtipo(regimen);
 
   return (
     <div className={styles.bloque}>
@@ -210,7 +210,7 @@ export default function BloqueFiscalContrato({
             className={regimen === r.clave ? styles.segActivo : undefined}
             onClick={() => {
               setAjustando(false);
-              onModalidadChange(aModalidad(r.clave));
+              onModalidadChange(r.clave);
               emitir({ reduccion: { activa: false, porcentaje: 0 } });
             }}
           >

@@ -8,7 +8,7 @@ const baseContract = (
   id,
   inmuebleId: 1,
   unidadTipo: 'vivienda',
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   inquilino: { nombre: 'Test', apellidos: 'User', dni: '', telefono: '', email: '' },
   fechaInicio: '2024-01-01',
   fechaFin: '2099-12-31',

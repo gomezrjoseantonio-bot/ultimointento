@@ -66,11 +66,11 @@ export function explotacionDesdeLegacy(
     p.modoExplotacion === 'por_habitaciones' ||
     p.modoExplotacion === 'mixto' ||
     p.alquilerPorHabitaciones?.activo === true;
-  const esTuristico = p.usoTipo === 'turistico';
+  const esTuristico = p.usoTipo === 'corta_estancia';
   const usoDeAlquiler =
     p.usoTipo === 'larga_estancia' ||
-    p.usoTipo === 'temporada' ||
-    p.usoTipo === 'turistico' ||
+    p.usoTipo === 'media_estancia' ||
+    p.usoTipo === 'corta_estancia' ||
     p.usoTipo === 'mixto';
 
   const haySenal =

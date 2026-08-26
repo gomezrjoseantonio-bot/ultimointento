@@ -15,7 +15,7 @@ const c = (overrides: Partial<Contract> = {}): Contract =>
     id: 1,
     inmuebleId: 1,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: { nombre: 'A', apellidos: 'B', dni: '', telefono: '', email: '' },
     fechaInicio: '2026-05-01',
     fechaFin: '2026-08-01',

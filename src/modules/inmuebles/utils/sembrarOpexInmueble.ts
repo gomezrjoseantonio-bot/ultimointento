@@ -15,6 +15,7 @@
 // ============================================================================
 
 import type { ModoExplotacionAlquiler } from '../../../services/db';
+import type { SubtipoAlquiler } from '../../../services/db/types-alquiler';
 import type { CompromisoRecurrente, PatronRecurrente } from '../../../types/compromisosRecurrentes';
 import type { Ambito } from '../../../services/conceptos/catalogoConceptos';
 import { conceptoPorId, proyectar } from '../../../services/conceptos/catalogoConceptos';
@@ -52,15 +53,15 @@ export type Periodicidad = 'mensual' | 'trimestral' | 'anual';
  */
 export function argsCatalogoDeModo(
   modo: ModoExplotacionAlquiler,
-): { modalidad: 'habitual' | 'temporada' | 'vacacional'; unidadTipo: 'vivienda' | 'habitacion' } {
+): { modalidad: SubtipoAlquiler; unidadTipo: 'vivienda' | 'habitacion' } {
   switch (modo) {
     case 'turistico':
-      return { modalidad: 'temporada', unidadTipo: 'vivienda' };
+      return { modalidad: 'media_estancia', unidadTipo: 'vivienda' };
     case 'habitaciones':
-      return { modalidad: 'habitual', unidadTipo: 'habitacion' };
+      return { modalidad: 'larga_estancia', unidadTipo: 'habitacion' };
     case 'completo':
     default:
-      return { modalidad: 'habitual', unidadTipo: 'vivienda' };
+      return { modalidad: 'larga_estancia', unidadTipo: 'vivienda' };
   }
 }
 

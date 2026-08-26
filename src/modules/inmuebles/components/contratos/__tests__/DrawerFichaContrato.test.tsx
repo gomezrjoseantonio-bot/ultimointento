@@ -13,7 +13,7 @@ const contrato: Contract & { id: number } = {
   id: 1,
   inmuebleId: 7,
   unidadTipo: 'vivienda',
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   inquilino: {
     nombre: 'Laura',
     apellidos: 'Sanz',

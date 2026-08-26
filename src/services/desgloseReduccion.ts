@@ -29,6 +29,7 @@
 // ============================================================================
 
 import { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
+import { normalizarSubtipo, type SubtipoAlquiler } from './db/types-alquiler';
 
 /**
  * El régimen de un tramo.
@@ -38,11 +39,7 @@ import { calcularPorcentajeReduccionContrato } from './reduccionAlquiler';
  * distingue, y para el art. 23.2 se comportan igual —ninguno de los dos reduce—,
  * así que el chip los nombra a los dos en vez de elegir uno.
  */
-export type TipoTramo =
-  | 'vivienda_habitual'
-  | 'temporada'
-  | 'turistico'
-  | 'temporada_o_turistico';
+export type TipoTramo = SubtipoAlquiler | 'temporada_o_turistico';
 
 export interface TramoReduccion {
   tipo: TipoTramo;
@@ -73,10 +70,12 @@ const NOMINALES = [50, 60, 70, 90] as const;
  */
 const TOLERANCIA_PP = 0.5;
 
+// El label que ve el cliente · el término técnico es `larga_estancia`, pero en
+// pantalla se llama por lo que es: la vivienda habitual del inquilino.
 const NOMBRE_TRAMO: Record<TipoTramo, string> = {
-  vivienda_habitual: 'vivienda habitual',
-  temporada: 'temporada',
-  turistico: 'turístico',
+  larga_estancia: 'vivienda habitual',
+  media_estancia: 'temporada',
+  corta_estancia: 'turístico',
   temporada_o_turistico: 'temporada/turístico',
 };
 
@@ -122,10 +121,7 @@ export function desgloseSinReduccion(
  * el mismo par que en importado.
  */
 export function tipoDeModalidad(modalidad: string | undefined | null): TipoTramo {
-  if (modalidad === 'habitual') return 'vivienda_habitual';
-  if (modalidad === 'temporada') return 'temporada';
-  if (modalidad === 'vacacional' || modalidad === 'turistico') return 'turistico';
-  return 'temporada_o_turistico';
+  return normalizarSubtipo(modalidad) ?? 'temporada_o_turistico';
 }
 
 /** Mayor reducción primero · el tramo que más pesa encabeza el rótulo. */
@@ -185,7 +181,7 @@ export function desgloseDeclarado(entrada: EntradaDesgloseDeclarado): DesgloseRe
       unicoArrendamiento && importe !== null && importe > 0 && antes !== null && antes > 0
         ? nominalMasCercano((importe / antes) * 100)
         : null;
-    const tipo: TipoTramo = 'vivienda_habitual';
+    const tipo: TipoTramo = 'larga_estancia';
     return antes !== null && unicoArrendamiento ? { tipo, pct, base: antes } : { tipo, pct };
   });
 

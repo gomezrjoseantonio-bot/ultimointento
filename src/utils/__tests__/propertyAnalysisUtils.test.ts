@@ -43,7 +43,7 @@ describe('Property Analysis Utils', () => {
     id: 200,
     inmuebleId: 10,
     unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    modalidad: 'larga_estancia',
     inquilino: {
       nombre: 'Ana',
       apellidos: 'López',

@@ -12,7 +12,7 @@ const contrato: Contract & { id: number } = {
   id: 4242,
   inmuebleId: 7,
   unidadTipo: 'vivienda',
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   inquilino: { nombre: 'Laura', apellidos: 'Sanz', dni: '99887766X', telefono: '', email: '' },
   fechaInicio: '2020-01-01',
   fechaFin: '2099-12-31',

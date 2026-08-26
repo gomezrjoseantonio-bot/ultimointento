@@ -89,7 +89,7 @@ const esContratoImportadoAEAT = (c: Contract): boolean =>
  * Alcance acordado (ver decisiones del Commit 4):
  *  - SOLO contratos con algún ejercicio `fuente === 'xml_aeat'` (no toca contratos manuales que
  *    el usuario dejó indefinidos a propósito).
- *  - SOLO `modalidad === 'habitual'` (temporada/vacacional conservan su fin).
+ *  - SOLO `modalidad === 'larga_estancia'` (la corta estancia conserva su fin).
  *  - SOLO los que hoy tienen `fechaFin` indefinido (2099 o vacío); no pisa fechas ya concretas.
  *  - Regla "+5y solo si futuro": si inicio+5y cae en el pasado respecto a `hoy`, se mantiene
  *    indefinido (no se marca como vencido un contrato con fecha de inicio antigua/inventada).
@@ -105,7 +105,7 @@ export async function recalcularFechaFinContratosAEAT(
 
   for (const c of contratos) {
     if (c?.id == null) continue;
-    if (c.modalidad !== 'habitual') continue;
+    if (c.modalidad !== 'larga_estancia') continue;
     if (!esContratoImportadoAEAT(c)) continue;
 
     const finActual = (c.fechaFin ?? '').slice(0, 10);

@@ -7,6 +7,7 @@
 // PURAS: reciben los inmuebles y contratos existentes como parámetros para ser
 // testeables sin IndexedDB. Hay wrappers async que cargan de la BD para la UI.
 import { initDB, Contract, Property } from './db';
+import type { SubtipoAlquiler } from './db/types-alquiler';
 import { RentilaRow, parseHabitacionFromRentila } from './rentilaParserService';
 import { AtlasTemplateRow } from './atlasTemplateParserService';
 
@@ -31,7 +32,7 @@ export interface ContractDraft {
   inquilinoExistenteId: number | null;
 
   // Datos del contrato
-  modalidadAtlas: 'habitual' | 'vacacional';
+  modalidadAtlas: SubtipoAlquiler;
   fechaInicio: string;
   fechaFin: string | null;
   rentaMensual: number;
@@ -78,13 +79,20 @@ const RC_REGEX_GLOBAL = /\d{7}[A-Z]{2}\d{4}[A-Z]\d{4}[A-Z]{2}/gi;
 
 // ───────────────────────────── Mapeo de tipos ─────────────────────────────
 
-/** Mapeo de los 5 tipos Rentila a las 2 modalidades que ATLAS distingue hoy. */
-export const MAPEO_TIPO_RENTILA_ATLAS: Record<string, 'habitual' | 'vacacional'> = {
-  vivienda: 'habitual',
-  habitacion: 'habitual',
-  'habitacion temporada': 'vacacional',
-  temporada: 'vacacional',
-  otro: 'habitual',
+/**
+ * Mapeo de los 5 tipos Rentila al subtipo de ATLAS.
+ *
+ * Los dos de temporada iban a `vacacional` —el turístico— porque ATLAS solo
+ * distinguía dos modalidades al escribir esto. Eran dos subtipos distintos
+ * metidos en uno: el eje fiscal coincidía (0 %), pero un piso alquilado a un
+ * estudiante por el curso quedaba registrado como apartamento turístico.
+ */
+export const MAPEO_TIPO_RENTILA_ATLAS: Record<string, SubtipoAlquiler> = {
+  vivienda: 'larga_estancia',
+  habitacion: 'larga_estancia',
+  'habitacion temporada': 'media_estancia',
+  temporada: 'media_estancia',
+  otro: 'larga_estancia',
 };
 
 const normalizeBasic = (text: string): string =>
@@ -96,23 +104,32 @@ const normalizeBasic = (text: string): string =>
     .trim();
 
 /**
- * Mapea el tipo Rentila (col 3) a modalidad ATLAS. Tolerante a los valores
- * cortos ("habitación temporada") y a las frases largas ("Contrato de
- * arrendamiento de temporada"): cualquier mención a temporada/vacacional →
- * vacacional; el resto (vivienda, habitación, otro) → habitual.
+ * Mapea el tipo Rentila (col 3) al subtipo. Tolerante a los valores cortos
+ * («habitación temporada») y a las frases largas («Contrato de arrendamiento de
+ * temporada»). Turístico y temporada se distinguen: la palabra que aparezca
+ * decide, y solo si no aparece ninguna cae en larga estancia.
  */
-export const mapTipoRentilaToAtlas = (tipo: string | undefined | null): 'habitual' | 'vacacional' => {
-  const normalized = normalizeBasic(tipo || '');
-  if (normalized in MAPEO_TIPO_RENTILA_ATLAS) return MAPEO_TIPO_RENTILA_ATLAS[normalized];
-  if (normalized.includes('vacacional') || normalized.includes('temporada')) return 'vacacional';
-  return 'habitual';
-};
+export const mapTipoRentilaToAtlas = (tipo: string | undefined | null): SubtipoAlquiler =>
+  subtipoDeTexto(tipo, MAPEO_TIPO_RENTILA_ATLAS);
 
-/** Mapea el tipo de contrato de la plantilla ATLAS a modalidad. */
-export const mapTipoAtlasToModalidad = (tipoContrato: string | undefined | null): 'habitual' | 'vacacional' => {
-  const normalized = normalizeBasic(tipoContrato || '');
-  if (normalized.includes('vacacional') || normalized.includes('temporada')) return 'vacacional';
-  return 'habitual';
+/** Mapea el tipo de contrato de la plantilla ATLAS al subtipo. */
+export const mapTipoAtlasToModalidad = (tipoContrato: string | undefined | null): SubtipoAlquiler =>
+  subtipoDeTexto(tipoContrato);
+
+/**
+ * El subtipo que nombra un texto libre. `vacacional` sigue reconociéndose
+ * porque es lo que traen las plantillas y los ficheros de fuera, aunque el
+ * código ya no lo escriba.
+ */
+const subtipoDeTexto = (
+  texto: string | undefined | null,
+  tabla?: Record<string, SubtipoAlquiler>,
+): SubtipoAlquiler => {
+  const normalized = normalizeBasic(texto || '');
+  if (tabla && normalized in tabla) return tabla[normalized];
+  if (normalized.includes('turistico') || normalized.includes('vacacional')) return 'corta_estancia';
+  if (normalized.includes('temporada')) return 'media_estancia';
+  return 'larga_estancia';
 };
 
 /**

@@ -73,7 +73,7 @@ describe('explotacionDesdeLegacy', () => {
   });
 
   it('turístico → modo turistico', () => {
-    expect(explotacionDesdeLegacy(prop({ usoTipo: 'turistico' }))?.modo).toBe('turistico');
+    expect(explotacionDesdeLegacy(prop({ usoTipo: 'corta_estancia' }))?.modo).toBe('turistico');
   });
 
   it('por habitaciones → modo habitaciones sembrando N desde numeroHabitaciones', () => {

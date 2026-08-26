@@ -7,12 +7,13 @@ import type {
   HabitacionAlquiler,
 } from '../../../services/db';
 import type { PrimerCobroContrato } from '../../../services/db/types-contratos';
+import { normalizarSubtipo, type SubtipoAlquiler } from '../../../services/db/types-alquiler';
 import type { DatosFiscalesContrato } from './BloqueFiscalContrato';
 
 export interface FormState {
   inmuebleId: number | null;
   habitacionId: string;
-  modalidad: 'habitual' | 'temporada' | 'vacacional';
+  modalidad: SubtipoAlquiler;
   fechaInicio: string;
   fechaFin: string;
   inquilinoNombre: string;
@@ -54,7 +55,7 @@ export const toLocalDate = (iso: string): Date | null => {
 export const emptyForm: FormState = {
   inmuebleId: null,
   habitacionId: '',
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
   fechaInicio: new Date().toISOString().slice(0, 10),
   fechaFin: '',
   inquilinoNombre: '',
@@ -73,7 +74,7 @@ export const emptyForm: FormState = {
 export const contratoAForm = (c: Contract): FormState => ({
   inmuebleId: c.inmuebleId ?? null,
   habitacionId: c.habitacionId ?? '',
-  modalidad: (c.modalidad as FormState['modalidad']) ?? 'habitual',
+  modalidad: normalizarSubtipo(c.modalidad) ?? 'larga_estancia',
   fechaInicio: c.fechaInicio || emptyForm.fechaInicio,
   fechaFin: c.fechaFin ?? '',
   inquilinoNombre: c.inquilino?.nombre ?? '',

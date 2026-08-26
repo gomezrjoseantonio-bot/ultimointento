@@ -189,11 +189,11 @@ describe('calculateFiscalSummaryExtended · Jose 2024 FA32', () => {
         if (store === 'contracts') {
           // FA32 2024: 5 habitaciones (3 corta + 2 larga) → modo III
           return [
-            { id: 1, inmuebleId: PROPERTY_ID_FA32, unidadTipo: 'habitacion', modalidad: 'habitual',
+            { id: 1, inmuebleId: PROPERTY_ID_FA32, unidadTipo: 'habitacion', modalidad: 'larga_estancia',
               fechaInicio: '2023-05-01', fechaFin: '2026-05-01', rentaMensual: 0, estadoContrato: 'activo' },
-            { id: 2, inmuebleId: PROPERTY_ID_FA32, unidadTipo: 'habitacion', modalidad: 'habitual',
+            { id: 2, inmuebleId: PROPERTY_ID_FA32, unidadTipo: 'habitacion', modalidad: 'larga_estancia',
               fechaInicio: '2024-01-01', fechaFin: '2026-01-01', rentaMensual: 0, estadoContrato: 'activo' },
-            { id: 3, inmuebleId: PROPERTY_ID_FA32, unidadTipo: 'habitacion', modalidad: 'temporada',
+            { id: 3, inmuebleId: PROPERTY_ID_FA32, unidadTipo: 'habitacion', modalidad: 'media_estancia',
               fechaInicio: '2024-03-01', fechaFin: '2024-09-30', rentaMensual: 0, estadoContrato: 'activo' },
           ];
         }

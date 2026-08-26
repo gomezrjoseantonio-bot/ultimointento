@@ -80,7 +80,7 @@ const fullYearContract = {
   fechaInicio: `${EJERCICIO}-01-01`,
   fechaFin: `${EJERCICIO}-12-31`,
   rentaMensual: 1000,
-  modalidad: 'habitual',
+  modalidad: 'larga_estancia',
 };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

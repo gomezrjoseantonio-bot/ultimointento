@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { NOMBRE_SUBTIPO, SUBTIPOS_ALQUILER } from '../../../services/db/types-alquiler';
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   PageHead,
@@ -363,9 +364,9 @@ const NuevoContratoWizard: React.FC = () => {
                     value={form.modalidad}
                     onChange={(e) => update('modalidad', e.target.value as FormState['modalidad'])}
                   >
-                    <option value="habitual">Habitual · LAU 5 años</option>
-                    <option value="temporada">Temporada</option>
-                    <option value="vacacional">Vacacional</option>
+                    {SUBTIPOS_ALQUILER.map((s) => (
+                      <option key={s} value={s}>{NOMBRE_SUBTIPO[s]}</option>
+                    ))}
                   </select>
                 </div>
                 <div className={styles.field}>
