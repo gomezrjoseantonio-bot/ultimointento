@@ -99,6 +99,34 @@ const llenarMinimoBorrador = async (): Promise<void> => {
   fireEvent.change(screen.getAllByRole('textbox')[0], { target: { value: 'PRUEBA' } });
 };
 
+// Que los bloques del paso Económico estén REALMENTE en pantalla, no solo
+// importados. Un import sin usar compila, pasa el typecheck, y deja al usuario
+// sin el bloque: los tests de cada componente aislado no lo ven.
+describe('el paso Económico monta sus bloques', () => {
+  beforeEach(() => {
+    mockSaveContract.mockReset().mockResolvedValue(42);
+    mockGetContract.mockReset().mockResolvedValue({ id: 42 });
+    mockRegenerar.mockReset().mockResolvedValue({ eventosCreados: 0, errores: [] });
+  });
+
+  it('el selector de primer cobro y el bloque fiscal se ven en el paso 3', async () => {
+    renderWizard('/contratos/nuevo?inmueble=1');
+    siguiente();
+    await waitFor(() => expect(screen.getAllByRole('textbox').length).toBeGreaterThanOrEqual(5));
+    const inputs = screen.getAllByRole('textbox');
+    fireEvent.change(inputs[0], { target: { value: 'PRUEBA' } });
+    fireEvent.change(inputs[1], { target: { value: 'PRUEBA' } });
+    fireEvent.change(inputs[2], { target: { value: '53069494F' } });
+    fireEvent.change(inputs[3], { target: { value: '600123123' } });
+    fireEvent.change(inputs[4], { target: { value: 'prueba@example.com' } });
+    siguiente();
+
+    await screen.findByText(/¿Cómo cobras el primer mes\?/);
+    await screen.findByText(/Régimen del alquiler/);
+    await screen.findByText(/Reducción que ATLAS propone/);
+  });
+});
+
 describe('guardar en el alta regenera las previsiones', () => {
   beforeEach(() => {
     mockSaveContract.mockReset().mockResolvedValue(42);
