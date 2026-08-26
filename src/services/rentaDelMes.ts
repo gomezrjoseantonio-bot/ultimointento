@@ -35,13 +35,21 @@
 // ejecute. Del contrato solo hacen falta año, mes y día.
 // ============================================================================
 
+import type { PrimerCobroContrato } from './db/types-contratos';
+
 /** Lo mínimo que hace falta de un contrato para saber qué cobra este mes. */
 export interface PeriodoDeContrato {
   /** ISO `YYYY-MM-DD` (admite fecha-hora completa). */
   fechaInicio: string;
   /** ISO `YYYY-MM-DD` (admite fecha-hora completa). */
   fechaFin: string;
+  /** Lo que se pactó para el primer mes · opcional (ver más abajo). */
+  primerCobro?: PrimerCobroContrato;
 }
+
+/** El mes siguiente a uno dado, respetando el cambio de año. */
+const mesSiguiente = (year: number, month: number): { year: number; month: number } =>
+  month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
 
 interface PartesDeFecha {
   year: number;
@@ -87,7 +95,7 @@ export function diasDeRentaEnElMes(
 }
 
 /**
- * El importe que toca cobrar este mes · el mensual prorrateado por días.
+ * El importe que toca cobrar este mes · `0` si este mes no hay nada que pedir.
  *
  * `importeMensual` es la renta mensual EFECTIVA del contrato: puede ser
  * `contract.rentaMensual` o el importe que fuerce el plan de gestión delegada
@@ -95,14 +103,21 @@ export function diasDeRentaEnElMes(
  * contrato que empieza a mitad de mes cobra media renta venga el mensual de
  * donde venga.
  *
- * ── GANCHO · importe de primer mes personalizado ──────────────────────────
- * El arrendador puede fijar a mano lo que se cobra el primer mes, y los
- * contratos reales lo traen distinto del aritmético. Ese campo NO existe hoy en
- * `Contract` (revisado `db/types-contratos.ts:158-345`) y NO se inventa aquí:
- * nace en el cableado del alta. Cuando exista, este es el único sitio que hay
- * que tocar — esta función es el punto único donde se decide el importe del mes
- * y `generateMonthlyForecasts` no calcula nada por su cuenta. El importe
- * explícito GANA sobre el prorrateo.
+ * ── El primer cobro pactado manda ─────────────────────────────────────────
+ * El aritmético casi nunca es el número que se firma. «17 días de agosto más
+ * septiembre entero, 565 €» es una cifra acordada —el prorrateo de ese caso da
+ * 565,16—, y ATLAS tiene que emitir lo que se firmó. Por eso, cuando el contrato
+ * trae `primerCobro`, su `importe` GANA sobre cualquier cálculo en el mes de
+ * entrada, sea cual sea el modo: los cuatro modos son formas de PROPONER una
+ * cifra en el alta, y las cuatro dejan ajustarla a mano.
+ *
+ * ── El mes adelantado no se cobra dos veces ───────────────────────────────
+ * `dias_mas_adelanto` significa que en el primer cobro ya va la mensualidad
+ * SIGUIENTE. Ese mes queda pagado antes de empezar, así que aquí devuelve 0 y el
+ * generador no emite nada: pedirlo otra vez sería contar el mismo dinero dos
+ * veces, que es el fallo que cerraron #1797 y #1800 por otras dos puertas. Se
+ * deduce del modo y de `fechaInicio`, sin guardar qué mes está prepagado: un
+ * segundo campo que dijera lo mismo podría contradecir al primero.
  */
 export function importeDeLaRentaDelMes(
   contrato: PeriodoDeContrato,
@@ -110,6 +125,21 @@ export function importeDeLaRentaDelMes(
   month: number,
   importeMensual: number,
 ): number {
+  const inicio = partesISO(contrato.fechaInicio);
+  const primerCobro = contrato.primerCobro;
+
+  if (primerCobro && inicio) {
+    const esMesDeEntrada = inicio.year === year && inicio.month === month;
+    if (esMesDeEntrada) {
+      return Number.isFinite(primerCobro.importe) ? primerCobro.importe : 0;
+    }
+
+    if (primerCobro.modo === 'dias_mas_adelanto') {
+      const siguiente = mesSiguiente(inicio.year, inicio.month);
+      if (siguiente.year === year && siguiente.month === month) return 0;
+    }
+  }
+
   if (!Number.isFinite(importeMensual) || importeMensual === 0) return 0;
 
   const { dias, diasDelMes: total } = diasDeRentaEnElMes(contrato, year, month);

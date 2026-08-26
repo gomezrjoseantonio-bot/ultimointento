@@ -155,6 +155,33 @@ export interface GestionDelegada {
 }
 
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
+/**
+ * Cómo se cobra el PRIMER mes de un contrato.
+ *
+ * El aritmético (`prorrateo`) casi nunca es el número que se firma: los
+ * contratos reales pactan una cifra redonda, o cobran el mes de entrada entero,
+ * o piden el mes siguiente por adelantado. Por eso los cuatro modos calculan una
+ * propuesta pero el `importe` es siempre ajustable a mano — y es el `importe`,
+ * no el modo, la fuente de verdad de lo que se emite.
+ *
+ *  · `prorrateo`         · los días que se ocupan del mes de entrada.
+ *  · `mes_entero`        · el mes de entrada completo, entre el día que entre.
+ *  · `dias_mas_adelanto` · los días del mes de entrada MÁS la mensualidad
+ *                          siguiente por adelantado. Ojo: ese mes siguiente
+ *                          queda PREPAGADO y no vuelve a cobrarse — verlo
+ *                          emitido otra vez sería contar el mismo dinero dos
+ *                          veces. Lo respeta `services/rentaDelMes.ts`.
+ *  · `manual`            · una cifra que decide el arrendador, sin cálculo
+ *                          detrás.
+ */
+export type ModoPrimerCobro = 'prorrateo' | 'mes_entero' | 'dias_mas_adelanto' | 'manual';
+
+export interface PrimerCobroContrato {
+  modo: ModoPrimerCobro;
+  /** Lo que se emite el mes de entrada, en €. Manda sobre cualquier cálculo. */
+  importe: number;
+}
+
 export interface Contract {
   id?: number;
   
@@ -187,6 +214,14 @@ export interface Contract {
   fechaInicio: string;
   fechaFin: string; // Always required, auto-calculated for habitual (+5 years, editable)
   
+  /**
+   * Cómo se cobra el primer mes · opcional y sin índice, así que NO lleva bump
+   * de `DB_VERSION` ni migración: nace vacío y solo lo rellenan los contratos
+   * dados de alta desde que existe el selector. Un contrato sin esto se
+   * comporta igual que antes — prorrateo aritmético del mes de entrada.
+   */
+  primerCobro?: PrimerCobroContrato;
+
   // NEW FIELDS: Financial terms
   rentaMensual: number; // Monthly rent (current/active amount)
   diaPago: number; // Payment day (1-31)

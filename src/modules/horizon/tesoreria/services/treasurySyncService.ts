@@ -383,6 +383,17 @@ export async function generateMonthlyForecasts(
       // del mes — ahí entrará también el primer-mes personalizado cuando el
       // campo exista. Este generador no calcula importes por su cuenta.
       const amount = importeDeLaRentaDelMes(contract, year, month, importeMensual);
+
+      // Cero no es una renta: es que este mes no hay nada que pedir. Pasa cuando
+      // el primer cobro se llevó por adelantado la mensualidad siguiente — ese
+      // mes ya está pagado y volver a emitirlo sería cobrarlo dos veces—, y
+      // también con un contrato de renta 0. Emitir un previsto de 0 € no pide
+      // dinero pero ensucia Pendientes con una fila que nadie puede confirmar.
+      if (amount <= 0) {
+        skipped++;
+        continue;
+      }
+
       // Los subcontratos llevan cuentaCobroId=0 y heredan la del padre (flujo B).
       const cuentaCobro = planGestion.cuentaPorContrato.get(contract.id) ?? contract.cuentaCobroId;
 
