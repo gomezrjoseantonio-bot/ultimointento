@@ -10,6 +10,7 @@ import {
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
 import { saveContract, getContract, updateContract } from '../../../services/contractService';
+import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import {
   type FormState,
@@ -145,8 +146,29 @@ const NuevoContratoWizard: React.FC = () => {
   const stepIndex = steps.findIndex((s) => s.key === step);
   const isLast = step === 'firma';
 
+  // Que el contrato se vea en tesorería AHORA y no en el próximo arranque.
+  //
+  // Regenera hacia delante en vez de emitir solo lo del contrato nuevo: es la
+  // misma pasada idempotente que usa el bootstrap, así que respeta lo ya
+  // conciliado, lo descartado y el mes que un primer cobro adelantado dejó
+  // pagado. Emitir por libre sería abrir otra puerta al doble cobro.
+  //
+  // Sin `await` a su fallo: el contrato ya está escrito y es el dato bueno. Una
+  // previsión es derivada y se rehace sola en el siguiente bootstrap, así que
+  // tumbar el alta por no poder repintarla sería perder lo importante por lo
+  // accesorio.
+  const refrescarPrevisiones = async (): Promise<void> => {
+    try {
+      await regenerateForecastsForward();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[WizardNuevoContrato] no se pudieron regenerar las previsiones', e);
+    }
+  };
+
   const handleCrearContrato = async (): Promise<void> => {
     if (creando) return;
+
     setErrorSave(null);
     const res = construirPayloadCompleto(form);
     if (!res.ok) {
@@ -175,6 +197,7 @@ const NuevoContratoWizard: React.FC = () => {
           fianzaMeses: payload.fianzaMeses,
           fianzaImporte: payload.fianzaImporte,
         });
+        await refrescarPrevisiones();
         showToastV5(
           `Contrato actualizado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
           'success',
@@ -193,6 +216,7 @@ const NuevoContratoWizard: React.FC = () => {
       }
       const vinculado = await vincularAccesorioDesdeContrato(accesorioId, payload);
       if (!vinculado) showToastV5('Contrato creado, pero el accesorio no se pudo vincular', 'error');
+      await refrescarPrevisiones();
       showToastV5(
         `Contrato creado · ${payload.inquilino.nombre} ${payload.inquilino.apellidos}`.trim(),
         'success',
@@ -226,6 +250,7 @@ const NuevoContratoWizard: React.FC = () => {
       } else {
         await saveContract(payload as Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>);
       }
+      await refrescarPrevisiones();
       showToastV5('Borrador guardado · puedes completarlo más tarde', 'success');
       navigate('/contratos?tab=vigentes');
     } catch (e) {
