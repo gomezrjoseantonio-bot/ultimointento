@@ -103,7 +103,6 @@ export default function PasoEconomico({
                 />
                 <BloqueFiscalContrato
                   modalidad={form.modalidad}
-                  onModalidadChange={(m) => update('modalidad', m)}
                   rentaMensual={form.rentaMensual}
                   fechaInicio={form.fechaInicio}
                   value={form.datosFiscales}

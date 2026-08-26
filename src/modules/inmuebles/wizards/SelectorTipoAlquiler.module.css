@@ -1,0 +1,125 @@
+/* Selector de tipo de alquiler · tres opciones con etiqueta doble.
+   La duración manda en la jerarquía visual porque es lo que el arrendador
+   sabe; el nombre fiscal va debajo, que es lo que necesita Hacienda. */
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-2);
+}
+
+.etiqueta {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+}
+
+.opciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-2);
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--atlas-v5-sp-3) var(--atlas-v5-sp-4);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.opcion:hover {
+  border-color: var(--atlas-v5-gold-soft);
+  background: var(--atlas-v5-card-alt);
+}
+
+.opcion:focus-visible {
+  outline: none;
+  box-shadow: var(--atlas-v5-focus-ring-gold);
+}
+
+.activa {
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash-2);
+}
+
+.textos {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Lo que el arrendador reconoce · va primero y pesa más. */
+.nombre {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+}
+
+/* Lo que Hacienda llama a eso mismo. */
+.nombreFiscal {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  flex-shrink: 0;
+}
+
+.chip {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  border-radius: var(--atlas-v5-radius-lg);
+  white-space: nowrap;
+}
+
+/* Reduce: oro, como el chip del rótulo de reducción. */
+.reduce {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.sinReduccion {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
+/* Lo que las fechas proponen · informativo, no una acción. */
+.detectado {
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
+}
+
+.nota {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--atlas-v5-ink-3);
+}
+
+.aviso {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--atlas-v5-warn);
+}

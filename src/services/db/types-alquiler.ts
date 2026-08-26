@@ -79,6 +79,62 @@ export function esCortaEstancia(subtipo: string | undefined | null): boolean {
 }
 
 /**
+ * El centinela con el que el repo marca «sin fecha de fin conocida».
+ *
+ * No es una fecha: es la ausencia de una. Medir una duración contra él daría
+ * setenta y tres años de larga estancia por un dato que nadie ha puesto.
+ *
+ * Estaba escrito dos veces —en `contractService` y copiado en
+ * `contractImportCreationService`—, así que vive aquí y los dos lo importan:
+ * cambiarlo en un sitio y no en el otro dejaría medio repo leyendo 2099 como
+ * una fecha real.
+ */
+export const FECHA_FIN_INDEFINIDO = '2099-12-31';
+
+/** Días entre dos fechas ISO contando los dos extremos · `null` si no se puede. */
+function diasDeDuracion(inicio: string, fin: string): number | null {
+  const a = Date.parse(`${inicio}T00:00:00Z`);
+  const b = Date.parse(`${fin}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  // Los dos extremos cuentan: quien entra el 1 y sale el 31 ocupa 31 días, no
+  // 30. Es como lo cuenta el arrendador y como cuadran las fronteras de abajo.
+  const dias = Math.round((b - a) / 86400000) + 1;
+  return dias > 0 ? dias : null;
+}
+
+/**
+ * El subtipo que PROPONEN las fechas del contrato.
+ *
+ *   · hasta 31 días  → corta estancia
+ *   · de 32 a 364    → media estancia
+ *   · 365 o más      → larga estancia
+ *
+ * Es una propuesta, no una clasificación: la ley mira el uso y no solo el
+ * calendario, así que el arrendador puede sobrescribirla. Nueve meses pueden ser
+ * el curso de un estudiante o la mudanza de quien se traslada por trabajo, y no
+ * tienen por qué declararse igual.
+ *
+ * `null` cuando no hay duración que medir —falta una fecha, no se entiende, el
+ * fin es anterior al inicio, o el fin es el centinela de «indefinido»—. Sin
+ * propuesta no se preselecciona nada: caer en corta estancia por un dato que
+ * falta sería empujar al tramo que NO reduce.
+ */
+export function clasificarPorDuracion(
+  fechaInicio: string | undefined | null,
+  fechaFin: string | undefined | null,
+): SubtipoAlquiler | null {
+  if (!fechaInicio || !fechaFin) return null;
+  if (fechaFin === FECHA_FIN_INDEFINIDO) return null;
+
+  const dias = diasDeDuracion(fechaInicio, fechaFin);
+  if (dias === null) return null;
+
+  if (dias <= 31) return 'corta_estancia';
+  if (dias < 365) return 'media_estancia';
+  return 'larga_estancia';
+}
+
+/**
  * El subtipo que corresponde a un arrendamiento del Modelo 100.
  *
  * El XML solo distingue vivienda (TAR1) de «distinto de vivienda» (TAR2), y en
