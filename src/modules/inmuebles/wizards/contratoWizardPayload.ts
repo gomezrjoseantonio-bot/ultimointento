@@ -70,6 +70,9 @@ export function construirPayloadCompleto(form: FormState): PayloadResult {
       cuentaCobroId,
       // Solo si el usuario tocó el selector · sin él, el motor prorratea.
       primerCobro: form.primerCobro,
+      // El bloque fiscal · el % confirmado MANDA sobre cualquier recálculo, y
+      // las condiciones se guardan al lado para poder justificarlo.
+      ...(form.datosFiscales ?? {}),
       estadoContrato: 'activo',
       documentoFirmado: true,
       documents: [],
@@ -107,6 +110,7 @@ export function construirPayloadBorrador(form: FormState): ContratoPayload {
     fianzaEstado: 'retenida',
     cuentaCobroId,
     primerCobro: form.primerCobro,
+    ...(form.datosFiscales ?? {}),
     estadoContrato: 'sin_firmar',
     documentoFirmado: false,
     documents: [],

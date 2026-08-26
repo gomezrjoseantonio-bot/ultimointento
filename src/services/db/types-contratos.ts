@@ -308,10 +308,23 @@ export interface Contract {
   };
   
   // Fiscal reduction per contract (Ley 12/2023 de Vivienda)
+  /**
+   * La reducción del art. 23.2 LIRPF que se confirmó al dar de alta el contrato.
+   *
+   * Lo que hay aquí MANDA sobre cualquier recálculo posterior
+   * (`calcularPorcentajeReduccionContrato` lo respeta sin volver a pasar por el
+   * motor): es el % que el arrendador revisó y aprobó, y recalcularlo al leerlo
+   * convertiría un cambio de reglas en una declaración distinta de la que firmó.
+   *
+   * `manual` distingue «ATLAS lo propuso y yo lo confirmé» de «lo puse yo»: ante
+   * una inspección, importa saber de dónde salió el número.
+   */
   reduccion?: {
     activa: boolean;
     porcentaje: number; // 0, 50, 60, 70, 90
-    motivo?: 'transitorio_pre_2023' | 'general_post_2023' | 'rehabilitacion' | 'zona_tensionada_joven' | 'zona_tensionada_rebaja';
+    motivo?: 'sin_reduccion' | 'transitorio_pre_2023' | 'general_post_2023' | 'rehabilitacion' | 'zona_tensionada_joven' | 'zona_tensionada_rebaja';
+    /** `true` si el arrendador fijó el % a mano en vez de aceptar la propuesta. */
+    manual?: boolean;
   };
 
   // Historial fiscal por ejercicio — declarado/pendiente/en_curso
@@ -320,6 +333,15 @@ export interface Contract {
   // Additional fields for reduction calculation (Ley 12/2023)
   fechaFirmaContrato?: string; // Actual contract signing date (ISO date), distinct from firma.fechaFirma (digital signature)
   zonaTensionada?: boolean;
+  /**
+   * Primera vez que se alquila esta vivienda · no hubo contrato anterior.
+   *
+   * Distingue los dos tramos altos, que la implementación vieja confundía: el
+   * 90 % pide que HUBIERA contrato previo (la rebaja del 5 % se mide contra su
+   * renta) y el 70 % pide justo lo contrario. Opcional y sin índice: sin bump de
+   * `DB_VERSION` ni migración.
+   */
+  primeraVez?: boolean;
   rebajaRenta5pct?: boolean; // Rent reduced ≥5% vs previous contract
   inquilinoJoven?: boolean; // Tenant aged 18-35
   rehabilitacion?: boolean; // Rehabilitation works in last 2 years

@@ -12,6 +12,7 @@
 //   · GAP 5.6 guard sobre `tributacion` eliminado (gateway garantiza valor)
 
 import { initDB } from './db';
+import { proponerReduccion, type RegimenAlquiler } from './reduccionAlquiler';
 import type { Contract } from './db';
 import { esContratoDelInmueble } from './inmuebleDelContrato';
 import {
@@ -321,50 +322,59 @@ export function calcularReduccionArrendamientoVivienda(
 }
 
 /**
- * Determine reduction percentage for a contract based on Ley 12/2023 de Vivienda.
- * - Temporada / vacacional → 0%
- * - Pre 26/05/2023 habitual → 60% (transitorio)
- * - Post 26/05/2023 habitual → 50% (general), 60% (rehabilitación), 70% (zona tensionada + joven), 90% (zona tensionada + rebaja ≥5%)
+ * La reducción del art. 23.2 LIRPF que corresponde a un contrato.
+ *
+ * Las REGLAS no viven aquí: viven en `reduccionAlquiler.proponerReduccion`, que
+ * es la fuente única. Esta función solo traduce la forma de un `Contract`
+ * —campos legacy incluidos— a las condiciones que el motor entiende.
+ *
+ * Antes tenía su propia copia de la ley, y no era la misma: no conocía «primera
+ * vez», así que daba el 90 % a un contrato en zona tensionada con rebaja aunque
+ * fuera el primer alquiler de la vivienda, cuando sin contrato anterior no hay
+ * renta que rebajar. El mismo contrato daba números distintos según por dónde se
+ * preguntara.
  */
 export function calcularPorcentajeReduccionContrato(contract: any): number {
-  const modalidad = contract.modalidad ?? contract.type;
-
-  // Temporada and turístico → no reduction
-  if (modalidad === 'temporada' || modalidad === 'vacacional' || modalidad === 'turistico') {
-    return 0;
-  }
-
-  // If contract has explicit reduction override, use it
+  // Lo que el arrendador confirmó al dar de alta el contrato MANDA · no se
+  // recalcula por detrás. Ese % es el que se revisó y se firmó; recalcularlo al
+  // leerlo convertiría un cambio de reglas en una declaración distinta de la que
+  // el usuario aprobó.
   if (contract.reduccion?.activa && contract.reduccion?.porcentaje > 0) {
     return contract.reduccion.porcentaje;
   }
 
-  // Determine contract signing date
-  const fechaFirma = contract.fechaFirmaContrato
-    ?? contract.firma?.fechaFirma
-    ?? contract.fechaInicio
-    ?? contract.startDate;
+  const regimen = regimenDelContrato(contract);
+  // Un contrato del que no sabemos si es de vivienda habitual no puede reclamar
+  // la reducción de la vivienda habitual.
+  if (regimen === null) return 0;
 
-  if (!fechaFirma) {
-    // No date available — assume pre-law for safety (60%)
-    return modalidad === 'habitual' ? 60 : 0;
-  }
+  return proponerReduccion({
+    regimen,
+    // La fecha, en cascada: la de firma del contrato manda sobre la de la firma
+    // digital, y esa sobre la de inicio. Si no hay ninguna, el motor aplica el
+    // régimen VIGENTE — presumir que un contrato sin fecha es anterior a 2023
+    // sería reclamar más reducción de la que consta.
+    fechaFirma:
+      contract.fechaFirmaContrato ??
+      contract.firma?.fechaFirma ??
+      contract.fechaInicio ??
+      contract.startDate,
+    primeraVez: contract.primeraVez,
+    zonaTensionada: contract.zonaTensionada,
+    joven18a35: contract.inquilinoJoven,
+    rebajaMas5: contract.rebajaRenta5pct,
+    rehabilitada2a: contract.rehabilitacion,
+  }).porcentaje;
+}
 
-  const FECHA_LEY_VIVIENDA = new Date('2023-05-26');
-  const fechaContrato = new Date(fechaFirma);
-
-  // Pre Ley 12/2023: régimen transitorio → 60%
-  if (fechaContrato < FECHA_LEY_VIVIENDA) {
-    return modalidad === 'habitual' ? 60 : 0;
-  }
-
-  // Post Ley 12/2023: graduated reduction
-  if (contract.zonaTensionada && contract.rebajaRenta5pct) return 90;
-  if (contract.zonaTensionada && contract.inquilinoJoven) return 70;
-  if (contract.rehabilitacion) return 60;
-
-  // General case post-law
-  return modalidad === 'habitual' ? 50 : 0;
+/** `null` cuando el contrato no dice de qué tipo de alquiler es. */
+function regimenDelContrato(contract: any): RegimenAlquiler | null {
+  const modalidad = contract.modalidad ?? contract.type;
+  if (modalidad === 'habitual') return 'habitual';
+  if (modalidad === 'temporada') return 'temporada';
+  // `vacacional` es como se llamaba el turístico en el modelo viejo.
+  if (modalidad === 'vacacional' || modalidad === 'turistico') return 'turistico';
+  return null;
 }
 
 function edadDesde(fechaNacimiento: string, ejercicio: number): number {

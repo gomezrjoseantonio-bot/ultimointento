@@ -7,6 +7,7 @@ import type {
   HabitacionAlquiler,
 } from '../../../services/db';
 import type { PrimerCobroContrato } from '../../../services/db/types-contratos';
+import type { DatosFiscalesContrato } from './BloqueFiscalContrato';
 
 export interface FormState {
   inmuebleId: number | null;
@@ -30,6 +31,11 @@ export interface FormState {
    * selector. Sin él, el motor prorratea, que es la propuesta por defecto.
    */
   primerCobro?: PrimerCobroContrato;
+  /**
+   * Lo que se confirmó en el bloque fiscal · `undefined` mientras no se toque.
+   * Sin él, el lector aplica el régimen general por fecha (50 % / 60 %).
+   */
+  datosFiscales?: DatosFiscalesContrato;
 }
 
 /**

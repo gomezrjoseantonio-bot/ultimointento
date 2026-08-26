@@ -17,6 +17,7 @@ import React from 'react';
 import type { FormState } from './contratoWizardHelpers';
 import { CuentaCobroField } from './CuentaCobroField';
 import PrimerCobroSelector from './PrimerCobroSelector';
+import BloqueFiscalContrato from './BloqueFiscalContrato';
 import styles from './NuevoContratoWizard.module.css';
 
 interface Props {
@@ -99,6 +100,14 @@ export default function PasoEconomico({
                   fechaInicio={form.fechaInicio}
                   value={form.primerCobro}
                   onChange={(v) => update('primerCobro', v)}
+                />
+                <BloqueFiscalContrato
+                  modalidad={form.modalidad}
+                  onModalidadChange={(m) => update('modalidad', m)}
+                  rentaMensual={form.rentaMensual}
+                  fechaInicio={form.fechaInicio}
+                  value={form.datosFiscales}
+                  onChange={(v) => update('datosFiscales', v)}
                 />
               </div>
     </>
