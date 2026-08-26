@@ -91,8 +91,17 @@ export function esCortaEstancia(subtipo: string | undefined | null): boolean {
  */
 export const FECHA_FIN_INDEFINIDO = '2099-12-31';
 
-/** Días entre dos fechas ISO contando los dos extremos · `null` si no se puede. */
-function diasDeDuracion(inicio: string, fin: string): number | null {
+/**
+ * Días entre dos fechas ISO contando los dos extremos · `null` si no se puede.
+ *
+ * Lo usa la clasificación de abajo y también el selector del alta, que enseña
+ * la duración: la cifra que se ve y la que decide el tipo son la misma.
+ */
+export function diasDeDuracion(
+  inicio: string | undefined | null,
+  fin: string | undefined | null,
+): number | null {
+  if (!inicio || !fin || fin === FECHA_FIN_INDEFINIDO) return null;
   const a = Date.parse(`${inicio}T00:00:00Z`);
   const b = Date.parse(`${fin}T00:00:00Z`);
   if (Number.isNaN(a) || Number.isNaN(b)) return null;

@@ -12,17 +12,18 @@
 // arrendador piensa en duraciones y Hacienda en regímenes. Enseñar los dos
 // ahorra la traducción de cabeza, que es donde se elige mal.
 //
-// Las fechas PROPONEN —el badge «Detectado»—, pero no deciden: el art. 23.2
-// mira el uso, no el calendario. Nueve meses pueden ser el curso de un
-// estudiante o la mudanza de quien se traslada por trabajo, y no se declaran
-// igual. Por eso la propuesta se puede sobrescribir, y cuando se sobrescribe el
-// badge se queda donde estaba: así se distingue «ATLAS se equivocó» de «he
-// decidido otra cosa a sabiendas».
+// Del mockup NO se traen sus dos inputs de fecha: ahí eran los mandos de un
+// drawer suelto, pero aquí las fechas ya son campos del wizard, dos líneas más
+// abajo, y repetirlas serían dos casillas para el mismo dato. Lo que sí se trae
+// es la DURACIÓN que sale de ellas, que no está en ningún otro sitio y es de
+// donde nace la propuesta.
 // ============================================================================
 
 import React from 'react';
+import { Info } from 'lucide-react';
 import {
   clasificarPorDuracion,
+  diasDeDuracion,
   reduceElSubtipo,
   type SubtipoAlquiler,
 } from '../../../services/db/types-alquiler';
@@ -41,7 +42,7 @@ interface Opcion {
   nombre: string;
   /** Cómo lo llama Hacienda. */
   nombreFiscal: string;
-  nota: string;
+  ayuda: string;
 }
 
 // De mayor a menor duración · es el orden en que se piensa un alquiler.
@@ -50,30 +51,58 @@ const OPCIONES: Opcion[] = [
     clave: 'larga_estancia',
     nombre: 'Larga duración',
     nombreFiscal: 'vivienda habitual',
-    nota: 'El inquilino vive aquí de forma permanente. Es el único tipo con derecho a la reducción del art. 23.2 LIRPF.',
+    ayuda: 'Residencia permanente del inquilino',
   },
   {
     clave: 'media_estancia',
     nombre: 'Media estancia',
     nombreFiscal: 'temporada',
-    nota: 'Un curso, un traslado por trabajo, una obra. Arrendamiento para uso distinto de vivienda (art. 3 LAU): tributa por todo.',
+    ayuda: '32 días a 11 meses · trabajo, estudios, tratamiento',
   },
   {
     clave: 'corta_estancia',
     nombre: 'Corta estancia',
     nombreFiscal: 'turístico',
-    nota: 'Días o semanas. Tributa por todo, y la normativa autonómica suele exigir licencia o registro.',
+    ayuda: '1 a 31 días · licencia + registro de viajeros',
   },
 ];
 
+/** La duración en la unidad que se entiende a ojo: días, meses o años. */
+function enUnidades(dias: number): { cifra: string; unidad: string } {
+  if (dias >= 365) {
+    const años = Math.floor(dias / 365);
+    return { cifra: `${años}${dias % 365 > 60 ? '+' : ''}`, unidad: años === 1 ? 'año' : 'años' };
+  }
+  if (dias >= 31) return { cifra: String(Math.round(dias / 30)), unidad: 'meses' };
+  return { cifra: String(dias), unidad: dias === 1 ? 'día' : 'días' };
+}
+
 const SelectorTipoAlquiler: React.FC<Props> = ({ value, onChange, fechaInicio, fechaFin }) => {
   const propuesta = clasificarPorDuracion(fechaInicio, fechaFin);
-  const elegida = OPCIONES.find((o) => o.clave === value);
-  const discrepa = propuesta !== null && propuesta !== value;
-  const nombreDeLaPropuesta = OPCIONES.find((o) => o.clave === propuesta)?.nombre;
+  const dias = diasDeDuracion(fechaInicio, fechaFin);
+  // El badge marca la propuesta VIVA. En cuanto el usuario elige otra cosa deja
+  // de haber propuesta que señalar: lo elegido ya lo dice el radio.
+  const sinTocar = propuesta !== null && propuesta === value;
+  const nombreDetectado = OPCIONES.find((o) => o.clave === propuesta)?.nombre;
 
   return (
     <div className={styles.bloque}>
+      {dias !== null && (
+        <div className={styles.duracion}>
+          <span className={styles.duracionCifra}>{enUnidades(dias).cifra}</span>
+          <span className={styles.duracionUnidad}>{enUnidades(dias).unidad}</span>
+        </div>
+      )}
+
+      {sinTocar && (
+        <div className={styles.detectado}>
+          <Info size={13} strokeWidth={1.8} aria-hidden />
+          <span>
+            ATLAS lo ha detectado por la duración: <b>{nombreDetectado}</b>. Puedes cambiarlo abajo.
+          </span>
+        </div>
+      )}
+
       <div className={styles.etiqueta}>Tipo de alquiler</div>
 
       <div className={styles.opciones} role="radiogroup" aria-label="Tipo de alquiler">
@@ -86,32 +115,33 @@ const SelectorTipoAlquiler: React.FC<Props> = ({ value, onChange, fechaInicio, f
             className={`${styles.opcion} ${o.clave === value ? styles.activa : ''}`}
             onClick={() => onChange(o.clave)}
           >
-            <span className={styles.textos}>
-              <span className={styles.nombre}>{o.nombre}</span>
-              <span className={styles.nombreFiscal}>{o.nombreFiscal}</span>
-            </span>
-            <span className={styles.chips}>
-              {o.clave === propuesta && (
-                <span className={`${styles.chip} ${styles.detectado}`}>Detectado</span>
-              )}
-              <span
-                className={`${styles.chip} ${reduceElSubtipo(o.clave) ? styles.reduce : styles.sinReduccion}`}
-              >
-                {reduceElSubtipo(o.clave) ? 'Reduce IRPF' : '0%'}
+            <span className={styles.radio} aria-hidden />
+            <span className={styles.cuerpo}>
+              <span className={styles.titulos}>
+                <span className={styles.nombre}>{o.nombre}</span>
+                <span className={styles.nombreFiscal}>{o.nombreFiscal}</span>
               </span>
+              <span className={styles.ayuda}>{o.ayuda}</span>
             </span>
+            <span
+              className={`${styles.chip} ${reduceElSubtipo(o.clave) ? styles.reduce : styles.sinReduccion}`}
+            >
+              {reduceElSubtipo(o.clave) ? 'Reduce IRPF' : '0%'}
+            </span>
+            {sinTocar && o.clave === propuesta && <span className={styles.badge}>Detectado</span>}
           </button>
         ))}
       </div>
 
-      {elegida && <p className={styles.nota}>{elegida.nota}</p>}
-
-      {discrepa && (
-        <p className={styles.aviso}>
-          Las fechas dicen «{nombreDeLaPropuesta}». Puedes dejarlo así si el uso
-          real es otro — lo que cuenta para Hacienda es el uso, no el calendario.
-        </p>
-      )}
+      <p className={styles.nota}>
+        <span className={styles.notaIcono}>
+          <Info size={13} strokeWidth={1.8} aria-hidden />
+        </span>
+        <span>
+          La ley mira el uso, no solo los días: en el límite entre media y larga
+          decide si es residencia permanente. Por eso ATLAS propone y tú confirmas.
+        </span>
+      </p>
     </div>
   );
 };

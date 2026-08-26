@@ -358,16 +358,6 @@ const NuevoContratoWizard: React.FC = () => {
                   onChange={seleccionarHabitacion}
                 />
                 <div className={styles.field}>
-                  {/* El único sitio donde se elige el tipo · va junto a las
-                      fechas porque de ellas sale su propuesta. */}
-                  <SelectorTipoAlquiler
-                    value={form.modalidad}
-                    onChange={(m) => update('modalidad', m)}
-                    fechaInicio={form.fechaInicio}
-                    fechaFin={form.fechaFin}
-                  />
-                </div>
-                <div className={styles.field}>
                   <label className={styles.label}>Fecha inicio</label>
                   <input
                     type="date"
@@ -387,6 +377,16 @@ const NuevoContratoWizard: React.FC = () => {
                   <span className={styles.help}>
                     Larga duración · LAU rellena 5 años · editable.
                   </span>
+                </div>
+                <div className={styles.field}>
+                  {/* El único sitio donde se elige el tipo · debajo de las
+                      fechas, porque de ellas sale su propuesta. */}
+                  <SelectorTipoAlquiler
+                    value={form.modalidad}
+                    onChange={(m) => update('modalidad', m)}
+                    fechaInicio={form.fechaInicio}
+                    fechaFin={form.fechaFin}
+                  />
                 </div>
               </div>
             </>
