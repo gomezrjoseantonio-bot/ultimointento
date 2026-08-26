@@ -17,7 +17,7 @@ import type { Contract, Property } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
-import { catalogoSugeridoPorModalidad } from '../wizards/utils/catalogoModalidadInmueble';
+import { catalogoDelInmueble } from '../wizards/utils/catalogoModalidadInmueble';
 import {
   deleteInmuebleWithCascade,
   previewDeleteInmuebleCascade,
@@ -202,13 +202,13 @@ const DetallePage: React.FC = () => {
   );
 
   // §3.3 · conceptos sugeridos por la modalidad del contrato (se resaltan al
-  // añadir un gasto). ATLAS ya sabe la modalidad · no se pregunta.
-  const conceptosSugeridos = useMemo(() => {
-    const modalidad = contratosActivos[0]?.modalidad ?? propertyContracts[0]?.modalidad;
-    const unidadTipo =
-      property?.modoExplotacion === 'por_habitaciones' ? ('habitacion' as const) : ('vivienda' as const);
-    return catalogoSugeridoPorModalidad(modalidad, unidadTipo).precargados;
-  }, [contratosActivos, propertyContracts, property]);
+  // añadir un gasto). ATLAS ya sabe la modalidad · no se pregunta. Lo resuelve
+  // `catalogoDelInmueble`, el mismo que usa el modal de siembra: cuando esto
+  // vivía aquí suelto, la otra pantalla contestaba distinto.
+  const conceptosSugeridos = useMemo(
+    () => catalogoDelInmueble(propertyContracts, property?.modoExplotacion, today).precargados,
+    [propertyContracts, property, today],
+  );
 
   // Precalculados para RentabilidadInmueble — deben estar antes del early return.
   const rentaMensual = contratosActivos.reduce(

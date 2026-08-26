@@ -1,7 +1,6 @@
 // R4 · helpers del semillado de OPEX · puros, sobre el catálogo real.
 
 import {
-  argsCatalogoDeModo,
   refDeCompromiso,
   etiquetaConcepto,
   periodicidadPorDefecto,
@@ -9,14 +8,6 @@ import {
   construirSkeletonOpex,
 } from '../sembrarOpexInmueble';
 import { catalogoSugeridoPorModalidad } from '../../wizards/utils/catalogoModalidadInmueble';
-
-describe('argsCatalogoDeModo', () => {
-  it('mapea el modo de explotación al catálogo correcto', () => {
-    expect(argsCatalogoDeModo('completo')).toEqual({ modalidad: 'larga_estancia', unidadTipo: 'vivienda' });
-    expect(argsCatalogoDeModo('habitaciones')).toEqual({ modalidad: 'larga_estancia', unidadTipo: 'habitacion' });
-    expect(argsCatalogoDeModo('turistico')).toEqual({ modalidad: 'media_estancia', unidadTipo: 'vivienda' });
-  });
-});
 
 describe('refDeCompromiso', () => {
   it('extrae la ref de catálogo del compromiso', () => {
@@ -83,7 +74,7 @@ describe('construirSkeletonOpex', () => {
     const modalidades = [
       catalogoSugeridoPorModalidad('larga_estancia', 'vivienda'),
       catalogoSugeridoPorModalidad('larga_estancia', 'habitacion'),
-      catalogoSugeridoPorModalidad('temporada', 'vivienda'),
+      catalogoSugeridoPorModalidad('media_estancia', 'vivienda'),
     ];
     for (const cat of modalidades) {
       for (const ref of cat.precargados) {
