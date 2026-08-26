@@ -68,6 +68,8 @@ export function construirPayloadCompleto(form: FormState): PayloadResult {
       fianzaImporte: Math.round(rentaMensual * fianzaMeses),
       fianzaEstado: 'retenida',
       cuentaCobroId,
+      // Solo si el usuario tocó el selector · sin él, el motor prorratea.
+      primerCobro: form.primerCobro,
       estadoContrato: 'activo',
       documentoFirmado: true,
       documents: [],
@@ -104,6 +106,7 @@ export function construirPayloadBorrador(form: FormState): ContratoPayload {
     fianzaImporte: Math.round(rentaMensual * fianzaMeses),
     fianzaEstado: 'retenida',
     cuentaCobroId,
+    primerCobro: form.primerCobro,
     estadoContrato: 'sin_firmar',
     documentoFirmado: false,
     documents: [],

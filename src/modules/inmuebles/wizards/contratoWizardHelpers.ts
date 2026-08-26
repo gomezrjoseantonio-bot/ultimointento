@@ -6,6 +6,7 @@ import type {
   ExplotacionAlquiler,
   HabitacionAlquiler,
 } from '../../../services/db';
+import type { PrimerCobroContrato } from '../../../services/db/types-contratos';
 
 export interface FormState {
   inmuebleId: number | null;
@@ -24,6 +25,11 @@ export interface FormState {
   indexacion: 'none' | 'ipc' | 'irav' | 'otros';
   /** Id (como string, para el <select>) de la cuenta bancaria de cobro. */
   cuentaCobroId: string;
+  /**
+   * Cómo se cobra el primer mes · `undefined` mientras el usuario no toque el
+   * selector. Sin él, el motor prorratea, que es la propuesta por defecto.
+   */
+  primerCobro?: PrimerCobroContrato;
 }
 
 /**
