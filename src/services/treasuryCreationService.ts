@@ -1,7 +1,6 @@
-import { initDB, Contract, Ingreso, Gasto, Document, type GastoCategoria } from './db';
+import { initDB, Ingreso, Gasto, Document, type GastoCategoria } from './db';
 import { isCapexType, AEAT_CLASSIFICATION_MAP } from './aeatClassificationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
-import { inmuebleDelContrato } from './inmuebleDelContrato';
 import toast from 'react-hot-toast';
 
 function mapFiscalTypeToBox(ft: string): string {
@@ -28,69 +27,16 @@ const getCounterpartyFromMetadata = (metadata: any): string => {
          metadata.proveedor || 
          'Contraparte no identificada';
 };
-
-// Contract to Income Generation
-export const generateIncomeFromContract = async (contract: Contract): Promise<number[]> => {
-  const db = await initDB();
-  const createdIds: number[] = [];
-  
-  try {
-    // Get property information for destination
-    const property = await db.get('properties', contract.inmuebleId);
-    if (!property) {
-      throw new Error(`Property ${contract.inmuebleId} not found`);
-    }
-
-    // Generate income records for active contracts
-    if (contract.estadoContrato === 'activo') {
-      const today = new Date();
-      const contractEnd = contract.endDate ? new Date(contract.endDate) : null;
-      
-      // Generate income for the next 12 months or until contract end
-      const endDate = contractEnd && contractEnd < new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000) 
-        ? contractEnd 
-        : new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000);
-
-      let currentDate = new Date(today);
-      currentDate.setDate(contract.diaPago || contract.paymentDay || 1);
-      
-      // If payment day has passed this month, start next month
-      if (currentDate <= today) {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
-
-      while (currentDate <= endDate) {
-        const ingreso: Omit<Ingreso, 'id'> = {
-          origen: 'contrato_id',
-          origen_id: contract.id!,
-          contraparte: `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`,
-          fecha_emision: currentDate.toISOString().split('T')[0],
-          fecha_prevista_cobro: currentDate.toISOString().split('T')[0],
-          importe: contract.rentaMensual || contract.monthlyRent || 0,
-          moneda: 'EUR',
-          destino: 'inmueble_id',
-          destino_id: inmuebleDelContrato(contract),
-          estado: 'previsto',
-          from_doc: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-
-        const ingresoId = await db.add('ingresos', ingreso);
-        createdIds.push(ingresoId as number);
-
-        // Move to next month
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
-    }
-
-    return createdIds;
-  } catch (error) {
-    console.error('Error generating income from contract:', error);
-    throw error;
-  }
-};
-
+// RETIRADO · `generateIncomeFromContract`.
+//
+// Sembraba en `ingresos` una fila por mes durante el año siguiente a partir de
+// un contrato. Era el TERCER camino de generación de renta del repo y llevaba
+// sin un solo llamante; ni siquiera aportaba el prorrateo, porque usaba
+// `contract.rentaMensual` a pelo en todos los meses, el primero incluido.
+//
+// La renta la prevé hoy un único sitio: `generateMonthlyForecasts`, que emite a
+// `treasuryEvents` —el único almacén de previsiones vivo— y prorratea por días
+// el primer mes y el último (`services/rentaDelMes.ts`).
 // Payroll to Income Generation
 export const generateIncomeFromPayroll = async (
   employerName: string,

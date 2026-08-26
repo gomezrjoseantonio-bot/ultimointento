@@ -378,82 +378,21 @@ export const markContractAsSigned = async (id: number, fechaFirma?: string): Pro
   });
 };
 
-// Calculate rent periods for new Contract interface
-export interface RentPeriodNew {
-  periodo: string; // YYYY-MM
-  importe: number;
-  esProrrata: boolean;
-  diasProrrata?: number;
-  diasTotalesMes?: number;
-  notas?: string;
-}
-
-export const calculateRentPeriodsNew = (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): RentPeriodNew[] => {
-  const periods: RentPeriodNew[] = [];
-  const startDate = new Date(contract.fechaInicio);
-  const endDate = new Date(contract.fechaFin);
-  
-  const current = new Date(startDate);
-  
-  while (current <= endDate) {
-    const periodo = formatYearMonth(current);
-    const isFirstMonth = current.getMonth() === startDate.getMonth() && current.getFullYear() === startDate.getFullYear();
-    const isLastMonth = current.getMonth() === endDate.getMonth() && current.getFullYear() === endDate.getFullYear();
-    
-    let importe = contract.rentaMensual;
-    let esProrrata = false;
-    let diasProrrata: number | undefined;
-    let diasTotalesMes: number | undefined;
-    let notas: string | undefined;
-    
-    if (isFirstMonth && startDate.getDate() > 1) {
-      // Prorate first month
-      const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-      const daysRented = daysInMonth - startDate.getDate() + 1;
-      importe = (contract.rentaMensual * daysRented) / daysInMonth;
-      esProrrata = true;
-      diasProrrata = daysRented;
-      diasTotalesMes = daysInMonth;
-      notas = `Prorrateo: ${daysRented}/${daysInMonth} días`;
-    }
-    
-    if (isLastMonth && endDate.getDate() < new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate()) {
-      // Prorate last month
-      const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-      const daysRented = endDate.getDate();
-      importe = (contract.rentaMensual * daysRented) / daysInMonth;
-      esProrrata = true;
-      diasProrrata = daysRented;
-      diasTotalesMes = daysInMonth;
-      notas = `Prorrateo: ${daysRented}/${daysInMonth} días`;
-    }
-    
-    periods.push({
-      periodo,
-      importe: Math.round(importe * 100) / 100, // Round to 2 decimal places
-      esProrrata,
-      diasProrrata,
-      diasTotalesMes,
-      notas,
-    });
-    
-    // Move to next month
-    current.setMonth(current.getMonth() + 1);
-  }
-  
-  return periods;
-};
-
-export const calculateRentPeriodsFromContract = (contract: Contract): RentPeriodNew[] => {
-  const { id, createdAt, updatedAt, ...rest } = contract;
-  return calculateRentPeriodsNew(rest);
-};
-
-const formatYearMonth = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  return `${year}-${month}`;
-};
+// RETIRADO · `RentPeriodNew`, `calculateRentPeriodsNew`,
+// `calculateRentPeriodsFromContract` y su `formatYearMonth`.
+//
+// Calculaban, mes a mes, lo que cobra un contrato a lo largo de toda su vida,
+// prorrateando el primer mes y el último. Su ÚNICO consumidor era
+// `treasuryForecastService.regenerateRentalsForecast`, un generador de renta
+// muerto que se retira en este mismo cambio: sin él quedaban a cero llamantes.
+//
+// La aritmética del prorrateo sigue viva —y corregida— en
+// `services/rentaDelMes.ts`, que es lo que ejecuta hoy el generador vivo. Lo que
+// NO se ha traído es la forma: el bucle avanzaba con `setMonth(+1)` sobre una
+// fecha que conservaba el día de inicio, así que un contrato que empezara el 31
+// de enero SALTABA febrero; y sus dos `if` de prorrateo se pisaban cuando el
+// contrato empezaba y terminaba dentro del mismo mes, cobrando del día 1 al de
+// fin un contrato que había entrado a mitad.
 
 // Contract status helpers
 export const getContractStatus = (contract: Contract): 'active' | 'upcoming' | 'terminated' => {
