@@ -272,9 +272,13 @@ describe('calculateFiscalSummaryExtended · Jose 2024 FA32', () => {
     expect(ext.metodoProrrateo).toBe('dias_habitacion');
   });
 
-  it('porcentajeReduccion ≥ 0 (modo III admite reducción si hay contrato larga estancia)', async () => {
+  it('la reducción viaja como desglose, no como un porcentaje suelto', async () => {
+    // Antes se comprobaba que `porcentajeReduccion ≥ 0`, que con un 60 fijo
+    // devuelto por el modo de declaración no comprobaba gran cosa. Lo que
+    // importa ahora es que el dato tenga forma de desglose y diga de dónde sale.
     const ext = await calculateFiscalSummaryExtended(PROPERTY_ID_FA32, AÑO_2024);
-    expect(ext.porcentajeReduccion).toBeGreaterThanOrEqual(0);
+    expect(Array.isArray(ext.reduccion.tramos)).toBe(true);
+    expect(['declarado', 'atlas']).toContain(ext.reduccion.origen);
   });
 
   it('reutiliza box0102/0103/0104/0107/0108/0089 ya calculados (no los recalcula)', async () => {

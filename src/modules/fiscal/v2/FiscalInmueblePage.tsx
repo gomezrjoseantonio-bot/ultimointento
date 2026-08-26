@@ -65,11 +65,13 @@ function buildOptimizacionesLineas(
 ): OptimizacionLinea[] {
   const lineas: OptimizacionLinea[] = [];
 
-  // Reducción Ley Vivienda detectada
-  if (ext.box0150 > 0 && ext.porcentajeReduccion > 0) {
+  // Reducción Ley Vivienda detectada · el titular decía «del 60 %» con un
+  // porcentaje que no salía de ningún contrato. El importe sí es exacto, y es
+  // el que importa: los tramos ya los rotula la casilla 0150.
+  if ((ext.reduccion.importe ?? 0) > 0) {
     lineas.push({
-      titulo: `Reducción del ${ext.porcentajeReduccion}% Ley Vivienda aplicada automáticamente.`,
-      detalle: `Beneficio · ${fmtEur(ext.box0150)} sustraídos del rendimiento neto antes de tributar.`,
+      titulo: 'Reducción de la Ley de Vivienda aplicada automáticamente.',
+      detalle: `Beneficio · ${fmtEur(ext.reduccion.importe ?? 0)} sustraídos del rendimiento neto antes de tributar.`,
     });
   }
 
@@ -259,14 +261,14 @@ const FiscalInmueblePage: React.FC = () => {
         ingresos={extSummary.box0102}
         gastosAplicados={gastosAplicadosKpi}
         rendimientoNetoReducido={extSummary.box0154}
-        porcentajeReduccion={secciones.porcentajeReduccion}
+        reduccion={secciones.reduccion}
         diasArrendado={secciones.diasArrendado}
         numContratos={numContratos}
       />
 
       <ModoDeclaracionCard
         modo={secciones.modoDeclaracion}
-        porcentajeReduccion={secciones.porcentajeReduccion}
+        reduccion={secciones.reduccion}
         metodoProrrateo={secciones.metodoProrrateo}
         habitaciones={property.alquilerPorHabitaciones?.numeroHabitaciones ?? property.bedrooms}
       />

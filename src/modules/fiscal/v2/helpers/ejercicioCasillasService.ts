@@ -26,6 +26,12 @@ export interface BoxRow {
   highlight?: boolean;
   /** Unidad del importe · default '€' · usa 'días' para conteos y '%' para porcentajes */
   unit?: 'eur' | 'dias' | 'pct';
+  /**
+   * El desglose de la reducción · lo pinta `RotuloReduccion` bajo el concepto,
+   * en lugar del subtítulo. Solo lo lleva la casilla 0150: es la única línea
+   * cuyo importe se explica por tramos y no por un solo concepto.
+   */
+  reduccion?: import('../../../../services/desgloseReduccion').DesgloseReduccion;
 }
 
 export type BoxLetterVariant = 'navy' | 'gold' | 'warn' | 'neg' | 'pos';

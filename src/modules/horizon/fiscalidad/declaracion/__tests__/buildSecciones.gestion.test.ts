@@ -23,7 +23,6 @@ describe('buildSecciones · comisión de gestión como línea propia', () => {
         inmuebleId: 9, alias: 'Piso 9',
         ingresosIntegros: 21600, gastosDeducibles: 6400, comisionGestion: 5400,
         amortizacion: 0, reduccionHabitual: 0, rendimientoNetoReducido: 15200,
-        porcentajeReduccionHabitual: 0,
       }),
     );
     const filas = filasInmueble(secciones);
@@ -41,7 +40,6 @@ describe('buildSecciones · comisión de gestión como línea propia', () => {
         inmuebleId: 9, alias: 'Piso 9',
         ingresosIntegros: 21600, gastosDeducibles: 5400, comisionGestion: 5400,
         amortizacion: 0, reduccionHabitual: 0, rendimientoNetoReducido: 16200,
-        porcentajeReduccionHabitual: 0,
       }),
     );
     const filas = filasInmueble(secciones);
@@ -55,7 +53,6 @@ describe('buildSecciones · comisión de gestión como línea propia', () => {
         inmuebleId: 9, alias: 'Piso 9',
         ingresosIntegros: 9600, gastosDeducibles: 1200,
         amortizacion: 0, reduccionHabitual: 0, rendimientoNetoReducido: 8400,
-        porcentajeReduccionHabitual: 0,
       }),
     );
     const filas = filasInmueble(secciones);

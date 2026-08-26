@@ -39,6 +39,7 @@ import type {
   MinimosPersonales,
 } from './irpfCalculationService';
 import type { Property } from './db';
+import { desgloseDeclarado, desgloseSinReduccion } from './desgloseReduccion';
 
 function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
@@ -173,13 +174,17 @@ function buildRendimientoInmueble(
     reduccionHabitual: reduccion,
     rendimientoNetoAlquiler: round2(rendNetoAntes),
     rendimientoNetoReducido: inm.rendimientoNetoReducido ?? inm.rendimientoNeto ?? 0,
-    // `porcentajeReduccionHabitual` se expresa como fracción 0–1 (0.6 = 60 %)
-    // alineado con `calcularReduccionArrendamientoVivienda.porcentajeNormalizado`
-    // del motor Atlas (`irpfCalculationService.ts`). Cualquier UI que muestre
-    // un porcentaje debe multiplicar por 100.
-    porcentajeReduccionHabitual: reduccion > 0 && rendNetoAntes > 0
-      ? Math.round((reduccion / rendNetoAntes) * 10000) / 10000
-      : 0,
+    // Aquí se calculaba el % EFECTIVO —reducción ÷ rendimiento—, que en un
+    // inmueble mixto daba el «26 %»: ni es el porcentaje de un tramo ni existe
+    // en la ley. Ahora se entrega el desglose, que dice el importe exacto y el
+    // nominal solo cuando el XML permite derivarlo sin mezclar tramos.
+    reduccion: desgloseDeclarado({
+      arrendamientos: (inm.arrendamientos ?? []).map((a) => ({
+        conReduccion: a.tieneReduccion === true,
+      })),
+      reduccion,
+      rendimientoAntes: rendNetoAntes,
+    }),
     esHabitual,
     imputacionRenta: round2(imputacionRenta),
     rendimientoNeto: inm.rendimientoNeto ?? 0,
@@ -265,7 +270,7 @@ function buildBaseGeneral(
       reduccionHabitual: 0,
       rendimientoNetoAlquiler: totalAtribInmob,
       rendimientoNetoReducido: totalAtribInmob,
-      porcentajeReduccionHabitual: 0,
+      reduccion: desgloseSinReduccion('declarado'),
       esHabitual: false,
       imputacionRenta: 0,
       rendimientoNeto: totalAtribInmob,

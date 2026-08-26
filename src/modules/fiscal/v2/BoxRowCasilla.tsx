@@ -9,6 +9,7 @@
 
 import React from 'react';
 import type { BoxRow } from './helpers/ejercicioCasillasService';
+import RotuloReduccion from '../../../components/fiscal/RotuloReduccion';
 import styles from './FiscalEjercicioPage.module.css';
 
 export interface BoxRowCasillaProps {
@@ -57,6 +58,13 @@ const BoxRowCasilla: React.FC<BoxRowCasillaProps> = ({ row }) => {
       <div className={styles.boxRowNum}>{row.num}</div>
       <div>
         <div className={styles.boxRowConcept}>{row.concepto}</div>
+        {/* La 0150 se explica por tramos, no con una frase: el rótulo lleva el
+            % nominal de cada régimen y el importe ya va en la columna. */}
+        {row.reduccion && (
+          <div className={styles.boxRowConceptSub}>
+            <RotuloReduccion desglose={row.reduccion} conImporte={false} />
+          </div>
+        )}
         {row.subtitulo && (
           <div className={styles.boxRowConceptSub}>{row.subtitulo}</div>
         )}

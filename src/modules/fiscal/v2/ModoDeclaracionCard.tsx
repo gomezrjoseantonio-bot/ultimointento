@@ -14,7 +14,7 @@ import styles from './FiscalInmueblePage.module.css';
 
 export interface ModoDeclaracionCardProps {
   modo: FiscalSummaryExtended['modoDeclaracion'];
-  porcentajeReduccion: number;
+  reduccion: FiscalSummaryExtended['reduccion'];
   metodoProrrateo?: FiscalSummaryExtended['metodoProrrateo'];
   habitaciones?: number;
 }
@@ -27,11 +27,11 @@ const METODO_LABEL: Record<NonNullable<FiscalSummaryExtended['metodoProrrateo']>
 
 const ModoDeclaracionCard: React.FC<ModoDeclaracionCardProps> = ({
   modo,
-  porcentajeReduccion,
+  reduccion,
   metodoProrrateo,
   habitaciones,
 }) => {
-  const m = getModoLabel(modo, porcentajeReduccion);
+  const m = getModoLabel(modo, reduccion);
 
   // En modo III enriquecemos con el método real de prorrateo aplicado ·
   // sin afirmaciones de "más beneficioso de los 4 métodos" (el motor

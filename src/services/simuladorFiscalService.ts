@@ -5,8 +5,8 @@ import {
   calcularDeclaracionIRPF,
   DeclaracionIRPF,
   calcularCuotaPorTramos,
-  calcularReduccionArrendamientoVivienda,
 } from './irpfCalculationService';
+import { desgloseAusente, escalarDesglose } from './desgloseReduccion';
 import { calcularGananciaPatrimonialVentaSimulada } from './propertyDisposalTaxService';
 import { computeImputacion, esBisiesto } from './imputacionRentaService';
 import { initDB } from './db';
@@ -248,16 +248,17 @@ export async function ejecutarSimulacion(
         const nuevosIngresos = round2((parametros.rentaNueva ?? 0) * meses);
         const delta = nuevosIngresos - ingresosPrevios;
         const rendNetoAlquiler = round2(inmueble.ingresosIntegros + delta - inmueble.gastosDeducibles - inmueble.amortizacion);
-        const porcentajeReduccion = inmueble.reduccionHabitual > 0 && inmueble.rendimientoNetoAlquiler > 0
-          ? inmueble.reduccionHabitual / inmueble.rendimientoNetoAlquiler
-          : (inmueble.porcentajeReduccionHabitual ?? 0);
-        const { reduccionHabitual, rendimientoNetoReducido, porcentajeNormalizado } =
-          calcularReduccionArrendamientoVivienda(rendNetoAlquiler, porcentajeReduccion);
+        // Cambiar la renta no cambia el régimen del contrato: los tramos y sus
+        // porcentajes nominales viajan intactos y solo se reparte la base nueva.
+        // Antes se derivaba un % efectivo de la reducción anterior y se aplicaba
+        // al rendimiento nuevo: el resultado salía igual, pero el número que
+        // quedaba guardado —y que la pantalla enseñaba— era el «26 %».
+        const reduccion = escalarDesglose(inmueble.reduccion, rendNetoAlquiler);
         inmueble.ingresosIntegros = round2(inmueble.ingresosIntegros + delta);
-        inmueble.reduccionHabitual = porcentajeReduccion > 0 ? reduccionHabitual : 0;
-        inmueble.porcentajeReduccionHabitual = porcentajeNormalizado;
+        inmueble.reduccion = reduccion;
+        inmueble.reduccionHabitual = reduccion.importe ?? 0;
         inmueble.rendimientoNetoAlquiler = rendNetoAlquiler;
-        inmueble.rendimientoNetoReducido = porcentajeReduccion > 0 ? rendimientoNetoReducido : rendNetoAlquiler;
+        inmueble.rendimientoNetoReducido = round2(rendNetoAlquiler - (reduccion.importe ?? 0));
         inmueble.rendimientoNeto = round2(inmueble.rendimientoNetoReducido + inmueble.imputacionRenta);
         sim.baseGeneral.rendimientosInmuebles[idx] = inmueble;
         sim.baseGeneral.total = round2(
@@ -350,7 +351,10 @@ export async function ejecutarSimulacion(
         reduccionHabitual: reduccion,
         rendimientoNetoAlquiler: round2(rendBruto),
         rendimientoNetoReducido: round2(rendBruto - reduccion),
-        porcentajeReduccionHabitual: 0,
+        // Alquilar un inmueble hoy vacío: no se sabe con qué modalidad, así que
+        // tampoco qué reducción le tocaría. El importe simulado es 0 —el
+        // supuesto conservador— y el rótulo lo dice en vez de aparentar un 0 %.
+        reduccion: desgloseAusente('atlas'),
         esHabitual: false,
         imputacionRenta: 0,
         rendimientoNeto: round2(rendBruto - reduccion),

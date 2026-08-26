@@ -10,6 +10,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Scale, Home, Car, Package, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import RotuloReduccion from '../../../../components/fiscal/RotuloReduccion';
+import type { DesgloseReduccion } from '../../../../services/desgloseReduccion';
 import {
   resolverTodosLosEjercicios,
   type DatosFiscalesEjercicio,
@@ -31,7 +33,8 @@ interface InmuebleFiscal {
   tipo: 'piso' | 'parking' | 'trastero';
   ingresos_integros: number;
   gastos: { concepto: string; importe: number; destacado?: boolean }[];
-  reduccion_pct: number;
+  /** El desglose por tramo · sustituye a `reduccion_pct`, que era el % efectivo. */
+  reduccion: DesgloseReduccion;
   reduccion_importe: number;
   rnr: number; // rendimiento neto reducido
 }
@@ -712,17 +715,10 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--grey-900)' }}>
             {inm.direccion}
           </div>
-          {inm.reduccion_pct > 0 && (
-            <span style={{
-              fontSize: 10,
-              fontWeight: 600,
-              padding: '1px 5px',
-              borderRadius: 3,
-              background: 'var(--navy-100)',
-              color: 'var(--navy-700)',
-            }}>
-              Red. {inm.reduccion_pct}%
-            </span>
+          {/* Decía «Red. 26%» · el % efectivo de un inmueble con dos tramos.
+              Ahora van los chips con el nominal de cada uno. */}
+          {inm.reduccion_importe > 0 && (
+            <RotuloReduccion desglose={inm.reduccion} conImporte={false} />
           )}
         </div>
       </div>
@@ -731,7 +727,7 @@ const CardInmuebleFiscal: React.FC<{ inm: InmuebleFiscal }> = ({ inm }) => {
       <FilaInm label="Ingresos íntegros" valor={inm.ingresos_integros} />
       <FilaInm label="Total gastos" valor={-gastoTotal} color="var(--teal-600)" />
       {inm.reduccion_importe > 0 && (
-        <FilaInm label={`Reducción ${inm.reduccion_pct}%`} valor={-inm.reduccion_importe} color="var(--teal-600)" />
+        <FilaInm label="Reducción Ley Vivienda" valor={-inm.reduccion_importe} color="var(--teal-600)" />
       )}
 
       {/* Resultado del inmueble */}
@@ -843,7 +839,7 @@ function buildFuentes(datos: DatosFiscalesEjercicio): FuenteRenta[] {
 // HELPER: Build inmuebles fiscales from datos
 // ══════════════════════════════════════════════════════════════
 
-function buildInmueblesFiscales(datos: DatosFiscalesEjercicio): InmuebleFiscal[] {
+export function buildInmueblesFiscales(datos: DatosFiscalesEjercicio): InmuebleFiscal[] {
   if (!datos.declaracionCompleta?.baseGeneral?.rendimientosInmuebles) {
     return [];
   }
@@ -879,7 +875,7 @@ function buildInmueblesFiscales(datos: DatosFiscalesEjercicio): InmuebleFiscal[]
       tipo,
       ingresos_integros: inm.ingresosIntegros,
       gastos,
-      reduccion_pct: Math.round((inm.porcentajeReduccionHabitual || 0) * 100),
+      reduccion: inm.reduccion,
       reduccion_importe: inm.reduccionHabitual || 0,
       rnr: inm.rendimientoNetoReducido,
     };
