@@ -1,5 +1,7 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
+import { diasArrendadosEnAno } from './diasArrendados';
+import { esContratoDelInmueble } from './inmuebleDelContrato';
 import type { BaseAmortizableOrigen } from './db';
 import { actualizarMejora, crearMejora, eliminarMejora, getMejorasHastaEjercicio } from './mejoraActivoService';
 import { mejorasInmuebleService } from './mejorasInmuebleService';
@@ -296,14 +298,21 @@ export const calculateAEATAmortization = async (
 };
 
 /**
- * Get rental days for a property in a given year from contracts
+ * Los días que el inmueble estuvo arrendado en el ejercicio.
+ *
+ * Manda el dato que haya puesto el usuario a mano (`propertyDays`); si no lo
+ * hay, se deduce de sus contratos, sumando la UNIÓN de los tramos que solapan
+ * con el año. Antes se tomaba el MÁXIMO de esos tramos, y un piso alquilado de
+ * febrero a junio y otra vez de septiembre a diciembre contaba 150 días en vez
+ * de 272: la amortización salía corta y la imputación, que se calcula por
+ * resta, salía larga.
  */
 export const getRentalDaysForYear = async (
   propertyId: number,
   exerciseYear: number
 ): Promise<number> => {
   const db = await initDB();
-  
+
   // Prefer explicit occupancy settings from propertyDays when available
   const propertyDays = await db.getAllFromIndex('propertyDays', 'property-year', [propertyId, exerciseYear]);
   const occupancy = propertyDays?.[0] as any;
@@ -311,42 +320,15 @@ export const getRentalDaysForYear = async (
     return Math.max(0, occupancy.daysRented);
   }
 
-  // Fallback: derive from active contracts.
+  // Fallback: derive from contracts.
   // El índice 'propertyId' (keyPath legacy `propertyId`) está muerto: contractService
-  // solo escribe `inmuebleId`. Se filtra por el campo canónico sobre getAll().
+  // solo escribe `inmuebleId`. Se filtra por el campo canónico sobre getAll() —
+  // `esContratoDelInmueble`, que mira los DOS campos: el filtro que había aquí
+  // solo miraba `inmuebleId`, y los contratos importados llevan el espejo
+  // `propertyId`, así que no aportaban ni un día.
   const allContracts = await db.getAll('contracts');
-  const activeContracts = allContracts.filter(contract => {
-    if (contract.inmuebleId !== propertyId) return false;
-    const startYear = new Date(contract.fechaInicio).getFullYear();
-    const endYear = contract.fechaFin ? new Date(contract.fechaFin).getFullYear() : 9999;
-    return startYear <= exerciseYear && endYear >= exerciseYear;
-  });
-
-  if (activeContracts.length === 0) {
-    return 0;
-  }
-
-  // Calculate days for each contract and take the maximum
-  // (assuming property is fully rented when any contract is active)
-  let maxDays = 0;
-  
-  for (const contract of activeContracts) {
-    const yearStart = new Date(exerciseYear, 0, 1);
-    const yearEnd = new Date(exerciseYear, 11, 31);
-    
-    const contractStart = new Date(contract.fechaInicio);
-    const contractEnd = contract.fechaFin ? new Date(contract.fechaFin) : yearEnd;
-    
-    const effectiveStart = contractStart > yearStart ? contractStart : yearStart;
-    const effectiveEnd = contractEnd < yearEnd ? contractEnd : yearEnd;
-    
-    if (effectiveStart <= effectiveEnd) {
-      const days = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      maxDays = Math.max(maxDays, days);
-    }
-  }
-
-  return maxDays;
+  const delInmueble = allContracts.filter((c) => esContratoDelInmueble(c, propertyId));
+  return diasArrendadosEnAno(delInmueble, exerciseYear);
 };
 
 /**

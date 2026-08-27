@@ -10,6 +10,7 @@
 
 import { initDB, type Contract, type GastoInmueble, type MejoraInmueble, type Property } from './db';
 import { esContratoDelInmueble } from './inmuebleDelContrato';
+import { diasArrendadosEnAno } from './diasArrendados';
 
 export interface AmortizacionAcumuladaResult {
   declarada: number;              // suma de casilla 0131 con origen xml_aeat
@@ -75,57 +76,19 @@ const yearFromIso = (iso: string | undefined | null): number | null => {
 };
 
 /**
- * Cuenta los días del año `anio` en que el inmueble estaba arrendado.
- * En el año de venta cuenta solo hasta `sellDate`.
- * Se apoya en `contracts` filtrando por (fechaInicio | startDate, fechaFin | endDate).
+ * Los días del año `anio` en que el inmueble estuvo arrendado, contando el de
+ * la venta solo hasta `sellDate`.
  *
- * Exportado para que el helper de UI `amortizacionAcumuladaService` pueda
- * prorratear la fila del año de venta usando exactamente la misma lógica
- * que el motor (la suma de filas debe coincidir con el total del snapshot).
+ * La cuenta vive en `diasArrendados`: la unión de intervalos que se escribió
+ * aquí es la misma que necesitaba la amortización del ejercicio, que hasta
+ * ahora tomaba el máximo. Esto queda como el nombre por el que ya la llaman
+ * sus consumidores.
  */
 export const calcularDiasArrendadoAno = (
   contratos: Contract[],
   anio: number,
   sellDate: string,
-): number => {
-  const inicioAnio = new Date(`${anio}-01-01`);
-  const finAnio = new Date(`${anio}-12-31`);
-  const sellDateTs = new Date(sellDate).getTime();
-  if (Number.isNaN(sellDateTs)) return 0;
-  const finEfectivo = sellDateTs < finAnio.getTime() ? new Date(sellDateTs) : finAnio;
-  if (inicioAnio.getTime() > finEfectivo.getTime()) return 0;
-
-  const ranges: Array<{ start: number; end: number }> = [];
-  for (const c of contratos) {
-    const startIso = c.fechaInicio || c.startDate;
-    if (!startIso) continue;
-    const endIso = c.fechaFin || c.endDate || `${anio + 1}-12-31`;
-    const start = new Date(startIso).getTime();
-    const end = new Date(endIso).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-    const clipStart = Math.max(start, inicioAnio.getTime());
-    const clipEnd = Math.min(end, finEfectivo.getTime());
-    if (clipStart <= clipEnd) ranges.push({ start: clipStart, end: clipEnd });
-  }
-  if (ranges.length === 0) return 0;
-
-  // Merge overlapping ranges and sum days (inclusive).
-  ranges.sort((a, b) => a.start - b.start);
-  const merged: Array<{ start: number; end: number }> = [];
-  for (const r of ranges) {
-    const last = merged[merged.length - 1];
-    if (last && r.start <= last.end + 86_400_000) {
-      last.end = Math.max(last.end, r.end);
-    } else {
-      merged.push({ ...r });
-    }
-  }
-  let days = 0;
-  for (const r of merged) {
-    days += Math.floor((r.end - r.start) / 86_400_000) + 1;
-  }
-  return days;
-};
+): number => diasArrendadosEnAno(contratos, anio, sellDate);
 
 /**
  * Amortización acumulada híbrida:
