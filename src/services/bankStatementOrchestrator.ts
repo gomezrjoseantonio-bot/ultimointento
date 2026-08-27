@@ -19,6 +19,7 @@
 // cancelImportBatch lets the user undo a whole import in one click (e.g. wrong
 // file picked) — removes the inserted movements and the batch row.
 import { initDB, ImportBatch, Movement, MovementLearningRule, TreasuryEvent } from './db';
+import { cerrarLineaDeGastoDelEvento, type DbParaCierre } from './cierreLineaInmueble';
 import { contraparteDeBizum, pareceBizum } from './bizum';
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { bankProfileMatcher, BankFormat } from '../features/inbox/importers/bankProfileMatcher';
@@ -367,6 +368,11 @@ export async function confirmDecisions(
       statusConciliacion: 'match_manual',
       updatedAt: now,
     });
+    // La línea que DECLARA ese gasto también se cierra · si no, el pago queda
+    // conciliado en tesorería pero la declaración lo sigue viendo como una
+    // previsión y no lo deduce (`yaOcurrio`). Es el mismo cierre que hace el
+    // punteo manual, escrito una vez.
+    await cerrarLineaDeGastoDelEvento(db as unknown as DbParaCierre, event, movementId);
     movementIdsTouched.add(movementId);
 
     // Feed learning so subsequent imports auto-classify by learnKey.
