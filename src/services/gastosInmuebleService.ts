@@ -1,5 +1,7 @@
 import { initDB, GastoInmueble, GastoCategoria, type AEATBox } from './db';
 import { updateLineaInmueble, deleteLineaInmueble } from './lineasInmuebleService';
+import { getRentalDaysForYear } from './aeatAmortizationService';
+import { sumaDeducidaPorCasilla, esBisiesto } from './gastoDeducible';
 
 // Mapa categoria → casillaAEAT · tipado como `AEATBox` y no como `string` para
 // que una casilla que no exista no llegue muda a la declaración.
@@ -81,12 +83,25 @@ export const gastosInmuebleService = {
     }
   },
 
-  // Suma por casilla para un inmueble y ejercicio — alimenta el motor IRPF
+  /**
+   * Lo que deduce cada casilla de gasto en ese ejercicio — alimenta el motor IRPF.
+   *
+   * Antes sumaba el importe entero de todo lo que hubiera en el store. Ahora
+   * pasa por `sumaDeducidaPorCasilla`: fuera lo que aún no ha ocurrido, fuera
+   * lo que no es gasto, y lo que queda repartido por los días que el inmueble
+   * estuvo arrendado.
+   *
+   * Los días son los mismos que usa la amortización —la unión de los contratos
+   * (`getRentalDaysForYear`)— y la base, el año natural. Que las dos cuentas
+   * salgan del mismo sitio es el punto: un año no puede tener 272 días para la
+   * amortización y 365 para el IBI.
+   */
   async getSumaPorCasilla(inmuebleId: number, ejercicio: number): Promise<Record<string, number>> {
-    const gastos = await this.getByInmuebleYEjercicio(inmuebleId, ejercicio);
-    return gastos.reduce((acc, g) => {
-      acc[g.casillaAEAT] = (acc[g.casillaAEAT] || 0) + g.importe;
-      return acc;
-    }, {} as Record<string, number>);
+    const [gastos, diasArrendados] = await Promise.all([
+      this.getByInmuebleYEjercicio(inmuebleId, ejercicio),
+      getRentalDaysForYear(inmuebleId, ejercicio),
+    ]);
+    const diasDelAnio = esBisiesto(ejercicio) ? 366 : 365;
+    return sumaDeducidaPorCasilla(gastos, diasArrendados, diasDelAnio);
   },
 };

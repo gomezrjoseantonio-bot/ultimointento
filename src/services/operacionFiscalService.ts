@@ -8,6 +8,7 @@ import { OPEX_CATEGORY_TO_AEAT_BOX } from './aeatClassificationService';
 import { prestamosService } from './prestamosService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
+import { yaOcurrio } from './gastoDeducible';
 import { mapCompromisoToOpexRule } from './opexService';
 // El calendario y el importe salen de las MISMAS funciones que usa el motor de
 // previsiones de tesorería. Es el punto de todo este arreglo: mientras cada
@@ -171,9 +172,13 @@ const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
  * o casada con un movimiento del banco se queda como está aunque el compromiso
  * cambie después — subir la cuota de la comunidad no reescribe lo que pagaste
  * en enero.
+ *
+ * Es la negación de `yaOcurrio`, que es la misma pregunta desde el otro lado y
+ * la que usa la declaración para decidir qué deduce. Escrita una vez: los dos
+ * sitios tienen que estar de acuerdo sobre qué ha pasado ya.
  */
 function esLineaFiscalViva(g: GastoInmueble): boolean {
-  return g.estado === 'previsto' && g.movimientoId == null && g.estadoTesoreria !== 'confirmed';
+  return !yaOcurrio(g);
 }
 
 /** La mayor de dos fechas ISO · comparar cadenas `YYYY-MM-DD` ordena bien. */
