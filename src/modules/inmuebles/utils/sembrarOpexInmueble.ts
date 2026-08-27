@@ -15,13 +15,12 @@
 // ============================================================================
 
 import type { ModoExplotacionAlquiler } from '../../../services/db';
-import type { SubtipoAlquiler } from '../../../services/db/types-alquiler';
 import type { CompromisoRecurrente, PatronRecurrente } from '../../../types/compromisosRecurrentes';
 import type { Ambito } from '../../../services/conceptos/catalogoConceptos';
 import { conceptoPorId, proyectar } from '../../../services/conceptos/catalogoConceptos';
 import { resolverConcepto, parLegacyDe } from '../../../services/conceptos/mapaLegacy';
 import {
-  catalogoSugeridoPorModalidad,
+  catalogoDelInmueble,
   restarYaDados,
   type ConceptoInmuebleRef,
 } from '../wizards/utils/catalogoModalidadInmueble';
@@ -29,6 +28,7 @@ import {
   crearCompromiso,
   listarCompromisos,
 } from '../../../services/personal/compromisosRecurrentesService';
+import { getContractsByProperty } from '../../../services/contractService';
 
 /**
  * El id de concepto unificado de una ref del catálogo por modalidad · P8c.
@@ -46,24 +46,6 @@ function idConceptoDeRef(ref: ConceptoInmuebleRef): string | undefined {
 export type Periodicidad = 'mensual' | 'trimestral' | 'anual';
 
 // ─── Helpers puros (con tests) ───────────────────────────────────────────────
-
-/**
- * Los argumentos con los que el catálogo (que habla de `modalidad`+`unidadTipo`
- * del contrato) devuelve el catálogo del MODO de explotación del inmueble.
- */
-export function argsCatalogoDeModo(
-  modo: ModoExplotacionAlquiler,
-): { modalidad: SubtipoAlquiler; unidadTipo: 'vivienda' | 'habitacion' } {
-  switch (modo) {
-    case 'turistico':
-      return { modalidad: 'media_estancia', unidadTipo: 'vivienda' };
-    case 'habitaciones':
-      return { modalidad: 'larga_estancia', unidadTipo: 'habitacion' };
-    case 'completo':
-    default:
-      return { modalidad: 'larga_estancia', unidadTipo: 'vivienda' };
-  }
-}
 
 /** La ref de catálogo (tipo:subtipo) que representa un compromiso ya dado de alta. */
 export function refDeCompromiso(
@@ -149,13 +131,22 @@ export function construirSkeletonOpex(
 
 // ─── IO ──────────────────────────────────────────────────────────────────────
 
-/** Los conceptos que faltan por dar de alta en un inmueble, según su modo. */
+/**
+ * Los conceptos que faltan por dar de alta en un inmueble.
+ *
+ * El subtipo lo pone el CONTRATO, no el modo: el modo solo sabe de la forma de
+ * la unidad, y derivarlo de él dejaba a una media estancia con el catálogo de
+ * vivienda completa —siete conceptos en vez de dieciséis, cinco de ellos sin
+ * aparecer siquiera entre los disponibles—. Es el mismo `catalogoDelInmueble`
+ * que usa la ficha, para que las dos pantallas no puedan volver a discrepar.
+ */
 export async function conceptosASembrar(
   inmuebleId: number,
   modo: ModoExplotacionAlquiler,
+  hoy: Date = new Date(),
 ): Promise<ConceptoInmuebleRef[]> {
-  const { modalidad, unidadTipo } = argsCatalogoDeModo(modo);
-  const precargados = catalogoSugeridoPorModalidad(modalidad, unidadTipo).precargados;
+  const contratos = await getContractsByProperty(inmuebleId);
+  const precargados = catalogoDelInmueble(contratos, modo, hoy).precargados;
   const existentes = await listarCompromisos({ ambito: 'inmueble', inmuebleId });
   const yaDados = existentes
     .map((c) => refDeCompromiso(c))

@@ -124,6 +124,75 @@ export function catalogoSugeridoPorModalidad(
   }
 }
 
+// ── El catálogo de UN inmueble · un solo camino ──────────────────────────────
+//
+// De aquí abajo va la resolución de los dos argumentos de arriba a partir de lo
+// que el inmueble tiene de verdad. Existe porque había dos sitios preguntando
+// «¿qué gastos le sugiero a este inmueble?» y contestándose distinto: la ficha
+// leía el subtipo del CONTRATO y el modal de siembra lo derivaba del MODO DE
+// EXPLOTACIÓN, que no lo sabe. Cada uno tiene a mano un dato distinto de la
+// forma; el subtipo, en cambio, solo lo sabe el contrato.
+
+/** Lo que hace falta de un contrato para elegir catálogo. */
+export interface ContratoParaCatalogo {
+  modalidad?: SubtipoAlquiler;
+  fechaInicio?: string;
+  fechaFin?: string;
+}
+
+/** Si el contrato está vivo en esa fecha · los dos extremos cuentan. */
+export function contratoVigenteEn(c: ContratoParaCatalogo, hoy: Date): boolean {
+  if (!c.fechaInicio || !c.fechaFin) return false;
+  const ini = new Date(c.fechaInicio);
+  const fin = new Date(c.fechaFin);
+  if (Number.isNaN(ini.getTime()) || Number.isNaN(fin.getTime())) return false;
+  return ini <= hoy && hoy <= fin;
+}
+
+/**
+ * El subtipo del inmueble: el del contrato vigente, y si no hay, el del primero
+ * que haya. Un piso entre inquilinos no deja de ser lo que era.
+ */
+export function subtipoDelInmueble(
+  contratos: ContratoParaCatalogo[],
+  hoy: Date,
+): SubtipoAlquiler | undefined {
+  const vigente = contratos.find((c) => contratoVigenteEn(c, hoy));
+  return vigente?.modalidad ?? contratos[0]?.modalidad;
+}
+
+/**
+ * La forma de la unidad, dicha por cualquiera de los dos vocabularios que la
+ * nombran: `ExplotacionAlquiler.modo` (`habitaciones`) y el legacy
+ * `Property.modoExplotacion` (`por_habitaciones`). Traducirlos en un solo sitio
+ * es lo que impide que los dos caminos vuelvan a separarse.
+ *
+ * `mixto` cuenta como vivienda, que es lo que hacían ya los dos caminos: dónde
+ * cae es cosa de la separación de ejes, no de esto.
+ */
+export function formaDeUnidad(modo: string | undefined): 'vivienda' | 'habitacion' {
+  return modo === 'habitaciones' || modo === 'por_habitaciones' ? 'habitacion' : 'vivienda';
+}
+
+/**
+ * El catálogo de un inmueble. **Este es el único sitio que lo decide.**
+ *
+ * El subtipo sale del contrato porque es el único que lo sabe; el modo solo
+ * aporta la forma de la unidad. Sin contratos todavía, el modo es la única
+ * pista que hay y se usa tal cual (un inmueble marcado «turístico» al que aún
+ * no se le ha dado de alta ningún contrato sigue recibiendo su catálogo).
+ */
+export function catalogoDelInmueble(
+  contratos: ContratoParaCatalogo[],
+  modo: string | undefined,
+  hoy: Date,
+): CatalogoModalidad {
+  const delContrato = subtipoDelInmueble(contratos, hoy);
+  const modalidad: SubtipoAlquiler | undefined =
+    delContrato ?? (modo === 'turistico' ? 'corta_estancia' : undefined);
+  return catalogoSugeridoPorModalidad(modalidad, formaDeUnidad(modo));
+}
+
 const keyOf = (r: ConceptoInmuebleRef): string => `${r.tipoId}:${r.subtipoId}`;
 
 /**
