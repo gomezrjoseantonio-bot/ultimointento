@@ -582,7 +582,12 @@ export interface ResumenGlobalFiscal {
 
 // Tabla hardcoded de ventanas IRPF AEAT (datos públicos · campaña empieza ~abril
 // y cierra 30/06 del año siguiente al ejercicio).
-const VENTANAS_IRPF: Record<number, { from: string; to: string }> = {
+//
+// Exportada porque el suelo de la reconstrucción (`sueloReconstruccion.ts`) se
+// decide por la MISMA ventana: si la campaña de un ejercicio sigue viva, ese
+// ejercicio se puede reconstruir. Copiar las fechas allí sería el mismo dato
+// con dos dueños, y el día que la AEAT mueva una la copia se queda vieja.
+export const VENTANAS_IRPF: Record<number, { from: string; to: string }> = {
   2020: { from: '2021-04-07', to: '2021-06-30' },
   2021: { from: '2022-04-06', to: '2022-06-30' },
   2022: { from: '2023-04-11', to: '2023-06-30' },
