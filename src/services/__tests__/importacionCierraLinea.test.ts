@@ -5,6 +5,9 @@
 // DOS vías —la del punteo (`treasuryEventId`) y la del recurrente
 // (`origen`+`origenId`)—, que deja los tres campos que mira la declaración, y
 // que no toca lo que no es suyo.
+//
+// Que además escriba el importe y la fecha REALES del banco lo fija
+// `conciliacionDatosReales.test.ts`.
 
 import { cerrarLineaDeGastoDelEvento } from '../cierreLineaInmueble';
 import type { GastoInmueble, TreasuryEvent } from '../db';
@@ -40,6 +43,9 @@ const linea = (over: Partial<GastoInmueble> = {}): GastoInmueble =>
     ...over,
   }) as GastoInmueble;
 
+/** El movimiento del banco · el mismo importe y fecha que traía la previsión. */
+const mov = { id: 31, amount: -60, date: '2026-03-15', accountId: 4 };
+
 /** Una base con un solo store de gastos, que recuerda lo que se le escribe. */
 const conLineas = (lineas: GastoInmueble[]) => {
   const filas = lineas.map((l) => ({ ...l }));
@@ -65,7 +71,7 @@ const conLineas = (lineas: GastoInmueble[]) => {
 describe('cerrarLineaDeGastoDelEvento', () => {
   it('RECURRENTE · encuentra la línea por origenId y la cierra', async () => {
     const { db, filas } = conLineas([linea()]);
-    const cerrada = await cerrarLineaDeGastoDelEvento(db as never, evento(), 31);
+    const cerrada = await cerrarLineaDeGastoDelEvento(db as never, evento(), mov);
 
     expect(cerrada).toBe(true);
     expect(filas[0].estado).toBe('confirmado');
@@ -78,7 +84,7 @@ describe('cerrarLineaDeGastoDelEvento', () => {
     const { db, filas } = conLineas([
       linea({ origen: 'manual', origenId: undefined, treasuryEventId: 7 }),
     ]);
-    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), 31)).toBe(true);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), mov)).toBe(true);
     expect(filas[0].estado).toBe('confirmado');
   });
 
@@ -95,22 +101,23 @@ describe('cerrarLineaDeGastoDelEvento', () => {
         return db.getAllFromIndex(store, index, clave);
       },
     };
-    expect(await cerrarLineaDeGastoDelEvento(sinIndice as never, evento(), 31)).toBe(true);
+    expect(await cerrarLineaDeGastoDelEvento(sinIndice as never, evento(), mov)).toBe(true);
     expect(filas[0].estado).toBe('confirmado');
   });
 
-  it('conserva el resto de la línea · importe, concepto y casilla no se tocan', async () => {
+  // El banco dice CUÁNTO y CUÁNDO; qué es sigue siendo del usuario. Que el
+  // importe pase a ser el real cuando difiere lo fija `conciliacionDatosReales`.
+  it('conserva la clasificación · concepto y casilla no se tocan', async () => {
     const { db, filas } = conLineas([linea({ importe: 60, casillaAEAT: '0109' })]);
-    await cerrarLineaDeGastoDelEvento(db as never, evento(), 31);
-    expect(filas[0].importe).toBe(60);
+    await cerrarLineaDeGastoDelEvento(db as never, evento(), mov);
     expect(filas[0].casillaAEAT).toBe('0109');
     expect(filas[0].concepto).toBe('Comunidad');
   });
 
   it('es idempotente · volver a conciliar no rompe nada', async () => {
     const { db, filas } = conLineas([linea()]);
-    await cerrarLineaDeGastoDelEvento(db as never, evento(), 31);
-    await cerrarLineaDeGastoDelEvento(db as never, evento(), 31);
+    await cerrarLineaDeGastoDelEvento(db as never, evento(), mov);
+    await cerrarLineaDeGastoDelEvento(db as never, evento(), mov);
     expect(filas).toHaveLength(1);
     expect(filas[0].estado).toBe('confirmado');
   });
@@ -119,40 +126,40 @@ describe('cerrarLineaDeGastoDelEvento', () => {
   // del recurrente: una `previsto` con su origenId y otra `confirmado` al lado.
   it('sin línea asociada NO crea ninguna', async () => {
     const { db, filas } = conLineas([]);
-    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), 31)).toBe(false);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), mov)).toBe(false);
     expect(filas).toHaveLength(0);
   });
 
   it('un evento que no es de inmueble no toca nada', async () => {
     const { db, filas } = conLineas([linea()]);
     const personal = evento({ ambito: 'PERSONAL' as never, inmuebleId: undefined });
-    expect(await cerrarLineaDeGastoDelEvento(db as never, personal, 31)).toBe(false);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, personal, mov)).toBe(false);
     expect(filas[0].estado).toBe('previsto');
   });
 
   it('un ingreso tampoco · aunque sea de un inmueble', async () => {
     const { db, filas } = conLineas([linea()]);
     const ingreso = evento({ sourceType: 'contrato' as never, sourceId: undefined });
-    expect(await cerrarLineaDeGastoDelEvento(db as never, ingreso, 31)).toBe(false);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, ingreso, mov)).toBe(false);
     expect(filas[0].estado).toBe('previsto');
   });
 
   it('una línea de un ejercicio DECLARADO no se degrada', async () => {
     const { db, filas } = conLineas([linea({ estado: 'declarado' })]);
-    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), 31)).toBe(false);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), mov)).toBe(false);
     expect(filas[0].estado).toBe('declarado');
     expect(filas[0].movimientoId).toBeUndefined();
   });
 
   it('la línea de OTRO compromiso no se toca', async () => {
     const { db, filas } = conLineas([linea({ origenId: 'recurrente-99-2026-3' })]);
-    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), 31)).toBe(false);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), mov)).toBe(false);
     expect(filas[0].estado).toBe('previsto');
   });
 
   it('ni la del mismo compromiso en otro mes', async () => {
     const { db, filas } = conLineas([linea({ origenId: 'recurrente-42-2026-4' })]);
-    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), 31)).toBe(false);
+    expect(await cerrarLineaDeGastoDelEvento(db as never, evento(), mov)).toBe(false);
     expect(filas[0].estado).toBe('previsto');
   });
 });

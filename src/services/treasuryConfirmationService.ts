@@ -31,6 +31,7 @@ import {
   type CategoryDef,
 } from './categoryCatalog';
 import { recalculateAccountBalance } from './treasuryEventsService';
+import { camposDeCierre } from './cierreLineaInmueble';
 
 // Fire-and-forget recálculo del saldo de las cuentas afectadas. Errores se
 // loguean pero no rompen la operación principal de tesorería.
@@ -275,6 +276,10 @@ function buildMovementPayload({
     valueDate: finalDate,
     amount: signedAmount,
     description: finalDescription,
+    // El punteo no tiene texto de banco: aquí los dos son el mismo. Se escribe
+    // igualmente para que «cómo lo llama el usuario» viva SIEMPRE en el mismo
+    // campo, venga el movimiento de puntear o de conciliar un extracto.
+    descripcionPrevision: finalDescription,
     counterparty: finalCounterparty || undefined,
     // PR5-HOTFIX v3 · proveedor estructurado propagado al movement.
     providerName: finalProviderName || undefined,
@@ -395,8 +400,6 @@ export async function confirmTreasuryEvent(
     if (lineaStore === 'gastosInmueble') {
       const linea = {
         inmuebleId: existingEvent.inmuebleId,
-        ejercicio,
-        fecha: finalDate,
         concepto: finalDescription,
         // Categoría derivada del catálogo canónico (con fallback a heurístico
         // sobre el label legado para no perder la clasificación fiscal).
@@ -405,20 +408,26 @@ export async function confirmTreasuryEvent(
           categoryDef?.casillaAEAT
           ?? resolveCasillaAEAT(existingEvent.categoryKey ?? existingEvent.categoryLabel)
           ?? '0106',
-        importe: Math.abs(finalAmount),
         // origen: 'tesoreria' alinea con el resto de servicios que inyectan
         // desde Conciliación (ver propertyExpenses.test y fiscal services).
         origen: 'tesoreria' as const,
-        estado: 'confirmado' as const,
-        estadoTesoreria: 'confirmed' as const,
         // PR5-HOTFIX v3 · separamos nombre y NIF del proveedor.
         proveedorNombre: finalLineaProviderName || undefined,
         proveedorNIF: finalLineaProviderNif || undefined,
         invoiceNumber: finalLineaInvoiceNumber || undefined,
-        cuentaBancaria:
-          accountIdForLinea != null ? String(accountIdForLinea) : undefined,
-        movimientoId: String(movementId),
-        treasuryEventId: eventId,
+        // El cierre y el dato de la operación —importe, fecha, ejercicio,
+        // cuenta— los escribe la MISMA pieza que usa la conciliación por
+        // extracto. Repetirlos aquí es como los dos caminos divergieron la vez
+        // anterior (#1810).
+        ...camposDeCierre(
+          {
+            id: movementId,
+            amount: finalAmount,
+            date: finalDate,
+            accountId: accountIdForLinea,
+          },
+          eventId,
+        ),
         // PR5-HOTFIX v2: identificador canónico + sub-tipo
         categoryKey: existingEvent.categoryKey ?? categoryDef?.key,
         subtypeKey: existingEvent.subtypeKey,

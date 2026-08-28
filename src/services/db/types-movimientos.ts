@@ -43,7 +43,29 @@ export interface Movement {
   date: string; // booking_date in treasury_transactions
   valueDate?: string; // value_date in treasury_transactions
   amount: number;
+  /**
+   * El texto CRUDO del banco en todo lo que llega de un extracto ("ADEUDO
+   * RECIBO AQUALIA…"), y la descripción de la previsión en lo que nace de
+   * puntear.
+   *
+   * En un movimiento importado NO se toca nunca, ni siquiera al conciliarlo
+   * contra una previsión: `hashMovement` dedupica por él, así que reescribirlo
+   * haría que reimportar un extracto solapado no reconociera la línea y
+   * duplicara el cargo. La descripción de la previsión convive aparte, en
+   * `descripcionPrevision`.
+   */
   description: string;
+  /**
+   * Cómo llama el USUARIO a esta operación ("Agua Tenderina"), frente al churro
+   * del banco que vive en `description`.
+   *
+   * Los dos coexisten y ninguno pisa al otro: el del banco es la prueba, y este
+   * es la clasificación —lo que hace legibles los informes y lo que se cruza
+   * con la fiscalidad—. Al conciliar una línea del extracto contra una
+   * previsión, la descripción de esa previsión se guarda aquí; sin este campo
+   * se perdía y solo sobrevivía el texto del banco.
+   */
+  descripcionPrevision?: string;
   counterparty?: string;
   // PR5-HOTFIX v3: campos estructurados de proveedor. `counterparty` se
   // mantiene por compatibilidad; los nuevos flujos escriben `providerName`.

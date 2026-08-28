@@ -483,7 +483,18 @@ export interface GastoInmueble {
   id?: number;
   inmuebleId: number;
   ejercicio: number;
+  /**
+   * Fecha de CARGO · la que fija el `ejercicio` (criterio de caja). Al conciliar
+   * pasa a ser la del extracto: un recibo previsto el 28-12 que el banco carga
+   * el 3-1 es gasto del año nuevo.
+   */
   fecha: string;
+  /**
+   * Fecha VALOR del extracto, cuando el banco la trae. Se guarda para no
+   * perderla —es la que cuenta para intereses y para cotejar con el banco—,
+   * pero NO decide el ejercicio: eso lo hace la fecha de cargo.
+   */
+  fechaValor?: string;
   concepto: string;
   categoria: GastoCategoria;
   casillaAEAT: AEATBox;
