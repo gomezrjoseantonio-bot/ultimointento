@@ -6,7 +6,7 @@
 // Sin buscador ni chips de filtro (no están en el mockup).
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Save, Copy, Sparkles, Upload } from 'lucide-react';
 import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
 import ConfirmationModal from '../../../../components/common/ConfirmationModal';
@@ -96,6 +96,25 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   const toggleRow = useCallback((id: number) => {
     setExpandedRowId((prev) => (prev === id ? null : id));
   }, []);
+
+  // T3 · `?gasto=<id>` abre esa ficha directamente.
+  //
+  // Es lo que hace que el enlace desde una previsión de Tesorería lleve AL
+  // gasto y no a una lista donde volver a buscarlo por el nombre. Se espera a
+  // que el gasto esté cargado —si no, el id llega antes que su fila y no se
+  // abre nada— y el parámetro se consume: dejarlo puesto reabriría la ficha
+  // cada vez que el usuario la cerrara.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const gastoParam = searchParams.get('gasto');
+  useEffect(() => {
+    if (!gastoParam) return;
+    const id = Number(gastoParam);
+    if (!Number.isFinite(id) || !compromisos.some((c) => c.id === id)) return;
+    setExpandedRowId(id);
+    const siguiente = new URLSearchParams(searchParams);
+    siguiente.delete('gasto');
+    setSearchParams(siguiente, { replace: true });
+  }, [gastoParam, compromisos, searchParams, setSearchParams]);
 
   const [deleteTarget, setDeleteTarget] = useState<(CompromisoRecurrente & { id: number }) | null>(null);
   const [deleting, setDeleting] = useState(false);

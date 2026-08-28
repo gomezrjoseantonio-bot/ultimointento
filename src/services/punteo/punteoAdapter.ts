@@ -7,6 +7,7 @@
 // ============================================================================
 
 import type { TreasuryEvent, Movement } from '../db';
+import { rutaDelGastoRecurrente } from './enlaceGastoRecurrente';
 import {
   getCategoryByKey,
   getSubtypeByKey,
@@ -385,6 +386,9 @@ export function eventoAItem(
         : undefined,
     categoryKey: e.categoryKey,
     subtypeKey: e.subtypeKey,
+    // T3 · a dónde ir a corregir el ciclo o poner fin. `undefined` si no nació
+    // de un gasto recurrente.
+    gastoRecurrente: rutaDelGastoRecurrente(e) ?? undefined,
   };
 }
 

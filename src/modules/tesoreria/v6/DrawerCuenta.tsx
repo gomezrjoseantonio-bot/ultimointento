@@ -69,6 +69,14 @@ export interface DrawerCuentaProps {
   onGuardarFicha?: (item: ItemPunteo | null, valores: GuardadoFicha) => void | Promise<void>;
   /** Eliminar la previsión desde la ficha. */
   onEliminar?: (item: ItemPunteo) => void | Promise<void>;
+  /**
+   * T3 · ir al gasto recurrente que emitió la previsión.
+   *
+   * Solo en la bandeja: es donde aparece el cargo que no debería estar, y es la
+   * alternativa a borrarlo —que no arregla nada, porque el gasto lo reemite el
+   * mes siguiente—.
+   */
+  onIrAlGasto?: (item: ItemPunteo) => void;
   /** Cuentas e inmuebles para los selectores de la ficha. */
   cuentas?: Account[];
   inmuebles?: Array<{ id: number; alias: string }>;
@@ -96,6 +104,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   onDespuntear,
   onGuardarFicha,
   onEliminar,
+  onIrAlGasto,
   cuentas = [],
   inmuebles = [],
   tarjetas = [],
@@ -326,6 +335,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 onConfirmar={onConfirmar}
                 onNoPaso={onDescartar}
                 onEditar={(item) => setFicha({ item })}
+                onIrAlGasto={onIrAlGasto}
               />
             )
           ) : pestana === 'confirmados' ? (

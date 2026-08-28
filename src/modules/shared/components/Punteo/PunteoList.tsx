@@ -154,6 +154,13 @@ export interface PunteoListProps {
   rowVariant?: RowVariant;
   /** Lápiz de la fila · solo en `rowVariant: 'tesoreria'`. */
   onEditar?: (item: ItemPunteo) => void;
+  /**
+   * T3 · ir al gasto recurrente que emitió esta previsión.
+   *
+   * Sale solo en las filas que traen `gastoRecurrente`: las demás no tienen
+   * ficha que abrir. Lo navega quien recibe el callback, no la lista.
+   */
+  onIrAlGasto?: (item: ItemPunteo) => void;
 
   /**
    * 6 · SOLO LECTURA · la lista se mira, no se toca.
@@ -203,6 +210,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   gruposPlegables = false,
   rowVariant = 'default',
   onEditar,
+  onIrAlGasto,
   soloLectura = false,
   conLeyenda = false,
 }) => {
@@ -384,6 +392,23 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 }}
               >
                 <Icons.Edit size={13} strokeWidth={1.8} />
+              </button>
+            )}
+            {/* T3 · el atajo a su gasto recurrente. Solo donde hay uno detrás:
+                una previsión de contrato o anotada a mano no lo tiene, y un
+                acceso que no lleva a ninguna parte es peor que ninguno. */}
+            {onIrAlGasto && it.gastoRecurrente && it.estado === 'previsto' && (
+              <button
+                type="button"
+                className={styles.rowAction}
+                aria-label={`Ir al gasto recurrente de ${it.concepto}`}
+                title="Ir al gasto recurrente"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onIrAlGasto(it);
+                }}
+              >
+                <Icons.ExternalLink size={13} strokeWidth={1.8} />
               </button>
             )}
             {it.estado === 'previsto' && (

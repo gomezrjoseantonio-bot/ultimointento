@@ -200,6 +200,50 @@ describe('5 · anatomía de fila de Tesorería', () => {
     expect(screen.queryByText(/No pasó este mes/i)).not.toBeInTheDocument();
   });
 
+  // T3 · el atajo a la ficha del gasto que emitió la previsión.
+  it('el enlace al gasto sale SOLO en la previsión que viene de un gasto recurrente', () => {
+    render(
+      <PunteoList
+        {...base}
+        items={[
+          item({ key: 'evt-1', concepto: 'Recibo luz', gastoRecurrente: '/personal/gastos?gasto=42' }),
+          item({ key: 'evt-2', refId: 2, concepto: 'Renta Tenderina' }),
+        ]}
+        rowVariant="tesoreria"
+        onIrAlGasto={jest.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('Ir al gasto recurrente de Recibo luz')).toBeInTheDocument();
+    // Una renta de contrato no tiene ficha de gasto que abrir.
+    expect(screen.queryByLabelText('Ir al gasto recurrente de Renta Tenderina')).not.toBeInTheDocument();
+  });
+
+  it('y llama a onIrAlGasto sin abrir el editor', () => {
+    const onIrAlGasto = jest.fn();
+    render(
+      <PunteoList
+        {...base}
+        items={[item({ concepto: 'Recibo luz', gastoRecurrente: '/personal/gastos?gasto=42' })]}
+        rowVariant="tesoreria"
+        onIrAlGasto={onIrAlGasto}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Ir al gasto recurrente de Recibo luz'));
+    expect(onIrAlGasto).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/No pasó este mes/i)).not.toBeInTheDocument();
+  });
+
+  it('sin quien lo atienda, el enlace no se pinta', () => {
+    render(
+      <PunteoList
+        {...base}
+        items={[item({ concepto: 'Recibo luz', gastoRecurrente: '/personal/gastos?gasto=42' })]}
+        rowVariant="tesoreria"
+      />,
+    );
+    expect(screen.queryByLabelText(/^ir al gasto recurrente/i)).not.toBeInTheDocument();
+  });
+
   it('el ✕ llama a onNoPaso sin abrir el editor', () => {
     const onNoPaso = jest.fn();
     render(<PunteoList {...base} rowVariant="tesoreria" onNoPaso={onNoPaso} />);

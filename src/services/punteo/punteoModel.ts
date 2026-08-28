@@ -173,6 +173,16 @@ export interface ItemPunteo {
   subtypeKey?: string;
   /** Concepto fino guardado (F2) · para reabrir la ficha en el subtipo exacto. */
   conceptoId?: string;
+  /**
+   * T3 · ruta de la ficha del gasto recurrente que emitió esta previsión.
+   *
+   * Solo la traen las que salen de un compromiso: una previsión de contrato o
+   * anotada a mano no tiene gasto detrás que abrir. Se resuelve en el adaptador
+   * (`rutaDelGastoRecurrente`) y no en la fila, porque la fila ya no ve el
+   * evento — y sin esto, corregir el ciclo de un recibo obligaba a salir de
+   * Tesorería y buscarlo por el nombre.
+   */
+  gastoRecurrente?: string;
 }
 
 export interface DiscrepanciaPunteo {

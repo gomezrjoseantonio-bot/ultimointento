@@ -56,6 +56,8 @@ export interface DrawerCalendarioProps {
   onCerrar: () => void;
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
   onDescartar: (item: ItemPunteo) => void | Promise<void>;
+  /** T3 · ir al gasto recurrente que emitió la previsión (§ enlace). */
+  onIrAlGasto?: (item: ItemPunteo) => void;
   /**
    * §4.5 · guardar desde la ficha que abre el lápiz.
    *
@@ -99,6 +101,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   onCerrar,
   onConfirmar,
   onDescartar,
+  onIrAlGasto,
   onGuardarFicha,
   onEliminar,
   inmuebles = [],
@@ -413,6 +416,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                           onConfirmar={onConfirmar}
                           onNoPaso={onDescartar}
                           onEditar={(item) => setFicha({ item })}
+                          onIrAlGasto={onIrAlGasto}
                         />
                       </div>
                     )}
@@ -562,6 +566,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   // haber guardado nada: peor que no ofrecer el botón, porque
                   // el usuario se queda creyendo que lo ha hecho.
                   onEditar={onGuardarFicha ? (item) => setFicha({ item }) : undefined}
+                  onIrAlGasto={onIrAlGasto}
                   onConfirmar={onConfirmar}
                   onNoPaso={onDescartar}
                 />

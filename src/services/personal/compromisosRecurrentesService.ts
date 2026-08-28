@@ -19,14 +19,13 @@ import {
   aplicarVariacion,
 } from './patronCalendario';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
+import {
+  borrarEventosFuturosCompromiso,
+  persistirPrevisionesCompromiso,
+} from './previsionesDelCompromiso';
 import { metodoDeMovimiento } from '../metodoDePago';
 import { cuentaDelCargo, elMetodoDecideLaCuenta } from '../cuentasPorMetodoPago';
 import { listarTarjetas } from '../tarjetasService';
-import {
-  claveOrigenPrevision,
-  esPrevisionDeCompromiso,
-  esPrevisionIntocable,
-} from './previsionesIdempotencia';
 import {
   ensamblarRecibos,
   eventoDeRecibo,
@@ -124,10 +123,16 @@ export async function actualizarCompromiso(
   };
   await db.put(STORE_COMPROMISOS, actualizado);
 
-  // Re-genera eventos solo si cambia algo que afecta a la proyección
-  await borrarEventosFuturosCompromiso(id);
+  // Re-genera eventos solo si cambia algo que afecta a la proyección.
+  //
+  // El barrido va DENTRO de `regenerarEventosCompromiso`, que lo hace mirando
+  // el ciclo nuevo (B9). Hacerlo aquí antes lo dejaba sin efecto: ya se había
+  // llevado los vencidos cuando llegaba quien sabía cuáles salvar.
   if (actualizado.estado === 'activo') {
     await regenerarEventosCompromiso(actualizado);
+  } else {
+    // Un gasto que deja de estar activo no proyecta: fuera todo lo vivo.
+    await borrarEventosFuturosCompromiso(id);
   }
 
   return actualizado;
@@ -656,60 +661,6 @@ export function generarEventosHistoricos(
 // `previsionesIdempotencia.ts`, que es donde se escribe la regla una sola vez.
 
 /**
- * Borra las previsiones VIVAS (status='predicted', sin conciliar y sin
- * descartar) del compromiso indicado. Las confirmadas/ejecutadas (realidad
- * bancaria) y las descartadas (decisión del usuario) se respetan.
- */
-export async function borrarEventosFuturosCompromiso(compromisoId: number): Promise<void> {
-  const db = await initDB();
-  const tx = db.transaction(STORE_TREASURY, 'readwrite');
-  const store = tx.objectStore(STORE_TREASURY);
-  const idx = store.index('sourceId');
-  let cursor = await idx.openCursor(IDBKeyRange.only(compromisoId));
-  while (cursor) {
-    const ev = cursor.value as TreasuryEvent;
-    if (esPrevisionDeCompromiso(ev) && !esPrevisionIntocable(ev)) {
-      await cursor.delete();
-    }
-    cursor = await cursor.continue();
-  }
-  await tx.done;
-}
-
-/**
- * Persiste un lote de previsiones del compromiso saltándose las claves de
- * origen ya ocupadas. Se llama SIEMPRE después de
- * `borrarEventosFuturosCompromiso`: lo que ha sobrevivido al borrado es, por
- * definición, intocable, así que su periodo no se vuelve a emitir. Dedupe
- * también dentro del propio lote.
- */
-async function persistirPrevisionesCompromiso(
-  compromisoId: number,
-  eventos: Array<Omit<TreasuryEvent, 'id'>>,
-): Promise<number> {
-  if (eventos.length === 0) return 0;
-  const db = await initDB();
-  const tx = db.transaction(STORE_TREASURY, 'readwrite');
-  const store = tx.objectStore(STORE_TREASURY);
-
-  const supervivientes = (await store.index('sourceId').getAll(compromisoId)) as TreasuryEvent[];
-  const ocupadas = new Set(
-    supervivientes.filter(esPrevisionDeCompromiso).map(claveOrigenPrevision),
-  );
-
-  let creados = 0;
-  for (const ev of eventos) {
-    const clave = claveOrigenPrevision(ev);
-    if (ocupadas.has(clave)) continue;
-    ocupadas.add(clave);
-    await store.add(ev as TreasuryEvent);
-    creados += 1;
-  }
-  await tx.done;
-  return creados;
-}
-
-/**
  * Regenera las previsiones del compromiso. Idempotente: ejecutarlo una vez o
  * cinco deja exactamente el mismo resultado. Confirmadas, conciliadas y
  * descartadas se respetan y su periodo NO se reemite.
@@ -725,8 +676,16 @@ export async function regenerarEventosCompromiso(
   if (!compromiso.id) {
     throw new Error('regenerarEventosCompromiso requiere compromiso.id');
   }
-  await borrarEventosFuturosCompromiso(compromiso.id);
   const tarjeta = await tarjetaDelCompromiso(compromiso);
+  // Los vencidos del ciclo se conservan (B9) SALVO en los dos casos donde este
+  // compromiso no va a emitir nada suyo hacia atrás con que compararlos:
+  //   · `desdeOverride` — la reactivación retoma desde una fecha concreta y el
+  //     hueco anterior queda vacío a propósito (§2.4);
+  //   · crédito aplazado — su dinero sale en el RECIBO de la tarjeta, así que
+  //     una previsión propia suya es residuo de cuando no lo pagaba con ella.
+  const conservaVencidos =
+    desdeOverride == null && !vaEnRecibo(compromiso, tarjeta) ? compromiso : undefined;
+  await borrarEventosFuturosCompromiso(compromiso.id, conservaVencidos);
   // Las cuentas solo hacen falta cuando el medio decide la cuenta —efectivo y
   // Bizum—. Para el resto, `cuentaDelCargo` respeta lo guardado y leerlas sería
   // E/S por nada, multiplicada por cada gasto en el bootstrap.
@@ -795,5 +754,6 @@ export async function regenerarTodosLosEventos(
 
 // ─── Re-exports útiles ─────────────────────────────────────────────────────
 
+export { borrarEventosFuturosCompromiso } from './previsionesDelCompromiso';
 export { expandirPatron, calcularImporte, aplicarVariacion } from './patronCalendario';
 export type { PatronRecurrente, ImporteEvento };

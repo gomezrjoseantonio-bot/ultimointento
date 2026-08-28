@@ -141,6 +141,19 @@ const TesoreriaV6Page: React.FC = () => {
    */
   const cerrarCuenta = useCallback(() => navigate('/tesoreria', { replace: true }), [navigate]);
   /**
+   * T3 · desde la previsión, a su gasto recurrente.
+   *
+   * El cargo que sobra en la bandeja casi nunca se arregla en la bandeja: se
+   * arregla en el gasto que lo emite —corrigiendo el ciclo o poniéndole fin—.
+   * La ruta la resuelve el adaptador y viaja en la fila; aquí solo se navega.
+   */
+  const irAlGasto = useCallback(
+    (item: ItemPunteo) => {
+      if (item.gastoRecurrente) navigate(item.gastoRecurrente);
+    },
+    [navigate],
+  );
+  /**
    * §4.7 · las dos puertas del extracto. `cuenta: null` es la puerta global del
    * hero (se detecta por IBAN); con cuenta, ya viene fijada desde el drawer.
    * Un objeto y no un booleano porque "cerrado" y "abierto sin cuenta" son
@@ -897,6 +910,7 @@ const TesoreriaV6Page: React.FC = () => {
           month0={month0}
           hoy={hoy}
           onCerrar={cerrarCuenta}
+          onIrAlGasto={irAlGasto}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
           onDespuntear={despuntearItem}
@@ -1003,6 +1017,7 @@ const TesoreriaV6Page: React.FC = () => {
         month0={month0}
         hoy={hoy}
         onCerrar={cerrarCuenta}
+        onIrAlGasto={irAlGasto}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
         onDespuntear={despuntearItem}
@@ -1057,6 +1072,7 @@ const TesoreriaV6Page: React.FC = () => {
           saldoPorCuenta={saldoPorCuenta}
           saldoTotalHoy={kpis.saldo}
           hoy={hoy}
+          onIrAlGasto={irAlGasto}
           aliasInmueble={aliasInmueble}
           inmuebles={inmuebles}
           tarjetas={tarjetasElegibles}
