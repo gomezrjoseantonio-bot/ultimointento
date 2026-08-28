@@ -18,7 +18,23 @@ export type PatronRecurrente =
   | { tipo: 'mensualDiaRelativo'; referencia: ReferenciaDiaRelativo }
   | { tipo: 'cadaNMeses'; cadaNMeses: number; mesAncla: number; dia: number }
   | { tipo: 'trimestralFiscal'; diaPago: number }
-  | { tipo: 'anualMesesConcretos'; mesesPago: number[]; diaPago: number }
+  // Meses concretos del año (IBI de junio y noviembre, seguro anual…).
+  //
+  // `diaPagoPorMes` deja que cada mes cargue SU día: el IBI de Asturias llega
+  // el 15 de junio y el 11 de noviembre, no el mismo día las dos veces. Es
+  // opcional y `diaPago` sigue siendo el respaldo — un patrón guardado antes de
+  // que existiera se comporta igual que antes.
+  //
+  // El día vive AQUÍ y no en el importe a propósito: las fechas de las
+  // previsiones salen de expandir el patrón, y el importe solo responde «cuánto
+  // toca en esta fecha». Ponerlo en los dos sitios sería el mismo dato con dos
+  // dueños.
+  | {
+      tipo: 'anualMesesConcretos';
+      mesesPago: number[];
+      diaPago: number;
+      diaPagoPorMes?: Record<number, number> /* mes (1-12) → día · respaldo: `diaPago` */;
+    }
   | { tipo: 'pagasExtra'; mesesExtra: number[]; referencia: ReferenciaDiaRelativo }
   | { tipo: 'variablePorMes'; mesesPago: number[]; importeObjetivoAnual: number }
   | { tipo: 'puntual'; fecha: string; importe: number };

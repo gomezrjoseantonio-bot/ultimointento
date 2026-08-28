@@ -19,6 +19,7 @@ import { formatEur } from '../utils/amountFormatter';
 import { formatPattern } from '../utils/patternFormatter';
 import { getSubtypeIcon } from '../utils/iconMapping';
 import { patronToMeses, diaDePatron, mesesToPatron, mesesDeAtajo, type AtajoRejilla } from '../utils/rejillaMeses';
+import { resumenDeCargos, MESES_CORTOS } from '../utils/cargosPorPago';
 
 interface ExpenseRowProps {
   compromiso: CompromisoRecurrente & { id: number };
@@ -37,12 +38,11 @@ interface ExpenseRowProps {
 // cuenta 172 · al año 104 · menú 38 (§3.1 · sin scroll horizontal).
 const ROW_GRID = '52px 30px minmax(0,1fr) 128px 198px 172px 104px 38px';
 
-const MESES_BAJA = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 function fechaBajaLabel(iso?: string): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MESES_BAJA[d.getMonth()] ?? ''} ${d.getFullYear()}`;
+  return `${d.getDate()} ${MESES_CORTOS[d.getMonth()] ?? ''} ${d.getFullYear()}`;
 }
 
 function accountLabelOf(account: Account | null): string {
@@ -168,6 +168,12 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
   };
 
   const importeEditable = c.importe.modo === 'fijo';
+  // Un gasto por cargos tiene su calendario metido en el importe: los meses del
+  // patrón son los que tienen cifra. El atajo de «cuándo» reescribe el patrón
+  // entero, así que aquí dejaría meses sin importe — y eso no da un hueco, hace
+  // que `calcularImporte` LANCE en las seis pantallas que lo llaman sin
+  // try/catch. Se cambia en la ficha, que sabe mover los dos a la vez.
+  const esPorCargos = c.importe.modo === 'porPago';
   const cuandoAtajoActual = ((): AtajoRejilla | '' => {
     const meses = patronToMeses(c.patron);
     if (meses.length === 12) return 'todos';
@@ -271,6 +277,11 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
             }}
             style={impInput}
           />
+        ) : esPorCargos ? (
+          // «—» hacía parecer que el IBI de junio y noviembre no tenía cifra.
+          <span style={impReadonly} title={resumenDeCargos(c.importe, c.patron, true)}>
+            {resumenDeCargos(c.importe, c.patron)}
+          </span>
         ) : (
           <span style={impReadonly}>{impCargo != null ? formatEur(impCargo) : '—'}</span>
         )}
@@ -281,17 +292,20 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
         <select
           aria-label={`Cuándo se cobra ${c.alias}`}
           value={cuandoAtajoActual}
+          disabled={esPorCargos}
+          title={esPorCargos ? 'Los meses salen de los cargos · se cambian en la ficha' : undefined}
           onChange={(e) => {
             if (e.target.value) void cambiarCuando(e.target.value as AtajoRejilla);
           }}
           style={cellSelect}
         >
-          {cuandoAtajoActual === '' && <option value="">{pattern.primary}</option>}
-          {CUANDO_ATAJOS.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.label} · día {diaDePatron(c.patron)}
-            </option>
-          ))}
+          {(cuandoAtajoActual === '' || esPorCargos) && <option value="">{pattern.primary}</option>}
+          {!esPorCargos &&
+            CUANDO_ATAJOS.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label} · día {diaDePatron(c.patron)}
+              </option>
+            ))}
         </select>
       </div>
 

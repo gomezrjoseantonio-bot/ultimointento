@@ -246,7 +246,11 @@ export function expandirPatron(
       while (y <= dHasta.getFullYear()) {
         for (const mes1 of patron.mesesPago) {
           const m0 = (mes1 - 1 + 12) % 12;
-          const f = fechaDiaFijoDelMes(y, m0, patron.diaPago);
+          // Cada mes puede cargar SU día (IBI: 15 de junio · 11 de noviembre).
+          // Sin día propio manda `diaPago`, que es como se comportaba antes de
+          // que `diaPagoPorMes` existiera.
+          const diaDelMes = patron.diaPagoPorMes?.[mes1];
+          const f = fechaDiaFijoDelMes(y, m0, finito(diaDelMes) ? diaDelMes : patron.diaPago);
           if (compararSoloFecha(f, dDesde) >= 0 && compararSoloFecha(f, dHasta) <= 0) {
             fechas.push(f);
           }

@@ -104,6 +104,60 @@ describe('expandirPatron', () => {
       );
       expect(fechas.map(iso)).toEqual(['2026-06-05', '2026-11-05']);
     });
+
+    // El IBI de Asturias no llega el mismo día las dos veces: el 15 de junio y
+    // el 11 de noviembre. `diaPagoPorMes` es el sitio donde eso se dice, y el
+    // único: el importe nunca decide cuándo.
+    it('cada mes puede cargar SU día', () => {
+      const fechas = expandirPatron(
+        {
+          tipo: 'anualMesesConcretos',
+          mesesPago: [6, 11],
+          diaPago: 15,
+          diaPagoPorMes: { 6: 15, 11: 11 },
+        },
+        '2026-01-01',
+        '2026-12-31',
+      );
+      expect(fechas.map(iso)).toEqual(['2026-06-15', '2026-11-11']);
+    });
+
+    it('el mes sin día propio cae al de respaldo', () => {
+      const fechas = expandirPatron(
+        { tipo: 'anualMesesConcretos', mesesPago: [6, 11], diaPago: 5, diaPagoPorMes: { 11: 11 } },
+        '2026-01-01',
+        '2026-12-31',
+      );
+      expect(fechas.map(iso)).toEqual(['2026-06-05', '2026-11-11']);
+    });
+
+    // Un patrón guardado antes de que `diaPagoPorMes` existiera no cambia.
+    it('sin el mapa de días se comporta igual que siempre', () => {
+      const fechas = expandirPatron(
+        { tipo: 'anualMesesConcretos', mesesPago: [2, 6], diaPago: 5 },
+        '2026-01-01',
+        '2026-12-31',
+      );
+      expect(fechas.map(iso)).toEqual(['2026-02-05', '2026-06-05']);
+    });
+
+    it('un día que ese mes no tiene cae al último · el 31 de febrero es el 28', () => {
+      const fechas = expandirPatron(
+        { tipo: 'anualMesesConcretos', mesesPago: [2], diaPago: 1, diaPagoPorMes: { 2: 31 } },
+        '2026-01-01',
+        '2026-12-31',
+      );
+      expect(fechas.map(iso)).toEqual(['2026-02-28']);
+    });
+
+    it('y se repite igual cada año · no es un tramo', () => {
+      const fechas = expandirPatron(
+        { tipo: 'anualMesesConcretos', mesesPago: [6, 11], diaPago: 15, diaPagoPorMes: { 6: 15, 11: 11 } },
+        '2026-01-01',
+        '2027-12-31',
+      );
+      expect(fechas.map(iso)).toEqual(['2026-06-15', '2026-11-11', '2027-06-15', '2027-11-11']);
+    });
   });
 
   describe('pagasExtra', () => {
