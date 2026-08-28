@@ -173,12 +173,21 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
     expect(r2.eventosOmitidos).toBe(r1.eventosOmitidos);
   });
 
-  it('purga predicted retroactivos y wipea predicted forward antes de regenerar · solo confirmed/executed sobreviven', async () => {
+  // REGLA CAMBIADA a propósito (decisión de Jose · «el pendiente sobrevive por
+  // defecto»). Este test afirmaba lo contrario: que un `predicted` con fecha
+  // pasada se purgaba en cada pasada. Eso era el «forward-only» aplicado
+  // también al borrado, y borraba dos cosas que no son basura — un cargo que
+  // sigues esperando y la constancia de uno descartado. Ahora forward-only rige
+  // lo que se ESCRIBE; el pasado se queda.
+  //
+  // Lo que este test sigue vigilando es lo que no cambió: el barrido del
+  // horizonte, que es el que evita duplicar al regenerar.
+  it('wipea el predicted del horizonte y NO toca el pasado · ni predicted, ni confirmed, ni executed', async () => {
     const today = new Date();
     const inicioMes = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     const inicioIso = inicioMes.toISOString().substring(0, 10);
 
-    // Predicted antiguo · purgado por la defensa final (forward-only)
+    // Predicted antiguo · un pendiente vencido que se sigue esperando
     seedEvent({ predictedDate: '2024-01-15', status: 'predicted' });
     // Confirmed antiguo · NO debe borrarse
     seedEvent({ predictedDate: '2024-02-15', status: 'confirmed' });
@@ -196,15 +205,14 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
       date: e.predictedDate,
       status: e.status,
     }));
-    // Solo sobreviven el confirmed y el executed antiguos
+    // Todo el pasado sobrevive · incluido el previsto sin confirmar
     expect(restantes).toEqual(
       expect.arrayContaining([
+        { date: '2024-01-15', status: 'predicted' },
         { date: '2024-02-15', status: 'confirmed' },
         { date: '2024-03-15', status: 'executed' },
       ]),
     );
-    // Predicted antiguo · purgado
-    expect(restantes.find((e) => e.date === '2024-01-15')).toBeUndefined();
     // Predicted huérfano del horizonte · wipeado
     expect(
       restantes.find((e) => e.date === inicioIso && e.status === 'predicted'),
