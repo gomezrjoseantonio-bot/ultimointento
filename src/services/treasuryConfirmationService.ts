@@ -640,6 +640,19 @@ export async function revertTreasuryConfirmation(
     throw new Error('Movimiento no encontrado');
   }
 
+  // T4 · lo que afirmó el BANCO no se deshace desde aquí, a propósito.
+  //
+  // La jerarquía es conciliado > confirmado > previsto: un movimiento con
+  // evidencia de extracto es la verdad última, y esto BORRA el movimiento. La
+  // pantalla ya pinta un candado en vez de un botón, pero el candado no puede
+  // vivir solo en un `if` de la vista: fiar el dato del banco a que ninguna
+  // pantalla llame por error es fiarlo a nada.
+  if (movement.source === 'import') {
+    throw new Error(
+      'Este cargo lo afirma el banco · no se deshace desde aquí (retira el extracto si se importó por error)',
+    );
+  }
+
   const ref = String(movement.reference || '');
   const eventIdMatch = ref.match(/^treasury_event:(\d+)$/);
   const eventId = eventIdMatch ? Number(eventIdMatch[1]) : null;

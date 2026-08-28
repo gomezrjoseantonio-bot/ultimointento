@@ -29,6 +29,7 @@ import {
   type ItemPunteo,
   type GrupoPunteo,
 } from '../../../../services/punteo/punteoModel';
+import { accionesDeFila } from '../../../../services/punteo/accionesDePrevision';
 import {
   agruparPorEje,
   filtrarPorBusqueda,
@@ -155,6 +156,13 @@ export interface PunteoListProps {
   /** Lápiz de la fila · solo en `rowVariant: 'tesoreria'`. */
   onEditar?: (item: ItemPunteo) => void;
   /**
+   * T4 · deshacer un descarte · la previsión vuelve a «Por confirmar».
+   *
+   * Descartar es la acción más fácil de pulsar por error de toda la bandeja, y
+   * hasta ahora no tenía vuelta en ninguna vista.
+   */
+  onRecuperar?: (item: ItemPunteo) => void | Promise<void>;
+  /**
    * T3 · ir al gasto recurrente que emitió esta previsión.
    *
    * Sale solo en las filas que traen `gastoRecurrente`: las demás no tienen
@@ -210,6 +218,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
   gruposPlegables = false,
   rowVariant = 'default',
   onEditar,
+  onRecuperar,
   onIrAlGasto,
   soloLectura = false,
   conLeyenda = false,
@@ -300,13 +309,15 @@ const PunteoList: React.FC<PunteoListProps> = ({
       hija && itemOriginal.bajoMadre
         ? { ...itemOriginal, ...itemOriginal.bajoMadre }
         : itemOriginal;
+    // Qué ofrece esta fila · la regla, una sola vez para las tres vistas.
+    const acciones = new Set(accionesDeFila(it));
     return (
     <React.Fragment key={it.key}>
       {/* A4 · la fila ya NO abre un editor. Un toque en el círculo confirma y
           punto; si el importe real difiere, para eso está el lápiz, que abre la
           ficha de §4.5. Cinco decisiones para decir "sí, esto pasó" era
           fricción en la acción más repetida de la pantalla. */}
-      <div className={rowCls(it, hija ? styles.rowHija : '')}>
+      <div className={rowCls(it, [hija ? styles.rowHija : '', it.descartado ? styles.rowDescartada : ''].filter(Boolean).join(' '))}>
         {/* La acción principal, a la IZQUIERDA · es lo primero que se busca.
 
             Despuntear SOLO lo que nació de una previsión · es lo único que
@@ -318,7 +329,9 @@ const PunteoList: React.FC<PunteoListProps> = ({
         <PunteoCheck
           estado={it.estado}
           concepto={it.concepto}
-          soloLectura={soloLectura}
+          // T4 · una descartada no se puntea: lo único que queda por decir de
+          // ella es que fue un error, y eso lo dice «Recuperar».
+          soloLectura={soloLectura || it.descartado === true}
           onPuntear={() => onConfirmar(it)}
           onDespuntear={
             onDespuntear && it.previsionId != null ? () => onDespuntear(it) : undefined
@@ -370,18 +383,40 @@ const PunteoList: React.FC<PunteoListProps> = ({
           </span>
         )}
         {!esDrawer && !ocultarCuenta && <span className={styles.cuenta}>{cuentaLabel(it.cuentaId)}</span>}
+        {/* T4 · la descartada lo dice · tachada y apagada se lee como «apartada»,
+            pero no como «decidida». */}
+        {it.descartado && <span className={styles.chipDescartada}>descartada</span>}
         {renderImporte(it)}
         {rowVariant === 'tesoreria' && !soloLectura && (
-          // §4.4 · editar y descartar en la fila, al hover. El descartar sale del editor
-          // inline y solo existe en esta variante; en las otras vistas la fila no
-          // cambia. `stopPropagation` obligatorio: la fila entera abre el editor.
+          // §4.4 · las acciones de la fila, al hover. CUÁLES salen lo decide
+          // `accionesDeFila` y no un puñado de condiciones aquí: son tres las
+          // vistas que cuelgan de esta lista, y una regla repartida entre ellas
+          // se corrige en una y se olvida en las otras dos.
+          // `stopPropagation` obligatorio: la fila entera abre el editor.
           <span className={styles.rowActions}>
+            {/* T4 · deshacer lo que confirmaste TÚ · vuelve a "Por confirmar".
+                Estaba solo en el círculo, y el círculo solo lo ofrece la
+                pestaña de Confirmados del cajón de cuenta: en el calendario no
+                había forma de corregir un punteo equivocado. */}
+            {acciones.has('deshacer') && onDespuntear && (
+              <button
+                type="button"
+                className={styles.rowAction}
+                aria-label={`Deshacer la confirmación de ${it.concepto}`}
+                title="Deshacer confirmación · vuelve a previsto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void onDespuntear(it);
+                }}
+              >
+                <Icons.Undo size={13} strokeWidth={1.8} />
+              </button>
+            )}
             {/* Solo donde el lápiz hace algo · un movimiento importado del
                 banco no se corrige (descuadraría el saldo contra el que se
-                concilia) y uno nacido de confirmar una previsión se deshace
-                despunteando. Ofrecerlo en todos era prometer una acción que
-                para la mayoría de las filas no existe. */}
-            {onEditar && it.editable && (
+                concilia). Ofrecerlo en todas las filas era prometer una acción
+                que para la mayoría no existe. */}
+            {acciones.has('editar') && onEditar && (
               <button
                 type="button"
                 className={styles.rowAction}
@@ -397,7 +432,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
             {/* T3 · el atajo a su gasto recurrente. Solo donde hay uno detrás:
                 una previsión de contrato o anotada a mano no lo tiene, y un
                 acceso que no lleva a ninguna parte es peor que ninguno. */}
-            {onIrAlGasto && it.gastoRecurrente && it.estado === 'previsto' && (
+            {acciones.has('irAlGasto') && onIrAlGasto && (
               <button
                 type="button"
                 className={styles.rowAction}
@@ -411,7 +446,7 @@ const PunteoList: React.FC<PunteoListProps> = ({
                 <Icons.ExternalLink size={13} strokeWidth={1.8} />
               </button>
             )}
-            {it.estado === 'previsto' && (
+            {acciones.has('descartar') && (
               <button
                 type="button"
                 className={styles.rowAction}
@@ -423,6 +458,33 @@ const PunteoList: React.FC<PunteoListProps> = ({
               >
                 <Icons.Close size={13} strokeWidth={2} />
               </button>
+            )}
+            {/* T4 · descartar por error no tenía vuelta en ninguna vista:
+                `recuperarPrevisto` existía desde V84 sin un solo botón. */}
+            {acciones.has('recuperar') && onRecuperar && (
+              <button
+                type="button"
+                className={styles.rowRecuperar}
+                aria-label={`Recuperar ${it.concepto}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void onRecuperar(it);
+                }}
+              >
+                Recuperar
+              </button>
+            )}
+            {/* T4 · el banco no se discute · jerarquía conciliado > confirmado
+                > previsto. NO es un botón deshabilitado —eso invita a pulsarlo
+                y no responde—: es la señal de de dónde viene el dato. */}
+            {acciones.has('candado') && (
+              <span
+                className={styles.rowCandado}
+                title="Conciliado por el banco · no se deshace"
+                aria-label={`${it.concepto} · conciliado con el banco`}
+              >
+                <Icons.Lock size={13} strokeWidth={1.8} />
+              </span>
             )}
           </span>
         )}

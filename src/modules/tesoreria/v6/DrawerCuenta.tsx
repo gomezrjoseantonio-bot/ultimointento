@@ -28,9 +28,11 @@
 import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
+import ColaDescartadas from '../../shared/components/Punteo/ColaDescartadas';
 import type { EjeAgrupacion } from '../../shared/components/Punteo/punteoAgrupacion';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
+import { etiquetaDeBaja } from '../../../services/punteo/accionesDePrevision';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { cierrePorCuenta, esPendiente, rangoDelMes } from '../../../services/tesoreriaV6Metrics';
 import { colorDeBanco } from './bancoColores';
@@ -77,6 +79,14 @@ export interface DrawerCuentaProps {
    * mes siguiente—.
    */
   onIrAlGasto?: (item: ItemPunteo) => void;
+  /**
+   * T4 · deshacer un descarte · vuelve a «Por confirmar».
+   *
+   * Las descartadas no caducan (T1), así que la cola de abajo se puede
+   * consultar siempre. Sin esto, un descarte pulsado por error no tenía
+   * vuelta.
+   */
+  onRecuperar?: (item: ItemPunteo) => void | Promise<void>;
   /** Cuentas e inmuebles para los selectores de la ficha. */
   cuentas?: Account[];
   inmuebles?: Array<{ id: number; alias: string }>;
@@ -105,6 +115,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
   onGuardarFicha,
   onEliminar,
   onIrAlGasto,
+  onRecuperar,
   cuentas = [],
   inmuebles = [],
   tarjetas = [],
@@ -205,6 +216,23 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
       .filter((i) => i.estado === 'confirmado');
     return [...evs, ...movs].sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [eventos, movimientos, desde, hasta, aliasInmueble, aliasCuenta]);
+
+  /**
+   * T4 · las descartadas del mes · la cola de consulta.
+   *
+   * No entran en la bandeja —dijiste que no van a ocurrir— pero tampoco
+   * desaparecen: no caducan (T1) y descartar es la acción más fácil de pulsar
+   * por error de toda la pantalla. Plegadas abajo, que es donde no estorban.
+   */
+  const itemsDescartados = useMemo<ItemPunteo[]>(() => {
+    const enMes = (f: string) => f >= desde && f <= hasta;
+    return eventos
+      .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
+      .filter((e) => e.descartado === true && e.status === 'predicted')
+      .filter((e) => enMes((e.predictedDate ?? '').slice(0, 10)))
+      .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }, [eventos, desde, hasta, aliasInmueble, aliasCuenta]);
 
   /** Movimientos: previsión y realidad del mes, que es una vista de consulta. */
   const itemsTodo = useMemo<ItemPunteo[]>(() => {
@@ -311,7 +339,8 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
 
         <div className={styles.body}>
           {pestana === 'pendientes' ? (
-            itemsPendientes.length === 0 ? (
+            <>
+            {itemsPendientes.length === 0 ? (
               <div className={styles.vacio}>
                 <Icons.Success size={34} strokeWidth={1.6} className={styles.vacioIc} />
                 <div className={styles.vacioT}>Nada por confirmar</div>
@@ -337,7 +366,17 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
                 onEditar={(item) => setFicha({ item })}
                 onIrAlGasto={onIrAlGasto}
               />
-            )
+            )}
+            {/* T4 · lo descartado no desaparece · plegado abajo, que es donde
+                no compite con el trabajo pendiente. */}
+            {onRecuperar && (
+              <ColaDescartadas
+                items={itemsDescartados}
+                periodo="este mes"
+                onRecuperar={onRecuperar}
+              />
+            )}
+            </>
           ) : pestana === 'confirmados' ? (
             itemsConfirmados.length === 0 ? (
               <div className={styles.vacio}>
@@ -436,6 +475,7 @@ const DrawerCuenta: React.FC<DrawerCuentaProps> = ({
           await onGuardarFicha?.(ficha?.item ?? null, v);
           setFicha(null);
         }}
+        etiquetaEliminar={ficha?.item ? etiquetaDeBaja(ficha.item) : undefined}
         onEliminar={
           ficha?.item && onEliminar
             ? async () => {

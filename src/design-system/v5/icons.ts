@@ -84,6 +84,7 @@ import {
   Tag,
   Paperclip,
   RefreshCw,
+  Undo2,
   Inbox,
   Banknote,
   Sparkles,
@@ -198,6 +199,8 @@ export const Icons = {
   Tag,
   Attach: Paperclip,
   Refresh: RefreshCw,
+  // T4 · deshacer una confirmación · vuelve a «Por confirmar».
+  Undo: Undo2,
   Inbox,
   Banknote,             // §AA.7 · timeline devolución
   CreditCard,           // Tesorería V9 · fila de tarjeta (crédito/débito)

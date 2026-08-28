@@ -244,6 +244,57 @@ describe('5 · anatomía de fila de Tesorería', () => {
     expect(screen.queryByLabelText(/^ir al gasto recurrente/i)).not.toBeInTheDocument();
   });
 
+  // ── T4 · las tres familias de acción ──────────────────────────────────────
+  it('lo confirmado A MANO ofrece deshacer · lo dijiste tú, lo corriges tú', () => {
+    const onDespuntear = jest.fn();
+    render(
+      <PunteoList
+        {...base}
+        items={[item({ kind: 'movimiento', estado: 'confirmado', previsionId: 9, concepto: 'Cuota comunidad' })]}
+        rowVariant="tesoreria"
+        onDespuntear={onDespuntear}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Deshacer la confirmación de Cuota comunidad'));
+    expect(onDespuntear).toHaveBeenCalledTimes(1);
+  });
+
+  it('lo CONCILIADO por el banco lleva candado y ninguna acción · a propósito', () => {
+    render(
+      <PunteoList
+        {...base}
+        items={[item({ kind: 'movimiento', estado: 'conciliado', previsionId: 9, concepto: 'Aqualia' })]}
+        rowVariant="tesoreria"
+        onDespuntear={jest.fn()}
+        onEditar={jest.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('Aqualia · conciliado con el banco')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^deshacer la confirmación/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Editar Aqualia')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Descartar Aqualia')).not.toBeInTheDocument();
+  });
+
+  it('una DESCARTADA se lee tachada y solo ofrece recuperar', () => {
+    const onRecuperar = jest.fn();
+    render(
+      <PunteoList
+        {...base}
+        items={[item({ descartado: true, concepto: 'Spotify' })]}
+        rowVariant="tesoreria"
+        onEditar={jest.fn()}
+        onRecuperar={onRecuperar}
+      />,
+    );
+    expect(screen.getByText('descartada')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Descartar Spotify')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Editar Spotify')).not.toBeInTheDocument();
+    // Ni se puntea: lo único que queda por decir de ella es que fue un error.
+    expect(screen.queryByLabelText('Puntear Spotify')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Recuperar Spotify'));
+    expect(onRecuperar).toHaveBeenCalledTimes(1);
+  });
+
   it('el ✕ llama a onNoPaso sin abrir el editor', () => {
     const onNoPaso = jest.fn();
     render(<PunteoList {...base} rowVariant="tesoreria" onNoPaso={onNoPaso} />);

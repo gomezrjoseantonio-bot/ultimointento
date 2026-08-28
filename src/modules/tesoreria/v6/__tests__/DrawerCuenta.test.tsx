@@ -173,6 +173,31 @@ describe('pestaña Pendientes', () => {
     expect(screen.queryByText('Agua')).not.toBeInTheDocument();
   });
 
+  // ── T4 · lo descartado no desaparece, se pliega ───────────────────────────
+  it('lo descartado del mes se cuenta abajo, plegado · sin llenar la bandeja', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        onRecuperar={jest.fn()}
+        eventos={[ev({ id: 1 }), ev({ id: 2, description: 'Agua', descartado: true })]}
+      />
+    );
+    // Sigue fuera de la bandeja de trabajo.
+    expect(screen.getAllByRole('button', { name: /^Puntear/ })).toHaveLength(1);
+    // Pero está, y se puede consultar.
+    expect(screen.getByText('1 descartada este mes')).toBeInTheDocument();
+    expect(screen.queryByText('Agua')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('1 descartada este mes'));
+    expect(screen.getByText('Agua')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Recuperar Agua' })).toBeInTheDocument();
+  });
+
+  it('sin descartadas no se pinta la cola · no se anuncia una lista vacía', () => {
+    render(<DrawerCuenta {...base} onRecuperar={jest.fn()} eventos={[ev({ id: 1 })]} />);
+    expect(screen.queryByText(/descartada/)).not.toBeInTheDocument();
+  });
+
   it('un ejecutado tampoco: su realidad ya vive en el movimiento', () => {
     render(<DrawerCuenta {...base} eventos={[ev({ id: 1, status: 'executed' })]} />);
     // La pestaña no lleva recuento · la cifra ya está en la tarjeta de la
@@ -456,5 +481,37 @@ describe('lo que lleva la ficha al abrirla', () => {
       importe: -40.29,
     };
     expect(item.detalle ?? item.concepto).toBe('Seguro hogar');
+  });
+
+  // ── T4 · el pie de la ficha dice lo que el botón hace ─────────────────────
+  it('sobre una previsión el pie dice «Descartar», no «Eliminar»', () => {
+    // Sobre una previsión, «Eliminar» nunca borró: llamaba a descartar. Quien
+    // lo pulsaba se quedaba creyendo que había borrado algo.
+    render(
+      <DrawerCuenta
+        {...base}
+        eventos={[ev({ id: 1 })]}
+        onGuardarFicha={jest.fn()}
+        onEliminar={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Editar Recibo luz'));
+    expect(screen.getByRole('button', { name: 'Descartar' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).not.toBeInTheDocument();
+  });
+
+  it('sobre un movimiento anotado a mano sigue diciendo «Eliminar» · ahí sí borra', () => {
+    render(
+      <DrawerCuenta
+        {...base}
+        eventos={[]}
+        movimientos={[mov({ id: 5, source: 'manual', description: 'Compra a mano' })]}
+        onGuardarFicha={jest.fn()}
+        onEliminar={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Confirmados$/ }));
+    fireEvent.click(screen.getByLabelText('Editar Compra a mano'));
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
   });
 });

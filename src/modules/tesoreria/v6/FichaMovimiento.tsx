@@ -25,6 +25,7 @@ import { INGRESO_CATEGORIES } from '../../../services/categoryCatalog';
 import type { Account } from '../../../services/db';
 import { importeSaldo } from './formatoV6';
 import styles from './FichaMovimiento.module.css';
+import { etiquetaCuenta, parseImporte } from './fichaAuxiliares';
 import { toISODateLocal } from '../../../utils/recurrenceDateUtils';
 import { cuentasQuePuedenPagar } from '../../../services/cuentasPorMetodoPago';
 
@@ -103,8 +104,18 @@ export interface FichaMovimientoProps {
   tarjetas?: Array<{ id: number; alias: string; modalidad?: 'debito' | 'credito' }>;
   onCerrar: () => void;
   onGuardar: (v: GuardadoFicha) => void | Promise<void>;
-  /** Solo en edición · el pie muestra Eliminar a la izquierda. */
+  /** Solo en edición · el pie muestra la baja a la izquierda. */
   onEliminar?: () => void | Promise<void>;
+  /**
+   * T4 · cómo se llama esa baja · «Eliminar» o «Descartar».
+   *
+   * Decía «Eliminar» siempre y solo era verdad la mitad de las veces: sobre una
+   * previsión llamaba a descartar —el evento sigue ahí, marcado como que no va
+   * a ocurrir— y quien lo pulsaba creía haber borrado algo. Lo decide
+   * `etiquetaDeBaja` con lo mismo que decide la ACCIÓN, para que un rótulo
+   * suelto no pueda quedarse mintiendo.
+   */
+  etiquetaEliminar?: string;
   /**
    * §7 · documentos del Archivo que respaldan este movimiento.
    *
@@ -155,6 +166,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   onCerrar,
   onGuardar,
   onEliminar,
+  etiquetaEliminar = 'Eliminar',
   documentIds,
   onAbrirDocumento,
   esEdicion: esEdicionProp,
@@ -753,7 +765,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
         <div className={styles.ft}>
           {esEdicion && onEliminar && (
             <button type="button" className={styles.del} onClick={() => void onEliminar()}>
-              Eliminar
+              {etiquetaEliminar}
             </button>
           )}
           {!(esEdicion && onEliminar) && <span style={{ marginRight: 'auto' }} />}
@@ -775,25 +787,5 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   );
 };
 
-// ─── Auxiliares ─────────────────────────────────────────────────────────────
-
-function etiquetaCuenta(c: Account): string {
-  const nombre = c.alias || c.name || c.banco?.name || 'Cuenta';
-  const mask = c.ultimosCuatro || c.iban?.slice(-4);
-  return mask ? `${nombre} ···· ${mask}` : nombre;
-}
-
-/** Acepta coma o punto decimal · devuelve `null` si no es un importe válido. */
-export function parseImporte(raw: string): number | null {
-  const sinAdornos = raw.replace(/[€\s]/g, '');
-  if (!sinAdornos) return null;
-  // Con coma, el punto es separador de miles ("1.234,50"). Sin coma, un punto
-  // es decimal ("74.09"): quitarlo siempre convertiría 74.09 en 7409.
-  const normalizado = sinAdornos.includes(',')
-    ? sinAdornos.replace(/\./g, '').replace(',', '.')
-    : sinAdornos;
-  const n = Number(normalizado);
-  return Number.isFinite(n) ? n : null;
-}
-
+export { parseImporte };
 export default FichaMovimiento;
