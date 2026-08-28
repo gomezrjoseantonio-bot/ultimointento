@@ -408,6 +408,26 @@ describe('treasuryConfirmationService · PR3', () => {
       await expect(revertTreasuryConfirmation(99999)).rejects.toThrow(/movimiento/i);
     });
 
+    // T4 · el banco no se discute · la jerarquía es conciliado > confirmado >
+    // previsto. La pantalla ya no ofrece deshacer sobre lo conciliado, pero el
+    // candado no puede vivir solo en un `if` de la vista: esto BORRA un
+    // movimiento, y el borrado tiene que negarse él mismo.
+    it('se niega a deshacer lo que afirmó el banco', async () => {
+      const db = await initDB();
+      const eventId = Number(await db.add('treasuryEvents', baseEvent() as any));
+      const { movementId } = await confirmTreasuryEvent(eventId);
+
+      // El extracto avala el cargo · el movimiento pasa a ser palabra del banco.
+      const mov = (await db.get('movements', movementId)) as any;
+      await db.put('movements', { ...mov, source: 'import' });
+
+      await expect(revertTreasuryConfirmation(movementId)).rejects.toThrow(/banco/i);
+      // Y no se ha llevado nada por delante.
+      expect(await db.get('movements', movementId)).toBeDefined();
+      const event = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
+      expect(event.status).toBe('executed');
+    });
+
     it('borra el movement aunque el event ya hubiese sido eliminado manualmente', async () => {
       const db = await initDB();
       const eventId = Number(

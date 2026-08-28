@@ -622,3 +622,71 @@
   color: var(--atlas-v5-ink);
   background: var(--atlas-v5-line-3);
 }
+
+/* ── T4 · la descartada y el candado ─────────────────────────────────────────
+
+   Una descartada no desaparece: no caduca (T1) y se puede recuperar. Se lee
+   tachada y apagada porque eso es lo que es —algo que dijiste que no iba a
+   ocurrir— y sigue ahí para poder desdecirte. */
+.rowDescartada { opacity: 0.62; }
+.rowDescartada .concepto,
+.rowDescartada .importe { text-decoration: line-through; }
+
+.chipDescartada {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-warn);
+  background: var(--atlas-v5-warn-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.rowRecuperar {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 7px;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rowRecuperar:hover { background: var(--atlas-v5-gold-wash); }
+
+/* El candado NO es un botón deshabilitado: un botón que no responde invita a
+   pulsarlo otra vez. Es la señal de que ese dato lo afirma el banco. */
+.rowCandado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--atlas-v5-ink-4);
+  opacity: 0.45;
+}
+
+/* La cola de lo descartado · plegada, para que se pueda consultar sin ocupar
+   la bandeja de trabajo. */
+.colaDescartadas {
+  margin: 10px 14px 14px;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 28px);
+  background: none;
+  text-align: left;
+}
+.colaDescartadas:hover { background: var(--atlas-v5-gold-wash-2); }
+.colaDescartadasCnt { font-weight: 700; color: var(--atlas-v5-ink-4); }
+.colaDescartadasVer { margin-left: auto; color: var(--atlas-v5-ink-4); }

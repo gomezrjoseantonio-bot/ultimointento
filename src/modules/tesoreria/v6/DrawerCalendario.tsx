@@ -21,8 +21,10 @@
 import React, { useMemo, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
+import ColaDescartadas from '../../shared/components/Punteo/ColaDescartadas';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import { compararEnDia, type ItemPunteo } from '../../../services/punteo/punteoModel';
+import { etiquetaDeBaja } from '../../../services/punteo/accionesDePrevision';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
@@ -58,6 +60,10 @@ export interface DrawerCalendarioProps {
   onDescartar: (item: ItemPunteo) => void | Promise<void>;
   /** T3 · ir al gasto recurrente que emitió la previsión (§ enlace). */
   onIrAlGasto?: (item: ItemPunteo) => void;
+  /** T4 · deshacer un punteo · el cargo vuelve a «Por confirmar». */
+  onDespuntear?: (item: ItemPunteo) => void | Promise<void>;
+  /** T4 · deshacer un descarte · la previsión vuelve a la bandeja. */
+  onRecuperar?: (item: ItemPunteo) => void | Promise<void>;
   /**
    * §4.5 · guardar desde la ficha que abre el lápiz.
    *
@@ -102,6 +108,8 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   onConfirmar,
   onDescartar,
   onIrAlGasto,
+  onDespuntear,
+  onRecuperar,
   onGuardarFicha,
   onEliminar,
   inmuebles = [],
@@ -174,6 +182,20 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
    * que dejan la cuenta corta, tiene que haber una fila que lo explique debajo
    * del punto ámbar.
    */
+  /**
+   * T4 · las descartadas de ESTE día · no entran en la lista de trabajo
+   * (`esPendiente` las excluye) pero tampoco desaparecen: no caducan y se
+   * pueden recuperar. Plegadas debajo.
+   */
+  const descartadasDelDia = useMemo<ItemPunteo[]>(() => {
+    if (!diaElegido) return [];
+    return eventos
+      .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
+      .filter((e) => e.descartado === true && e.status === 'predicted')
+      .filter((e) => (e.predictedDate ?? '').slice(0, 10) === diaElegido)
+      .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta));
+  }, [eventos, diaElegido, aliasInmueble, aliasCuenta]);
+
   const itemsDelDia = useMemo<ItemPunteo[]>(() => {
     if (!diaElegido) return [];
     const evs = eventos
@@ -417,6 +439,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                           onNoPaso={onDescartar}
                           onEditar={(item) => setFicha({ item })}
                           onIrAlGasto={onIrAlGasto}
+                          onDespuntear={onDespuntear}
                         />
                       </div>
                     )}
@@ -567,8 +590,19 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                   // el usuario se queda creyendo que lo ha hecho.
                   onEditar={onGuardarFicha ? (item) => setFicha({ item }) : undefined}
                   onIrAlGasto={onIrAlGasto}
+                  onDespuntear={onDespuntear}
+                  onRecuperar={onRecuperar}
                   onConfirmar={onConfirmar}
                   onNoPaso={onDescartar}
+                />
+              )}
+              {/* T4 · lo descartado de este día · plegado, consultable. */}
+              {onRecuperar && (
+                <ColaDescartadas
+                  items={descartadasDelDia}
+                  periodo="este día"
+                  onRecuperar={onRecuperar}
+                  enDrawer
                 />
               )}
             </div>
@@ -590,6 +624,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
           await onGuardarFicha?.(ficha?.item ?? null, v);
           setFicha(null);
         }}
+        etiquetaEliminar={ficha?.item ? etiquetaDeBaja(ficha.item) : undefined}
         onEliminar={
           ficha && onEliminar
             ? async () => {

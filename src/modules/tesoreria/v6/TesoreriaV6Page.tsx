@@ -63,7 +63,7 @@ import {
   revertTreasuryConfirmation,
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
-import { descartarPrevisto } from '../../../services/treasuryDiscardService';
+import { descartarPrevisto, recuperarPrevisto } from '../../../services/treasuryDiscardService';
 import {
   editarTraspasoInterno,
   eliminarTraspasoInterno,
@@ -632,6 +632,26 @@ const TesoreriaV6Page: React.FC = () => {
     [trasEscribir]
   );
 
+  /**
+   * T4 · deshacer un descarte · la previsión vuelve a «Por confirmar».
+   *
+   * `recuperarPrevisto` existía desde V84 sin un solo botón detrás: descartar
+   * es la acción más fácil de pulsar por error de toda la bandeja y no tenía
+   * vuelta en ninguna vista.
+   */
+  const recuperarItem = useCallback(
+    async (item: ItemPunteo) => {
+      if (item.kind !== 'evento') return;
+      try {
+        await recuperarPrevisto(item.refId);
+        await trasEscribir();
+      } catch (err) {
+        console.error('[TesoreriaV6] no se pudo recuperar', err);
+      }
+    },
+    [trasEscribir],
+  );
+
   const descartarItem = useCallback(
     async (item: ItemPunteo) => {
       try {
@@ -652,6 +672,30 @@ const TesoreriaV6Page: React.FC = () => {
         }
         await descartarPrevisto(item.refId);
         await trasEscribir();
+        // El deshacer va DONDE ocurre la acción · mandar al usuario a buscar la
+        // cola de descartadas para corregir un clic de más es pedirle que
+        // repare a mano lo que la pantalla acaba de hacer sola. Dura más que un
+        // aviso normal: es una decisión, no una confirmación.
+        const eventId = item.refId;
+        showToastV5(
+          <span className={styles.toastDeshacer}>
+            <span>Descartada · «{item.concepto}»</span>
+            <button
+              type="button"
+              className={styles.toastDeshacerBtn}
+              onClick={() => {
+                void (async () => {
+                  await recuperarPrevisto(eventId);
+                  await trasEscribir();
+                })();
+              }}
+            >
+              Deshacer
+            </button>
+          </span>,
+          'info',
+          6000,
+        );
       } catch (err) {
         console.error('[TesoreriaV6] no se pudo descartar', err);
       }
@@ -911,6 +955,7 @@ const TesoreriaV6Page: React.FC = () => {
           hoy={hoy}
           onCerrar={cerrarCuenta}
           onIrAlGasto={irAlGasto}
+          onRecuperar={recuperarItem}
           onConfirmar={confirmarItem}
           onDescartar={descartarItem}
           onDespuntear={despuntearItem}
@@ -1018,6 +1063,7 @@ const TesoreriaV6Page: React.FC = () => {
         hoy={hoy}
         onCerrar={cerrarCuenta}
         onIrAlGasto={irAlGasto}
+        onRecuperar={recuperarItem}
         onConfirmar={confirmarItem}
         onDescartar={descartarItem}
         onDespuntear={despuntearItem}
@@ -1056,6 +1102,7 @@ const TesoreriaV6Page: React.FC = () => {
         onConfirmarPieza={confirmarPiezaItem}
         onConfirmarPiezaImporte={confirmarPiezaImporteItem}
         onDespuntearPieza={despuntearPiezaItem}
+        onRecuperar={recuperarItem}
         onDescartarPieza={descartarPiezaItem}
       />
 
@@ -1073,6 +1120,8 @@ const TesoreriaV6Page: React.FC = () => {
           saldoTotalHoy={kpis.saldo}
           hoy={hoy}
           onIrAlGasto={irAlGasto}
+          onRecuperar={recuperarItem}
+          onDespuntear={despuntearItem}
           aliasInmueble={aliasInmueble}
           inmuebles={inmuebles}
           tarjetas={tarjetasElegibles}

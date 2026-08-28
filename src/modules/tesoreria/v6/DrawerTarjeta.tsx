@@ -17,6 +17,7 @@ import { Icons } from '../../../design-system/v5';
 import PunteoList from '../../shared/components/Punteo/PunteoList';
 import { eventoAItem, movimientoAItem } from '../../../services/punteo/punteoAdapter';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
+import { etiquetaDeBaja } from '../../../services/punteo/accionesDePrevision';
 import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import type { Tarjeta } from '../../../types/tarjetas';
 import { recibosDeTarjeta } from '../../../services/reciboDeTarjeta';
@@ -54,6 +55,8 @@ export interface DrawerTarjetaProps {
   onConfirmarPiezaImporte: (item: ItemPunteo, importe: number) => void | Promise<void>;
   /** Despuntear una PIEZA · vuelve a prevista. */
   onDespuntearPieza: (item: ItemPunteo) => void | Promise<void>;
+  /** T4 · deshacer el descarte de una pieza · vuelve a la lista del recibo. */
+  onRecuperar?: (item: ItemPunteo) => void | Promise<void>;
   /** Descartar una PIEZA · ese gasto no ocurre este periodo. */
   onDescartarPieza: (item: ItemPunteo) => void | Promise<void>;
 }
@@ -77,6 +80,7 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
   onConfirmarPieza,
   onConfirmarPiezaImporte,
   onDespuntearPieza,
+  onRecuperar,
   onDescartarPieza,
 }) => {
   const [pestana, setPestana] = useState<Pestana>('porConfirmar');
@@ -106,7 +110,11 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
         e.id != null &&
         e.sourceType === 'gasto_tarjeta' &&
         e.tarjetaId === id &&
-        e.descartado !== true &&
+        // T4 · la descartada NO se esconde aquí. En una tarjeta son pocas, así
+        // que se queda tachada en su sitio con «Recuperar» al lado: plegarla
+        // abajo —como en la cuenta o en el día, que van llenos— sería esconder
+        // una fila para que luego haya que ir a buscarla. Mismo modelo,
+        // distinta densidad.
         corteDe((e.actualDate ?? e.predictedDate ?? '').slice(0, 10), Math.abs(e.actualAmount ?? e.amount)) ===
           periodoActual.fechaCorte
     );
@@ -265,6 +273,8 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
               onConfirmar={(item) => (esPieza(item) ? onConfirmarPieza(item) : undefined)}
               onNoPaso={(item) => (esPieza(item) ? onDescartarPieza(item) : undefined)}
               onDespuntear={pestana === 'confirmados' ? (item) => (esPieza(item) ? onDespuntearPieza(item) : undefined) : undefined}
+              // T4 · «Recuperar», en la propia fila tachada.
+              onRecuperar={onRecuperar && ((item) => (esPieza(item) ? onRecuperar(item) : undefined))}
               onEditar={(item) => setFicha({ item, esPieza: esPieza(item) })}
             />
           )}
@@ -290,6 +300,7 @@ const DrawerTarjeta: React.FC<DrawerTarjetaProps> = ({
           else await onGuardarFicha(ficha?.item ?? null, v);
           setFicha(null);
         }}
+        etiquetaEliminar={ficha?.item ? etiquetaDeBaja(ficha.item) : undefined}
         onEliminar={
           ficha?.item && !ficha.esPieza && onEliminar
             ? async () => {

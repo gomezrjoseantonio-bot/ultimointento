@@ -58,3 +58,21 @@
 .dupBtn:disabled { opacity: 0.6; cursor: default; }
 
 
+
+/* T4 · el «Deshacer» del toast · el deshacer va DONDE ocurre la acción. */
+.toastDeshacer {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.toastDeshacerBtn {
+  font-weight: 700;
+  color: var(--atlas-v5-gold-soft);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  font-family: inherit;
+}

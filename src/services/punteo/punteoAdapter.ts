@@ -389,6 +389,9 @@ export function eventoAItem(
     // T3 · a dónde ir a corregir el ciclo o poner fin. `undefined` si no nació
     // de un gasto recurrente.
     gastoRecurrente: rutaDelGastoRecurrente(e) ?? undefined,
+    // T4 · la marca viaja para poder ofrecer «Recuperar». Las listas de trabajo
+    // siguen filtrando las descartadas: esto es para la cola de consulta.
+    descartado: e.descartado === true ? true : undefined,
   };
 }
 

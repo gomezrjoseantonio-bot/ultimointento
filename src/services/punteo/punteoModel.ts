@@ -183,6 +183,14 @@ export interface ItemPunteo {
    * Tesorería y buscarlo por el nombre.
    */
   gastoRecurrente?: string;
+  /**
+   * T4 · esta previsión está DESCARTADA · el usuario dijo que no va a ocurrir.
+   *
+   * Sigue existiendo y no caduca (T1), así que se puede consultar y recuperar.
+   * Viaja en la fila porque descartar por error no tenía vuelta en ninguna
+   * vista: `recuperarPrevisto` existía desde V84 sin un solo botón detrás.
+   */
+  descartado?: boolean;
 }
 
 export interface DiscrepanciaPunteo {
