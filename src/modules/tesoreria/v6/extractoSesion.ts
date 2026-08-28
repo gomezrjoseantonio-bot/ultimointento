@@ -493,3 +493,30 @@ export function movimientosATraspaso(
       cuentaDestinoId: decisiones.aTraspaso.get(l.movementId) as number,
     }));
 }
+
+/**
+ * ¿Se le ofrece esta previsión a las líneas de un extracto de esta cuenta?
+ *
+ * Vale para las dos vías: el cuadre automático y el selector de «asignar a
+ * mano». Tres reglas:
+ *
+ *   · lo ya EJECUTADO no: su cargo ya está;
+ *   · lo DESCARTADO tampoco — el usuario dijo que no iba a ocurrir, y casarlo
+ *     por detrás lo dejaba `executed` con la marca puesta, invisible en
+ *     pantalla mientras su movimiento movía el saldo (ver `descarteDePrevision`);
+ *   · y tiene que ser de esta cuenta… con una excepción: una cuota de préstamo
+ *     (`financing`) que quedó HUÉRFANA de cuenta no la ofrecía nadie, porque
+ *     esto filtra por cuenta, y la hipoteca salía «sin rastro». Se ofrece para
+ *     poder conciliarla a mano (el importe y la fecha la acotan). La raíz —el
+ *     regenerado del arranque que pierde la cuenta— se arregla en
+ *     `resolveAccountId`; esto es la red para los datos que ya nacieron así.
+ */
+export function seOfrecePara(evento: TreasuryEvent, cuentaId: number | undefined): boolean {
+  if (evento.status === 'executed') return false;
+  if (evento.descartado === true) return false;
+  // Los dos ids tienen que EXISTIR para que «es de esta cuenta» signifique
+  // algo: con los dos a `undefined`, un `===` daría verdadero y ofrecería un
+  // evento sin cuenta a un destino sin cuenta.
+  const esDeLaCuenta = cuentaId != null && evento.accountId === cuentaId;
+  return esDeLaCuenta || (evento.type === 'financing' && evento.accountId == null);
+}

@@ -28,6 +28,7 @@ import { esPendiente } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
 import { mesMinimo, puedeRetroceder } from './limiteMeses';
+import { vencidosPorMes } from './vencidosPorMes';
 import { importeConSigno, importeSaldo, nombreMes, diaSemanaYNumero } from './formatoV6';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { valoresDesdeItem } from './fichaDesdeItem';
@@ -122,6 +123,27 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
 
   const huecos = useMemo(() => huecosIniciales(year, month0), [year, month0]);
 
+  /**
+   * Lo que venció en meses anteriores y sigue sin confirmar (#1813 · T2).
+   *
+   * El calendario enseña UN mes, así que un recibo de agosto que no llegó
+   * sobrevivía sin que nadie lo viera: se quedaba mudo, que para el caso es
+   * casi lo mismo que no estar. Va arriba, en una casilla POR MES.
+   */
+  const colas = useMemo(
+    () => vencidosPorMes({ eventos, year, month0, hoy }),
+    [eventos, year, month0, hoy]
+  );
+  /** Qué cola está desplegada · cerradas de partida, para no comer viewport. */
+  const [colaAbierta, setColaAbierta] = useState<string | null>(null);
+
+  /** Las colas que caben en el hueco previo al día 1 · dos columnas cada una. */
+  const colasEnRejilla = useMemo(
+    () => colas.slice(0, Math.floor(huecos / 2)).reverse(),
+    [colas, huecos]
+  );
+  const huecosLibres = huecos - colasEnRejilla.length * 2;
+
   /** El nombre de la otra cuenta · lo pide un traspaso para decir a dónde va. */
   const aliasCuenta = useMemo(() => {
     const m = new Map(
@@ -196,6 +218,20 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     }
     return todos;
   }, [diaElegido, eventos, movimientos, aliasInmueble, aliasCuenta, saldoPorCuenta, hoy]);
+
+  /** Las filas de cada cola · mismas que las del día, con las mismas acciones. */
+  const itemsPorCola = useMemo(() => {
+    const m = new Map<string, ItemPunteo[]>();
+    for (const c of colas) {
+      m.set(
+        c.clave,
+        c.pendientes
+          .filter((e): e is TreasuryEvent & { id: number } => e.id != null)
+          .map((e) => eventoAItem(e, aliasInmueble, aliasCuenta))
+      );
+    }
+    return m;
+  }, [colas, aliasInmueble, aliasCuenta]);
 
   /**
    * Los que confirma el botón "Confirmar el día".
@@ -331,6 +367,61 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
         </div>
 
         <div className={chasis.body}>
+          {/* ── Lo que venció y sigue esperando (#1813 · T2) ─────────────── */}
+          {colas.length > 0 && (
+            <div className={styles.colas}>
+              {colas.map((c) => {
+                const abierta = colaAbierta === c.clave;
+                const n = c.pendientes.length;
+                return (
+                  <section key={c.clave} className={styles.cola}>
+                    <button
+                      type="button"
+                      className={styles.colaHd}
+                      onClick={() => setColaAbierta(abierta ? null : c.clave)}
+                      aria-expanded={abierta}
+                      aria-label={`Pendiente de ${c.etiqueta.toLowerCase()} · ${n} sin confirmar`}
+                    >
+                      <span className={styles.colaChip}>{c.etiqueta}</span>
+                      <span className={styles.colaTit}>
+                        Pendiente de {c.etiqueta.toLowerCase()}
+                      </span>
+                      <span className={styles.colaMeta}>
+                        · {n} sin confirmar
+                      </span>
+                      <span className={styles.colaAmt}>{importeConSigno(c.total)}</span>
+                      <span
+                        className={`${styles.colaCaret} ${abierta ? styles.colaCaretOn : ''}`}
+                        aria-hidden="true"
+                      >
+                        <Icons.ChevronRight size={13} strokeWidth={2.4} />
+                      </span>
+                    </button>
+                    {abierta && (
+                      <div className={styles.colaBody}>
+                        <PunteoList
+                          items={itemsPorCola.get(c.clave) ?? []}
+                          chip="todos"
+                          onChipChange={() => {}}
+                          mostrarChips={false}
+                          cuentas={cuentasParaLista}
+                          variant="drawer"
+                          rowVariant="tesoreria"
+                          /* Subagrupado por cuenta · cada grupo trae el punto
+                             de color de su banco (§12.5). */
+                          eje="cuenta"
+                          onConfirmar={onConfirmar}
+                          onNoPaso={onDescartar}
+                          onEditar={(item) => setFicha({ item })}
+                        />
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+
           {/* ── Rejilla de días · lunes primero (§4.9) ──────────────────── */}
           <div className={styles.rejilla} role="grid" aria-label={`Días de ${nombreMes(month0)}`}>
             {DIAS_SEMANA.map((d) => (
@@ -338,7 +429,29 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
                 {d}
               </div>
             ))}
-            {Array.from({ length: huecos }, (_, i) => (
+            {/* El hueco anterior al día 1 se aprovecha para las colas, sin
+                ensuciar el mes que se mira. Cada una ocupa dos columnas, así
+                que caben `huecos / 2`; si el mes empieza en lunes no hay hueco
+                y la casilla vive solo arriba, que es donde siempre está.
+
+                Se pintan al REVÉS que en la lista: aquí el orden lo da el
+                calendario, y lo más reciente tiene que quedar pegado al día 1. */}
+            {colasEnRejilla.map((c) => (
+              <button
+                key={`cola-${c.clave}`}
+                type="button"
+                className={styles.colaCelda}
+                onClick={() => setColaAbierta(c.clave)}
+                aria-label={`Ver lo pendiente de ${c.etiqueta.toLowerCase()} · ${c.pendientes.length} sin confirmar`}
+              >
+                <span className={styles.colaCeldaLbl}>◀ {c.etiqueta}</span>
+                <span className={styles.colaCeldaCnt}>
+                  {c.pendientes.length} pdte{c.pendientes.length === 1 ? '' : 's'}
+                </span>
+                <span className={styles.colaCeldaAmt}>{importeConSigno(c.total, false)}</span>
+              </button>
+            ))}
+            {Array.from({ length: huecosLibres }, (_, i) => (
               <div key={`hueco-${i}`} className={styles.hueco} aria-hidden="true" />
             ))}
             {dias.map((d) => {

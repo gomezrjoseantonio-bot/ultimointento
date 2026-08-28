@@ -23,6 +23,7 @@ import {
   claveDeLineaIgual,
   decisionesVacias,
   type LineaExtracto,
+  seOfrecePara,
 } from '../extractoSesion';
 import type { MatchResult } from '../../../../services/movementMatchingService';
 import type { Movement, TreasuryEvent } from '../../../../services/db';
@@ -577,5 +578,50 @@ describe('lote de traspasos iguales (A2)', () => {
     d.asignados.set(2, 99); // la 2 ya la resolvió el usuario
     const ids = idsIgualesAResolver(lineas, d, lineas[0]);
     expect(ids).toEqual([3]);
+  });
+});
+
+// ─── qué previsiones se ofrecen al extracto ─────────────────────────────────
+
+describe('seOfrecePara · a qué previsión se le puede asignar una línea', () => {
+  const prev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
+    ({
+      id: 1, type: 'expense', amount: 60, predictedDate: '2026-08-15',
+      description: 'Comunidad', accountId: 7, status: 'predicted',
+      sourceType: 'gasto_recurrente', createdAt: '', updatedAt: '', ...over,
+    }) as TreasuryEvent;
+
+  it('una prevista de esa cuenta, sí', () => {
+    expect(seOfrecePara(prev(), 7)).toBe(true);
+  });
+
+  it('la de otra cuenta, no', () => {
+    expect(seOfrecePara(prev(), 8)).toBe(false);
+  });
+
+  it('una ya ejecutada tampoco · su cargo ya está', () => {
+    expect(seOfrecePara(prev({ status: 'executed' as never }), 7)).toBe(false);
+  });
+
+  // El fallo que este PR cierra: casarla la dejaba `executed` CON la marca,
+  // invisible en pantalla mientras su movimiento movía el saldo.
+  it('una DESCARTADA no se ofrece · dijiste que no iba a ocurrir', () => {
+    expect(seOfrecePara(prev({ descartado: true }), 7)).toBe(false);
+  });
+
+  // La red para las cuotas que el regenerado dejó sin cuenta: sin esto, la
+  // hipoteca salía «sin rastro» y no había forma de conciliarla a mano.
+  it('una cuota de préstamo huérfana de cuenta sí, para poder cuadrarla', () => {
+    expect(seOfrecePara(prev({ type: 'financing' as never, accountId: undefined }), 7)).toBe(true);
+  });
+
+  it('pero una descartada huérfana, no', () => {
+    expect(
+      seOfrecePara(prev({ type: 'financing' as never, accountId: undefined, descartado: true }), 7)
+    ).toBe(false);
+  });
+
+  it('sin cuenta destino no se ofrece nada que no sea la cuota huérfana', () => {
+    expect(seOfrecePara(prev({ accountId: undefined }), undefined)).toBe(false);
   });
 });
