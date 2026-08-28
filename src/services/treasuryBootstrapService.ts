@@ -7,6 +7,11 @@
 // múltiples NO duplican eventos. NO genera eventos retroactivos. NO toca
 // `movements` existentes ni eventos confirmed/executed.
 //
+// Forward-only es lo que ESCRIBE, no lo que BORRA: lo ya previsto para un mes
+// que pasó se queda donde está. Un previsto vencido sin confirmar es trabajo
+// pendiente —lo sigues esperando— y un descartado es la constancia de que algo
+// no ocurrió; ni uno ni otro caducan porque cambie el mes (ver el paso 4).
+//
 // Fuentes procesadas:
 //   - Nóminas activas      → vía generateMonthlyForecasts
 //   - Préstamos / hipotecas → vía generateMonthlyForecasts
@@ -234,33 +239,31 @@ export async function regenerateForecastsForward(
     });
   }
 
-  // 4. Defensa final · purgar cualquier predicted que quede con fecha anterior
-  //    al primer día del mes en curso. Forward-only estricto · NO retroactivo.
-  try {
-    const db = await initDB();
-    const desdeIso = result.desde;
-    const tx = db.transaction('treasuryEvents', 'readwrite');
-    const store = tx.objectStore('treasuryEvents');
-    let cursor = await store.openCursor();
-    while (cursor) {
-      const ev = cursor.value as TreasuryEvent;
-      if (
-        ev.status === 'predicted' &&
-        (ev as { executedMovementId?: number | string | null }).executedMovementId == null &&
-        typeof ev.predictedDate === 'string' &&
-        ev.predictedDate < desdeIso
-      ) {
-        await cursor.delete();
-      }
-      cursor = await cursor.continue();
-    }
-    await tx.done;
-  } catch (err) {
-    result.errores.push({
-      contexto: 'purga predicted retroactivos',
-      mensaje: err instanceof Error ? err.message : String(err),
-    });
-  }
+  // 4. Lo VENCIDO se queda.
+  //
+  //    Aquí había una «defensa final» que borraba, en cada pasada, todo
+  //    `predicted` con fecha anterior al primer día del mes en curso. Venía del
+  //    principio «forward-only» con el que nació este orquestador (T31): la
+  //    proyección mira hacia delante.
+  //
+  //    Pero un cargo previsto para el 30 de septiembre que a día 1 de octubre
+  //    no ha llegado NO es basura: es un pendiente que su dueño sigue
+  //    esperando, y el silencio significa justo eso. Barrerlo era decidir por
+  //    él que no iba a ocurrir, sin dejar rastro y sin preguntar. Se llevaba
+  //    además los DESCARTADOS del mes anterior, que son lo contrario —la
+  //    constancia explícita de que algo no ocurrió—, así que la misma pregunta
+  //    volvía al mes siguiente.
+  //
+  //    La pantalla ya contaba con que esto existiera: `limiteMeses.ts` dice que
+  //    «el único motivo legítimo para mirar atrás es que quede TRABAJO ahí: un
+  //    previsto vencido sin confirmar», y `mesMinimo` retrocede hasta el más
+  //    antiguo. Con la purga en medio no podía dispararse nunca.
+  //
+  //    Un previsto vencido sale ahora de «por confirmar» por donde debe: se
+  //    confirma cuando el cargo llega, o se descarta cuando se sabe que no va a
+  //    llegar. Lo que evita duplicados sigue siendo el barrido del paso 0, que
+  //    cubre el horizonte que la regeneración vuelve a emitir; el pasado no se
+  //    regenera, así que dejarlo quieto no duplica nada.
 
   return result;
 }
