@@ -514,6 +514,17 @@ export async function confirmTreasuryEvent(
   const updatedEvent: TreasuryEvent = {
     ...sinMarcaDeDescarte(existingEvent),
     status: 'executed',
+    // B13 · el evento se va con su dinero.
+    //
+    // El override de cuenta ya llegaba al movimiento (`buildMovementPayload`) y
+    // a la línea de inmueble, pero no aquí: el evento se quedaba `executed` en
+    // la cuenta VIEJA mientras su movimiento vivía en la nueva. El saldo de una
+    // cuenta suma «los eventos comprometidos + los movimientos» y excluye el
+    // movimiento de cada evento comprometido para no contarlo dos veces
+    // (`accountBalanceService`), pero esa exclusión cruza los dos DENTRO de una
+    // cuenta: separados, la origen sumaba el evento y la destino el movimiento.
+    // Medido: 607 € cobrados, 1.214 € de consolidado.
+    accountId: overrides?.accountId ?? existingEvent.accountId,
     executedMovementId: movementId,
     executedAt: now,
     actualDate: overrides?.date ?? existingEvent.actualDate ?? existingEvent.predictedDate,

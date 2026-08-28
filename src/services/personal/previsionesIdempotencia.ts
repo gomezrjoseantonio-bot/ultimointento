@@ -31,23 +31,34 @@ export function esPrevisionDeCompromiso(ev: Pick<TreasuryEvent, 'sourceType'>): 
 }
 
 /**
- * Clave de origen de una previsión automática · `origen|id|periodo|cuenta`.
+ * Clave de origen de una previsión automática · `origen|id|periodo`.
  *
  * Es la unidad de idempotencia: como mucho puede haber UNA previsión viva por
  * clave. El periodo es normalmente el `año-mes` del cargo, porque ningún patrón
  * de compromiso se repite dentro de un mes.
  *
  * `año`/`mes` caen a `predictedDate` cuando el evento es antiguo y no los trae.
+ *
+ * ── La CUENTA no entra (B13) ───────────────────────────────────────────────
+ *
+ * Estaba dentro y no distinguía nada: un compromiso tiene UNA `cuentaCargo` y
+ * un cargo por periodo, así que el origen y el mes ya lo identifican. Lo que sí
+ * hacía era romperse justo donde no debía — al confirmar un recibo cobrado
+ * desde otra cuenta, el evento pasa a llevar la cuenta REAL (si no, su importe
+ * se cuenta dos veces en el saldo), y con la cuenta en la clave ese cambio
+ * dejaba el mes libre otra vez: la regeneración volvía a emitir un cargo ya
+ * pagado. Medido: salían dos filas, la ejecutada en la cuenta nueva y una
+ * previsión nueva en la vieja.
  */
 export function claveOrigenPrevision(
-  ev: Pick<TreasuryEvent, 'sourceType' | 'sourceId' | 'año' | 'mes' | 'predictedDate' | 'accountId'>,
+  ev: Pick<TreasuryEvent, 'sourceType' | 'sourceId' | 'año' | 'mes' | 'predictedDate'>,
 ): string {
   const iso = typeof ev.predictedDate === 'string' ? ev.predictedDate : '';
   const año = ev.año ?? Number(iso.slice(0, 4));
   const mes = ev.mes ?? Number(iso.slice(5, 7));
   const origen = esPrevisionDeCompromiso(ev) ? 'gasto_recurrente' : ev.sourceType;
   const periodo = `${año}-${String(mes).padStart(2, '0')}`;
-  return `${origen}|${ev.sourceId ?? ''}|${periodo}|${ev.accountId ?? ''}`;
+  return `${origen}|${ev.sourceId ?? ''}|${periodo}`;
 }
 
 /**
