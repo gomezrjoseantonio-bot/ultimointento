@@ -182,9 +182,11 @@ describe('treasuryConfirmationService · PR3', () => {
         }) as any),
       );
 
+      const OTRA_CUENTA = ACCOUNT_ID + 1;
       const { movementId } = await confirmTreasuryEvent(eventId, {
         amount: 540,
         date: '2026-05-03',
+        accountId: OTRA_CUENTA,
         description: 'Renta Tenderina 64 · mayo (ajustada)',
         counterparty: 'B87654321',
       });
@@ -194,6 +196,15 @@ describe('treasuryConfirmationService · PR3', () => {
       expect(movement.date).toBe('2026-05-03');
       expect(movement.description).toContain('ajustada');
       expect(movement.counterparty).toBe('B87654321');
+      expect(movement.accountId).toBe(OTRA_CUENTA);
+
+      // B13 · el nombre de este test decía «accountId» desde el principio y no
+      // lo pasaba nunca, así que el único override que NO se respetaba era
+      // justo el que nadie comprobaba: el evento se quedaba en la cuenta vieja
+      // y su importe acababa contado en las dos. El evento se va con su dinero.
+      const evento = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
+      expect(evento.accountId).toBe(OTRA_CUENTA);
+      expect(evento.accountId).toBe(movement.accountId);
     });
 
     it('lanza si el event no tiene cuenta ni override de cuenta', async () => {

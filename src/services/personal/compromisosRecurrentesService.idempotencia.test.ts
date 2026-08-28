@@ -171,3 +171,39 @@ describe('idempotencia · reactivar', () => {
     expect((await eventosDe(c.id!)).length).toBeLessThanOrEqual(antes);
   });
 });
+
+// B13 · el recibo se paga desde OTRA cuenta.
+//
+// Al arreglar la duplicación de saldo, el evento confirmado pasa a llevar la
+// cuenta desde la que se cobró de verdad. Si la cuenta formara parte de la
+// identidad de la previsión —como formaba—, ese cambio dejaría el mes libre
+// otra vez y la regeneración volvería a emitir un cargo ya pagado. Medido antes
+// de quitarla de la clave: salían dos, `cuenta=2/executed` y `cuenta=1/predicted`.
+describe('idempotencia · pagar desde otra cuenta no reabre el mes', () => {
+  it('un confirmado reasignado a otra cuenta NO recibe un gemelo predicted', async () => {
+    const db = await initDB();
+    const c = await crearCompromiso(base({ alias: 'Comunidad', cuentaCargo: 1 }));
+    const evs = await eventosDe(c.id!);
+    const objetivo = evs[0];
+
+    // Lo que hace `confirmTreasuryEvent` con override de cuenta.
+    await db.put('treasuryEvents', {
+      ...objetivo,
+      status: 'executed',
+      executedMovementId: 999,
+      accountId: 2,
+    });
+
+    await regenerarEventosCompromiso(c);
+
+    const finales = await eventosDe(c.id!);
+    expect(finales).toHaveLength(evs.length);
+    expect(clavesDuplicadas(finales)).toEqual([]);
+    // Y el mes del cargo pagado sigue teniendo UNA sola fila, la ejecutada.
+    const delMes = finales.filter(
+      (e) => (e.predictedDate ?? '').slice(0, 7) === (objetivo.predictedDate ?? '').slice(0, 7),
+    );
+    expect(delMes).toHaveLength(1);
+    expect(delMes[0].status).toBe('executed');
+  });
+});
