@@ -76,17 +76,30 @@ describe('origenIdRecurrenteDeEvento · el puente entre las dos claves', () => {
 // ─── qué se escribe ─────────────────────────────────────────────────────────
 
 describe('camposDeCierre · lo mismo que escribe el punteo manual', () => {
-  it('los tres campos que mira la declaración, más el enlace al evento', () => {
-    expect(camposDeCierre(31, 7)).toEqual({
+  const mov = { id: 31, amount: -60, date: '2026-03-15', valueDate: '2026-03-16', accountId: 4 };
+
+  it('el cierre que mira la declaración, el enlace al evento y el dato real', () => {
+    expect(camposDeCierre(mov, 7)).toEqual({
       estado: 'confirmado',
       estadoTesoreria: 'confirmed',
       movimientoId: '31',
       treasuryEventId: 7,
+      importe: 60,
+      fecha: '2026-03-15',
+      fechaValor: '2026-03-16',
+      ejercicio: 2026,
+      cuentaBancaria: '4',
     });
   });
 
   it('el movimiento va como cadena · es como lo guarda `confirmTreasuryEvent`', () => {
-    expect(camposDeCierre(31, 7).movimientoId).toBe('31');
+    expect(camposDeCierre(mov, 7).movimientoId).toBe('31');
+  });
+
+  // Un Confirmado puede no venir de ninguna previsión (un alta a mano): ahí no
+  // hay evento al que atar la línea y no se inventa uno.
+  it('sin evento no se escribe enlace al evento', () => {
+    expect('treasuryEventId' in camposDeCierre(mov)).toBe(false);
   });
 });
 

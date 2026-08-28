@@ -348,7 +348,11 @@ export async function confirmDecisions(
       executedMovementId: movementId,
       executedAt: now,
       actualDate: movement.date,
-      actualAmount: movement.amount,
+      // MAGNITUD, como el punteo manual (`treasuryConfirmationService:509`): el
+      // signo se deriva de `type` en todo el resto del flujo. Guardarlo con el
+      // signo del movimiento metía gastos en negativo donde el consumidor
+      // esperaba magnitud (p. ej. `presupuestoAnualService:345`).
+      actualAmount: Math.abs(movement.amount),
     });
     // La línea del banco HEREDA la clasificación de la previsión con la que
     // cuadra: categoría, familia, ámbito e inmueble. Tú los definiste en el
@@ -364,6 +368,12 @@ export async function confirmDecisions(
       ...(event.conceptoId != null ? { conceptoId: event.conceptoId } : {}),
       ...(event.ambito != null ? { ambito: event.ambito } : {}),
       ...(event.inmuebleId != null ? { inmuebleId: String(event.inmuebleId) } : {}),
+      // Los DOS textos conviven. `description` se queda con el churro del banco
+      // —es la prueba, y `hashMovement` dedupica por él: reescribirlo haría que
+      // un reimport solapado no reconociera la línea y duplicara el cargo—, y
+      // el nombre que le puso el usuario en la previsión ("Agua Tenderina") se
+      // guarda aparte, que es lo que hace legibles los informes.
+      ...(event.description ? { descripcionPrevision: event.description } : {}),
       unifiedStatus: 'conciliado',
       statusConciliacion: 'match_manual',
       updatedAt: now,
@@ -372,7 +382,10 @@ export async function confirmDecisions(
     // conciliado en tesorería pero la declaración lo sigue viendo como una
     // previsión y no lo deduce (`yaOcurrio`). Es el mismo cierre que hace el
     // punteo manual, escrito una vez.
-    await cerrarLineaDeGastoDelEvento(db as unknown as DbParaCierre, event, movementId);
+    // La línea que DECLARA ese gasto se cierra CON EL DATO DEL BANCO: importe,
+    // fecha de cargo (que fija el ejercicio) y fecha valor. Cerrarla
+    // conservando lo previsto —lo que se hacía— deducía la estimación.
+    await cerrarLineaDeGastoDelEvento(db as unknown as DbParaCierre, event, movement);
     movementIdsTouched.add(movementId);
 
     // Feed learning so subsequent imports auto-classify by learnKey.
@@ -662,7 +675,8 @@ function buildTreasuryEventFromAction(
     accountId: movement.accountId,
     status: 'executed' as const,
     actualDate: movement.date,
-    actualAmount: movement.amount,
+    // Magnitud · misma convención que el punteo manual y que `approvedMatches`.
+    actualAmount: Math.abs(movement.amount),
     executedMovementId: movement.id,
     executedAt: now,
     generadoPor: 'user' as const,

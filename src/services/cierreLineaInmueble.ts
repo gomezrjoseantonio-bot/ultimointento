@@ -19,9 +19,32 @@
 // El cierre vive aquí, en un módulo hoja, para que los dos caminos escriban lo
 // MISMO. Escrito dos veces volvería a divergir, que es exactamente cómo nació
 // esto.
+//
+// Y cerrar no basta: hay que escribir el dato REAL. La jerarquía es
+//
+//   conciliado (banco) > confirmado (punteo) > previsto (estimación)
+//
+// así que al conciliar, el importe y la fecha del extracto sobrescriben lo que
+// la línea trajera. Cerrarla conservando la estimación —lo que se hacía hasta
+// ahora— deducía 82,00 € cuando el banco había cargado 87,40 €.
 // ============================================================================
 
-import type { GastoInmueble, TreasuryEvent } from './db';
+import type { GastoInmueble, Movement, TreasuryEvent } from './db';
+
+/**
+ * Lo que hace falta saber del movimiento real · un `Movement` entero pide de
+ * más y ata el módulo a un tipo que no necesita.
+ *
+ * `date` es la fecha de CARGO (la que fija el ejercicio, criterio caja) y
+ * `valueDate` la fecha valor, que se guarda aparte para no perderla.
+ *
+ * `accountId` se relaja a opcional respecto de `Movement`: el punteo manual
+ * puede estar confirmando una previsión cuya cuenta aún no se resolvió, y ahí
+ * no se escribe cuenta en vez de inventarse una.
+ */
+export type MovimientoReal = Pick<Movement, 'id' | 'amount' | 'date' | 'valueDate'> & {
+  accountId?: number;
+};
 
 /** Lo mínimo de la base que hace falta · así se puede probar sin IndexedDB. */
 export interface DbParaCierre {
@@ -51,23 +74,61 @@ export function origenIdRecurrenteDeEvento(evento: TreasuryEvent): string | null
   return `recurrente-${sourceId}-${año}-${mes}`;
 }
 
+/** Campos que escribe el cierre · los mismos por los tres caminos. */
+export type CamposDeCierre = Pick<
+  GastoInmueble,
+  | 'estado'
+  | 'estadoTesoreria'
+  | 'movimientoId'
+  | 'treasuryEventId'
+  | 'importe'
+  | 'fecha'
+  | 'fechaValor'
+  | 'ejercicio'
+  | 'cuentaBancaria'
+>;
+
 /**
- * Lo que se escribe al cerrar · los mismos campos que pone el punteo manual
- * (`treasuryConfirmationService:412-421`).
+ * Lo que se escribe al cerrar · los mismos campos que pone el punteo manual,
+ * que consume esta función para que no puedan volver a divergir.
  *
- * Los tres primeros son los que lee `yaOcurrio`. El cuarto deja la línea atada
- * al evento, que es lo que permite encontrarla después —al desconciliar, por
- * ejemplo— sin volver a derivar la clave.
+ * Dos bloques:
+ *   · el CIERRE (`estado`, `estadoTesoreria`, `movimientoId`) es lo que lee
+ *     `yaOcurrio` para decidir que el gasto se deduce, y `treasuryEventId` lo
+ *     que permite encontrar la línea después —al desconciliar, por ejemplo—
+ *     sin volver a derivar la clave;
+ *   · el DATO REAL (`importe`, `fecha`, `ejercicio`, `fechaValor`,
+ *     `cuentaBancaria`) es lo que de verdad pasó, y manda sobre lo previsto.
+ *
+ * `importe` va en MAGNITUD: el signo vive en el movimiento (negativo si es un
+ * cargo) y la línea de gasto siempre declara positivo, como el resto de
+ * escritores. El `ejercicio` sale de la fecha de CARGO y nunca de la fecha
+ * valor: es el criterio de caja, y un cargo del 3 de enero es gasto del año
+ * nuevo aunque se previera para el 28 de diciembre.
+ *
+ * `eventId` es opcional porque una línea puede colapsarse contra un movimiento
+ * que no nació de ninguna previsión (un alta a mano): ahí no hay evento al que
+ * atarla y no se inventa uno.
  */
 export function camposDeCierre(
-  movementId: number,
-  eventId: number,
-): Pick<GastoInmueble, 'estado' | 'estadoTesoreria' | 'movimientoId' | 'treasuryEventId'> {
+  movimiento: MovimientoReal,
+  eventId?: number | null,
+): CamposDeCierre {
+  const fecha = String(movimiento.date).slice(0, 10);
   return {
     estado: 'confirmado',
     estadoTesoreria: 'confirmed',
-    movimientoId: String(movementId),
-    treasuryEventId: eventId,
+    movimientoId: movimiento.id != null ? String(movimiento.id) : undefined,
+    ...(eventId != null ? { treasuryEventId: eventId } : {}),
+    importe: Math.abs(movimiento.amount),
+    fecha,
+    ejercicio: Number(fecha.slice(0, 4)),
+    ...(movimiento.valueDate
+      ? { fechaValor: String(movimiento.valueDate).slice(0, 10) }
+      : {}),
+    ...(movimiento.accountId != null
+      ? { cuentaBancaria: String(movimiento.accountId) }
+      : {}),
   };
 }
 
@@ -86,7 +147,8 @@ export function aceptaCierre(linea: GastoInmueble | null | undefined): boolean {
 }
 
 /**
- * Cierra la línea de gasto de inmueble que corresponde a este evento, si la hay.
+ * Cierra la línea de gasto de inmueble que corresponde a este evento, si la hay,
+ * y le escribe el importe y la fecha REALES del movimiento.
  *
  * **Solo cierra lo que ya existe · nunca crea.** El punteo manual sí crea la
  * línea cuando falta, porque el usuario está declarando un gasto que no estaba;
@@ -99,7 +161,7 @@ export function aceptaCierre(linea: GastoInmueble | null | undefined): boolean {
 export async function cerrarLineaDeGastoDelEvento(
   db: DbParaCierre,
   evento: TreasuryEvent,
-  movementId: number,
+  movimiento: MovimientoReal,
 ): Promise<boolean> {
   if (evento.id == null) return false;
   // Un gasto personal no tiene línea de inmueble que cerrar. Se comprueba
@@ -155,8 +217,57 @@ export async function cerrarLineaDeGastoDelEvento(
 
   await db.put('gastosInmueble', {
     ...linea,
-    ...camposDeCierre(movementId, evento.id),
+    ...camposDeCierre(movimiento, evento.id),
     updatedAt: new Date().toISOString(),
   });
   return true;
+}
+
+/**
+ * Repunta al movimiento nuevo las líneas que apuntaban a uno que va a
+ * desaparecer, escribiéndoles de paso el dato real. Devuelve cuántas movió.
+ *
+ * Es el caso del colapso (`reconciliarConfirmado`): la línea del extracto y un
+ * Confirmado ya punteado son la MISMA operación, sobrevive la del extracto y el
+ * confirmado se borra. La línea de gasto le apuntaba por `movimientoId`, así
+ * que sin esto se quedaba señalando un id que ya no existe —y encima con el
+ * importe previsto, cuando el banco acababa de decir el real.
+ *
+ * Se busca por `movimientoId` y no por el evento a propósito: un Confirmado
+ * puede no venir de ninguna previsión (un alta a mano), y su línea hay que
+ * repuntarla igual.
+ */
+export async function repuntarLineasAlMovimiento(
+  db: DbParaCierre,
+  movimientoAnteriorId: number,
+  movimiento: MovimientoReal,
+): Promise<number> {
+  let todas: GastoInmueble[];
+  try {
+    todas = (await db.getAll('gastosInmueble')) as GastoInmueble[];
+  } catch {
+    return 0;
+  }
+
+  const ahora = new Date().toISOString();
+  let movidas = 0;
+
+  for (const linea of todas ?? []) {
+    // `movimientoId` es `string` en el tipo, pero hay líneas viejas que lo
+    // guardaron como número. Comparar solo por cadena las dejaría huérfanas,
+    // que es justo el fallo que esto viene a arreglar.
+    if (linea?.movimientoId == null) continue;
+    if (Number(linea.movimientoId) !== movimientoAnteriorId) continue;
+    // Misma guarda que el cierre: un ejercicio ya declarado es verdad
+    // consumida y no se reescribe, ni siquiera para repuntarlo.
+    if (!aceptaCierre(linea)) continue;
+    await db.put('gastosInmueble', {
+      ...linea,
+      ...camposDeCierre(movimiento, linea.treasuryEventId),
+      updatedAt: ahora,
+    });
+    movidas += 1;
+  }
+
+  return movidas;
 }

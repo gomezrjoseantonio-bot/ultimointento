@@ -15,11 +15,17 @@
 // evento en `executed` apuntándole), su evento se RE-APUNTA a la línea del
 // import; si no, el saldo contaría el evento y la línea por separado (fechas
 // distintas) y volvería a duplicar.
+//
+// Lo mismo vale para la línea de `gastosInmueble` que DECLARA el gasto: le
+// apuntaba al confirmado por `movimientoId`, así que al borrarlo se quedaba
+// señalando un id inexistente y con el importe previsto. Se repunta al
+// movimiento del import y se le escribe el dato del banco, que es el que manda.
 // ============================================================================
 
 import type { initDB } from './db';
 import type { Movement, TreasuryEvent } from './db';
 import { isTransferKey } from './categoryCatalog';
+import { repuntarLineasAlMovimiento, type DbParaCierre } from './cierreLineaInmueble';
 
 type DB = Awaited<ReturnType<typeof initDB>>;
 
@@ -33,7 +39,8 @@ export function eventIdDeReferencia(reference: unknown): number | null {
 /**
  * Colapsa `confirmadoMovementId` sobre `importMov`: la línea del import hereda la
  * clasificación, sube a Conciliado, re-apunta el evento del previsto punteado y
- * borra el confirmado. Idempotente si el confirmado ya no existe.
+ * la línea de gasto que lo declara, y borra el confirmado. Idempotente si el
+ * confirmado ya no existe.
  */
 export async function aplicarReconciliacionConfirmado(
   db: DB,
@@ -55,6 +62,11 @@ export async function aplicarReconciliacionConfirmado(
           categoryKey: confirmado.categoryKey,
           subtypeKey: confirmado.subtypeKey,
           conceptoId: confirmado.conceptoId,
+          // Cómo lo llamaba el usuario. La `description` del import es el texto
+          // del banco y no se toca (el hash del dedupe depende de ella), así
+          // que el nombre legible se guarda aparte en vez de perderse.
+          descripcionPrevision:
+            confirmado.descripcionPrevision ?? confirmado.description,
           inmuebleId: confirmado.inmuebleId,
           ambito: confirmado.ambito,
           ...(confirmado.tarjetaId != null ? { tarjetaId: confirmado.tarjetaId } : {}),
@@ -89,6 +101,21 @@ export async function aplicarReconciliacionConfirmado(
           updatedAt: now,
         });
       }
+    }
+  }
+
+  // La línea de gasto que apuntaba al confirmado pasa a apuntar al movimiento
+  // del import —que es el que sobrevive— y se queda con el importe y la fecha
+  // reales. Va ANTES del borrado: después ya no habría por dónde encontrarla.
+  if (importMov.id != null) {
+    try {
+      await repuntarLineasAlMovimiento(
+        db as unknown as DbParaCierre,
+        confirmado.id,
+        importMov,
+      );
+    } catch (err) {
+      console.warn('[reconciliarConfirmado] no se pudo repuntar la línea de gasto', err);
     }
   }
 
