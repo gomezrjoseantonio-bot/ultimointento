@@ -20,6 +20,7 @@
 // file picked) — removes the inserted movements and the batch row.
 import { initDB, ImportBatch, Movement, MovementLearningRule, TreasuryEvent } from './db';
 import { cerrarLineaDeGastoDelEvento, type DbParaCierre } from './cierreLineaInmueble';
+import { sinMarcaDeDescarte } from './descarteDePrevision';
 import { contraparteDeBizum, pareceBizum } from './bizum';
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { bankProfileMatcher, BankFormat } from '../features/inbox/importers/bankProfileMatcher';
@@ -342,8 +343,10 @@ export async function confirmDecisions(
     if (!movement || !event) continue;
     if (event.status === 'executed') continue; // already matched in another flow
 
+    // Igual que el punteo manual: lo que se materializa deja de estar
+    // descartado. Ver `descarteDePrevision`.
     await db.put('treasuryEvents', {
-      ...event,
+      ...sinMarcaDeDescarte(event),
       status: 'executed',
       executedMovementId: movementId,
       executedAt: now,

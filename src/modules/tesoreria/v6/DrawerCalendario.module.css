@@ -220,3 +220,115 @@
 /* El recuento de apuntes del día vivía aquí, a la derecha de su nombre. Ahora
    ese sitio es el de las acciones: cuántas filas hay se ve contándolas —son
    pocas y están debajo— y el subtotal de cada cuenta ya lo dice su cabecera. */
+
+/* ── La cola de meses vencidos (#1813 · T2) ────────────────────────────────
+   Desde #1813 un previsto que no llegó a tiempo sobrevive al cambio de mes.
+   Aquí se ve: una casilla POR MES, para saber de cuándo viene cada cosa.
+
+   Ámbar, no rojo (§5). Un recibo que se retrasa pide atención, no es un fallo:
+   el rojo se reserva para pérdida real. Los importes van en tinta como el resto
+   de números de la pantalla — el color marca acción, no cifra. */
+.colas {
+  padding: 14px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cola {
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 11px;
+  overflow: hidden;
+}
+.colaHd {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--atlas-v5-warn-wash);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.colaChip {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-warn);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  padding: 3px 8px;
+  border-radius: 11px;
+  flex: none;
+}
+.colaTit {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-brand);
+}
+.colaMeta {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-warn);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.colaAmt {
+  margin-left: auto;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+}
+.colaCaret {
+  display: grid;
+  place-items: center;
+  color: var(--atlas-v5-warn);
+  transition: transform 140ms ease;
+  flex: none;
+}
+.colaCaretOn { transform: rotate(90deg); }
+.colaBody { border-top: 1px solid var(--atlas-v5-gold-soft); }
+
+/* La casilla dentro de la rejilla · ocupa el hueco anterior al día 1, para no
+   ensuciar el mes que se está mirando. Dos columnas porque en una sola no cabe
+   el mes y su cifra. */
+.colaCelda {
+  grid-column: span 2;
+  min-height: 52px;
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 8px;
+  background: var(--atlas-v5-warn-wash);
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.colaCeldaLbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-warn);
+}
+.colaCeldaCnt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--atlas-v5-brand);
+}
+.colaCeldaAmt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+}

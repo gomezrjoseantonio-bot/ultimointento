@@ -8,6 +8,7 @@
 // The actual codebase models the unmatched-event state as `status === 'predicted'`
 // (see src/services/db.ts TreasuryEvent type + treasuryConfirmationService),
 // even though spec §1.3 refers to it as 'pending'. We use the canonical value.
+import { esConciliable } from './descarteDePrevision';
 import { initDB, Movement, TreasuryEvent } from './db';
 import { pareceBizum, contraparteDeBizum } from './bizum';
 import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
@@ -124,9 +125,12 @@ async function loadCandidateEvents(
       const all = ((await db.getAll('treasuryEvents')) ?? []) as TreasuryEvent[];
       events = all.filter(e => e.accountId === accountId);
     }
+    // Un DESCARTADO no entra: el usuario ya dijo que no iba a ocurrir, y
+    // casarlo por detrás lo dejaba `executed` con la marca puesta — invisible
+    // en pantalla con el saldo movido. Ver `descarteDePrevision`.
     result.set(
       accountId,
-      events.filter(e => e.status === 'predicted' && e.id != null)
+      events.filter(e => esConciliable(e) && e.id != null)
     );
   }
 

@@ -23,6 +23,7 @@
 // LineasAnualesTab para mantener coherencia con todos los filtros de
 // Conciliación.
 
+import { sinMarcaDeDescarte } from './descarteDePrevision';
 import { initDB } from './db';
 import type { TreasuryEvent, Movement } from './db';
 import {
@@ -506,8 +507,12 @@ export async function confirmTreasuryEvent(
     }
   }
 
+  // El cargo real manda sobre la previsión de que no llegaría: si algo se
+  // materializa, no puede seguir marcado como descartado (`descartarPrevisto`
+  // ya se niega en el sentido contrario). Sin esto quedaba invisible en
+  // pantalla con el saldo movido.
   const updatedEvent: TreasuryEvent = {
-    ...existingEvent,
+    ...sinMarcaDeDescarte(existingEvent),
     status: 'executed',
     executedMovementId: movementId,
     executedAt: now,
