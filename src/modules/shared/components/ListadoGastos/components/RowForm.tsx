@@ -11,6 +11,7 @@ import { showToastV5 } from '../../../../../design-system/v5';
 import type {
   CompromisoRecurrente,
   ImporteEvento,
+  PatronRecurrente,
   PatronVariacion,
   MetodoPagoCompromiso,
   FamiliaFiscal,
@@ -31,8 +32,38 @@ import { nombreDelMetodo } from '../../../../../services/metodoDePago';
 import type { Tarjeta } from '../../../../../types/tarjetas';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
+import {
+  cargosDeCompromiso,
+  parseCargos,
+  porPagoDesdeCargos,
+  problemaDeCargos,
+  MESES_CORTOS,
+  type CargoDraft,
+} from '../utils/cargosPorPago';
 import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
 import RepartoEditor, { repartoCuadra, type InmuebleOpcion } from './RepartoEditor';
+import CargosEditor from './CargosEditor';
+import {
+  panel,
+  dtit,
+  dgrid,
+  dgrid2,
+  lab,
+  inp,
+  inpSmall,
+  tramoRow,
+  tramoDel,
+  btnLinkTramo,
+  fiscalInfo,
+  inlineRow,
+  hint,
+  hint2,
+  checkRow,
+  checkInput,
+  estadoBox,
+  footer,
+  btnGold,
+} from './RowForm.styles';
 import {
   conceptoPorId,
   conceptosDe,
@@ -70,19 +101,40 @@ const MEDIOS: MetodoPagoCompromiso[] = [
 const nombreDeCuenta = (a?: Account): string =>
   a ? (a.alias ?? a.name ?? a.banco?.name ?? 'Sin nombre') : 'Sin cuenta';
 
-type ModoImporteUI = 'fijo' | 'variable' | 'porTramos' | 'porcentajeRenta';
+type ModoImporteUI =
+  | 'fijo'
+  | 'variable'
+  | 'porPago'
+  | 'porTramos'
+  | 'porcentajeRenta'
+  | 'diferenciadoPorMes';
 
 const MODOS_IMPORTE: Array<{ id: ModoImporteUI; label: string }> = [
   { id: 'fijo', label: 'Fijo · igual cada cargo' },
   { id: 'variable', label: 'Media · varía cada mes' },
+  // El IBI de dos pagos, la basura de dos recibos, el seguro fraccionado: un
+  // concepto con varios cargos al año, cada uno con su cifra y su día. Antes
+  // había que darlos de alta por separado («IBI 1», «IBI 2»).
+  { id: 'porPago', label: 'Por cargo · varios al año' },
   { id: 'porTramos', label: 'Por tramos · cambia en una fecha' },
   { id: 'porcentajeRenta', label: '% de la renta' },
 ];
 
+// La detección automática propone gastos con doce importes
+// (`compromisoDetectionService`). La ficha no los edita, pero tampoco los pisa:
+// el modo aparece SOLO si el gasto ya venía así, para que se vea lo que hay y
+// se pueda dejar como estaba.
+const MODO_DETECTADO: { id: ModoImporteUI; label: string } = {
+  id: 'diferenciadoPorMes',
+  label: 'Distinto cada mes · detectado',
+};
+
 function modoImporteInicial(imp: ImporteEvento): ModoImporteUI {
   if (imp.modo === 'variable') return 'variable';
+  if (imp.modo === 'porPago') return 'porPago';
   if (imp.modo === 'porTramos') return 'porTramos';
   if (imp.modo === 'porcentajeRenta') return 'porcentajeRenta';
+  if (imp.modo === 'diferenciadoPorMes') return 'diferenciadoPorMes';
   return 'fijo';
 }
 
@@ -160,6 +212,15 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   const [pctRenta, setPctRenta] = useState<string>(
     c.importe.modo === 'porcentajeRenta' ? String(c.importe.porcentaje) : '',
   );
+  // Los cargos del año · nacen de lo guardado, sea `porPago` o el
+  // `diferenciadoPorMes` de la detección (de ahí salen sus meses con cifra),
+  // así que pasar uno a cargos no obliga a teclear nada de nuevo.
+  const [cargos, setCargos] = useState<CargoDraft[]>(() => {
+    const leidos = cargosDeCompromiso(c.importe, c.patron);
+    return leidos.length > 0
+      ? leidos.map((x) => ({ mes: x.mes, importe: String(x.importe), dia: String(x.dia) }))
+      : [{ mes: new Date().getMonth() + 1, importe: '', dia: '1' }];
+  });
   const [meses, setMeses] = useState<number[]>(() => patronToMeses(c.patron));
   const [dia, setDia] = useState<number>(() => diaDePatron(c.patron));
   const [diaIncierto, setDiaIncierto] = useState<boolean>(!!c.diaCargoIncierto);
@@ -193,6 +254,15 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   const puedeRepartir = inmuebleActual != null && (inmueblesDisponibles ?? []).length > 1;
   const importeNum = parseFloat(importe) || 0;
 
+  const esPorCargos = modoImporte === 'porPago';
+  const cargosListos = useMemo(() => parseCargos(cargos), [cargos]);
+  // El modo «detectado» solo se ofrece si el gasto ya venía así · no es algo
+  // que se elija, es algo que se respeta.
+  const modosOfrecidos = useMemo(
+    () => (c.importe.modo === 'diferenciadoPorMes' ? [...MODOS_IMPORTE, MODO_DETECTADO] : MODOS_IMPORTE),
+    [c.importe.modo],
+  );
+
   const mesAncla = useMemo(() => (meses.length ? Math.min(...meses) : new Date().getMonth() + 1), [meses]);
   const estadoLabel = c.estado === 'activo' ? 'Activo · se proyecta' : c.estado === 'preparado' ? 'Preparado · aún no se proyecta' : 'Dado de baja';
   // Fiscalidad DERIVADA del concepto (informativa · no se pregunta salvo
@@ -216,14 +286,39 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       showToastV5('Elige con qué tarjeta se paga', 'warn');
       return;
     }
+    // Un cargo a medio escribir no llegaría al dato —`parseCargos` lo filtra—,
+    // así que guardar sería seguro. Se avisa igualmente: perder en silencio una
+    // línea que se acaba de teclear es peor que no guardar.
+    if (modoImporte === 'porPago') {
+      const problema = problemaDeCargos(cargos);
+      if (problema) {
+        showToastV5(problema, 'warn');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const impNum = parseFloat(importe);
       let importeEvento: ImporteEvento;
+      // Los gastos por cargos no usan la rejilla de meses: su calendario ES la
+      // lista de cargos, con el día de cada uno.
+      let patronPorCargos: PatronRecurrente | null = null;
       if (modoImporte === 'variable') {
         importeEvento = { modo: 'variable', importeMedio: !Number.isNaN(impNum) && impNum > 0 ? impNum : 0 };
       } else if (modoImporte === 'porcentajeRenta') {
         importeEvento = { modo: 'porcentajeRenta', porcentaje: Math.min(100, Math.max(0, parseFloat(pctRenta) || 0)) };
+      } else if (modoImporte === 'porPago') {
+        // El importe y el patrón salen JUNTOS de los mismos cargos · ver
+        // `cargosPorPago`. Es lo que garantiza que ningún mes del patrón se
+        // quede sin importe, que es lo que hace lanzar a `calcularImporte`.
+        const derivado = porPagoDesdeCargos(parseCargos(cargos));
+        importeEvento = derivado.importe;
+        patronPorCargos = derivado.patron;
+      } else if (modoImporte === 'diferenciadoPorMes') {
+        // La ficha no sabe editar los doce huecos, así que no los toca: se
+        // reescribe el importe tal cual vino. Antes caía al `else` de abajo y
+        // el gasto se quedaba en `fijo 0` por cambiar la cuenta de cargo.
+        importeEvento = c.importe;
       } else if (modoImporte === 'porTramos') {
         const tr = tramos
           .filter((t) => t.desde && !Number.isNaN(parseFloat(t.importe)))
@@ -239,7 +334,9 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         variacion = { tipo: 'aniversarioContrato', mesAniversario: contratoMes, porcentajeAnual: parseFloat(contratoPct) || 0 };
       else variacion = { tipo: 'sinVariacion' };
 
-      const patron = mesesToPatron(meses.length ? meses : [new Date().getMonth() + 1], dia || 1);
+      const patron =
+        patronPorCargos ??
+        mesesToPatron(meses.length ? meses : [new Date().getMonth() + 1], dia || 1);
       const margen = parseInt(margenGracia, 10);
       // El nombre en blanco cae al del CONCEPTO, no al del proveedor. Ahora el
       // campo se enseña vacío a propósito cuando no añade nada, así que dejarlo
@@ -423,8 +520,13 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       <div style={dtit}>Cuánto</div>
       <div style={dgrid}>
         <Field label="Modo de importe">
-          <select style={inp} value={modoImporte} onChange={(e) => setModoImporte(e.target.value as ModoImporteUI)}>
-            {MODOS_IMPORTE.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          <select
+            style={inp}
+            aria-label="Modo de importe"
+            value={modoImporte}
+            onChange={(e) => setModoImporte(e.target.value as ModoImporteUI)}
+          >
+            {modosOfrecidos.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </Field>
         {modoImporte === 'fijo' && (
@@ -438,6 +540,16 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         )}
         {modoImporte === 'porTramos' && (
           <Field label="Importe"><div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-4)', padding: '7px 0' }}>por tramos ↓</div></Field>
+        )}
+        {esPorCargos && (
+          <Field label="Importe"><div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-4)', padding: '7px 0' }}>por cargo ↓</div></Field>
+        )}
+        {modoImporte === 'diferenciadoPorMes' && (
+          <Field label="Importe" hint="Lo puso la detección · pásalo a «Por cargo» para editarlo">
+            <div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-4)', padding: '7px 0' }}>
+              {cargosDeCompromiso(c.importe, c.patron).length} meses con importe
+            </div>
+          </Field>
         )}
         <Field label="Medio de pago">
           {/* Solo los medios que HOY se pueden usar · docs/VOCABULARIO-dinero.md
@@ -519,7 +631,12 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
           </Field>
         ) : (
           <Field label="Cuenta de cargo">
-            <select style={inp} value={cuentaCargo} onChange={(e) => setCuentaCargo(parseInt(e.target.value, 10))}>
+            <select
+              style={inp}
+              aria-label="Cuenta de cargo"
+              value={cuentaCargo}
+              onChange={(e) => setCuentaCargo(parseInt(e.target.value, 10))}
+            >
               {cuentasQuePuedenPagar(medio, accounts).length === 0 && (
                 <option value={cuentaCargo}>Sin cuentas · añade una en Cuentas</option>
               )}
@@ -543,6 +660,8 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
           )}
         </Field>
       </div>
+
+      {esPorCargos && <CargosEditor cargos={cargos} onChange={setCargos} />}
 
       {modoImporte === 'porTramos' && (
         <div style={{ marginTop: 12 }}>
@@ -585,13 +704,26 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         <Field label="Primer cobro" hint="Fija el día y desde cuándo arranca el ciclo"><input type="date" style={inp} value={fechaInicio.slice(0, 10)} onChange={(e) => setFechaInicio(e.target.value)} /></Field>
         <Field label="Margen de gracia" hint="Días antes de avisarte de que no ha llegado"><input type="number" min={0} max={31} style={inpSmall} value={margenGracia} onChange={(e) => setMargenGracia(e.target.value)} placeholder="0" /></Field>
       </div>
-      <div style={{ marginTop: 4 }}>
-        <RejillaMeses meses={meses} dia={dia} mesAncla={mesAncla} onMesesChange={setMeses} onDiaChange={setDia} disabled={diaIncierto} />
-        <label style={checkRow}>
-          <input type="checkbox" style={checkInput} checked={diaIncierto} onChange={(e) => setDiaIncierto(e.target.checked)} />
-          <span>No sé el día del cargo todavía (se proyecta a mitad de mes)</span>
-        </label>
-      </div>
+      {esPorCargos ? (
+        // Con cargos, el calendario ya está dicho arriba. Dejar la rejilla
+        // visible sería preguntarlo dos veces y dar por buena la respuesta que
+        // no manda.
+        <div style={{ marginTop: 4 }}>
+          <div style={fiscalInfo}>
+            {cargosListos.length > 0
+              ? cargosListos.map((x) => `${x.dia} ${MESES_CORTOS[x.mes - 1]}`).join(' · ')
+              : 'Añade arriba los cargos del año'}
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 4 }}>
+          <RejillaMeses meses={meses} dia={dia} mesAncla={mesAncla} onMesesChange={setMeses} onDiaChange={setDia} disabled={diaIncierto} />
+          <label style={checkRow}>
+            <input type="checkbox" style={checkInput} checked={diaIncierto} onChange={(e) => setDiaIncierto(e.target.checked)} />
+            <span>No sé el día del cargo todavía (se proyecta a mitad de mes)</span>
+          </label>
+        </div>
+      )}
 
       {/* ── Se comparte con otros inmuebles (§2.7) ── */}
       {puedeRepartir && inmuebleActual && (
@@ -650,106 +782,5 @@ const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode 
     {hint && <div style={hint2}>{hint}</div>}
   </div>
 );
-
-const panel: React.CSSProperties = {
-  background: 'var(--atlas-v5-card-alt)',
-  borderLeft: '3px solid var(--atlas-v5-gold)',
-  borderBottom: '1px solid var(--atlas-v5-line-2)',
-  padding: '18px 20px 20px',
-};
-const dtit: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  color: 'var(--atlas-v5-ink-4)',
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  margin: '20px 0 12px',
-  paddingTop: 16,
-  borderTop: '1px solid var(--atlas-v5-line-2)',
-};
-const dgrid: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-  gap: '14px 16px',
-};
-const dgrid2: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-  gap: '14px 16px',
-  marginTop: 14,
-};
-const lab: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  color: 'var(--atlas-v5-ink-4)',
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
-  marginBottom: 5,
-  display: 'block',
-};
-const inp: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid var(--atlas-v5-line)',
-  borderRadius: 7,
-  padding: '6px 9px',
-  fontSize: 12.5,
-  background: 'var(--atlas-v5-card)',
-  color: 'var(--atlas-v5-ink)',
-  fontFamily: 'var(--atlas-v5-font-ui)',
-  boxSizing: 'border-box',
-};
-const inpSmall: React.CSSProperties = { ...inp, width: 84 };
-const tramoRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 };
-const tramoDel: React.CSSProperties = {
-  background: 'none', border: 'none', color: 'var(--atlas-v5-ink-4)', cursor: 'pointer', fontSize: 16, lineHeight: 1,
-};
-const btnLinkTramo: React.CSSProperties = {
-  background: 'none', border: 'none', color: 'var(--atlas-v5-gold-ink)', fontSize: 11.5, fontWeight: 600,
-  cursor: 'pointer', fontFamily: 'var(--atlas-v5-font-ui)', padding: 0, marginTop: 2,
-};
-const fiscalInfo: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--atlas-v5-ink-3)',
-  background: 'var(--atlas-v5-gold-wash)',
-  border: '1px solid var(--atlas-v5-gold-soft)',
-  borderRadius: 7,
-  padding: '7px 10px',
-  lineHeight: 1.4,
-};
-const inlineRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 };
-const hint: React.CSSProperties = { fontSize: 10.5, color: 'var(--atlas-v5-ink-4)' };
-const hint2: React.CSSProperties = { fontSize: 10.5, color: 'var(--atlas-v5-ink-5)', marginTop: 5, lineHeight: 1.45 };
-const checkRow: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  fontSize: 11.5,
-  color: 'var(--atlas-v5-ink-3)',
-  marginTop: 10,
-  cursor: 'pointer',
-};
-// Checkbox nativo tintado con el navy ATLAS · sin él, el navegador pinta su
-// azul por defecto (fuera de paleta).
-const checkInput: React.CSSProperties = { accentColor: 'var(--atlas-v5-brand)' };
-const estadoBox: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--atlas-v5-ink-3)',
-  background: 'var(--atlas-v5-card)',
-  border: '1px solid var(--atlas-v5-line)',
-  borderRadius: 8,
-  padding: '10px 13px',
-};
-const footer: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', marginTop: 18 };
-const btnGold: React.CSSProperties = {
-  padding: '9px 22px',
-  borderRadius: 8,
-  fontSize: 12.5,
-  fontWeight: 600,
-  cursor: 'pointer',
-  border: '1px solid var(--atlas-v5-gold)',
-  background: 'var(--atlas-v5-gold)',
-  color: 'var(--atlas-v5-brand-ink)',
-  fontFamily: 'var(--atlas-v5-font-ui)',
-};
 
 export default RowForm;
