@@ -15,7 +15,9 @@
 // Fuentes procesadas:
 //   - Nóminas activas      → vía generateMonthlyForecasts
 //   - Préstamos / hipotecas → vía generateMonthlyForecasts
-//   - Compromisos activos   → vía regenerarEventosCompromiso
+//   - Compromisos activos   → vía regenerarEventosCompromiso (del mes en curso
+//                             hacia delante) y reconstruirRecurrentesDelPasado
+//                             (del suelo del ejercicio a ayer · como previsto)
 //   - Vivienda habitual     → SOLO limpieza (Fase 4 · generador retirado): se
 //     borran los eventos previstos que la ficha legacy hubiera dejado, vía
 //     borrarEventosFuturosVivienda. Los gastos del hogar viven como compromisos.
@@ -34,6 +36,7 @@ import {
   regenerarEventosCompromiso,
 } from './personal/compromisosRecurrentesService';
 import { borrarEventosFuturosVivienda } from './personal/viviendaHabitualService';
+import { reconstruirRecurrentesDelPasado } from './reconstruccionRecurrentes';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 
 const DEFAULT_HORIZONTE_MESES = 24;
@@ -235,6 +238,32 @@ export async function regenerateForecastsForward(
   } catch (err) {
     result.errores.push({
       contexto: 'lectura compromisosRecurrentes',
+      mensaje: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 3 bis. El PASADO del ejercicio · lo que el motor de arriba no emite.
+  //
+  // `regenerarEventosCompromiso` proyecta del día 1 del mes en curso hacia
+  // delante, así que del suelo del ejercicio a ayer no había nada: ni que
+  // confirmar a mano ni contra lo que cuadrar el extracto al subirlo.
+  //
+  // Va DESPUÉS de la regeneración normal a propósito: así rellena huecos sobre
+  // un conjunto ya estable. Solo AÑADE —nunca borra ni reescribe— y lo que
+  // emite nace `predicted`, que no entra en el saldo. Un fallo suyo no puede
+  // tumbar el resto del bootstrap.
+  try {
+    const pasado = await reconstruirRecurrentesDelPasado();
+    result.eventosCreados += pasado.eventosCreados;
+    for (const e of pasado.errores) {
+      result.errores.push({
+        contexto: `reconstruirRecurrentesDelPasado id=${e.compromisoId}`,
+        mensaje: e.mensaje,
+      });
+    }
+  } catch (err) {
+    result.errores.push({
+      contexto: 'reconstruirRecurrentesDelPasado',
       mensaje: err instanceof Error ? err.message : String(err),
     });
   }
