@@ -98,7 +98,11 @@ const DetallePage: React.FC = () => {
   // T-VALORACIONES PR3 · wizard de importación de histórico de valoraciones.
   const [showImportWizard, setShowImportWizard] = useState(false);
   // Gestión de compromisos recurrentes en modal (mockup · «Nuevo recurrente»).
-  const [recurrentesOpen, setRecurrentesOpen] = useState(false);
+  //
+  // T3 · con `?gasto=<id>` se abre ya puesto: el enlace desde una previsión de
+  // Tesorería tiene que dejar al usuario delante de la ficha del gasto, y aquí
+  // esa ficha vive dentro del modal. El id lo consume el listado.
+  const [recurrentesOpen, setRecurrentesOpen] = useState(searchParams.get('gasto') != null);
   // Menú «Acciones» de la cabecera (mockup · dropdown único).
   const [accionesOpen, setAccionesOpen] = useState(false);
   const accionesRef = useRef<HTMLDivElement>(null);

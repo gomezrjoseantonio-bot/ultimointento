@@ -202,6 +202,8 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
     };
   }, [c.metodoPago, c.tarjetaId]);
   const [fechaInicio, setFechaInicio] = useState(c.fechaInicio ?? '');
+  // Hasta cuándo se cobra · vacío = indefinido, que es el caso normal.
+  const [fechaFin, setFechaFin] = useState((c.fechaFin ?? '').slice(0, 10));
   const [importe, setImporte] = useState(importeToFijo(c.importe));
   const [modoImporte, setModoImporte] = useState<ModoImporteUI>(() => modoImporteInicial(c.importe));
   const [tramos, setTramos] = useState<Array<{ desde: string; importe: string }>>(() =>
@@ -394,6 +396,11 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         // que la proyección seguiría leyendo.
         tarjetaId: medio === 'tarjeta' ? tarjetaId : undefined,
         fechaInicio: fechaInicio || c.fechaInicio,
+        // Poner fin NO es dar de baja: el gasto sigue cobrándose hasta ahí. El
+        // motor corta la proyección en esta fecha y `actualizarCompromiso`
+        // reemite, así que lo posterior se retira solo. Vacío la limpia — es
+        // como se deshace un fin puesto por error.
+        fechaFin: fechaFin || undefined,
         importe: importeEvento,
         patron,
         variacion,
@@ -702,6 +709,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       <div style={dtit}>Cuándo se cobra</div>
       <div style={dgrid}>
         <Field label="Primer cobro" hint="Fija el día y desde cuándo arranca el ciclo"><input type="date" style={inp} value={fechaInicio.slice(0, 10)} onChange={(e) => setFechaInicio(e.target.value)} /></Field>
+        <Field label="Deja de cobrarse el" hint="Si no termina, déjalo vacío"><input type="date" aria-label="Deja de cobrarse el" style={inp} value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} /></Field>
         <Field label="Margen de gracia" hint="Días antes de avisarte de que no ha llegado"><input type="number" min={0} max={31} style={inpSmall} value={margenGracia} onChange={(e) => setMargenGracia(e.target.value)} placeholder="0" /></Field>
       </div>
       {esPorCargos ? (
