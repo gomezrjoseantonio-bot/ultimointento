@@ -75,6 +75,8 @@ import {
 } from '../../../services/altaMovimientoService';
 import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
+import { reconstruirRecurrentesDelPasado } from '../../../services/reconstruccionRecurrentes';
+import { obtenerSueloReconstruccion } from '../../../services/sueloReconstruccion';
 import { registrarBusquedaEnConsola } from '../../../services/__buscarApunteAudit';
 import { registrarDiagnosticoTarjetasEnConsola } from '../../../services/__tarjetaDiagnostico';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
@@ -111,6 +113,12 @@ const TesoreriaV6Page: React.FC = () => {
   const esMovil = useEsMovil();
   const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
+  /**
+   * §2.3 · el suelo del ejercicio (C0) · hasta dónde se puede mirar atrás.
+   * `undefined` mientras se resuelve: sin él la pantalla no retrocede, que es
+   * el estado seguro.
+   */
+  const [suelo, setSuelo] = useState<string | undefined>(undefined);
   /** Orden guardado de las cuentas (§4.2) · sigue siendo el orden POR DEFECTO
    *  de la tabla; la ordenación por cabecera lo pisa solo en sesión. */
   const [orden, setOrden] = useState<number[]>([]);
@@ -210,6 +218,22 @@ const TesoreriaV6Page: React.FC = () => {
     } catch (err) {
       console.warn('[TesoreriaV6] no se pudieron regenerar los recibos de tarjeta', err);
     }
+    // El PASADO del ejercicio · lo que el motor de previsiones no emite.
+    //
+    // Hasta ahora esto solo corría en el bootstrap, que lo disparan Gastos, la
+    // ficha de un inmueble y los wizards — nunca Tesorería. Quien entraba aquí
+    // directamente no veía un solo cargo de los meses anteriores porque nadie
+    // los había creado. Y es en esta pantalla donde se confirman.
+    //
+    // Solo AÑADE lo que falta y lo que emite nace `predicted`, así que no mueve
+    // saldos. Se hace ANTES de leer, como los recibos, y con el mismo trato: si
+    // peta, se lee lo que haya y no se tumba la pantalla.
+    try {
+      setSuelo(await obtenerSueloReconstruccion(hoy));
+      await reconstruirRecurrentesDelPasado(hoy);
+    } catch (err) {
+      console.warn('[TesoreriaV6] no se pudo reconstruir el pasado del ejercicio', err);
+    }
     const db = await initDB();
     const [cuentas, eventos, movimientos, properties, ordenGuardado, borradores] =
       await Promise.all([
@@ -246,7 +270,7 @@ const TesoreriaV6Page: React.FC = () => {
     });
     setOrden(ordenGuardado);
     setCargando(false);
-  }, []);
+  }, [hoy]);
 
   useEffect(() => {
     void recargar();
@@ -1119,6 +1143,7 @@ const TesoreriaV6Page: React.FC = () => {
           saldoPorCuenta={saldoPorCuenta}
           saldoTotalHoy={kpis.saldo}
           hoy={hoy}
+          suelo={suelo}
           onIrAlGasto={irAlGasto}
           onRecuperar={recuperarItem}
           onDespuntear={despuntearItem}
