@@ -30,7 +30,9 @@
 import { initDB } from './db';
 import type { Movement } from './db';
 import { createTransfer } from './treasuryTransferService';
-import type { MejoraInmueble } from './db/types-inmuebles';
+import type { GastoInmueble, MejoraInmueble } from './db/types-inmuebles';
+import { aceptaCierre, camposDeCierre } from './cierreLineaInmueble';
+import { resolveCasillaAEAT, resolveGastoCategoria } from './treasuryConfirmationService';
 
 export interface AltaMovimiento {
   tipo: 'gasto' | 'ingreso' | 'transferencia';
@@ -362,4 +364,226 @@ export async function eliminarMovimiento(movementId: number): Promise<void> {
   await movimientoEditable(movementId);
   const db = await initDB();
   await db.delete('movements', movementId);
+}
+
+// ============================================================================
+// El fichero descubre un gasto de piso · su fila fiscal
+// ============================================================================
+//
+// Hermano de `mejoraDesdeMovimiento`, y por el mismo motivo: un apunte del banco
+// que el usuario clasifica tiene una consecuencia FISCAL, y escribir solo el
+// `Movement` la pierde.
+//
+// Hasta ahora una derrama marcada como mejora sí se registraba, y un gasto
+// corriente de un piso NO: `crearDesdeFicha` le ponía categoría e inmueble al
+// movimiento y ahí acababa todo. El gasto quedaba impecable en Tesorería y no
+// existía para la declaración — un deducible perdido sin que nadie avisara.
+//
+// ── Por qué no se reutiliza `confirmTreasuryEvent` ──────────────────────────
+//
+// Porque CREA el movimiento (`treasuryConfirmationService:371`), y aquí el
+// movimiento ya existe: lo trajo el extracto. Pasar por ahí metería el mismo
+// cargo dos veces en la cuenta. Lo que sí se reutiliza es `camposDeCierre`, que
+// es la pieza que decide QUÉ escribe un cierre; así los tres caminos —punteo
+// manual, línea que cuadra con su previsión, y esta— escriben lo mismo.
+// ============================================================================
+
+/** Qué pasó con la fila fiscal · el llamante decide qué contarle al usuario. */
+export interface ResultadoGastoFiscal {
+  resultado:
+    /** No había fila y se ha creado. */
+    | 'creada'
+    /** Ya existía la del recurrente y se ha cerrado con el dato del banco. */
+    | 'cerrada'
+    /** Sin inmueble no hay nada que declarar · el movimiento se queda igual. */
+    | 'sin_inmueble'
+    /** La categoría no resuelve casilla · hay que elegirla antes de guardar. */
+    | 'falta_casilla'
+    /** El cargo aún no ha ocurrido · no se declara todavía. */
+    | 'fecha_futura';
+  lineaId?: number;
+}
+
+/**
+ * Registra el gasto de inmueble que descubre una línea del extracto.
+ *
+ * Clasifica el movimiento SIEMPRE —eso el usuario ya lo ha decidido— y sobre la
+ * fila fiscal aplica tres reglas, en este orden:
+ *
+ *   1. **Sin inmueble** no hay fila: un gasto personal no se declara aquí.
+ *   2. **Fecha futura** no entra como hecho. El banco puede traer un cargo con
+ *      fecha posterior a hoy; el apunte se queda —es un dato real y el saldo lo
+ *      refleja— pero declararlo antes de que ocurra sería deducir un gasto que
+ *      todavía no existe. Se mide contra la MISMA fecha que fija el ejercicio
+ *      (la de cargo), o techo y ejercicio dirían cosas distintas.
+ *   3. **Sin casilla no se guarda.** Nada cae a la 0106 por defecto: una casilla
+ *      adivinada es un error en la declaración que nadie ve. Se devuelve
+ *      `falta_casilla` para que la ficha la pida.
+ *
+ * Y antes de crear, BUSCA. Un recibo recurrente que el conciliador no supo
+ * cuadrar acaba clasificándose a mano, pero su gasto ya tiene fila del mes
+ * —`origen:'recurrente'`, sin `treasuryEventId`, escrita por
+ * `operacionFiscalService`—. Crear otra lo contaría dos veces en la
+ * declaración. Con `origenIdRecurrente` se encuentra y se cierra con el dato
+ * real del banco, que es lo que había que hacer desde el principio.
+ */
+export async function gastoDesdeMovimiento(params: {
+  movementId: number;
+  inmuebleId?: number | null;
+  concepto: string;
+  /** Con signo, como lo trae el banco · la línea guarda magnitud. */
+  importe: number;
+  /** Fecha de CARGO · la que fija el ejercicio y contra la que mide el techo. */
+  fecha: string;
+  categoryKey?: string | null;
+  subtypeKey?: string | null;
+  /**
+   * Clave `recurrente-<compromiso>-<año>-<mes>` cuando la línea se clasifica
+   * como un gasto recurrente. Sin ella no se busca fila previa.
+   */
+  origenIdRecurrente?: string;
+  /** Hoy, inyectable para poder fijar el techo en tests. */
+  hoy?: string;
+}): Promise<ResultadoGastoFiscal> {
+  const db = await initDB();
+  const ahora = new Date().toISOString();
+  const fecha = params.fecha.slice(0, 10);
+  const hoy = (params.hoy ?? new Date().toISOString()).slice(0, 10);
+
+  const movimiento = (await db.get('movements', params.movementId)) as Movement | undefined;
+
+  // El movimiento se clasifica siempre · eso ya lo decidió el usuario, y vale
+  // aunque la fila fiscal no llegue a escribirse.
+  if (movimiento) {
+    await db.put('movements', {
+      ...movimiento,
+      description: params.concepto || movimiento.description,
+      ...(params.categoryKey !== undefined
+        ? { categoryKey: params.categoryKey ?? undefined }
+        : {}),
+      ...(params.subtypeKey !== undefined
+        ? { subtypeKey: params.subtypeKey ?? undefined }
+        : {}),
+      // `undefined` NO toca lo que hubiera; `null` limpia (la ficha usa esa misma
+      // convención para categoría y subtipo).
+      ...(params.inmuebleId !== undefined
+        ? params.inmuebleId == null
+          ? { inmuebleId: undefined }
+          : { inmuebleId: String(params.inmuebleId), ambito: 'INMUEBLE' as const }
+        : {}),
+      updatedAt: ahora,
+    } as Movement);
+  }
+
+  if (params.inmuebleId == null) return { resultado: 'sin_inmueble' };
+  if (fecha > hoy) return { resultado: 'fecha_futura' };
+
+  // Sin casilla NO se guarda · ver regla 3.
+  const casillaAEAT = resolveCasillaAEAT(params.categoryKey ?? undefined);
+  if (!casillaAEAT) return { resultado: 'falta_casilla' };
+
+  const cierre = camposDeCierre({
+    id: params.movementId,
+    amount: params.importe,
+    date: fecha,
+    valueDate: movimiento?.valueDate,
+    accountId: movimiento?.accountId,
+  });
+
+  // ── ¿Ya hay fila de este gasto? · la del recurrente no lleva enlace ────────
+  if (params.origenIdRecurrente) {
+    let previa: GastoInmueble | undefined;
+    try {
+      const porOrigen = (await db.getAllFromIndex('gastosInmueble', 'origen-origenId', [
+        'recurrente',
+        params.origenIdRecurrente,
+      ])) as GastoInmueble[];
+      previa = porOrigen?.[0];
+    } catch {
+      // sin índice · se sigue por la vía de crear, que es el caso normal
+    }
+    if (previa?.id != null && aceptaCierre(previa)) {
+      await db.put('gastosInmueble', {
+        ...previa,
+        ...cierre,
+        concepto: params.concepto || previa.concepto,
+        updatedAt: ahora,
+      } as never);
+      return { resultado: 'cerrada', lineaId: previa.id };
+    }
+  }
+
+  const linea = {
+    inmuebleId: params.inmuebleId,
+    concepto: params.concepto,
+    categoria: resolveGastoCategoria(params.categoryKey ?? undefined),
+    casillaAEAT,
+    // Nace de Tesorería, como el resto de lo que inyecta la conciliación.
+    origen: 'tesoreria' as const,
+    ...(params.categoryKey ? { categoryKey: params.categoryKey } : {}),
+    ...(params.subtypeKey ? { subtypeKey: params.subtypeKey } : {}),
+    ...cierre,
+    createdAt: ahora,
+    updatedAt: ahora,
+  };
+
+  const lineaId = Number(await db.add('gastosInmueble', linea as never));
+  return { resultado: 'creada', lineaId };
+}
+
+/**
+ * Qué contarle al usuario cuando la fila fiscal NO se escribe.
+ *
+ * Vive junto a la regla que produce el resultado y no en la pantalla: son la
+ * explicación de una decisión del dominio, y separados divergen — la regla
+ * cambia y el texto sigue diciendo lo de antes.
+ */
+export const AVISO_GASTO_FISCAL: Partial<
+  Record<ResultadoGastoFiscal['resultado'], string>
+> = {
+  falta_casilla: 'Elige la categoría del gasto: sin ella no se sabe en qué casilla declararlo.',
+  fecha_futura: 'El cargo tiene fecha futura: se guarda el apunte, pero no se declara hasta esa fecha.',
+};
+
+/**
+ * De qué gasto recurrente es este cargo, en la forma que usa su fila fiscal.
+ *
+ * La ficha solo sabe inmueble y categoría —el compromiso no se elige a mano—,
+ * así que esta es la traducción que permite a `gastoDesdeMovimiento` buscar la
+ * fila del mes antes de crear otra. Sin ella la guarda de B19 quedaría escrita
+ * y muerta.
+ *
+ * La clave la fija `operacionFiscalService` al emitir la línea del recurrente:
+ * `recurrente-<compromiso>-<ejercicio>-<mes>`. Se construye igual aquí porque
+ * es la MISMA fila que hay que encontrar; el día que cambie allí, este módulo
+ * deja de encontrarla y el test de B19 se pone rojo, que es lo que se quiere.
+ *
+ * `undefined` cuando no hay inmueble, no hay categoría, o no hay compromiso vivo
+ * que case: entonces no hay fila previa y se crea una nueva, que es el caso
+ * normal de un gasto descubierto.
+ */
+export async function origenIdRecurrenteDelGasto(
+  inmuebleId: number | null | undefined,
+  categoryKey: string | null | undefined,
+  fecha: string,
+): Promise<string | undefined> {
+  if (inmuebleId == null || !categoryKey) return undefined;
+  const db = await initDB();
+  const compromisos = (((await db.getAll('compromisosRecurrentes')) ?? []) as Array<{
+    id?: number;
+    inmuebleId?: number;
+    categoria?: string;
+    estado?: string;
+  }>).filter(
+    (c) =>
+      c.id != null &&
+      c.estado === 'activo' &&
+      c.inmuebleId === inmuebleId &&
+      c.categoria === categoryKey,
+  );
+  const c = compromisos[0];
+  if (!c?.id) return undefined;
+
+  const [año, mes] = fecha.slice(0, 10).split('-').map(Number);
+  return `recurrente-${c.id}-${año}-${mes}`;
 }
