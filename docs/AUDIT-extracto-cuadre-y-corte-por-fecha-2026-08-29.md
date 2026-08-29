@@ -122,6 +122,85 @@ Un recibo de agua de FCC Aqualia que un mes es 50,73 y otro 47,12, cargado el d�
 
 ---
 
+## FALLO 3 · ATLAS te pide cuatro datos para cuadrar y el conciliador no usa ninguno
+
+Un gasto recurrente guarda esto (`src/types/compromisosRecurrentes.ts:229-257`):
+
+```ts
+cups?: string;
+numeroContrato?: string;   // "Identificadores que permiten cuadrar la factura
+                           //  aunque cambie la compañía"
+margenGraciaDias?: number;  // "tolerancia al cuadrar el cargo real contra la
+                           //  fecha prevista"
+conceptoBancario: string;   // "texto que aparece en extracto" · OBLIGATORIO
+```
+
+Los cuatro campos están escritos, comentados y pedidos en el formulario
+(`ListadoGastos/components/RowForm.tsx:176-177, 230, 386-387, 408`) con el
+propósito explícito de cuadrar. El conciliador de extractos no lee ninguno.
+
+| campo | quién lo usa | quién NO lo usa |
+|---|---|---|
+| `cups`, `numeroContrato` | `documentAutoClassifyService.ts:330-342`, para cuadrar **facturas** | `movementMatchingService` · ni siquiera se copian al `TreasuryEvent` (`compromisosRecurrentesService.ts:605-635`) |
+| `margenGraciaDias` | solo contratos de alquiler (`estadoCobroContratoService.ts:97`) | el conciliador usa la constante fija `fechaWindowDays: 5` (`:43`) |
+| `conceptoBancario` | viaja al evento como `counterparty` (`compromisosRecurrentesService.ts:633`) | el marcador lee `providerName ?? counterparty` (`:267`) — **con proveedor relleno, no se consulta jamás** |
+
+El usuario rellena un margen de gracia por gasto que se tira a la basura, y el
+único campo cuya definición es *"texto que aparece en extracto"* está tapado por
+el nombre comercial del proveedor.
+
+---
+
+## FALLO 4 · El comparador de nombres bueno existe en el repo y está detrás de una puerta cerrada
+
+`src/services/coincidenciaNombre.ts` hace exactamente lo que hace falta: quita
+tildes, parte en palabras, descarta partículas (`de`, `la`, `del`), exige tres
+letras por palabra y devuelve `fuerte` (dos palabras o más) o `parcial` (una).
+
+Se llega a él por un solo camino, `puntosDeBizum` (`movementMatchingService.ts:315-345`):
+
+```ts
+const esBizum = movement.paymentMethod === 'Bizum' || pareceBizum(textoBanco);
+if (!esBizum) return 0;
+```
+
+**Un recibo domiciliado nunca es un Bizum, así que nunca llega.** Para todos los
+gastos recurrentes queda el `includes` crudo de `:266-270`. Por eso "Comunidad
+de Propietarios" no pega con "CCPP" ni con "CDAD PROP": no hay abreviaturas, ni
+siglas, ni comparación por palabras — hay una única comprobación de subcadena
+literal en minúsculas.
+
+Y la comparación disponible tampoco resolvería las siglas por sí sola: "CCPP" no
+comparte ninguna palabra con "Comunidad de Propietarios". Hace falta además
+apoyarse en `conceptoBancario` (fallo 3), que es donde el usuario ya ha escrito
+el texto que manda el banco.
+
+---
+
+## CORRECCIÓN al fallo 2 · la aritmética no explica el caso de Jose
+
+El fallo 2 explica por qué **un recibo de importe variable** no puede cuadrar. No
+explica el caso que Jose señala: *la comunidad encaja de importe y tampoco
+cuadra*. Según la tabla del fallo 2, importe clavado + misma cuenta = **80
+puntos** aunque el día falle nueve días: tendría que cuadrar.
+
+Que no cuadre significa que el previsto **no llega a puntuarse**. Solo hay cuatro
+puertas antes del marcador (`movementMatchingService.ts:105-135, 151-157, 373-386`):
+
+1. el previsto no está en `predicted` (`esConciliable`, `descarteDePrevision.ts:30-32`);
+2. su `accountId` no es el de la cuenta importada — el candidato se busca por
+   índice `accountId`, así que un previsto sin cuenta o con otra **no existe**
+   para el conciliador;
+3. no hay previsto de ese mes en la ventana;
+4. `resolveEventConflicts` se lo dio a otro movimiento.
+
+**Cuál de las cuatro está disparando no se sabe todavía, y es lo que falta.** La
+sonda ampliada lo resuelve: lista los previstos de la cuenta con su estado y su
+cuenta, y para cada línea que no cuadra teniendo importe clavado dice cuál de las
+cuatro puertas la paró.
+
+---
+
 ## Resumen
 
 | # | Fallo | Dónde | Efecto medido |
@@ -134,6 +213,10 @@ Un recibo de agua de FCC Aqualia que un mes es 50,73 y otro 47,12, cargado el d�
 | 6 | `conceptoBancario` nunca se consulta si hay proveedor | `:267` vs `compromisosRecurrentesService.ts:633` | el campo hecho para casar está tapado |
 | 7 | `includes` crudo sin normalizar | `:266-270` | "CCPP"/"CDAD PROP" no pegan con "Comunidad de Propietarios" |
 | 8 | Un cargo puede consumir el previsto del mes siguiente | `:151-157` + `:373-386` + `:445-455` | deja huérfano al cargo real de ese mes |
+| 9 | `cups`/`numeroContrato` no llegan al conciliador | `compromisosRecurrentesService.ts:605-635` | los identificadores que cuadran facturas no cuadran cargos |
+| 10 | `margenGraciaDias` se ignora | `movementMatchingService.ts:43` | el margen que rellena el usuario no hace nada |
+| 11 | `coincidenciaNombre` inalcanzable para gastos | `:315-319` | el comparador bueno solo funciona con Bizum |
+| 12 | **Una línea con importe clavado que no cuadra no la explica la aritmética** | `:105-135` | hay una puerta anterior sin identificar · la sonda la señala |
 
 **Y la incoherencia de fondo:** acabamos de poblar enero→agosto de previstos para que se puedan liquidar, y el extracto que trae la realidad de esos meses la tira.
 
