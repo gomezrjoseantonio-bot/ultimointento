@@ -171,7 +171,7 @@ function resolveEventCategory(event: TreasuryEvent): CategoryDef | undefined {
  *     (p. ej. `updateConfirmedMovement` de PR5.6).
  *   - `undefined`: devuelve `'otro'` como default seguro.
  */
-function resolveGastoCategoria(input: TreasuryEvent | string | undefined): string {
+export function resolveGastoCategoria(input: TreasuryEvent | string | undefined): string {
   if (!input) return 'otro';
 
   const def =

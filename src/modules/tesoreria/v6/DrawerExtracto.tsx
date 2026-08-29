@@ -22,7 +22,12 @@ import { getIgnoredLineHashes, ignoreLine, recoverLine } from '../../../services
 import { confirmadosPorLinea } from '../../../services/conciliacionConfirmados';
 import { consolidarSesion, archivarExtracto } from '../../../services/statementSessionService';
 import { cierres } from '../../../services/cierreDeMes';
-import { mejoraDesdeMovimiento } from '../../../services/altaMovimientoService';
+import {
+  AVISO_GASTO_FISCAL,
+  gastoDesdeMovimiento,
+  mejoraDesdeMovimiento,
+  origenIdRecurrenteDelGasto,
+} from '../../../services/altaMovimientoService';
 import {
   construirLineas,
   veredictoEfectivo,
@@ -405,23 +410,26 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         }
         return;
       }
+      // Clasificar una línea de un piso tiene consecuencia FISCAL, y aquí solo se
+      // escribía el `Movement`: el gasto quedaba impecable en Tesorería y no existía
+      // para la declaración. Lo escribe `gastoDesdeMovimiento`.
       try {
-        const db = await initDB();
-        const mov = (await db.get('movements', linea.movementId)) as Movement | undefined;
-        if (!mov) return;
-        await db.put('movements', {
-          ...mov,
-          description: v.concepto || mov.description,
-          ...(v.categoryKey !== undefined
-            ? { categoryKey: v.categoryKey ?? undefined }
-            : {}),
-          ...(v.subtypeKey !== undefined ? { subtypeKey: v.subtypeKey ?? undefined } : {}),
-          // `Movement.inmuebleId` es string; la ficha trabaja con el id numérico.
-          ...(v.inmuebleId !== undefined
-            ? { inmuebleId: v.inmuebleId == null ? undefined : String(v.inmuebleId) }
-            : {}),
-          updatedAt: new Date().toISOString(),
+        const origenIdRecurrente = await origenIdRecurrenteDelGasto(v.inmuebleId, v.categoryKey, v.fecha);
+        const r = await gastoDesdeMovimiento({
+          movementId: linea.movementId,
+          inmuebleId: v.inmuebleId,
+          concepto: v.concepto,
+          importe: v.importe,
+          fecha: v.fecha,
+          categoryKey: v.categoryKey,
+          subtypeKey: v.subtypeKey,
+          origenIdRecurrente,
         });
+        // Sin casilla no se guarda la fila y la ficha sigue abierta; con fecha
+        // futura el apunte se queda pero no se declara. Los textos, en el servicio.
+        const aviso = AVISO_GASTO_FISCAL[r.resultado];
+        if (aviso) setError(aviso);
+        if (r.resultado === 'falta_casilla') return;
         conDecisiones((d) => {
           d.creados.add(linea.movementId);
           d.ignorados.delete(linea.movementId);
