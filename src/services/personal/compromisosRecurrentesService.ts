@@ -24,7 +24,7 @@ import {
   persistirPrevisionesCompromiso,
 } from './previsionesDelCompromiso';
 import { metodoDeMovimiento } from '../metodoDePago';
-import { cuentaDelCargo, elMetodoDecideLaCuenta } from '../cuentasPorMetodoPago';
+import { cuentaDelCargo } from '../cuentasPorMetodoPago';
 import { listarTarjetas } from '../tarjetasService';
 import {
   ensamblarRecibos,
@@ -583,9 +583,32 @@ export function generarEventosDesdeCompromiso(
   // Con `desdeOverride` (Bloque B.3) se permite un origen pasado explícito.
   const hoy = new Date();
   const inicioDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const desdeProyeccion =
+  const arranque =
     desdeOverride ??
     (fechaInicio.getTime() > inicioDelMes.getTime() ? fechaInicio : inicioDelMes);
+
+  // Y por debajo de todo, la APERTURA DE LA CUENTA · una cuenta no debe cargos
+  // de antes de existir.
+  //
+  // Proyectar desde el día 1 arregla el recibo que se cobra el 1 y se da de
+  // alta el 3, pero no sabía nada de cuándo nació la cuenta: con una abierta el
+  // 27 de agosto salían previstos del 1, del 5 y del 10. Cargos que jamás
+  // pudieron salir de ahí, porque no había cuenta de la que salieran.
+  //
+  // El saldo no se enteraba —`accountBalanceService` descarta lo anterior a la
+  // apertura para no contarlo dos veces sobre el saldo inicial—, pero la lista
+  // de pendientes sí los contaba: el saldo decía una cosa y el trabajo
+  // pendiente otra, y se pedía confirmar un cargo imposible.
+  //
+  // Solo puede ATRASAR el arranque, nunca adelantarlo. Y solo recorta cuando se
+  // sabe: sin la cuenta en la lista, o sin fecha de apertura, se emite como
+  // siempre — dejar de emitir por no saber sería peor que emitir de más.
+  const cuentaDelGasto = cuentaDelCargo(compromiso, tarjeta, cuentas);
+  const apertura = cuentas.find((c) => c.id === cuentaDelGasto)?.openingBalanceDate;
+  const desdeApertura = apertura ? new Date(apertura.slice(0, 10)) : undefined;
+  const desdeProyeccion =
+    desdeApertura && desdeApertura.getTime() > arranque.getTime() ? desdeApertura : arranque;
+
   const isoDesde = toISODateLocal(desdeProyeccion);
   const isoHasta = toISODateLocal(fechaTope);
 
@@ -617,7 +640,7 @@ export function generarEventosDesdeCompromiso(
       certeza: 'estimado',
       generadoPor: 'treasurySyncService',
       // La cuenta la decide el método · §2 y §3.2 · no una copia vieja.
-      accountId: cuentaDelCargo(compromiso, tarjeta, cuentas),
+      accountId: cuentaDelGasto,
       paymentMethod: metodoDeMovimiento(compromiso.metodoPago),
       status: 'predicted',
       // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
@@ -686,12 +709,13 @@ export async function regenerarEventosCompromiso(
   const conservaVencidos =
     desdeOverride == null && !vaEnRecibo(compromiso, tarjeta) ? compromiso : undefined;
   await borrarEventosFuturosCompromiso(compromiso.id, conservaVencidos);
-  // Las cuentas solo hacen falta cuando el medio decide la cuenta —efectivo y
-  // Bizum—. Para el resto, `cuentaDelCargo` respeta lo guardado y leerlas sería
-  // E/S por nada, multiplicada por cada gasto en el bootstrap.
-  const cuentas = elMetodoDecideLaCuenta(compromiso.metodoPago)
-    ? (((await (await initDB()).getAll('accounts')) ?? []) as Account[])
-    : [];
+  // Las cuentas se leen SIEMPRE. Antes solo cuando el medio decidía la cuenta
+  // —efectivo y Bizum—, porque para el resto `cuentaDelCargo` respeta lo
+  // guardado y leerlas era E/S por nada. Ya no lo es: el motor necesita la
+  // fecha de APERTURA para no prever cargos de antes de que la cuenta
+  // existiera, y eso hace falta con cualquier medio de pago. Es una lectura
+  // más junto a las que ya hace esta función (la tarjeta y el borrado previo).
+  const cuentas = ((await (await initDB()).getAll('accounts')) ?? []) as Account[];
   const eventos = generarEventosDesdeCompromiso(
     compromiso,
     hasta,
