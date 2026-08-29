@@ -49,15 +49,42 @@ describe('el tope de retroceso', () => {
       .toEqual({ year: 2026, month0: 7 });
   });
 
-  it('el saldo inicial es un suelo duro · antes no hay saldo del que partir', () => {
-    // Hay un pendiente de enero, pero las cuentas arrancan en marzo: pintar el
-    // cierre de enero sería inventarlo.
+  // El suelo es el del EJERCICIO (C0), no la fecha de apertura de la cuenta.
+  //
+  // Antes mandaba el saldo inicial, con el argumento de que por debajo no hay
+  // saldo del que partir. Pero eso ataba el trabajo pendiente a cuándo se dio
+  // de alta la cuenta: quien abre ATLAS hoy con ocho meses de recibos por
+  // cuadrar no podía ni verlos. El cierre de un mes anterior a la apertura es
+  // orientativo —eso no cambia—; la lista de pendientes es real, y es a lo que
+  // se va.
+  it('el suelo del ejercicio corta por abajo', () => {
+    const m = mesMinimo({
+      eventos: [ev('2025-04-10')],
+      hoy: HOY,
+      suelo: '2026-01-01',
+    });
+    expect(m).toEqual({ year: 2026, month0: 0 });
+  });
+
+  it('con el suelo del ejercicio se llega a enero aunque la cuenta se abriera en agosto', () => {
     const m = mesMinimo({
       eventos: [ev('2026-01-10')],
       hoy: HOY,
-      saldoDesde: '2026-03-01',
+      suelo: '2026-01-01',
     });
-    expect(m).toEqual({ year: 2026, month0: 2 });
+    expect(m).toEqual({ year: 2026, month0: 0 });
+  });
+
+  it('el suelo no ARRASTRA hacia atrás · sin pendientes no se retrocede', () => {
+    // Que el ejercicio empiece en enero no es motivo para abrir enero: se
+    // retrocede por trabajo, no por calendario.
+    expect(mesMinimo({ eventos: [], hoy: HOY, suelo: '2026-01-01' }))
+      .toEqual({ year: 2026, month0: 7 });
+  });
+
+  it('sin suelo se llega hasta donde haya trabajo', () => {
+    expect(mesMinimo({ eventos: [ev('2025-11-10')], hoy: HOY }))
+      .toEqual({ year: 2025, month0: 10 });
   });
 
   it('cruza el año sin liarse', () => {

@@ -54,6 +54,11 @@ export interface DrawerCalendarioProps {
   saldoPorCuenta: Map<number, number>;
   saldoTotalHoy: number;
   hoy: string;
+  /**
+   * §2.3 · el suelo del EJERCICIO (C0) · `YYYY-MM-DD`, más abajo no se
+   * retrocede. Lo resuelve la página, que es el punto único de carga.
+   */
+  suelo?: string;
   aliasInmueble?: (id: number | string) => string | undefined;
   onCerrar: () => void;
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
@@ -103,6 +108,7 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   saldoPorCuenta,
   saldoTotalHoy,
   hoy,
+  suelo,
   aliasInmueble,
   onCerrar,
   onConfirmar,
@@ -278,32 +284,12 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     [itemsDelDia]
   );
 
-  /**
-   * §2.3 · desde cuándo hay saldo del que partir.
-   *
-   * No es un campo de la cuenta: el saldo inicial es un movimiento marcado, así
-   * que la fecha sale del más antiguo de ellos. Por debajo de ahí un cierre
-   * pintado sería inventado, y el mes ni se muestra ni se navega.
-   */
-  const saldoInicialDesde = useMemo(() => {
-    let min: string | undefined;
-    for (const m of movimientos) {
-      if (!m.isOpeningBalance) continue;
-      const f = (m.date ?? '').slice(0, 10);
-      if (f && (!min || f < min)) min = f;
-    }
-    return min;
-  }, [movimientos]);
-
   // §2.3 · hasta dónde se puede retroceder · el tope es el trabajo que queda
-  // atrás, no una fecha arbitraria.
+  // atrás, no una fecha arbitraria. Por abajo corta el suelo del EJERCICIO
+  // (C0), no la apertura de las cuentas: ver `limiteMeses.ts`.
   const hayAtras = useMemo(
-    () =>
-      puedeRetroceder(
-        { year, month0 },
-        mesMinimo({ eventos, hoy, saldoDesde: saldoInicialDesde })
-      ),
-    [year, month0, eventos, hoy, saldoInicialDesde]
+    () => puedeRetroceder({ year, month0 }, mesMinimo({ eventos, hoy, suelo })),
+    [year, month0, eventos, hoy, suelo]
   );
 
   const irAMes = (delta: number) => {
