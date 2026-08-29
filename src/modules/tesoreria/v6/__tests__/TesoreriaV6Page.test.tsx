@@ -11,21 +11,8 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import TesoreriaV6Page from '../TesoreriaV6Page';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../../services/db';
-import { reconstruirRecurrentesDelPasado } from '../../../../services/reconstruccionRecurrentes';
-import { obtenerSueloReconstruccion } from '../../../../services/sueloReconstruccion';
 
 jest.mock('../../../../services/db', () => ({ initDB: jest.fn() }));
-// El pasado del ejercicio se puebla al ENTRAR en Tesorería · sin esto, quien
-// abre esta pantalla directamente no ve un solo cargo de los meses anteriores
-// porque nadie los ha creado (el bootstrap solo lo disparan Gastos, la ficha de
-// un inmueble y los wizards). La implementación se prueba aparte; aquí solo se
-// comprueba el cable.
-jest.mock('../../../../services/reconstruccionRecurrentes', () => ({
-  reconstruirRecurrentesDelPasado: jest.fn(),
-}));
-jest.mock('../../../../services/sueloReconstruccion', () => ({
-  obtenerSueloReconstruccion: jest.fn(),
-}));
 
 const HOY = new Date();
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -111,28 +98,6 @@ function montarDb(datos: {
     put: async () => undefined,
   });
 }
-
-// El cable de A · que ENTRAR en Tesorería puebla el pasado del ejercicio.
-describe('el pasado del ejercicio se puebla al entrar', () => {
-  it('la pantalla dispara la reconstrucción · antes solo lo hacían Gastos y los wizards', async () => {
-    montarDb({ cuentas: [cuenta(1)], eventos: [], movimientos: [] });
-    montar();
-    await waitFor(() => expect(reconstruirRecurrentesDelPasado).toHaveBeenCalled());
-  });
-
-  it('y resuelve el suelo del ejercicio para poder mirar atrás', async () => {
-    montarDb({ cuentas: [cuenta(1)], eventos: [], movimientos: [] });
-    montar();
-    await waitFor(() => expect(obtenerSueloReconstruccion).toHaveBeenCalled());
-  });
-
-  it('si la reconstrucción falla, la pantalla se pinta igual', async () => {
-    (reconstruirRecurrentesDelPasado as jest.Mock).mockRejectedValueOnce(new Error('boom'));
-    montarDb({ cuentas: [cuenta(1)], eventos: [], movimientos: [] });
-    montar();
-    expect(await screen.findByText(/MI TESORER/i)).toBeInTheDocument();
-  });
-});
 
 describe('§4.1 · hero', () => {
   it('pinta los 4 KPIs con el cierre proyectado al último día', async () => {

@@ -2,8 +2,8 @@
 //
 // Tesorería mira hacia delante. Se retrocede solo si queda TRABAJO atrás.
 
-import { mesMinimo, puedeRetroceder } from '../limiteMeses';
-import type { TreasuryEvent } from '../../../../services/db';
+import { mesMinimo, puedeRetroceder, sueloDeMovimientos } from '../limiteMeses';
+import type { Movement, TreasuryEvent } from '../../../../services/db';
 
 const HOY = '2026-08-15';
 
@@ -49,15 +49,13 @@ describe('el tope de retroceso', () => {
       .toEqual({ year: 2026, month0: 7 });
   });
 
-  // El suelo es el del EJERCICIO (C0), no la fecha de apertura de la cuenta.
+  // El suelo lo pone el DINERO QUE CONSTA, no el calendario.
   //
-  // Antes mandaba el saldo inicial, con el argumento de que por debajo no hay
-  // saldo del que partir. Pero eso ataba el trabajo pendiente a cuándo se dio
-  // de alta la cuenta: quien abre ATLAS hoy con ocho meses de recibos por
-  // cuadrar no podía ni verlos. El cierre de un mes anterior a la apertura es
-  // orientativo —eso no cambia—; la lista de pendientes es real, y es a lo que
-  // se va.
-  it('el suelo del ejercicio corta por abajo', () => {
+  // Por debajo del movimiento más antiguo que hay en la cuenta no hay nada:
+  // ni saldo del que partir ni realidad contra la que cuadrar, así que un mes
+  // pintado ahí sería inventado. Y hacia arriba se mueve solo: el día que
+  // entra un extracto de enero, enero pasa a ser navegable sin tocar nada.
+  it('el suelo corta por abajo', () => {
     const m = mesMinimo({
       eventos: [ev('2025-04-10')],
       hoy: HOY,
@@ -66,17 +64,8 @@ describe('el tope de retroceso', () => {
     expect(m).toEqual({ year: 2026, month0: 0 });
   });
 
-  it('con el suelo del ejercicio se llega a enero aunque la cuenta se abriera en agosto', () => {
-    const m = mesMinimo({
-      eventos: [ev('2026-01-10')],
-      hoy: HOY,
-      suelo: '2026-01-01',
-    });
-    expect(m).toEqual({ year: 2026, month0: 0 });
-  });
-
   it('el suelo no ARRASTRA hacia atrás · sin pendientes no se retrocede', () => {
-    // Que el ejercicio empiece en enero no es motivo para abrir enero: se
+    // Que haya movimientos desde enero no es motivo para abrir enero: se
     // retrocede por trabajo, no por calendario.
     expect(mesMinimo({ eventos: [], hoy: HOY, suelo: '2026-01-01' }))
       .toEqual({ year: 2026, month0: 7 });
@@ -100,5 +89,61 @@ describe('la flecha de retroceder', () => {
     expect(puedeRetroceder({ year: 2026, month0: 2 }, min)).toBe(false);
     // Y no deja pasar de largo si se llegara por otra vía.
     expect(puedeRetroceder({ year: 2026, month0: 1 }, min)).toBe(false);
+  });
+});
+
+// ============================================================================
+// El suelo · hasta dónde hay dinero del que hablar
+// ============================================================================
+//
+// Sustituye al suelo del EJERCICIO (C0, retirado): el pasado ya no se genera
+// como previsión, entra desde el fichero del banco. Así que hasta dónde se
+// puede mirar atrás lo dice lo que el banco ha traído, no una fecha fiscal.
+
+const mov = (fecha: string, over: Partial<Movement> = {}): Movement =>
+  ({
+    id: 1,
+    accountId: 1,
+    date: fecha,
+    amount: -10,
+    description: 'Recibo',
+    ...over,
+  }) as Movement;
+
+describe('el suelo · el movimiento real más antiguo', () => {
+  it('sin movimientos no hay suelo · no se inventa una fecha', () => {
+    expect(sueloDeMovimientos([])).toBeUndefined();
+  });
+
+  it('es la fecha del movimiento más antiguo', () => {
+    expect(sueloDeMovimientos([mov('2026-05-10'), mov('2026-01-03'), mov('2026-08-01')]))
+      .toBe('2026-01-03');
+  });
+
+  it('el saldo inicial cuenta · es el punto de partida de la cuenta', () => {
+    // Con solo el saldo inicial, el suelo es el de siempre: la apertura. Lo que
+    // cambia es que ya no es un tope FIJO — cuando entre el extracto de enero,
+    // baja solo.
+    expect(sueloDeMovimientos([mov('2026-08-01', { isOpeningBalance: true })]))
+      .toBe('2026-08-01');
+  });
+
+  it('un extracto viejo BAJA el suelo por debajo de la apertura', () => {
+    // Es lo que arregla: quien abre ATLAS en agosto y sube ocho meses de banco
+    // llega a enero, sin tener que tocar nada.
+    expect(
+      sueloDeMovimientos([
+        mov('2026-08-01', { isOpeningBalance: true }),
+        mov('2026-01-15'),
+      ])
+    ).toBe('2026-01-15');
+  });
+
+  it('recorta la hora si la fecha viene con ella', () => {
+    expect(sueloDeMovimientos([mov('2026-03-04T10:00:00.000Z')])).toBe('2026-03-04');
+  });
+
+  it('una fecha vacía no se cuela como suelo', () => {
+    expect(sueloDeMovimientos([mov(''), mov('2026-06-01')])).toBe('2026-06-01');
   });
 });

@@ -29,7 +29,7 @@ import type { Account, Movement, TreasuryEvent } from '../../../services/db';
 import { esPendiente } from '../../../services/tesoreriaV6Metrics';
 import { construirDias, resumirMes, huecosIniciales, saldoAlEmpezarElDia } from './calendarioDias';
 import { colorDeBanco } from './bancoColores';
-import { mesMinimo, puedeRetroceder } from './limiteMeses';
+import { mesMinimo, puedeRetroceder, sueloDeMovimientos } from './limiteMeses';
 import { vencidosPorMes } from './vencidosPorMes';
 import { importeConSigno, importeSaldo, nombreMes, diaSemanaYNumero } from './formatoV6';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
@@ -54,11 +54,6 @@ export interface DrawerCalendarioProps {
   saldoPorCuenta: Map<number, number>;
   saldoTotalHoy: number;
   hoy: string;
-  /**
-   * §2.3 · el suelo del EJERCICIO (C0) · `YYYY-MM-DD`, más abajo no se
-   * retrocede. Lo resuelve la página, que es el punto único de carga.
-   */
-  suelo?: string;
   aliasInmueble?: (id: number | string) => string | undefined;
   onCerrar: () => void;
   onConfirmar: (item: ItemPunteo) => void | Promise<void>;
@@ -108,7 +103,6 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
   saldoPorCuenta,
   saldoTotalHoy,
   hoy,
-  suelo,
   aliasInmueble,
   onCerrar,
   onConfirmar,
@@ -284,9 +278,18 @@ const DrawerCalendario: React.FC<DrawerCalendarioProps> = ({
     [itemsDelDia]
   );
 
+  /**
+   * §2.3 · el suelo · el movimiento más antiguo que consta.
+   *
+   * Se calcula aquí, de lo que ya se recibe, y no lo resuelve nadie por encima:
+   * no hay nada que consultar fuera. Por debajo del primer movimiento no hay ni
+   * saldo del que partir ni realidad contra la que cuadrar, así que ese mes no
+   * se abre. Y baja solo al entrar un extracto más viejo.
+   */
+  const suelo = useMemo(() => sueloDeMovimientos(movimientos), [movimientos]);
+
   // §2.3 · hasta dónde se puede retroceder · el tope es el trabajo que queda
-  // atrás, no una fecha arbitraria. Por abajo corta el suelo del EJERCICIO
-  // (C0), no la apertura de las cuentas: ver `limiteMeses.ts`.
+  // atrás, no una fecha arbitraria. Por abajo corta el suelo: ver `limiteMeses.ts`.
   const hayAtras = useMemo(
     () => puedeRetroceder({ year, month0 }, mesMinimo({ eventos, hoy, suelo })),
     [year, month0, eventos, hoy, suelo]
