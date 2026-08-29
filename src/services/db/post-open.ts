@@ -9,7 +9,7 @@ import { migrarTiposDeCuenta } from '../migrations/v86-tiposDeCuenta';
 import { migrarTarjetas } from '../migrations/v87-tarjetas';
 import { borrarCuentasDeTarjeta } from '../migrations/v88-borrarCuentasDeTarjeta';
 import { migrarExplotacionAlquiler } from '../migrations/v90-explotacionAlquiler';
-import { limpiarPrevisionesRetroactivas } from '../migrations/limpiarPrevisionesRetroactivas';
+import { ejecutarLimpiezasDePrevisiones } from '../migrations/limpiezasDePrevisiones';
 import { migrarBaseAmortizableEjercicio } from '../baseAmortizableEjercicioService';
 import { inmuebleDelPrestamo, idDeInmueble, type PrestamoConDestinos } from '../inmuebleDelPrestamo';
 
@@ -770,28 +770,11 @@ export function runPostOpenMigrations(
       return db;
     });
 
-    // ── Limpieza · lo que C1 (#1819) fabricó hacia atrás ─────────────────────
-    // Retirar el generador (#1821) no borró lo que ya había escrito. Esto sí, y
-    // solo eso · la frontera y su porqué, en el módulo. Sin bump de DB_VERSION:
-    // retira dato muerto, no cambia el esquema. Deja recibo porque borrar no se
-    // deshace (criterio de la V88 de tarjetas).
+    // ── Limpiezas de previsiones inventadas ──────────────────────────────────
+    // Las que C1 fabricó hacia atrás, y las anteriores a la apertura de su
+    // cuenta. Cada una con su flag y su recibo · ver `limpiezasDePrevisiones`.
     dbPromise = dbPromise.then(async (db) => {
-      try {
-        const FLAG = 'migration_limpieza_previsiones_retroactivas_v1';
-        if ((await db.get('keyval', FLAG)) === 'completed') return db;
-        const r = await limpiarPrevisionesRetroactivas(db as unknown as IDBPDatabase<any>);
-        if (r.borradas > 0) {
-          console.log(
-            `[DB limpieza C1] ${r.borradas} previsión(es) fabricada(s) hacia atrás ` +
-              `retirada(s) (${r.importe.toFixed(2)} €) · por mes:`,
-            r.porMes,
-          );
-          await db.put('keyval', r, 'recibo_limpieza_previsiones_retroactivas');
-        }
-        await db.put('keyval', 'completed', FLAG);
-      } catch (err) {
-        console.warn('[DB limpieza C1] limpieza falló:', err);
-      }
+      await ejecutarLimpiezasDePrevisiones(db as unknown as IDBPDatabase<any>);
       return db;
     });
 
