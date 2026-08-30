@@ -21,8 +21,8 @@ export type VeredictoLinea =
   | 'cuadra'
   | 'resolver'
   | 'ignorada'
-  | 'mes_cerrado'
-  | 'mes_anterior';
+
+;
 
 export interface LineaExtracto {
   /** id del `Movement` que `processFile` ya insertó para esta línea. */
@@ -54,13 +54,6 @@ export interface ResumenSesion {
   cuadran: number;
   resolver: number;
   ignoradas: number;
-  /** Líneas de meses ya cerrados · no se cargan en esta sesión. */
-  mesesCerrados: number;
-  /**
-   * Líneas de meses ANTERIORES al actual (no cerrados) · se apartan por defecto
-   * para no ahogar la sesión con lo viejo. Recuperables una a una.
-   */
-  mesesAnteriores: number;
 }
 
 /** Lo que el usuario ha decidido a mano · se aplica todo junto al Guardar. */
@@ -122,26 +115,11 @@ export function construirLineas(
   eventos: TreasuryEvent[],
   ignoradasPrevias: Set<string>,
   /**
-   * Meses ya cerrados (`YYYY-MM`). Una línea de un mes cerrado NO se carga: el
-   * mes se dio por bueno tal como estaba, y meter ahora un cargo le movería el
-   * saldo. Se aparta —como las ignoradas— y no cuenta como "a resolver". Si de
-   * verdad hay que cargarlo, primero se reabre el mes.
-   */
-  mesesCerrados: Set<string> = new Set(),
-  /**
    * Por línea del import, el confirmado que YA tenías y con el que casa (§ la
    * secuencia previsto → confirmado / conciliado). Vacío si nadie hace "las dos
    * cosas".
    */
   confirmadosPorMovimiento: Map<number, MovimientoConfirmadoRef> = new Map(),
-  /**
-   * Mes en curso (`YYYY-MM`). Una línea de un mes ANTERIOR (y no cerrado) que no
-   * cuadra con nada se aparta por defecto: subir un extracto largo no debe ahogar
-   * la sesión con meses viejos que no estás tratando. A diferencia del mes
-   * cerrado, es recuperable línea a línea (no hay que reabrir nada). Vacío/undef
-   * = no se aparta nada por antigüedad (comportamiento previo).
-   */
-  mesActual?: string
 ): LineaExtracto[] {
   const eventoPorId = new Map<number, TreasuryEvent>();
   for (const e of eventos) if (e.id != null) eventoPorId.set(e.id, e);
@@ -185,34 +163,26 @@ export function construirLineas(
     // para quien lo anotó a mano en vez de tenerlo previsto.
     const confirmado = previsto ? undefined : confirmadosPorMovimiento.get(m.id);
 
-    // El orden importa:
-    //   1. Una línea ya ignorada antes NO se vuelve a proponer, aunque ahora
-    //      cuadre con algo. Si el usuario dijo que no la quiere, no se le
-    //      pregunta otra vez sin que él la recupere.
-    //   2. Si CUADRA con un previsto, cuadra — aunque su mes esté cerrado. Casar
-    //      un cargo real con su previsión es siempre correcto: consume la
-    //      previsión, usa el importe REAL y hace que un recibo de tarjeta cierre
-    //      su periodo. Ese cargo ya estaba proyectado en el mes; confirmarlo solo
-    //      lo pasa de previsto a real. Apartarlo aquí era lo que rompía el cuadre
-    //      del recibo de tarjeta ("cuadraba antes y ahora no").
-    //   3. Si CUADRA con algo que ya tenías anotado (Confirmado), también cuadra:
-    //      es el mismo movimiento visto por el banco, y sube a Conciliado en vez
-    //      de duplicarse. Aunque su mes esté cerrado, por lo mismo que el previsto.
-    //   4. Solo si NO cuadra con nada y su mes está cerrado se aparta: eso es el
-    //      ruido que el usuario no quiere reabrir, no un cuadre legítimo.
-    //   5. Y si no cuadra ni está cerrado pero es de un mes ANTERIOR al actual,
-    //      se aparta como "mes anterior": no lo estás tratando al subir un
-    //      extracto largo. Recuperable una a una, sin reabrir nada.
-    const mesLinea = (m.date ?? '').slice(0, 7);
+    // Tres destinos y ninguna papelera:
+    //   1. Una línea ya ignorada antes NO se vuelve a proponer. Si el usuario
+    //      dijo que no la quiere, no se le pregunta otra vez sin que él la
+    //      recupere.
+    //   2. Si CUADRA —con un previsto o con algo que ya tenías anotado—, cuadra.
+    //      Casar un cargo real con su previsión consume la previsión, usa el
+    //      importe REAL y hace que un recibo de tarjeta cierre su periodo.
+    //   3. Todo lo demás TE NECESITA. Sin excepciones por fecha.
+    //
+    // Aquí vivían dos destinos más, «mes cerrado» y «mes anterior», y no eran
+    // una clasificación: eran una papelera. `lineasPendientes` los mandaba con
+    // las sin resolver a `consolidarSesion`, que borraba su `Movement` — ochenta
+    // y ocho movimientos reales del banco desaparecidos al pulsar Guardar. Y el
+    // «mes cerrado» encima se apoyaba en un cierre imposible: `cerrarMes` no
+    // tiene un solo llamante en toda la app, así que ningún mes está cerrado.
     const veredicto: VeredictoLinea = ignoradasPrevias.has(hashLinea)
       ? 'ignorada'
       : previsto || confirmado
         ? 'cuadra'
-        : mesesCerrados.has(mesLinea)
-          ? 'mes_cerrado'
-          : mesActual && mesLinea && mesLinea < mesActual
-            ? 'mes_anterior'
-            : 'resolver';
+        : 'resolver';
 
     lineas.push({
       movementId: m.id,
@@ -263,7 +233,7 @@ export function veredictoEfectivo(
   // apartado, la devuelve al flujo · no la da por buena: vuelve a "a resolver"
   // salvo que además cuadre sola.
   if (
-    (linea.veredicto === 'ignorada' || linea.veredicto === 'mes_anterior') &&
+    linea.veredicto === 'ignorada' &&
     decisiones.recuperados.has(linea.movementId)
   ) {
     return linea.previsto ? 'cuadra' : 'resolver';
@@ -277,15 +247,11 @@ export function resumir(lineas: LineaExtracto[], decisiones: DecisionesSesion): 
     cuadran: 0,
     resolver: 0,
     ignoradas: 0,
-    mesesCerrados: 0,
-    mesesAnteriores: 0,
   };
   for (const l of lineas) {
     const v = veredictoEfectivo(l, decisiones);
     if (v === 'cuadra') r.cuadran++;
     else if (v === 'ignorada') r.ignoradas++;
-    else if (v === 'mes_cerrado') r.mesesCerrados++;
-    else if (v === 'mes_anterior') r.mesesAnteriores++;
     else r.resolver++;
   }
   return r;
@@ -371,34 +337,25 @@ export function lineasAIgnorar(
 }
 
 /**
- * Líneas que siguen "a resolver" al pulsar Guardar.
+ * Antes: las líneas sin resolver se «desmaterializaban» al Guardar —se BORRABA
+ * su `Movement`— para que no movieran el saldo. Y por el mismo camino se iban
+ * las que el drawer apartaba como «de meses cerrados»: ochenta y ocho
+ * movimientos reales del banco destruidos de una vez, apoyándose en un cierre
+ * de mes que nadie puede haber hecho (`cerrarMes` no tiene llamante).
  *
- * Por D4 NO se materializan: al consolidar hay que borrar sus `Movement` y
- * dejar su identidad en el batch. Si se quedaran en el store, en cuanto la
- * sesión dejase de ser borrador aparecerían en la lista de la cuenta como
- * conciliadas y moverían el saldo.
+ * Ya no se borra nada. Una línea del banco es dinero que se movió: que ATLAS no
+ * sepa clasificarla no la hace menos real, y perderla es peor que no entenderla.
+ * Se queda en «te necesitan» hasta que alguien decida.
+ *
+ * Sigue devolviendo la lista —vacía— porque `consolidarSesion` la recibe para
+ * guardar la identidad de lo pendiente en el batch; lo que se retira es que esa
+ * lista implique un borrado.
  */
 export function lineasPendientes(
-  lineas: LineaExtracto[],
-  decisiones: DecisionesSesion
+  _lineas: LineaExtracto[],
+  _decisiones: DecisionesSesion
 ): Array<{ movementId: number; hashLinea: string; fecha: string; importe: number; concepto: string }> {
-  // "resolver", "mes_cerrado" y "mes_anterior" comparten destino: NO se
-  // materializan. La sin resolver porque el usuario no la resolvió; la de mes
-  // cerrado porque ese mes ya no se toca; la de mes anterior porque se apartó por
-  // defecto y no la recuperó. En todos los casos su `Movement` se borra al
-  // consolidar, para que no aparezca como conciliada moviendo un saldo que no debe.
-  return lineas
-    .filter((l) => {
-      const v = veredictoEfectivo(l, decisiones);
-      return v === 'resolver' || v === 'mes_cerrado' || v === 'mes_anterior';
-    })
-    .map((l) => ({
-      movementId: l.movementId,
-      hashLinea: l.hashLinea,
-      fecha: l.fecha,
-      importe: l.importe,
-      concepto: l.textoBanco,
-    }));
+  return [];
 }
 
 /**

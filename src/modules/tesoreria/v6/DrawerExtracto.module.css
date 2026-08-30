@@ -273,3 +273,24 @@
   border-color: var(--atlas-v5-gold-2);
 }
 .btnGuardar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* El cuadre · la promesa de la pantalla, a la vista y sin jerga.
+   `--neg` solo cuando de verdad falta algo (GUIA-DISENO-V5 · el rojo es pérdida
+   o alerta, no decoración). */
+.cuadre {
+  padding: 8px 16px;
+  font-size: 12px;
+  letter-spacing: .02em;
+  color: var(--atlas-v5-ink-4);
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+.cuadre strong {
+  color: var(--atlas-v5-ink);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+.cuadre[data-cuadra='no'] {
+  color: var(--atlas-v5-neg);
+}
+.cuadre[data-cuadra='no'] strong {
+  color: var(--atlas-v5-neg);
+}
