@@ -131,6 +131,16 @@
   color: var(--atlas-v5-ink);
   flex-shrink: 0;
 }
+/* Lo demás que escribió el banco · quién envía, el número del préstamo, el
+   concepto ampliado. Se deja envolver en varias líneas a propósito: es el dato
+   con el que el usuario decide, y recortarlo con puntos suspensivos lo
+   devolvería al problema de partida. */
+.lineaMasDatos {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
 .lineaFecha {
   font-size: 11px;
   color: var(--atlas-v5-ink-4);

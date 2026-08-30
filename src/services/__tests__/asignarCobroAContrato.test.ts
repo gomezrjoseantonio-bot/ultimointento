@@ -99,17 +99,25 @@ describe('assign_to_contract · el cobro queda vinculado a su contrato', () => {
     expect(asignar!.description).toContain('Adnan Parwez Khan');
   });
 
-  it('NO elige contrato si el nombre encaja con dos · decide el usuario', async () => {
+  // INVERTIDO. Este test exigía que, con el nombre encajando en dos contratos,
+  // la sugerencia se emitiera igual con `contractId: undefined` — «decide el
+  // usuario». La intención era buena; el resultado, no: en pantalla eso se lee
+  // «Parece la renta de un inquilino» y el botón que ofrece no lleva a ninguna
+  // parte, porque un `assign_to_contract` sin contrato no se puede ejecutar (el
+  // evento nacería huérfano, sin `sourceId` ni `contratoId` — el bug que este
+  // mismo fichero arregló). Lo que decide el usuario ahora se le pregunta de
+  // verdad, en vez de dárselo hecho a medias.
+  it('con el nombre encajando en dos, NO se propone renta · se pregunta', async () => {
     const db = await initDB();
     await db.add('contracts', contrato('Adnan', 'Parwez Khan') as never);
     await db.add('contracts', contrato('Yusuf', 'Parwez Khan') as never);
     const movId = (await db.add('movements', bizum('BIZUM DE PARWEZ KHAN') as never)) as number;
 
     const sugerencias = (await suggestForUnmatched([movId])).get(movId) ?? [];
-    const asignar = sugerencias.find((s) => s.action.kind === 'assign_to_contract');
 
-    expect(asignar).toBeDefined();
-    expect((asignar!.action as { contractId?: number }).contractId).toBeUndefined();
+    expect(sugerencias.some((s) => s.action.kind === 'assign_to_contract')).toBe(false);
+    // Y la línea sigue teniendo algo que decir · no se queda muda.
+    expect(sugerencias.length).toBeGreaterThan(0);
   });
 
   // ── Lo que se retiró en la 2.0.2, y por qué estas dos cambian ────────────

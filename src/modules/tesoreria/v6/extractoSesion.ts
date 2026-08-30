@@ -32,6 +32,23 @@ export interface LineaExtracto {
   /** El texto LITERAL del banco · §4.7 lo exige, sin limpiar ni embellecer. */
   textoBanco: string;
   fecha: string;
+  /**
+   * Lo demás que escribió el banco en esa fila · quién envía el dinero, el
+   * número del préstamo, el concepto ampliado.
+   *
+   * Va APARTE de `textoBanco` y no concatenado dentro, y eso importa: el hash
+   * de la línea se calcula sobre `description`, y meterle la referencia dentro
+   * cambiaría el hash de todos los movimientos ya importados — el dedupe entre
+   * importaciones solapadas dejaría de reconocerlos y los cargos se
+   * duplicarían.
+   *
+   * El importador lo guarda desde #1831/#1832; hasta ahora la pantalla lo
+   * tiraba. Una tarjeta que sólo dice «Transferencia recibida · +200 €» no se
+   * puede puntear: no hay nada que decidir con eso.
+   */
+  referencia?: string;
+  /** Quién pagó o cobró, cuando el banco lo trae en su propia columna. */
+  contraparte?: string;
   importe: number;
   veredicto: VeredictoLinea;
   /** Solo si cuadra · el previsto con el que casó. */
@@ -205,6 +222,10 @@ export function construirLineas(
       movementId: m.id,
       hashLinea,
       textoBanco: m.description,
+      // Vacío o en blanco no se propaga: un renglón vacío debajo del texto
+      // sería un hueco que parece un fallo de carga.
+      ...(m.reference?.trim() ? { referencia: m.reference.trim() } : {}),
+      ...(m.counterparty?.trim() ? { contraparte: m.counterparty.trim() } : {}),
       fecha: (m.date ?? '').slice(0, 10),
       importe: m.amount,
       veredicto,

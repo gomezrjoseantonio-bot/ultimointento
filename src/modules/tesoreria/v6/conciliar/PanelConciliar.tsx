@@ -52,6 +52,13 @@ export interface PanelConciliarProps {
   cuentasTraspaso?: Array<{ id: number; nombre: string }>;
   /** «Son traspaso a esta cuenta» sobre todas las elegidas de un gesto. */
   onTraspasarVarias?: (movementIds: number[], cuentaDestinoId: number) => void;
+  /**
+   * «Clasificar las N como…» · abre la ficha UNA vez para todas las elegidas.
+   *
+   * Es la acción que faltaba y la única que resuelve una línea de verdad:
+   * ignorar y traspasar son lo que NO se hace con cinco recibos del agua.
+   */
+  onClasificarVarias?: (movementIds: number[]) => void;
   onGuardar: () => void;
   onOtroFichero: () => void;
 }
@@ -80,6 +87,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   onIgnorarVarias,
   cuentasTraspaso = [],
   onTraspasarVarias,
+  onClasificarVarias,
   onGuardar,
   onOtroFichero,
 }) => {
@@ -281,6 +289,21 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
               <span className={styles.enBloqueN}>
                 {enJuego.length === 1 ? '1 elegida' : `${enJuego.length} elegidas`}
               </span>
+              {/* Clasificar va PRIMERO · es lo que de verdad resuelve la línea.
+                  Ignorar la aparta y traspasar la mueve; sólo clasificar dice
+                  qué es, y es lo que el usuario viene a hacer. */}
+              {onClasificarVarias && (
+                <button
+                  type="button"
+                  className={`${styles.btnBloque} ${styles.btnBloqueFuerte}`}
+                  onClick={() => onClasificarVarias(enJuego)}
+                >
+                  <Icons.Tag size={14} />
+                  {enJuego.length === 1
+                    ? 'Clasificar la 1 como…'
+                    : `Clasificar las ${enJuego.length} como…`}
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.btnBloque}

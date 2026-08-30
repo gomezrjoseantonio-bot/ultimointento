@@ -80,6 +80,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
   const previstoMostrado = asignado != null ? previstos.find((p) => p.id === asignado) : undefined;
   // Candidatos para asignar · una entrada por serie, por cercanía.
   const candidatos = candidatosDeLinea({ fecha: l.fecha, importe: l.importe }, previstos);
+  const cuadranDeImporte = candidatos.filter((c) => c.exacto).length;
 
   // Destino de un traspaso · tus cuentas menos la del extracto (§4). Incluye
   // Efectivo, que es un traspaso más. Solo tiene sentido para cargos: la salida
@@ -98,6 +99,14 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
         <div className={styles.lineaTexto}>{l.textoBanco}</div>
         <div className={styles.lineaImporte}>{importeConSigno(l.importe)}</div>
       </div>
+      {/* Lo demás que escribió el banco · sin esto la tarjeta dice
+          «Transferencia recibida · +200 €» y no hay nada que puntear. El
+          importador lo guarda desde #1831/#1832 y la pantalla lo tiraba. */}
+      {(l.contraparte || l.referencia) && (
+        <div className={styles.lineaMasDatos}>
+          {[l.contraparte, l.referencia].filter(Boolean).join(' · ')}
+        </div>
+      )}
       <div className={styles.lineaFecha}>{fechaLarga(l.fecha)}</div>
 
       {decisiones.aEfectivo.has(l.movementId) ? (
@@ -186,14 +195,21 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
         </div>
       ) : (
         <div className={styles.acciones}>
-          {/* Asignar solo si hay algún previsto que pueda ser. */}
+          {/* Asignar solo si hay algún previsto que pueda ser · y diciendo
+              cuántos cuadran de importe antes de que pulse. La información
+              estaba calculada (`candidatosDeLinea` marca `exacto`) y sólo se
+              veía DESPUÉS de abrir el desplegable: para saber si detrás había
+              algo o nada había que pulsar. Que dos rentas de 200 € cuadren
+              exactas con este ingreso es justo lo que hace falta saber antes. */}
           {candidatos.length > 0 && (
             <button
               type="button"
               className={styles.btnLinea}
               onClick={() => setAsignando(l.movementId)}
             >
-              Asignar a un previsto
+              {cuadranDeImporte > 0
+                ? `Asignar a un previsto · ${cuadranDeImporte} ${cuadranDeImporte === 1 ? 'cuadra' : 'cuadran'}`
+                : 'Asignar a un previsto'}
             </button>
           )}
           <button type="button" className={styles.btnLinea} onClick={() => abrirCrear(l)}>
