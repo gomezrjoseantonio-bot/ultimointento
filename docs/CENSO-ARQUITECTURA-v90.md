@@ -1,6 +1,8 @@
 # CENSO DE ARQUITECTURA · ATLAS v90
 
-> **Solo lectura.** Ningún fichero de producto se ha tocado en esta tarea.
+> **Solo lectura.** Ningún fichero de producto se ha tocado en esta tarea: el
+> cambio en `package.json` solo registra el script del censo, que el detector de
+> código muerto exige para no contarlo como muerto (§8).
 > **DB_VERSION = 90** · `src/services/db.ts:57` · base `AtlasHorizonDB` · 46 stores.
 > Fecha del censo: 30 agosto 2026 · rama `claude/new-session-g5zeh5`.
 >
@@ -695,14 +697,39 @@ escritor. Sin la 3ª, `personalModuleConfig` **aparece muerto y no lo está**. E
 script descuenta además tests y `__typeguards__`, que es lo que deja
 `resultadosEjercicio` correctamente aislado como el único muerto real.
 
-**Sugerencia para que no vuelva a envejecer** (no aplicada — esta tarea no toca
-configuración):
+**Registrado en `package.json`** como `"censo:stores": "node scripts/censo-stores.mjs"`
+(`npm run censo:stores`). No es cosmético: el detector de muerte transitiva
+(`scripts/lib/deadcode.mjs`) trata los `scripts/` como vivos **solo** si los
+alcanza una raíz, y una de las raíces es justamente el bloque `scripts` de
+`package.json`. Sin esa línea el censo se contaba a sí mismo como código muerto y
+el trinquete de salud pasaba de `dead 0` a `dead 1`. Es el mismo mecanismo que
+mantiene vivo a `scripts/completeDataCleanup.js` vía `cleanup:complete`.
 
-1. Añadir a `package.json`: `"censo:stores": "node scripts/censo-stores.mjs"`.
-2. Engancharlo a `npm run health` con el cuadre físicos/declarados como
-   **aserción dura** (falla el CI si aparece un fantasma).
-3. Que un store nuevo sin lector, o uno que pierda su último escritor, salga en
+**Pendiente** (no aplicado — excede el encargo de esta tarea):
+
+1. Enganchar el cuadre físicos/declarados a `npm run health` como **aserción
+   dura**, para que el CI falle si aparece un fantasma.
+2. Que un store nuevo sin lector, o uno que pierda su último escritor, salga en
    `--anomalias` y se revise en el PR que lo provoca, no 37 versiones después.
+
+### Por qué el marcador de salud no veía nada de esto
+
+`npm run health` mide `stores_fantasma`, `lecturas_store_inexistente` y
+`servicios_muertos`, y hoy los tres dan **0**. No contradice este censo: mide
+otra cosa.
+
+- `lecturas_store_inexistente` (`scripts/health.mjs:291`) usa
+  `/\.(get|getAll|getAllFromIndex|getFromIndex|count|objectStore)\((['"])([a-zA-Z0-9_]+)\2/`
+  y solo cuenta stores ∈ `stores_fantasma` (declarados y no creados). Las
+  referencias muertas de §3.4 son **literales dentro de un array de configuración**
+  que otro helper consume, no llamadas directas: la regex no las ve, y como esos
+  stores están borrados (no son «fantasma» en su definición), tampoco entrarían.
+- El propio `health.mjs:290` reconoce el otro punto ciego, el mismo que obligó a
+  resolver constantes en §7: *«(`const S='fiscalSummaries'; db.getAll(S)`) sigue
+  sin verse»*.
+
+**Los tres indicadores en 0 no significan que no haya nada roto; significan que lo
+roto cae fuera de lo que la regex alcanza.** De ahí el punto 1 de «Pendiente».
 
 **Límites del script**, escritos en su propia cabecera para que quien lo lea no se
 fíe de más: es análisis léxico, no del AST (un `db.put(stores[i], x)` no se vería —
