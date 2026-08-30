@@ -30,7 +30,6 @@ import {
 import {
   construirLineas,
   veredictoEfectivo,
-  resumir,
   payloadDeConfirmacion,
   seOfrecePara,
   lineasAIgnorar,
@@ -47,14 +46,22 @@ import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
 import PanelExtractoTarjeta from './PanelExtractoTarjeta';
-import { cuadre } from './conciliarBuckets';
+import { cuadre, bucketDeLinea, type Bucket } from './conciliarBuckets';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { convertirEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
-import GrupoPlegableExtracto from './GrupoPlegableExtracto';
+import PanelConciliar from './conciliar/PanelConciliar';
+import ZonaSoltar from './conciliar/ZonaSoltar';
+import {
+  propuestaDeLinea,
+  esPersonalReconocido,
+  type Propuesta,
+} from './conciliar/propuestaDeLinea';
+import { loQueYaReconoce } from './conciliar/loQueYaReconoce';
+import { listRules } from '../../../services/movementLearningService';
+import type { MovementLearningRule } from '../../../services/db/types-movimientos';
 import chasis from './DrawerV6.module.css';
-import styles from './DrawerExtracto.module.css';
 
 type Paso = 'soltar' | 'procesando' | 'resolver' | 'guardando';
 
@@ -94,7 +101,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [asignando, setAsignando] = useState<number | null>(null);
   const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
-  const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
+  // Lo que ATLAS ya reconoce de esta cuenta · alimenta el panel dorado.
+  const [reglas, setReglas] = useState<MovementLearningRule[]>([]);
+  // El instante en que se abrió este extracto. Separa lo aprendido HOY de lo que
+  // ya sabía, y por eso se fija UNA vez al cargar las líneas: si se recalculara
+  // en cada render, todo lo aprendido parecería viejo al segundo siguiente.
+  const [abiertoEn, setAbiertoEn] = useState<string>('');
 
   // El previsto se nombra con el MISMO adaptador que el resto de la app: título
   // = quién · qué es · inmueble (no su `description` en crudo).
@@ -113,7 +125,6 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     },
     [previstos, nombrarPrevisto],
   );
-  const inputRef = useRef<HTMLInputElement>(null);
   const [arrastrando, setArrastrando] = useState(false);
   /** Fichero a la espera de que el usuario elija destino (puerta global). */
   const pendienteRef = useRef<File | null>(null);
@@ -123,7 +134,6 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [creando, setCreando] = useState<LineaExtracto | null>(null);
 
   const cuentaActiva = cuenta ?? cuentaElegida;
-  const resumen = useMemo(() => resumir(lineas, decisiones), [lineas, decisiones]);
   /**
    * El invariante de la pantalla · toda línea del banco en un bucket.
    *
@@ -131,7 +141,44 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
    * encajaban se apartaban y se borraban al guardar; ahora, si alguna quedara
    * fuera, la pantalla lo canta en vez de tragárselo.
    */
-  const elCuadre = useMemo(() => cuadre(lineas, decisiones), [lineas, decisiones]);
+  // ── Las sugerencias que el orquestador YA calculaba y nadie leía ────────
+  //
+  // `bankStatementOrchestrator` llama a `suggestForUnmatched` en cada import y
+  // guarda el resultado en `OrchestratorResult.suggestions`. Hasta esta pantalla
+  // ese mapa moría ahí: ningún componente lo abría. Aquí se convierte en lo que
+  // dice cada tarjeta.
+  const propuestas = useMemo(() => {
+    const m = new Map<number, Propuesta>();
+    const sugs = resultado?.suggestions;
+    if (!sugs) return m;
+    for (const l of lineas) {
+      m.set(l.movementId, propuestaDeLinea(sugs.get(l.movementId) ?? []));
+    }
+    return m;
+  }, [resultado, lineas]);
+
+  // Quién va al montón «personal» · SOLO lo que el usuario enseñó alguna vez
+  // (regla aprendida) o lo que marca un recurrente suyo. La heurística no entra:
+  // ver `esPersonalReconocido`.
+  const personales = useMemo(() => {
+    const s = new Set<number>();
+    const sugs = resultado?.suggestions;
+    if (!sugs) return s;
+    for (const l of lineas) {
+      if (esPersonalReconocido(sugs.get(l.movementId) ?? [])) s.add(l.movementId);
+    }
+    return s;
+  }, [resultado, lineas]);
+
+  const elCuadre = useMemo(
+    () => cuadre(lineas, decisiones, personales),
+    [lineas, decisiones, personales],
+  );
+
+  const aprendido = useMemo(
+    () => loQueYaReconoce(reglas, abiertoEn || new Date().toISOString()),
+    [reglas, abiertoEn],
+  );
 
   // ── Reiniciar ──────────────────────────────────────────────────────────────
   const reiniciar = useCallback(() => {
@@ -148,7 +195,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setCreando(null);
     ficheroRef.current = null;
     pendienteRef.current = null;
-    setIgnoradasPlegadas(true);
+    setReglas([]);
+    setAbiertoEn('');
     if (!cuenta) setCuentaElegida(null);
   }, [cuenta]);
 
@@ -180,6 +228,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados)
         );
         setDecisiones(decisionesVacias());
+        setAbiertoEn(new Date().toISOString());
+        // Si falla, el panel dorado sale vacío y el resto de la pantalla
+        // funciona igual: no saber qué se aprendió antes no impide conciliar.
+        void listRules()
+          .then(setReglas)
+          .catch(() => setReglas([]));
         setPaso('resolver');
       } catch (err) {
         if (err instanceof StatementAlreadyImportedError) {
@@ -451,13 +505,113 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   if (!abierto) return null;
 
-  // Dos montones y ya · lo que necesita decisión, y lo que el usuario apartó.
-  // Los grupos «de meses cerrados» y «de meses anteriores» se retiran: no eran
-  // una clasificación sino una papelera, y sus líneas se borraban al Guardar.
-  const visibles = lineas.filter((l) => veredictoEfectivo(l, decisiones) !== 'ignorada');
-  const ignoradas = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'ignorada');
+  // Los cuatro montones del mockup. `bucketDeLinea` es total, así que esto no
+  // puede dejar una línea fuera: la suma de los cuatro es siempre `lineas`.
+  const enBucket = (b: Bucket) =>
+    lineas.filter((l) => bucketDeLinea(l, decisiones, personales) === b);
+  const necesitan = enBucket('te_necesitan');
+  const resueltas = enBucket('resueltas');
+  const personalesLineas = enBucket('personal');
+  const ignoradas = enBucket('ignorados');
 
+  // El aviso de «hay N líneas iguales» se calcula sobre lo que no está ignorado:
+  // ofrecer marcar en lote algo que el usuario ya apartó no tiene sentido.
+  const visibles = lineas.filter((l) => veredictoEfectivo(l, decisiones) !== 'ignorada');
   const igualesSinResolver = contarIgualesSinResolver(visibles, decisiones);
+
+  /**
+   * La línea del banco, con sus acciones de siempre.
+   *
+   * Se pasa como función a `PanelConciliar` en vez de mover el
+   * `LineaExtractoItem` allí dentro: sus manejadores viven aquí, y llevárselos
+   * a la pantalla habría significado tocar el único camino que hoy escribe de
+   * verdad en la base a cambio de nada.
+   */
+  const renderLinea = (l: LineaExtracto) => (
+    <LineaExtractoItem
+      linea={l}
+      decisiones={decisiones}
+      previstos={previstos}
+      cuentas={cuentas}
+      cuentaActivaId={cuentaActiva?.id}
+      cuentaEfectivo={cuentaEfectivo}
+      asignando={asignando}
+      setAsignando={setAsignando}
+      traspasando={traspasando}
+      setTraspasando={setTraspasando}
+      asignar={asignar}
+      ignorar={ignorar}
+      marcarEfectivo={marcarEfectivo}
+      desmarcarEfectivo={desmarcarEfectivo}
+      marcarTraspaso={marcarTraspaso}
+      desmarcarTraspaso={desmarcarTraspaso}
+      igualesSinResolver={igualesSinResolver.get(claveDeLineaIgual(l)) ?? 0}
+      onMarcarIguales={() => marcarTraspasoLote(l)}
+      abrirCrear={setCreando}
+      nombrarPrevisto={nombrarPrevisto}
+      nombrarPrevistoPorId={nombrarPrevistoPorId}
+    />
+  );
+
+  // §4.5 prerrellenada · "Crear movimiento" desde una línea sin cuadre. Se monta
+  // en las dos ramas del render (pantalla y dropzone), así que vive fuera.
+  const fichaDeCreacion = (
+    <FichaMovimiento
+      abierta={creando != null}
+      esEdicion={false}
+      inicial={
+        creando
+          ? {
+              tipo: creando.importe >= 0 ? 'ingreso' : 'gasto',
+              concepto: creando.textoBanco,
+              importe: creando.importe,
+              fecha: creando.fecha,
+              cuentaId: cuentaActiva?.id ?? null,
+            }
+          : undefined
+      }
+      cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
+      inmuebles={inmuebles}
+      tarjetas={tarjetas}
+      onCerrar={() => setCreando(null)}
+      onGuardar={(v) => (creando ? crearDesdeFicha(creando, v) : undefined)}
+    />
+  );
+
+  // Una vez leído el fichero, la conciliación deja de ser un panel lateral y
+  // pasa a ocupar la pantalla: son ciento y pico líneas y unas cuantas
+  // decisiones, no un formulario de tres campos.
+  const enConciliar = paso === 'resolver' || paso === 'guardando';
+
+  if (enConciliar) {
+    return (
+      <>
+        <PanelConciliar
+          titularCuenta={
+            cuentaActiva
+              ? `${cuentaActiva.alias} · ****${cuentaActiva.ultimosCuatro ?? ''} · ${lineas.length} líneas`
+              : `${lineas.length} líneas`
+          }
+          colorBanco={cuentaActiva ? colorDeBanco(cuentaActiva) : undefined}
+          elCuadre={elCuadre}
+          necesitan={necesitan}
+          resueltas={resueltas}
+          personales={personalesLineas}
+          ignoradas={ignoradas}
+          propuestas={propuestas}
+          aprendido={aprendido}
+          avisos={resultado?.warnings ?? []}
+          error={error}
+          guardando={paso === 'guardando'}
+          renderLinea={renderLinea}
+          onRecuperar={recuperar}
+          onGuardar={guardar}
+          onOtroFichero={salirSinGuardar}
+        />
+        {fichaDeCreacion}
+      </>
+    );
+  }
 
   return (
     <>
@@ -499,47 +653,6 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
             </button>
           </div>
 
-          {paso === 'resolver' && (
-            <div className={chasis.kpis}>
-              <div className={chasis.ak}>
-                <div className={chasis.akl}>Líneas</div>
-                <div className={chasis.akv}>{resumen.lineas}</div>
-              </div>
-              <div className={chasis.ak}>
-                <div className={chasis.akl}>Resueltas solas</div>
-                <div className={chasis.akv}>{elCuadre.porBucket.resueltas}</div>
-              </div>
-              <div className={chasis.ak}>
-                <div className={chasis.akl}>Te necesitan</div>
-                <div className={chasis.akv}>{elCuadre.porBucket.te_necesitan}</div>
-              </div>
-              <div className={chasis.ak}>
-                <div className={chasis.akl}>Personal</div>
-                <div className={chasis.akv}>{elCuadre.porBucket.personal}</div>
-              </div>
-              <div className={chasis.ak}>
-                <div className={chasis.akl}>Ignorados</div>
-                <div className={chasis.akv}>{elCuadre.porBucket.ignorados}</div>
-              </div>
-            </div>
-          )}
-          {/* El cuadre, a la vista · es la promesa de la pantalla, no un detalle. */}
-          {paso === 'resolver' && (
-            <div className={styles.cuadre} data-cuadra={elCuadre.cuadra ? 'si' : 'no'}>
-              {elCuadre.cuadra ? (
-                <>
-                  <strong>{elCuadre.delBanco}</strong> del banco ·{' '}
-                  <strong>{elCuadre.colocadas}</strong> colocadas · ninguna se pierde
-                </>
-              ) : (
-                <>
-                  <strong>{elCuadre.delBanco}</strong> del banco pero solo{' '}
-                  <strong>{elCuadre.colocadas}</strong> colocadas · faltan{' '}
-                  {elCuadre.delBanco - elCuadre.colocadas}. No se guarda hasta que cuadre.
-                </>
-              )}
-            </div>
-          )}
         </div>
 
         <div className={chasis.body}>
@@ -553,225 +666,36 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
             />
           )}
 
-          {/* ── Paso 1 · dropzone ───────────────────────────────────────── */}
+          {/* ── Paso 1 · soltar el fichero (`ZonaSoltar`) ───────────────── */}
           {!tarjetaDestino && (paso === 'soltar' || paso === 'procesando') && (
-            <div className={styles.zonaWrap}>
-              {!cuenta && deteccion && deteccion.estado !== 'detectada' && (
-                <div className={styles.avisoCuenta}>
-                  <div className={styles.avisoT}>
-                    {deteccion.estado === 'ambigua'
-                      ? 'El fichero menciona más de una de tus cuentas'
-                      : deteccion.estado === 'iban-desconocido'
-                        ? `El IBAN del fichero (${deteccion.iban.slice(0, 8)}…) no es de ninguna cuenta tuya`
-                        : 'No se ha encontrado el IBAN en el fichero'}
-                  </div>
-                  <div className={styles.avisoS}>
-                    Elige la cuenta o la tarjeta de este extracto. Importar en el sitio
-                    equivocado mueve saldos que no son.
-                  </div>
-                  <select
-                    className={styles.selectCuenta}
-                    aria-label="Destino del extracto"
-                    // Cambiar de destino a mitad de una importación lanzaría un
-                    // segundo `processFile` y dejaría el batch anterior huérfano.
-                    disabled={paso === 'procesando'}
-                    value=""
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      const f = pendienteRef.current;
-                      if (!v || !f) return;
-                      // `t:ID` una tarjeta (se concilia aparte) · `c:ID` una cuenta.
-                      if (v.startsWith('t:')) {
-                        const t = tarjetas.find((x) => x.id === Number(v.slice(2)));
-                        if (t) setTarjetaDestino({ id: t.id, alias: t.alias });
-                        return;
-                      }
-                      const elegida = cuentas.find((c) => c.id === Number(v.slice(2))) ?? null;
-                      setCuentaElegida(elegida);
-                      if (elegida) void procesar(f, elegida);
-                    }}
-                  >
-                    <option value="">Elige cuenta o tarjeta…</option>
-                    {cuentasEnUso(cuentas).map((c) => (
-                      <option key={`c${c.id}`} value={`c:${c.id}`}>
-                        {c.alias} · ****{c.ultimosCuatro}
-                      </option>
-                    ))}
-                    {tarjetas.map((t) => (
-                      <option key={`t${t.id}`} value={`t:${t.id}`}>
-                        {t.alias} · tarjeta
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {avisoReimport && (
-                <div className={styles.avisoCuenta}>
-                  <div className={styles.avisoT}>Este extracto ya se importó</div>
-                  <div className={styles.avisoS}>{avisoReimport.mensaje}</div>
-                  <div className={styles.avisoAcciones}>
-                    <button
-                      type="button"
-                      className={styles.btnLinea}
-                      onClick={() => {
-                        const destino = cuentaActiva;
-                        if (destino) void procesar(avisoReimport.file, destino, true);
-                      }}
-                    >
-                      Importar de todas formas
-                    </button>
-                    <button type="button" className={styles.btnLinea} onClick={reiniciar}>
-                      Elegir otro fichero
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className={`${styles.zona} ${arrastrando ? styles.zonaOn : ''}`}
-                onClick={() => inputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setArrastrando(true);
-                }}
-                onDragLeave={() => setArrastrando(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setArrastrando(false);
-                  if (paso === 'procesando') return;
-                  const f = e.dataTransfer.files?.[0];
-                  if (f) void recibirFichero(f);
-                }}
-                disabled={paso === 'procesando'}
-              >
-                <Icons.Upload size={26} className={styles.zonaIc} />
-                <div className={styles.zonaT}>
-                  {paso === 'procesando'
-                    ? 'Leyendo el extracto…'
-                    : 'Arrastra aquí el extracto o haz clic para elegir'}
-                </div>
-                <div className={styles.zonaS}>Excel, CSV, Norma 43 o PDF</div>
-              </button>
-
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".csv,.xls,.xlsx,.txt,.n43,.csb,.pdf"
-                className={styles.inputFile}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void recibirFichero(f);
-                  e.target.value = '';
-                }}
-              />
-
-              {error && <div className={styles.error}>{error}</div>}
-            </div>
-          )}
-
-          {/* ── Paso 2 · resultado del emparejamiento ───────────────────── */}
-          {(paso === 'resolver' || paso === 'guardando') && (
-            <div className={styles.lista}>
-              {resultado?.warnings.map((w, i) => (
-                <div key={i} className={styles.warning}>
-                  {w}
-                </div>
-              ))}
-
-              {visibles.map((l) => (
-                <LineaExtractoItem
-                  key={l.movementId}
-                  linea={l}
-                  decisiones={decisiones}
-                  previstos={previstos}
-                  cuentas={cuentas}
-                  cuentaActivaId={cuentaActiva?.id}
-                  cuentaEfectivo={cuentaEfectivo}
-                  asignando={asignando}
-                  setAsignando={setAsignando}
-                  traspasando={traspasando}
-                  setTraspasando={setTraspasando}
-                  asignar={asignar}
-                  ignorar={ignorar}
-                  marcarEfectivo={marcarEfectivo}
-                  desmarcarEfectivo={desmarcarEfectivo}
-                  marcarTraspaso={marcarTraspaso}
-                  desmarcarTraspaso={desmarcarTraspaso}
-                  igualesSinResolver={igualesSinResolver.get(claveDeLineaIgual(l)) ?? 0}
-                  onMarcarIguales={() => marcarTraspasoLote(l)}
-                  abrirCrear={setCreando}
-                  nombrarPrevisto={nombrarPrevisto}
-                  nombrarPrevistoPorId={nombrarPrevistoPorId}
-                />
-              ))}
-
-              {/* Ignoradas · agrupadas y plegadas (D1). */}
-              {ignoradas.length > 0 && (
-                <GrupoPlegableExtracto
-                  plegado={ignoradasPlegadas}
-                  onToggle={() => setIgnoradasPlegadas((v) => !v)}
-                  titulo={`${ignoradas.length} ignoradas`}
-                  lineas={ignoradas}
-                  accion={(l) => (
-                    <button
-                      type="button"
-                      className={styles.recuperar}
-                      onClick={() => recuperar(l.movementId)}
-                    >
-                      recuperar
-                    </button>
-                  )}
-                />
-              )}
-
-              {error && <div className={styles.error}>{error}</div>}
-            </div>
+            <ZonaSoltar
+              cuenta={cuenta}
+              cuentas={cuentas}
+              tarjetas={tarjetas ?? []}
+              deteccion={deteccion}
+              procesando={paso === 'procesando'}
+              arrastrando={arrastrando}
+              setArrastrando={setArrastrando}
+              avisoReimport={avisoReimport}
+              error={error}
+              onElegirCuenta={(elegida) => {
+                const f = pendienteRef.current;
+                setCuentaElegida(elegida);
+                if (f) void procesar(f, elegida);
+              }}
+              onElegirTarjeta={setTarjetaDestino}
+              onFichero={(f) => void recibirFichero(f)}
+              onImportarDeTodasFormas={() => {
+                const destino = cuentaActiva;
+                if (destino && avisoReimport) void procesar(avisoReimport.file, destino, true);
+              }}
+              onOtroFichero={reiniciar}
+            />
           )}
         </div>
-
-        {/* ── Pie · UN SOLO Guardar (§4.7) ─────────────────────────────── */}
-        {(paso === 'resolver' || paso === 'guardando') && (
-          <div className={styles.pie}>
-            <div className={styles.pieNota}>
-              {resumen.resolver > 0
-                ? `${resumen.resolver} sin resolver · esperan en el extracto`
-                : 'Todo resuelto'}
-            </div>
-            <button
-              type="button"
-              className={styles.btnGuardar}
-              onClick={guardar}
-              disabled={paso === 'guardando'}
-            >
-              {paso === 'guardando' ? 'Guardando…' : 'Guardar'}
-            </button>
-          </div>
-        )}
       </aside>
 
-      {/* §4.5 prerrellenada · "Crear movimiento" desde una línea sin cuadre. */}
-      <FichaMovimiento
-        abierta={creando != null}
-        esEdicion={false}
-        inicial={
-          creando
-            ? {
-                tipo: creando.importe >= 0 ? 'ingreso' : 'gasto',
-                concepto: creando.textoBanco,
-                importe: creando.importe,
-                fecha: creando.fecha,
-                cuentaId: cuentaActiva?.id ?? null,
-              }
-            : undefined
-        }
-        cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
-        inmuebles={inmuebles}
-        tarjetas={tarjetas}
-        onCerrar={() => setCreando(null)}
-        onGuardar={(v) => (creando ? crearDesdeFicha(creando, v) : undefined)}
-      />
+      {fichaDeCreacion}
     </>
   );
 };
