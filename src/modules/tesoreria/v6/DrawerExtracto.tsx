@@ -164,12 +164,26 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const propuestas = useMemo(() => {
     const m = new Map<number, Propuesta>();
     const sugs = resultado?.suggestions;
-    if (!sugs) return m;
+    const atribs = resultado?.reconocido?.atribuciones;
+    if (!sugs && !atribs) return m;
     for (const l of lineas) {
-      m.set(l.movementId, propuestaDeLinea(sugs.get(l.movementId) ?? []));
+      const a = atribs?.get(l.movementId);
+      m.set(
+        l.movementId,
+        propuestaDeLinea(
+          sugs?.get(l.movementId) ?? [],
+          a
+            ? {
+                alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias,
+                concepto: a.concepto,
+                ejercicio: a.ejercicio,
+              }
+            : null,
+        ),
+      );
     }
     return m;
-  }, [resultado, lineas]);
+  }, [resultado, lineas, inmuebles]);
 
   // Quién va al montón «personal» · SOLO lo que el usuario enseñó alguna vez
   // (regla aprendida) o lo que marca un recurrente suyo. La heurística no entra:
@@ -184,9 +198,17 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     return s;
   }, [resultado, lineas]);
 
+  // FASE 2 · lo que ATLAS reconoció mirando los libros del usuario. No casó con
+  // una previsión —para el pasado no hay previsiones— pero está igual de
+  // resuelto: fecha e importe exactos contra un dato que escribió él.
+  const reconocidas = useMemo(
+    () => new Set((resultado?.reconocido?.origenes ?? new Map()).keys()),
+    [resultado],
+  );
+
   const elCuadre = useMemo(
-    () => cuadre(lineas, decisiones, personales),
-    [lineas, decisiones, personales],
+    () => cuadre(lineas, decisiones, personales, reconocidas),
+    [lineas, decisiones, personales, reconocidas],
   );
 
   const aprendido = useMemo(
@@ -311,7 +333,21 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     }
     setPaso('guardando');
     try {
-      await confirmDecisions(resultado.importBatchId, payloadDeConfirmacion(lineas, decisiones));
+      await confirmDecisions(resultado.importBatchId, {
+        ...payloadDeConfirmacion(lineas, decisiones),
+        // Solo lo que sigue sin resolver por otra vía: si el usuario asignó esa
+        // línea a un previsto a mano, su decisión manda sobre lo que ATLAS
+        // dedujo del cuadro.
+        approvedDeterministic: Array.from(
+          (resultado.reconocido?.origenes ?? new Map()).values(),
+        ).filter((o) => {
+          const linea = lineas.find((l) => l.movementId === o.movementId);
+          // Sin línea no hay nada que cerrar; y si el usuario la asignó,
+          // ignoró o resolvió a mano, su decisión manda sobre lo que ATLAS
+          // dedujo del cuadro.
+          return linea != null && veredictoEfectivo(linea, decisiones) === 'resolver';
+        }),
+      });
 
       // El ignorado se persiste por hash de línea (D4 · vive en el fichero).
       for (const l of lineasAIgnorar(lineas, decisiones)) {
@@ -522,7 +558,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // Los cuatro montones del mockup. `bucketDeLinea` es total, así que esto no
   // puede dejar una línea fuera: la suma de los cuatro es siempre `lineas`.
   const enBucket = (b: Bucket) =>
-    lineas.filter((l) => bucketDeLinea(l, decisiones, personales) === b);
+    lineas.filter((l) => bucketDeLinea(l, decisiones, personales, reconocidas) === b);
   const necesitan = enBucket('te_necesitan');
   const resueltas = enBucket('resueltas');
   const personalesLineas = enBucket('personal');
