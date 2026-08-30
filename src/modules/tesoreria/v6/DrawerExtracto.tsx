@@ -35,13 +35,12 @@ import {
   lineasAIgnorar,
   movimientosAEfectivo,
   movimientosATraspaso,
-  contarIgualesSinResolver, idsIgualesAResolver, claveDeLineaIgual,
+  contarIgualesSinResolver, claveDeLineaIgual,
   lineasPendientes,
   hashesARecuperar,
-  decisionesVacias,
   type LineaExtracto,
-  type DecisionesSesion,
 } from './extractoSesion';
+import { useDecisionesDeSesion } from './decisionesDeSesion';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
@@ -111,7 +110,24 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [tarjetaDestino, setTarjetaDestino] = useState<{ id: number; alias: string } | null>(null);
   const [resultado, setResultado] = useState<OrchestratorResult | null>(null);
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
-  const [decisiones, setDecisiones] = useState<DecisionesSesion>(decisionesVacias);
+  // Los doce gestos sobre una línea viven en su propio módulo · lo único que
+  // necesitan es saber qué líneas hay (para el lote de las iguales).
+  const {
+    decisiones,
+    reiniciarDecisiones,
+    ignorar,
+    recuperar,
+    desemparejar,
+    ignorarVarias,
+    traspasarVarias,
+    asignar,
+    marcarEfectivo,
+    desmarcarEfectivo,
+    marcarTraspaso,
+    desmarcarTraspaso,
+    marcarTraspasoLote,
+    marcarCreado,
+  } = useDecisionesDeSesion(lineas);
   const [asignando, setAsignando] = useState<number | null>(null);
   const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
@@ -223,7 +239,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setAvisoReimport(null);
     setResultado(null);
     setLineas([]);
-    setDecisiones(decisionesVacias());
+    reiniciarDecisiones();
     setDeteccion(null);
     setTarjetaDestino(null);
     setAsignando(null);
@@ -234,7 +250,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setReglas([]);
     setAbiertoEn('');
     if (!cuenta) setCuentaElegida(null);
-  }, [cuenta]);
+  }, [cuenta, reiniciarDecisiones]);
 
   // ── Procesar ───────────────────────────────────────────────────────────────
   const procesar = useCallback(
@@ -263,7 +279,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setLineas(
           construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados)
         );
-        setDecisiones(decisionesVacias());
+        reiniciarDecisiones();
         setAbiertoEn(new Date().toISOString());
         // Si falla, el panel dorado sale vacío y el resto de la pantalla
         // funciona igual: no saber qué se aprendió antes no impide conciliar.
@@ -282,7 +298,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setPaso('soltar');
       }
     },
-    []
+    [reiniciarDecisiones]
   );
 
   const recibirFichero = useCallback(
@@ -311,6 +327,18 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       pendienteRef.current = file;
     },
     [cuenta, cuentas, procesar]
+  );
+
+  // Las cuentas a las que cabe traspasar en bloque · todas las suyas menos la
+  // del propio extracto: un traspaso de una cuenta a sí misma no existe.
+  const cuentasDestino = useMemo(
+    () =>
+      cuentasEnUso(cuentas)
+        .filter((c) => c.id != null && c.id !== cuentaActiva?.id)
+        // Sin nombre se enseña el banco y, en último caso, el id: un
+        // desplegable con una opción en blanco no se puede elegir a ciegas.
+        .map((c) => ({ id: c.id as number, nombre: c.name || `Cuenta ${c.id}` })),
+    [cuentas, cuentaActiva]
   );
 
   // La cuenta de Efectivo · sin ella no se ofrece "Es efectivo" (un traspaso la necesita).
@@ -411,83 +439,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     onCerrar();
   }, [resultado, reiniciar, onCerrar]);
 
-  // ── Acciones por línea ────────────────────────────────────────────────────
-  const conDecisiones = (mut: (d: DecisionesSesion) => void) =>
-    setDecisiones((prev) => {
-      const d: DecisionesSesion = {
-        asignados: new Map(prev.asignados),
-        ignorados: new Set(prev.ignorados),
-        creados: new Set(prev.creados),
-        recuperados: new Set(prev.recuperados),
-        aEfectivo: new Set(prev.aEfectivo),
-        aTraspaso: new Map(prev.aTraspaso),
-      };
-      mut(d);
-      return d;
-    });
-
-  const ignorar = (movementId: number) =>
-    conDecisiones((d) => {
-      d.ignorados.add(movementId);
-      d.asignados.delete(movementId);
-      d.aTraspaso.delete(movementId);
-    });
-
-  const recuperar = (movementId: number) =>
-    conDecisiones((d) => {
-      d.ignorados.delete(movementId);
-      d.recuperados.add(movementId);
-    });
-
-  const asignar = (movementId: number, eventoId: number) =>
-    conDecisiones((d) => {
-      d.asignados.set(movementId, eventoId);
-      d.ignorados.delete(movementId);
-      d.aEfectivo.delete(movementId);
-      d.aTraspaso.delete(movementId);
-    });
-
-  // "Es efectivo" · el cargo pasa a un traspaso a Efectivo al guardar (sacar del
-  // cajero no es gasto: el dinero cambia de sitio).
-  const marcarEfectivo = (movementId: number) =>
-    conDecisiones((d) => {
-      d.aEfectivo.add(movementId);
-      d.ignorados.delete(movementId);
-      d.asignados.delete(movementId);
-      d.aTraspaso.delete(movementId);
-    });
-
-  const desmarcarEfectivo = (movementId: number) =>
-    conDecisiones((d) => d.aEfectivo.delete(movementId));
-
-  // "Es traspaso" · el cargo pasa a un traspaso a la cuenta destino al guardar
-  // (P1) · el dinero no se gasta, cambia de sitio.
-  const marcarTraspaso = (movementId: number, cuentaDestinoId: number) =>
-    conDecisiones((d) => {
-      d.aTraspaso.set(movementId, cuentaDestinoId);
-      d.ignorados.delete(movementId);
-      d.asignados.delete(movementId);
-      d.aEfectivo.delete(movementId);
-    });
-
-  const desmarcarTraspaso = (movementId: number) =>
-    conDecisiones((d) => d.aTraspaso.delete(movementId));
-
-  // A2 · las iguales sin resolver como traspaso a la misma cuenta (28 Revolut de un clic).
-  const marcarTraspasoLote = (linea: LineaExtracto) => {
-    const destino = decisiones.aTraspaso.get(linea.movementId);
-    if (destino == null) return;
-    const ids = idsIgualesAResolver(lineas, decisiones, linea);
-    conDecisiones((d) => {
-      for (const id of ids) {
-        d.aTraspaso.set(id, destino);
-        d.ignorados.delete(id);
-        d.asignados.delete(id);
-        d.aEfectivo.delete(id);
-      }
-    });
-  };
-
+  // ── Acciones por línea · viven en `decisionesDeSesion` ────────────────────
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. El
    * `Movement` YA existe (`processFile` lo insertó), así que crear aquí es
@@ -510,10 +462,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
             importe: v.importe,
             fecha: v.fecha,
           });
-          conDecisiones((d) => {
-            d.creados.add(linea.movementId);
-            d.ignorados.delete(linea.movementId);
-          });
+          marcarCreado(linea.movementId);
           setCreando(null);
         } catch (err) {
           console.error('[DrawerExtracto] no se pudo registrar la mejora', err);
@@ -541,16 +490,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const aviso = AVISO_GASTO_FISCAL[r.resultado];
         if (aviso) setError(aviso);
         if (r.resultado === 'falta_casilla') return;
-        conDecisiones((d) => {
-          d.creados.add(linea.movementId);
-          d.ignorados.delete(linea.movementId);
-        });
+        marcarCreado(linea.movementId);
         setCreando(null);
       } catch (err) {
         console.error('[DrawerExtracto] no se pudo clasificar la línea', err);
       }
     },
-    []
+    [marcarCreado]
   );
 
   if (!abierto) return null;
@@ -652,6 +598,10 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           guardando={paso === 'guardando'}
           renderLinea={renderLinea}
           onRecuperar={recuperar}
+          onNoEsEsto={desemparejar}
+          onIgnorarVarias={ignorarVarias}
+          cuentasTraspaso={cuentasDestino}
+          onTraspasarVarias={traspasarVarias}
           onGuardar={guardar}
           onOtroFichero={salirSinGuardar}
         />

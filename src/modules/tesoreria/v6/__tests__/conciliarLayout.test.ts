@@ -57,6 +57,36 @@ describe('las tarjetas no se pueden aplastar', () => {
   });
 });
 
+describe('los montones que se abren siguen teniendo rayas entre filas', () => {
+  // `:first-of-type` mira los hermanos DENTRO del padre. Al envolver cada grupo
+  // en su propio div —hace falta para colgarle debajo sus líneas— cada botón
+  // pasó a ser el primero de su div, así que un `.filaAbrible:first-of-type`
+  // se cumpliría en todos a la vez y la lista se quedaría sin una sola raya.
+  // La misma familia de fallo que dejó la columna en blanco: CSS que en jsdom
+  // no se ve y que ningún `getByText` toca.
+  it('el separador cuelga del envoltorio, no del botón', () => {
+    expect(reglaDe('.grupo + .grupo')).toMatch(/border-top:/);
+  });
+
+  it('y el botón no se lo lleva de vuelta con un :first-of-type', () => {
+    expect(reglaDe('.filaAbrible')).not.toMatch(/border-top:/);
+    expect(reglaDe('.filaAbrible:first-of-type')).toBeNull();
+  });
+
+  it('el botón recupera lo que el navegador le quita · si no, sale con caja gris', () => {
+    const boton = reglaDe('.filaAbrible');
+    expect(boton).toMatch(/background:\s*none/);
+    expect(boton).toMatch(/text-align:\s*left/);
+    expect(boton).toMatch(/font-family:\s*inherit/);
+  });
+
+  it('el buscador y la barra de bloque tampoco pueden encogerse', () => {
+    // Viven fuera de `.scroll`, así que la regla `.scroll > *` no los cubre.
+    expect(reglaDe('.buscar')).toMatch(/flex-shrink:\s*0/);
+    expect(reglaDe('.enBloque')).toMatch(/flex-shrink:\s*0/);
+  });
+});
+
 describe('un texto que se recorta tiene que ser un bloque', () => {
   // `text-overflow: ellipsis` no hace nada sobre un elemento inline. Las filas
   // del resumen eran `<span>` sin `display`, así que el concepto, su detalle y

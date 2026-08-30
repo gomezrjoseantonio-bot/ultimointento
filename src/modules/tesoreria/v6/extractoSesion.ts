@@ -89,6 +89,22 @@ export interface DecisionesSesion {
    * cargo, y la pata de entrada del otro extracto se concilia aparte (§4.4).
    */
   aTraspaso: Map<number, number>;
+  /**
+   * movementIds sobre los que el usuario ha dicho «No es esto».
+   *
+   * Es la vuelta atrás que faltaba. Una línea cae en «resueltas» porque el
+   * emparejador dijo que casaba con un previsto, o porque el reconocedor la
+   * casó contra un libro; cae en «personal» porque una regla aprendida dijo que
+   * era suya. Los tres se equivocan —la cuota del préstamo del piso colada en
+   * «personal» es de una captura real— y hasta ahora no había forma de decirlo:
+   * el bucket se recalculaba solo en cada render y se comía la corrección.
+   *
+   * Conjunto aparte de `ignorados` porque son cosas distintas: ignorar es un
+   * acto del usuario sobre una línea que no le interesa, y esto es corregir a
+   * ATLAS sobre una que sí. Por eso desemparejar NO designora: para eso está
+   * «reactivar».
+   */
+  desemparejados: Set<number>;
 }
 
 export function decisionesVacias(): DecisionesSesion {
@@ -99,6 +115,7 @@ export function decisionesVacias(): DecisionesSesion {
     recuperados: new Set(),
     aEfectivo: new Set(),
     aTraspaso: new Map(),
+    desemparejados: new Set(),
   };
 }
 
