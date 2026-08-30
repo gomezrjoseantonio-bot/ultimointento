@@ -226,13 +226,6 @@ const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pe
 // Legacy Pulse (Personal) Module Components - Keep for migration
 // D-CRUD-ALTA sub-tarea 9 · Catálogo proveedores
 const ConfigProveedores = lazyWithPreload(() => import('./modules/horizon/configuracion/proveedores/ProveedoresPage'));
-// Development only imports
-const ProfileSeederPage = lazyWithPreload(() =>
-  (import.meta as any).env?.DEV 
-    ? import('./pages/ProfileSeederPage')
-    : Promise.resolve({ default: () => null })
-);
-
 // Image Description page - New feature
 const ImageDescriptionPage = lazyWithPreload(() => import('./pages/ImageDescriptionPage'));
 
@@ -1509,19 +1502,6 @@ function App() {
             </Route>
             
             {/* Development only routes */}
-            {(import.meta as any).env?.DEV && (
-              <>
-                <Route 
-                  path="__profiles" 
-                  element={
-                    <React.Suspense fallback={<div>Cargando...</div>}>
-                      <ProfileSeederPage />
-                    </React.Suspense>
-                  } 
-                />
-              </>
-            )}
-            
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Route>
         </Routes>

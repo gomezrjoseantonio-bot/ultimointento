@@ -281,7 +281,12 @@ describe('bankStatementOrchestrator', () => {
     expect(second.warnings.join(' ')).toMatch(/reimportado/i);
   });
 
-  it('3. confirmDecisions · matches + suggestions + ignored ⇒ DB state coherente', async () => {
+  // La sugerencia YA NO se aplica sola: ese canal se retiró en la 2.0.2 porque
+  // nunca se ejecutaba (`payloadDeConfirmacion` lo devolvía vacío) y lo que
+  // había al otro lado no creaba la fila fiscal del gasto. Lo que este test
+  // protege sigue siendo lo de siempre —matches e ignorados—, más el candado de
+  // que una sugerencia NO se materializa a espaldas del usuario.
+  it('3. confirmDecisions · matches + ignored ⇒ DB state coherente · y la sugerencia no se cuela', async () => {
     // Seed 3 movements and 2 predicted events that we will pair up.
     stores.movements.push(
       { id: 1, accountId: 42, date: '2026-04-22', amount: 380, description: 'RENTA 1', unifiedStatus: 'no_planificado', source: 'import', status: 'pendiente' as any, category: { tipo: 'Ingresos' }, importBatch: 'batch-A', updatedAt: '', createdAt: '' } as any,
@@ -319,7 +324,6 @@ describe('bankStatementOrchestrator', () => {
         { movementId: 1, treasuryEventId: 1000 },
         { movementId: 2, treasuryEventId: 1001 },
       ],
-      approvedSuggestions: [{ movementId: 3, suggestionIndex: 0 }],
       ignoredMovementIds: [4],
     });
 
@@ -331,18 +335,15 @@ describe('bankStatementOrchestrator', () => {
     expect(event1001.status).toBe('executed');
     expect(event1001.executedMovementId).toBe(2);
 
-    // 1 new event created from the suggestion (id 1000 + 1001 are the seeded
-    // events — anything newer is ours; numeric id auto-assigned by the fake db
-    // generator: 3 events × 1000 = 3000 for the inserted one).
-    const newEvents = stores.treasuryEvents.filter(e => e.id! >= 3000);
-    expect(newEvents).toHaveLength(1);
-    expect(newEvents[0].sourceType).toBe('gasto');
-    expect(newEvents[0].executedMovementId).toBe(3);
+    // NINGÚN evento nuevo: la sugerencia para el movimiento 3 existe, pero
+    // nadie la aplica. Antes se creaba aquí un `gasto` a espaldas del usuario y
+    // sin fila fiscal.
+    expect(stores.treasuryEvents.filter(e => e.id! >= 3000)).toHaveLength(0);
 
-    // Movements 1, 2, 3 → conciliado · movement 4 → no_planificado (ignored)
+    // Movements 1, 2 → conciliado · 3 sigue esperando decisión · 4 ignorado.
     expect(stores.movements.find(m => m.id === 1)?.unifiedStatus).toBe('conciliado');
     expect(stores.movements.find(m => m.id === 2)?.unifiedStatus).toBe('conciliado');
-    expect(stores.movements.find(m => m.id === 3)?.unifiedStatus).toBe('conciliado');
+    expect(stores.movements.find(m => m.id === 3)?.unifiedStatus).toBe('no_planificado');
     expect(stores.movements.find(m => m.id === 4)?.unifiedStatus).toBe('no_planificado');
 
     // La línea del banco HEREDA la clasificación de la previsión con la que
@@ -352,10 +353,8 @@ describe('bankStatementOrchestrator', () => {
     // La descripción del banco se conserva para cotejar y cruzar con la factura.
     expect(stores.movements.find(m => m.id === 1)?.description).toBe('RENTA 1');
 
-    // Learning rule fed at least once for each conciliated movement (matches +
-    // suggestion). Excludes movement 4 (ignored) and rejects the contract
-    // suggestion path (which deriveCategoryFromAction returns null for).
-    expect((createOrUpdateRule as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(3);
+    // Se aprende de lo que SÍ se concilió · los dos matches.
+    expect((createOrUpdateRule as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('3 bis. confirmDecisions · reconcilia contra un Confirmado que ya tenías · sin duplicar', async () => {

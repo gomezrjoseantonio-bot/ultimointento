@@ -31,11 +31,7 @@ import {
 import { bankProfilesService } from './bankProfilesService';
 import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
 import { suggestForUnmatched, MovementSuggestion } from './movementSuggestionService';
-import {
-  applySuggestion,
-  deriveCategoryFromEvent,
-  feedLearningRule,
-} from './aplicarSugerencia';
+import { deriveCategoryFromEvent, feedLearningRule } from './aplicarSugerencia';
 import { reconocerDeterministas, nadaReconocido, type LoQueSeReconoce } from './deterministas/matcheoDeterminista';
 import { aplicarReconocimiento, baseDe } from './deterministas/cierreDeterminista';
 import type { OrigenDeterminista } from './deterministas/tipos';
@@ -95,7 +91,6 @@ export interface ConfirmationPayload {
    * periodo 7 del cuadro de un préstamo, el pago 5 de una inversión—.
    */
   approvedDeterministic?: OrigenDeterminista[];
-  approvedSuggestions: { movementId: number; suggestionIndex: number }[];
   ignoredMovementIds: number[];
   /**
    * Líneas del extracto que son un movimiento que YA tenías anotado
@@ -366,24 +361,7 @@ export async function confirmDecisions(
   const db = await initDB();
   const now = new Date().toISOString();
 
-  // Resolve every suggestion up front so we can fail fast before mutating state.
   const movementIdsTouched = new Set<number>();
-  const suggestionsByMovement = new Map<number, MovementSuggestion>();
-  for (const approval of payload.approvedSuggestions) {
-    const movement = (await db.get('movements', approval.movementId)) as Movement | undefined;
-    if (!movement) {
-      throw new Error(`Movimiento ${approval.movementId} no encontrado al confirmar sugerencia`);
-    }
-    const suggestionMap = await suggestForUnmatched([approval.movementId]);
-    const suggestions = suggestionMap.get(approval.movementId) ?? [];
-    const suggestion = suggestions[approval.suggestionIndex];
-    if (!suggestion) {
-      throw new Error(
-        `Sugerencia índice ${approval.suggestionIndex} no encontrada para movimiento ${approval.movementId}`
-      );
-    }
-    suggestionsByMovement.set(approval.movementId, suggestion);
-  }
 
   // Apply matches: link existing movement to existing predicted event.
   for (const { movementId, treasuryEventId } of payload.approvedMatches) {
@@ -479,14 +457,6 @@ export async function confirmDecisions(
     if (!importMov) continue;
     await aplicarReconciliacionConfirmado(db, importMov, confirmadoMovementId, now);
     movementIdsTouched.add(importMovementId);
-  }
-
-  // Apply approved suggestions.
-  for (const [movementId, suggestion] of suggestionsByMovement) {
-    const movement = (await db.get('movements', movementId)) as Movement | undefined;
-    if (!movement) continue;
-    await applySuggestion(movement, suggestion, now);
-    movementIdsTouched.add(movementId);
   }
 
   // Mark ignored movements as reviewed-but-not-conciliated.
