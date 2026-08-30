@@ -106,7 +106,6 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
       sinMatches,
       [],
       new Set(),
-      new Set(),
       new Map([[10, conf(7, 'Sacar del cajero', -20)]])
     );
     expect(lineas[0].veredicto).toBe('cuadra');
@@ -118,7 +117,6 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
       [mov(10, 'DISPOSICION CAJERO 4521', -20)],
       sinMatches,
       [],
-      new Set(),
       new Set(),
       new Map([[10, conf(7, 'Sacar del cajero', -20)]])
     );
@@ -135,7 +133,6 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
       { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 92, reasons: [] }] },
       [evt(5, 'Un previsto', -20)],
       new Set(),
-      new Set(),
       new Map([[10, conf(7, 'Confirmado suelto', -20)]])
     );
     expect(lineas[0].confirmado).toBeUndefined();
@@ -150,7 +147,6 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
       sinMatches,
       [],
       new Set(),
-      new Set(),
       new Map([[10, conf(7, 'Cajero', -20)]])
     );
     expect(lineasPendientes(lineas, decisionesVacias())).toEqual([]);
@@ -161,7 +157,6 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
       [mov(10, 'CAJERO', -20)],
       sinMatches,
       [],
-      new Set(),
       new Set(),
       new Map([[10, conf(7, 'Cajero', -20)]])
     );
@@ -270,8 +265,6 @@ describe('las decisiones del usuario', () => {
       cuadran: 1,
       resolver: 1,
       ignoradas: 1,
-      mesesCerrados: 0,
-      mesesAnteriores: 0,
     });
   });
 });
@@ -304,14 +297,11 @@ describe('lo que viaja al pulsar Guardar', () => {
     expect(payload.ignoredMovementIds).toEqual([12]);
   });
 
-  it('las que quedan a resolver salen listadas para DESMATERIALIZARLAS (D4)', () => {
-    // No basta con excluirlas del payload: `processFile` ya las insertó como
-    // Movement. Si se quedaran, al consolidar el batch dejarían de estar
-    // filtradas y aparecerían en la lista de la cuenta como conciliadas.
-    const pendientes = lineasPendientes(tres(), decisionesVacias());
-
-    expect(pendientes.map((p) => p.movementId)).toEqual([11, 12]);
-    expect(pendientes[0]).toMatchObject({ concepto: 'B', importe: -20 });
+  // Antes este test exigía lo contrario: que las sin resolver salieran listadas
+  // para BORRAR su `Movement` (D4). Se invierte a propósito · una línea del
+  // banco es dinero que se movió, y perderla es peor que no entenderla.
+  it('NINGUNA línea sale listada para borrar · ni las que quedan a resolver', () => {
+    expect(lineasPendientes(tres(), decisionesVacias())).toEqual([]);
   });
 
   it('lo ignorado y lo que cuadra NO son pendientes', () => {
@@ -348,14 +338,14 @@ describe('la retirada de efectivo', () => {
       new Set()
     );
 
-  // Queda RESUELTA, no pendiente: su movimiento tiene que sobrevivir a
-  // `consolidarSesion`, al revés que lo que se deja sin resolver.
-  it('queda resuelta · su movimiento no se desmaterializa', () => {
+  // Queda RESUELTA · y ninguna línea se desmaterializa ya, tampoco la que sigue
+  // sin resolver: guardar dejó de borrar movimientos del banco.
+  it('queda resuelta · y nada se borra al guardar', () => {
     const d = decisionesVacias();
     d.aEfectivo.add(10);
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
-    expect(lineasPendientes(lineas(), d).map((l) => l.movementId)).toEqual([11]);
+    expect(lineasPendientes(lineas(), d)).toEqual([]);
     expect(movimientosAEfectivo(lineas(), d)).toEqual([10]);
   });
 
@@ -404,7 +394,7 @@ describe('el traspaso a otra cuenta al importar (P1)', () => {
     d.aTraspaso.set(10, 7); // traspaso a la cuenta 7
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
-    expect(lineasPendientes(lineas(), d).map((l) => l.movementId)).toEqual([11]);
+    expect(lineasPendientes(lineas(), d)).toEqual([]);
     expect(movimientosATraspaso(lineas(), d)).toEqual([{ movementId: 10, cuentaDestinoId: 7 }]);
   });
 
@@ -435,111 +425,35 @@ describe('el traspaso a otra cuenta al importar (P1)', () => {
 });
 
 // El extracto trae varios meses · los que ya están cerrados no se cargan.
-describe('meses cerrados · el extracto no reabre lo cerrado', () => {
-  it('una línea de un mes cerrado se aparta · no cuenta como a resolver ni cuadra', () => {
-    const movs = [
-      mov(1, 'RECIBO JULIO', -48, '2026-07-02'), // mes cerrado
-      mov(2, 'RECIBO AGOSTO', -48, '2026-08-02'), // mes abierto
-    ];
-    const ls = construirLineas(movs, sinMatches, [], new Set(), new Set(['2026-07']));
-
-    const porId = new Map(ls.map((l) => [l.movementId, l.veredicto]));
-    expect(porId.get(1)).toBe('mes_cerrado');
-    expect(porId.get(2)).toBe('resolver');
-
-    const r = resumir(ls, decisionesVacias());
-    expect(r.mesesCerrados).toBe(1);
-    expect(r.resolver).toBe(1);
-  });
-
-  it('el cargo de un mes cerrado NO se materializa · su movimiento se limpia', () => {
-    const movs = [mov(1, 'RECIBO JULIO', -48, '2026-07-02')];
-    const ls = construirLineas(movs, sinMatches, [], new Set(), new Set(['2026-07']));
-    const d = decisionesVacias();
-
-    // Va con los "pendientes" (los que se borran al consolidar), no como conciliado.
-    expect(lineasPendientes(ls, d).map((p) => p.movementId)).toEqual([1]);
-    // Y no viaja como match ni como ignorado.
-    const payload = payloadDeConfirmacion(ls, d);
-    expect(payload.approvedMatches).toEqual([]);
-    expect(payload.ignoredMovementIds).toEqual([]);
-  });
-
-  it('un cargo que CUADRA con su previsto cuadra aunque su mes esté cerrado', () => {
-    // El recibo de tarjeta (o cualquier recibo recurrente) casa con su previsión
-    // aunque el cargo caiga en un mes ya cerrado. Casarlo es lo correcto: consume
-    // la previsión y usa el importe real. Apartarlo como "mes_cerrado" era lo que
-    // rompía el cuadre del recibo de tarjeta.
-    const movs = [mov(1, 'RECIBO CARREFOUR', -1010.72, '2026-07-31')]; // mes cerrado
-    const ls = construirLineas(
-      movs,
-      { ...sinMatches, matches: [{ movementId: 1, treasuryEventId: 9, score: 95, reasons: [] }] },
-      [evt(9, 'Tarjeta Carrefour', -1010.72, '2026-07-31')],
-      new Set(),
-      new Set(['2026-07'])
+// Aquí vivían dos bloques: «meses cerrados · el extracto no reabre lo cerrado»
+// y «meses anteriores · se apartan por defecto». Los dos exigían que esas
+// líneas se apartaran Y que su `Movement` se borrara al guardar.
+//
+// Se retiran junto con los destinos que probaban. El «mes cerrado» además se
+// apoyaba en algo que no puede ocurrir: `cerrarMes` no tiene un solo llamante
+// en la app, así que ningún mes está cerrado y ninguna línea podía serlo de
+// verdad. Lo que queda es el candado inverso.
+describe('ninguna línea se aparta por su fecha', () => {
+  const viejas = () =>
+    construirLineas(
+      [mov(10, 'CARGO DE ENERO', -40), mov(11, 'CARGO DE HOY', -25)],
+      sinMatches,
+      [],
+      new Set()
     );
-    expect(ls[0].veredicto).toBe('cuadra');
-    // Y viaja como match al confirmar (no se queda apartado).
-    expect(payloadDeConfirmacion(ls, decisionesVacias()).approvedMatches).toEqual([
-      { movementId: 1, treasuryEventId: 9 },
-    ]);
+
+  it('un cargo antiguo queda a resolver, como cualquier otro', () => {
+    const l = viejas();
+    expect(l[0].veredicto).toBe('resolver');
+    expect(l[1].veredicto).toBe('resolver');
   });
 
-  it('sin meses cerrados, todo sigue igual', () => {
-    const ls = construirLineas([mov(1, 'X', -10, '2026-08-01')], sinMatches, [], new Set());
-    expect(ls[0].veredicto).toBe('resolver');
-    expect(resumir(ls, decisionesVacias()).mesesCerrados).toBe(0);
-  });
-});
-
-// A1 · subir un extracto largo no debe ahogar la sesión con meses viejos: las
-// líneas de meses ANTERIORES al actual que no cuadran se apartan por defecto,
-// recuperables una a una.
-describe('meses anteriores · se apartan por defecto (A1)', () => {
-  const movs = () => [
-    mov(1, 'VIEJO MAYO', -30, '2026-05-10'),
-    mov(2, 'VIEJO JULIO', -30, '2026-07-10'),
-    mov(3, 'ACTUAL AGOSTO', -30, '2026-08-10'),
-  ];
-
-  it('lo de meses anteriores se aparta; lo del mes actual queda a resolver', () => {
-    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
-    expect(ls[0].veredicto).toBe('mes_anterior');
-    expect(ls[1].veredicto).toBe('mes_anterior');
-    expect(ls[2].veredicto).toBe('resolver');
-    const r = resumir(ls, decisionesVacias());
-    expect(r.mesesAnteriores).toBe(2);
-    expect(r.resolver).toBe(1);
+  it('y ninguno se manda a borrar al guardar', () => {
+    expect(lineasPendientes(viejas(), decisionesVacias())).toEqual([]);
   });
 
-  it('un mes anterior NO se materializa al guardar', () => {
-    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
-    expect(lineasPendientes(ls, decisionesVacias()).map((l) => l.movementId).sort()).toEqual([1, 2, 3]);
-  });
-
-  it('recuperar un mes anterior lo devuelve a resolver', () => {
-    const ls = construirLineas(movs(), sinMatches, [], new Set(), new Set(), new Map(), '2026-08');
-    const d = decisionesVacias();
-    d.recuperados.add(1);
-    expect(veredictoEfectivo(ls[0], d)).toBe('resolver');
-  });
-
-  it('un mes anterior que CUADRA con su previsto cuadra igual, no se aparta', () => {
-    const ls = construirLineas(
-      [mov(1, 'RENTA MAYO', -30, '2026-05-10')],
-      { ...sinMatches, matches: [{ movementId: 1, treasuryEventId: 9, score: 90, reasons: [] }] },
-      [evt(9, 'Renta prevista', -30, '2026-05-10')],
-      new Set(),
-      new Set(),
-      new Map(),
-      '2026-08'
-    );
-    expect(ls[0].veredicto).toBe('cuadra');
-  });
-
-  it('sin mesActual, nada se aparta por antigüedad (comportamiento previo)', () => {
-    const ls = construirLineas(movs(), sinMatches, [], new Set());
-    expect(ls.every((l) => l.veredicto === 'resolver')).toBe(true);
+  it('el resumen no tiene dónde esconderlos · todos cuentan como a resolver', () => {
+    expect(resumir(viejas(), decisionesVacias()).resolver).toBe(2);
   });
 });
 

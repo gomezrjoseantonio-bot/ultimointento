@@ -24,6 +24,10 @@ import { sinMarcaDeDescarte } from './descarteDePrevision';
 import { contraparteDeBizum, pareceBizum } from './bizum';
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { bankProfileMatcher, BankFormat } from '../features/inbox/importers/bankProfileMatcher';
+import {
+  contradiceLaCuentaElegida,
+  PROFILE_CONFIDENCE_THRESHOLD,
+} from './deteccionDeBanco';
 import { bankProfilesService } from './bankProfilesService';
 import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
 import { suggestForUnmatched, MovementSuggestion, SuggestionAction } from './movementSuggestionService';
@@ -74,7 +78,6 @@ export interface ConfirmationPayload {
   reconciliacionesConfirmado?: { importMovementId: number; confirmadoMovementId: number }[];
 }
 
-const PROFILE_CONFIDENCE_THRESHOLD = 60;
 
 /**
  * V6 · D1 bis · el fichero ya se importó (mismo `hashLote`).
@@ -171,7 +174,7 @@ export async function processFile(
       `Detectado banco "${profileMatch.profile}" con baja confianza (${profileMatch.confidence}/100). Verifica que es correcto.`
     );
   }
-  if (accountHint && profileMatch.profile && profileMatch.profile.toLowerCase() !== accountHint.toLowerCase()) {
+  if (contradiceLaCuentaElegida(accountHint, profileMatch)) {
     warnings.push(
       `La cuenta destino indica "${accountHint}" pero el contenido del archivo apunta a "${profileMatch.profile}". Si es un error, descarta y vuelve a empezar con la cuenta correcta.`
     );

@@ -21,7 +21,6 @@ import {
 import { getIgnoredLineHashes, ignoreLine, recoverLine } from '../../../services/statementIgnoredLinesService';
 import { confirmadosPorLinea } from '../../../services/conciliacionConfirmados';
 import { consolidarSesion, archivarExtracto } from '../../../services/statementSessionService';
-import { cierres } from '../../../services/cierreDeMes';
 import {
   AVISO_GASTO_FISCAL,
   gastoDesdeMovimiento,
@@ -48,6 +47,7 @@ import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
 import PanelExtractoTarjeta from './PanelExtractoTarjeta';
+import { cuadre } from './conciliarBuckets';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
@@ -95,8 +95,6 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
   const [ignoradasPlegadas, setIgnoradasPlegadas] = useState(true);
-  const [cerradosPlegados, setCerradosPlegados] = useState(true);
-  const [anterioresPlegados, setAnterioresPlegados] = useState(true);
 
   // El previsto se nombra con el MISMO adaptador que el resto de la app: título
   // = quién · qué es · inmueble (no su `description` en crudo).
@@ -126,6 +124,14 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   const cuentaActiva = cuenta ?? cuentaElegida;
   const resumen = useMemo(() => resumir(lineas, decisiones), [lineas, decisiones]);
+  /**
+   * El invariante de la pantalla · toda línea del banco en un bucket.
+   *
+   * No es decorativo: si no cuadra, Guardar se bloquea. Antes las líneas que no
+   * encajaban se apartaban y se borraban al guardar; ahora, si alguna quedara
+   * fuera, la pantalla lo canta en vez de tragárselo.
+   */
+  const elCuadre = useMemo(() => cuadre(lineas, decisiones), [lineas, decisiones]);
 
   // ── Reiniciar ──────────────────────────────────────────────────────────────
   const reiniciar = useCallback(() => {
@@ -159,27 +165,19 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const res = esPdf(file) ? await processPdf(file, opc) : await processFile(file, opc);
         ficheroRef.current = file;
         const db = await initDB();
-        const [todosMovs, todosEventos, ignoradasPrevias, mesesCerrados] = await Promise.all([
+        const [todosMovs, todosEventos, ignoradasPrevias] = await Promise.all([
           db.getAll('movements') as Promise<Movement[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           getIgnoredLineHashes(destino.id),
-          cierres(),
         ]);
         const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
         // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
         const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id);
         const abiertos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
-        // Los meses ya cerrados no se cargan · se apartan (§ cerrar el mes).
-        const setCerrados = new Set((mesesCerrados ?? []).map((c) => c.mes));
-        // Mes en curso · las líneas de meses anteriores (no cerrados) que no
-        // cuadran se apartan por defecto (A1), para no ahogar la sesión con lo
-        // viejo al subir un extracto largo. Recuperables una a una.
-        const mesActual = new Date().toISOString().slice(0, 7);
-
         setResultado(res);
         setPrevistos(abiertos);
         setLineas(
-          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, setCerrados, confirmados, mesActual)
+          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados)
         );
         setDecisiones(decisionesVacias());
         setPaso('resolver');
@@ -234,6 +232,15 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // ── Guardar · el único botón que consolida ────────────────────────────────
   const guardar = useCallback(async () => {
     if (!resultado || !cuentaActiva?.id) return;
+    // No se guarda «a medias». Con `bucketDeLinea` total esto no debería saltar
+    // nunca; se comprueba igualmente porque un invariante que no se comprueba es
+    // una intención, no un invariante.
+    if (!elCuadre.cuadra) {
+      setError(
+        `No se guarda: ${elCuadre.delBanco - elCuadre.colocadas} línea(s) del banco no han quedado colocadas.`,
+      );
+      return;
+    }
     setPaso('guardando');
     try {
       await confirmDecisions(resultado.importBatchId, payloadDeConfirmacion(lineas, decisiones));
@@ -284,7 +291,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setError(err instanceof Error ? err.message : 'No se pudo guardar el extracto.');
       setPaso('resolver');
     }
-  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, onGuardado, reiniciar, onCerrar]);
+  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, onGuardado, reiniciar, onCerrar]);
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
@@ -444,13 +451,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   if (!abierto) return null;
 
-  const visibles = lineas.filter((l) => {
-    const v = veredictoEfectivo(l, decisiones);
-    return v !== 'ignorada' && v !== 'mes_cerrado' && v !== 'mes_anterior';
-  });
+  // Dos montones y ya · lo que necesita decisión, y lo que el usuario apartó.
+  // Los grupos «de meses cerrados» y «de meses anteriores» se retiran: no eran
+  // una clasificación sino una papelera, y sus líneas se borraban al Guardar.
+  const visibles = lineas.filter((l) => veredictoEfectivo(l, decisiones) !== 'ignorada');
   const ignoradas = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'ignorada');
-  const deMesesCerrados = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_cerrado');
-  const deMesesAnteriores = lineas.filter((l) => veredictoEfectivo(l, decisiones) === 'mes_anterior');
 
   const igualesSinResolver = contarIgualesSinResolver(visibles, decisiones);
 
@@ -501,28 +506,37 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 <div className={chasis.akv}>{resumen.lineas}</div>
               </div>
               <div className={chasis.ak}>
-                <div className={chasis.akl}>Cuadran</div>
-                <div className={chasis.akv}>{resumen.cuadran}</div>
+                <div className={chasis.akl}>Resueltas solas</div>
+                <div className={chasis.akv}>{elCuadre.porBucket.resueltas}</div>
               </div>
               <div className={chasis.ak}>
-                <div className={chasis.akl}>A resolver</div>
-                <div className={chasis.akv}>{resumen.resolver}</div>
+                <div className={chasis.akl}>Te necesitan</div>
+                <div className={chasis.akv}>{elCuadre.porBucket.te_necesitan}</div>
               </div>
               <div className={chasis.ak}>
-                <div className={chasis.akl}>Ignoradas</div>
-                <div className={chasis.akv}>{resumen.ignoradas}</div>
+                <div className={chasis.akl}>Personal</div>
+                <div className={chasis.akv}>{elCuadre.porBucket.personal}</div>
               </div>
-              {resumen.mesesCerrados > 0 && (
-                <div className={chasis.ak}>
-                  <div className={chasis.akl}>Meses cerrados</div>
-                  <div className={chasis.akv}>{resumen.mesesCerrados}</div>
-                </div>
-              )}
-              {resumen.mesesAnteriores > 0 && (
-                <div className={chasis.ak}>
-                  <div className={chasis.akl}>Meses anteriores</div>
-                  <div className={chasis.akv}>{resumen.mesesAnteriores}</div>
-                </div>
+              <div className={chasis.ak}>
+                <div className={chasis.akl}>Ignorados</div>
+                <div className={chasis.akv}>{elCuadre.porBucket.ignorados}</div>
+              </div>
+            </div>
+          )}
+          {/* El cuadre, a la vista · es la promesa de la pantalla, no un detalle. */}
+          {paso === 'resolver' && (
+            <div className={styles.cuadre} data-cuadra={elCuadre.cuadra ? 'si' : 'no'}>
+              {elCuadre.cuadra ? (
+                <>
+                  <strong>{elCuadre.delBanco}</strong> del banco ·{' '}
+                  <strong>{elCuadre.colocadas}</strong> colocadas · ninguna se pierde
+                </>
+              ) : (
+                <>
+                  <strong>{elCuadre.delBanco}</strong> del banco pero solo{' '}
+                  <strong>{elCuadre.colocadas}</strong> colocadas · faltan{' '}
+                  {elCuadre.delBanco - elCuadre.colocadas}. No se guarda hasta que cuadre.
+                </>
               )}
             </div>
           )}
@@ -700,38 +714,6 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                   onToggle={() => setIgnoradasPlegadas((v) => !v)}
                   titulo={`${ignoradas.length} ignoradas`}
                   lineas={ignoradas}
-                  accion={(l) => (
-                    <button
-                      type="button"
-                      className={styles.recuperar}
-                      onClick={() => recuperar(l.movementId)}
-                    >
-                      recuperar
-                    </button>
-                  )}
-                />
-              )}
-
-              {/* Meses ya cerrados · no se cargan. Sigue bloqueando `cierreDeMes`; lo que cambió (F2) es a dónde se remite. */}
-              {deMesesCerrados.length > 0 && (
-                <GrupoPlegableExtracto
-                  plegado={cerradosPlegados}
-                  onToggle={() => setCerradosPlegados((v) => !v)}
-                  titulo={`${deMesesCerrados.length} de meses cerrados · no se cargan`}
-                  intro="Estos cargos son de un mes que ya diste por cerrado, así que se quedan fuera para no mover un saldo que ya diste por bueno. Si alguno hace falta, anótalo desde el punteo de su cuenta."
-                  lineas={deMesesCerrados}
-                />
-              )}
-
-              {/* Meses anteriores al actual · apartados por defecto (A1) ·
-                  recuperables uno a uno, sin reabrir nada. */}
-              {deMesesAnteriores.length > 0 && (
-                <GrupoPlegableExtracto
-                  plegado={anterioresPlegados}
-                  onToggle={() => setAnterioresPlegados((v) => !v)}
-                  titulo={`${deMesesAnteriores.length} de meses anteriores · no se cargan`}
-                  intro="Son de meses anteriores al actual. Se apartan para no ahogar la sesión; si quieres tratar alguno, recupéralo."
-                  lineas={deMesesAnteriores}
                   accion={(l) => (
                     <button
                       type="button"
