@@ -32,7 +32,7 @@ import {
   type CategoryDef,
 } from './categoryCatalog';
 import { recalculateAccountBalance } from './treasuryEventsService';
-import { camposDeCierre } from './cierreLineaInmueble';
+import { camposDeCierre, buscarLineaDelEvento } from './cierreLineaInmueble';
 
 // Fire-and-forget recálculo del saldo de las cuentas afectadas. Errores se
 // loguean pero no rompen la operación principal de tesorería.
@@ -207,33 +207,11 @@ export function resolveGastoCategoria(input: TreasuryEvent | string | undefined)
   return 'otro';
 }
 
-/**
- * Busca en un store de línea (gastosInmueble / mejorasInmueble / mueblesInmueble)
- * la primera línea vinculada a un treasuryEvent. Usa el índice
- * `treasuryEventId` si está disponible (PR3, DB_VERSION>=50) y cae a un
- * full-scan sólo para BDs muy antiguas.
- */
-async function findLineByTreasuryEventId(
-  store: IDBPObjectStoreLike,
-  eventId: number,
-): Promise<any | null> {
-  try {
-    const index = store.index('treasuryEventId');
-    const matches = (await (index as any).getAll(eventId)) as any[];
-    if (matches.length > 0) return matches[0];
-  } catch {
-    // índice no disponible → fallback
-  }
-  const all = (await store.getAll()) as any[];
-  return all.find((l) => l?.treasuryEventId === eventId) ?? null;
-}
-
-// Tipo estructural para object stores dentro de transacciones — evita
-// importar tipos estrictos de idb aquí.
-type IDBPObjectStoreLike = {
-  index: (name: string) => unknown;
-  getAll: () => Promise<any[]>;
-};
+// `findLineByTreasuryEventId` vivía aquí y buscaba SOLO por `treasuryEventId`.
+// Se retira: era la mitad divergente del cierre —no veía las líneas del gasto
+// recurrente, que nacen con `origen`+`origenId` y sin enlace— y por eso puntear
+// a mano duplicaba la línea. La búsqueda es ahora `buscarLineaDelEvento`
+// (`cierreLineaInmueble`), la misma que usa el extracto.
 
 function buildMovementPayload({
   event,
@@ -393,9 +371,16 @@ export async function confirmTreasuryEvent(
 
     // PR5.5 · Si ya existe una línea vinculada al event (por haber
     // desconciliado antes), la reutilizamos en lugar de crear un duplicado.
-    const existingLine = await findLineByTreasuryEventId(
+    //
+    // Por `buscarLineaDelEvento` y no por una búsqueda propia: este camino
+    // miraba solo `treasuryEventId`, así que al puntear un gasto recurrente NO
+    // encontraba su línea del mes —nace sin ese enlace, con `origen`+`origenId`—
+    // y creaba una segunda. El mismo recibo contado dos veces en la declaración.
+    // La búsqueda vive ahora en `cierreLineaInmueble`, que es por donde entra
+    // también el extracto: un solo sitio donde decidir cuál es la línea.
+    const existingLine = await buscarLineaDelEvento<any>(
       tx.objectStore(lineaStore) as any,
-      eventId,
+      existingEvent,
     );
 
     if (lineaStore === 'gastosInmueble') {
