@@ -1,8 +1,13 @@
 # CENSO DE ARQUITECTURA · ATLAS v90
 
-> **Solo lectura.** Ningún fichero de producto se ha tocado en esta tarea: el
-> cambio en `package.json` solo registra el script del censo, que el detector de
-> código muerto exige para no contarlo como muerto (§8).
+> **Censo de solo lectura · con una excepción deliberada.** El censo no toca
+> producto. Sí lo toca el arreglo que salió de él: §4.6 destapó que puntear a mano
+> un gasto recurrente **duplicaba la línea fiscal** —el mismo recibo deducido dos
+> veces—, se probó, y se arregló en esta misma rama
+> (`cierreLineaInmueble` + `treasuryConfirmationService`, con
+> `punteoManualCierraLinea.test.ts` de red). Decisión de Jose: un agujero que
+> cuenta gastos dos veces en el IRPF vale más que la regla de no tocar producto.
+> El cambio en `package.json` solo registra el script del censo (§8).
 > **DB_VERSION = 90** · `src/services/db.ts:57` · base `AtlasHorizonDB` · 46 stores.
 > Fecha del censo: 30 agosto 2026 · rama `claude/new-session-g5zeh5`.
 >
@@ -31,7 +36,7 @@ los tres está bajo control.
 | `viviendaHabitual` · entidad retirada, lectores de compat | 🟢 legacy consciente | §4.4 |
 | `deudasFiscales` · se lee en Fiscal, **`crearDeuda` no lo llama nadie en producción** | 🟡 medio construido | §4.5 |
 | Un gasto de inmueble vive **a la vez** en `treasuryEvents` y `gastosInmueble` | 🟠 duplicación reconocida | §4.6 |
-| El punteo manual **no usa** el módulo de cierre: busca la línea solo por `treasuryEventId` y puede duplicarla | 🔴 mitigación incompleta | §4.6 |
+| El punteo manual no usaba el módulo de cierre y **duplicaba la línea** de un recurrente (probado) | ✅ arreglado en esta rama | §4.6 |
 | Al conciliar, la clasificación del evento **se copia** al movimiento | 🟠 denormalización | §4.6 |
 | `inmuebleId` es `number` en unos stores y `string` en otros | 🔴 aristas frágiles | §3.3 |
 | El prefetch de `/personal` y `/mi-plan` pide 4 stores **que ya no existen** | 🟡 config muerta | §3.4 |
@@ -39,8 +44,11 @@ los tres está bajo control.
 
 **Titular:** la inconsistencia que se persigue **ya no está donde decía el mapa de
 abril**. `opexRules` se unificó y ese dual-write está cerrado. La duplicación viva
-hoy es otra: **la línea fiscal y la previsión de tesorería son el mismo hecho
-escrito dos veces** (§4.6), y el propio código lo dice con todas las letras.
+es otra: **la línea fiscal y la previsión de tesorería son el mismo hecho escrito
+dos veces** (§4.6). El código lo decía con todas las letras… y aun así se le había
+escapado la mitad: el punteo manual no pasaba por el módulo de cierre y duplicaba
+la línea de un recurrente. Probado y arreglado aquí. El invariante lo sigue
+sosteniendo la disciplina de entrar por ese módulo, no el modelo de datos.
 
 ---
 
@@ -548,11 +556,11 @@ documenta el fallo exacto que produjo: puntear a mano cerraba la línea, subir e
 extracto **no**, y el gasto se quedaba en `previsto` y **fuera de las casillas de la
 declaración**. Tesorería se veía bien; la declaración salía mal.
 
-**La mitigación es PARCIAL · lo compartido son los campos, no el cierre.** El
-comentario del fichero dice *«para que los dos caminos escriban lo MISMO»*, pero el
-código no hace eso: los caminos comparten la **pieza pura que calcula los campos**
-(`camposDeCierre`), no la orquestación de buscar-y-escribir. Verificado importador
-a importador:
+**La mitigación era PARCIAL · lo compartido eran los campos, no el cierre.** El
+comentario del fichero decía *«para que los dos caminos escriban lo MISMO»* y el
+código no hacía eso: compartían la **pieza pura que calcula los campos**
+(`camposDeCierre`), no la orquestación de buscar-y-escribir. Así estaba el reparto
+—verificado importador a importador— **antes** del arreglo que cierra esta sección:
 
 | Camino | Qué importa de `cierreLineaInmueble` | Busca la línea por |
 |---|---|---|
@@ -581,24 +589,44 @@ Es exactamente el daño que `altaMovimientoService.ts:423-428` describe y evita 
 *su* camino: *«su gasto ya tiene fila del mes … Crear otra lo contaría dos veces en
 la declaración.»* Dos de los tres caminos se defienden de esto; el punteo manual no.
 
-**Alcance de esta afirmación:** la asimetría de búsqueda está verificada en código
-(líneas arriba) y el doble conteo es su consecuencia directa, pero **no se ha
-ejecutado** el escenario ni existe test que lo cubra (ver abajo). Antes de tratarlo
-como bug confirmado, lo barato es escribirlo como test: puntear a mano un evento de
-recurrente cuya línea ya existe sin `treasuryEventId`, y contar filas.
+**CONFIRMADO Y ARREGLADO** (30 ago 2026 · esta misma rama). Se escribió el test que
+faltaba —`__tests__/punteoManualCierraLinea.test.ts`, contra base real
+(fake-indexeddb), no contra un doble— y sobre el código de entonces salía **rojo con
+dos filas**:
 
-**Cobertura de test · asimétrica igual que el código.** El camino del extracto está
-bien probado: `__tests__/importacionCierraLinea.test.ts` ejercita
-`cerrarLineaDeGastoDelEvento` contra una base falsa con **11 casos**, incluida la vía
-`origenId` que era el fallo original, la idempotencia y el no-tocar-lo-ajeno; más
-`conciliacionDatosReales.test.ts` (importe y fecha reales) y
-`cierreLineaInmueble.test.ts` (piezas puras). Del punteo manual **no hay test de
-cierre**: `treasuryConfirmationService.test.ts:231` comprueba que *crea* la línea al
-confirmar, no que *cierre una preexistente*; y `cierreLineaInmueble.test.ts:78`
-—`describe('camposDeCierre · lo mismo que escribe el punteo manual')`— es un unit
-test del helper aislado, que no prueba nada sobre lo que `treasuryConfirmationService`
-hace con él. **El nombre del describe afirma una equivalencia que el test no
-comprueba.**
+| id | origen | estado | treasuryEventId |
+|---|---|---|---|
+| 1 | `recurrente` | **`previsto`** · intacta, fuera de las casillas | — |
+| 2 | `tesoreria` | `confirmado` | 1 |
+
+Los mismos 60 € deducidos dos veces. La hipótesis era correcta.
+
+**El arreglo · una sola búsqueda para los tres caminos.** La búsqueda se extrajo a
+`buscarLineaDelEvento` (`cierreLineaInmueble.ts`), que mira por las dos vías
+(`treasuryEventId`, y `origen`+`origenId`), y `treasuryConfirmationService` la usa en
+lugar de la suya. Se retira `findLineByTreasuryEventId`, que era la mitad divergente.
+Ahora el módulo aloja **las dos piezas** —*cuál* es la línea y *qué* se le escribe—,
+no solo la segunda: tener dos versiones de cualquiera de las dos es lo que rompió
+esto las dos veces (#1810 y esta). El test queda de red de regresión permanente.
+
+**Cobertura de test.** Extracto: `importacionCierraLinea.test.ts` (**11 casos**,
+incluida la vía `origenId`, la idempotencia y el no-tocar-lo-ajeno) +
+`conciliacionDatosReales.test.ts` + `cierreLineaInmueble.test.ts` (piezas puras).
+Punteo manual: `punteoManualCierraLinea.test.ts`, el que faltaba. Ojo con
+`cierreLineaInmueble.test.ts:78` —`describe('camposDeCierre · lo mismo que escribe el
+punteo manual')`—: es un unit test del helper aislado y **su nombre afirma una
+equivalencia que él solo no comprueba**; fue parte de lo que hizo pasar el bug por
+mitigado. La equivalencia la prueba ahora el test de punteo, no ese describe.
+
+**Preflight de un cuarto camino** (por si otro cerraba por su cuenta): los escritores
+del cierre son `cierreLineaInmueble:120` (pieza compartida),
+`treasuryConfirmationService:461,491` y `altaMovimientoService:245,267`. Los dos
+últimos pares son de `mejorasInmueble`/`mueblesInmueble`, cuyos tipos **no tienen
+`origen`/`origenId`** y a los que nada crea desde un recurrente: no pueden sufrir este
+duplicado. `propertySaleService:892,1272` escribe `gastosInmueble` para venta y
+rollback, no para cerrar un pago. `LineasAnualesTab` escribe `estadoTesoreria` como
+valor de pantalla (`'conciliado'|'predicted'`), no en el store. **No hay cuarto
+camino.**
 
 Y sigue habiendo dos filas para un hecho, unidas por
 `gastosInmueble.treasuryEventId` (`types-inmuebles.ts:517`) y `.movimientoId`

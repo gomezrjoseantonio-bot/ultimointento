@@ -4,21 +4,29 @@
 //
 // Un gasto de inmueble vive en dos sitios a la vez: la previsión de tesorería
 // (`treasuryEvents`) y la línea que declara (`gastosInmueble`). Cuando el pago
-// ocurre de verdad hay que cerrar los dos, y hasta ahora solo uno de los dos
-// caminos lo hacía:
+// ocurre de verdad hay que cerrar los dos, y esto ha fallado ya DOS veces, por
+// el mismo motivo las dos: cada camino se lo montaba por su cuenta.
 //
-//   · puntear a mano  (`confirmTreasuryEvent`) → cerraba la línea
-//   · subir el extracto (`bankStatementOrchestrator`) → NO la cerraba
+// #1810 · subir el extracto NO cerraba la línea (puntear a mano sí). Los dos
+// dejaban bien el evento y el movimiento, así que en tesorería no se notaba; se
+// notó en la declaración, porque `yaOcurrio` (#1809) decide qué deduce mirando
+// `estado`, `estadoTesoreria` y `movimientoId` de la línea. Se arregló trayendo
+// el cierre del extracto aquí.
 //
-// Los dos dejaban bien el evento y el movimiento, así que en tesorería no se
-// notaba. Se notó en la declaración: desde que `yaOcurrio` (#1809) decide qué
-// deduce mirando `estado`, `estadoTesoreria` y `movimientoId` de la línea,
-// conciliar con el fichero del banco —el gesto normal— dejaba el gasto en
-// `previsto` y fuera de las casillas.
+// Y quedó a medias: el punteo manual siguió con SU búsqueda, solo por
+// `treasuryEventId`. Una línea de gasto recurrente nace sin ese enlace
+// (`origen`+`origenId`, `operacionFiscalService:344`), así que al puntearla no
+// la encontraba y creaba una segunda — el mismo recibo deducido dos veces. Lo
+// fija `punteoManualCierraLinea.test.ts`.
 //
-// El cierre vive aquí, en un módulo hoja, para que los dos caminos escriban lo
-// MISMO. Escrito dos veces volvería a divergir, que es exactamente cómo nació
-// esto.
+// De ahí que aquí vivan las DOS piezas y no solo los campos:
+//
+//   · `buscarLineaDelEvento` · CUÁL es la línea (por enlace o por origen)
+//   · `camposDeCierre`       · QUÉ se le escribe
+//
+// Los tres caminos —extracto, punteo y alta a mano— entran por aquí. Tener dos
+// versiones de cualquiera de las dos piezas es exactamente cómo nació esto, las
+// dos veces.
 //
 // Y cerrar no basta: hay que escribir el dato REAL. La jerarquía es
 //
@@ -72,6 +80,81 @@ export function origenIdRecurrenteDeEvento(evento: TreasuryEvent): string | null
   const { sourceId, año, mes } = evento as TreasuryEvent & { año?: number; mes?: number };
   if (sourceId == null || año == null || mes == null) return null;
   return `recurrente-${sourceId}-${año}-${mes}`;
+}
+
+/**
+ * Lo mínimo de un object store para BUSCAR la línea. Con esta forma sirven los
+ * dos sitios desde donde se busca: el `objectStore` de una transacción abierta
+ * (punteo manual) y un adaptador sobre `DbParaCierre` (extracto).
+ */
+export interface StoreParaBuscar {
+  index(nombre: string): { getAll(clave: unknown): Promise<unknown[]> };
+  getAll(): Promise<unknown[]>;
+}
+
+/** Adapta una `DbParaCierre` a la forma de store que espera la búsqueda. */
+export const storeDesdeDb = (db: DbParaCierre, store: string): StoreParaBuscar => ({
+  index: (nombre: string) => ({
+    getAll: (clave: unknown) => db.getAllFromIndex(store, nombre, clave),
+  }),
+  getAll: () => db.getAll(store),
+});
+
+/**
+ * Encuentra la línea que le toca a un evento · **el único sitio donde se busca**.
+ *
+ * Existe porque tener dos búsquedas fue el bug: el extracto miraba por las dos
+ * vías y el punteo manual solo por `treasuryEventId`, así que al puntear un
+ * recurrente no encontraba su línea del mes —que aún no tiene ese enlace— y
+ * creaba una segunda. El mismo recibo deducido dos veces en la declaración,
+ * que es justo lo que `altaMovimientoService:423-428` evita en su camino.
+ *
+ * Las dos vías, en este orden y no en el otro:
+ *   1. `treasuryEventId` · el enlace explícito de una línea ya punteada.
+ *   2. `origen:'recurrente'` + `origenId` · la que escribió el generador de
+ *      recurrentes (`operacionFiscalService:344`), que NO lleva el enlace.
+ *
+ * El explícito manda sobre el derivado: buscar antes por `origenId` podría
+ * cerrar otra línea cuando conviven las dos.
+ *
+ * Devuelve `undefined` si no hay ninguna — quien llame decide si eso significa
+ * "no hay nada que cerrar" (extracto) o "hay que crearla" (punteo manual).
+ */
+export async function buscarLineaDelEvento<
+  T extends { treasuryEventId?: number; origen?: string; origenId?: string },
+>(store: StoreParaBuscar, evento: TreasuryEvent): Promise<T | undefined> {
+  if (evento.id == null) return undefined;
+
+  // 1 · Por el enlace explícito. El índice `treasuryEventId` no existe en
+  // `gastosInmueble` (`upgrade-a.ts:124-130`), así que el camino real es el
+  // escaneo; se intenta el índice igualmente por si alguna base lo tuviera.
+  let linea: T | undefined;
+  try {
+    const porEvento = (await store.index('treasuryEventId').getAll(evento.id)) as T[];
+    linea = porEvento?.[0];
+  } catch {
+    try {
+      const todas = (await store.getAll()) as T[];
+      linea = todas?.find((l) => l?.treasuryEventId === evento.id);
+    } catch {
+      // sin base que leer · se intenta la otra vía
+    }
+  }
+  if (linea) return linea;
+
+  // 2 · Por el origen del recurrente. `origenIdRecurrenteDeEvento` devuelve
+  // null salvo para `gasto_recurrente`, así que mejoras y mobiliario —que no
+  // tienen `origen`/`origenId`— salen por aquí sin tocar nada.
+  const origenId = origenIdRecurrenteDeEvento(evento);
+  if (origenId == null) return undefined;
+  try {
+    const porOrigen = (await store
+      .index('origen-origenId')
+      .getAll(['recurrente', origenId])) as T[];
+    return porOrigen?.[0];
+  } catch {
+    return undefined;
+  }
 }
 
 /** Campos que escribe el cierre · los mismos por los tres caminos. */
@@ -170,48 +253,8 @@ export async function cerrarLineaDeGastoDelEvento(
   // llegar a mirar —y en el peor caso pisar— la línea de un inmueble.
   if (evento.ambito !== 'INMUEBLE') return false;
 
-  let linea: GastoInmueble | undefined;
-
-  // 1 · La que ya está atada al evento (nació de un punteo anterior).
-  //
-  // `gastosInmueble` NO tiene índice por `treasuryEventId` (`upgrade-a.ts:124-130`),
-  // así que el camino real es el escaneo. Se intenta el índice igualmente por si
-  // alguna base lo tuviera, con el mismo patrón que `findLineByTreasuryEventId`
-  // en `treasuryConfirmationService:214`.
-  //
-  // El escaneo se paga una vez por movimiento cuadrado y no se deja para el
-  // final a propósito: el enlace explícito manda sobre el derivado, y buscar
-  // antes por `origenId` podría cerrar otra línea cuando conviven las dos.
-  try {
-    const porEvento = (await db.getAllFromIndex(
-      'gastosInmueble',
-      'treasuryEventId',
-      evento.id,
-    )) as GastoInmueble[];
-    linea = porEvento?.[0];
-  } catch {
-    try {
-      const todas = (await db.getAll('gastosInmueble')) as GastoInmueble[];
-      linea = todas?.find((l) => l?.treasuryEventId === evento.id);
-    } catch {
-      // sin base que leer · se intenta la otra vía
-    }
-  }
-
-  // 2 · La del gasto recurrente, que no lleva el enlace.
-  if (!linea) {
-    const origenId = origenIdRecurrenteDeEvento(evento);
-    if (origenId == null) return false;
-    try {
-      const porOrigen = (await db.getAllFromIndex('gastosInmueble', 'origen-origenId', [
-        'recurrente',
-        origenId,
-      ])) as GastoInmueble[];
-      linea = porOrigen?.[0];
-    } catch {
-      return false;
-    }
-  }
+  const linea = await buscarLineaDelEvento<GastoInmueble>(storeDesdeDb(db, 'gastosInmueble'), evento);
+  if (!linea) return false;
 
   if (!aceptaCierre(linea)) return false;
 
