@@ -103,6 +103,12 @@
   padding: 11px 12px;
   margin-bottom: 8px;
 }
+/* La misma línea dentro de una tarjeta de conciliar · sin caja propia. La
+   tarjeta ya pone borde, radio y fondo, y el `margin-bottom` de arriba dejaba
+   un hueco muerto pegado al filo de color. Aquí solo queda el aire interior. */
+.lineaDesnuda {
+  padding: 11px 13px 13px;
+}
 .lineaTop {
   display: flex;
   align-items: baseline;

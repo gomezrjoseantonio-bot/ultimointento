@@ -180,6 +180,32 @@ describe('el resumen de la derecha · agrupa por lo que ATLAS sabe que es', () =
     const g = agruparResueltas([linea(9, { veredicto: 'cuadra', textoBanco: 'ADEUDO RECIBO AQUALIA' })]);
     expect(g[0].titulo).toBe('ADEUDO RECIBO AQUALIA');
   });
+
+  it('el detalle no repite el título · cuatro cargos de la misma luz dan fechas', () => {
+    const g = agruparResueltas([
+      linea(1, { veredicto: 'cuadra', textoBanco: 'Gas', fecha: '2026-08-03' }),
+      linea(2, { veredicto: 'cuadra', textoBanco: 'Gas', fecha: '2026-08-17' }),
+    ]);
+    expect(g[0].titulo).toBe('Gas');
+    expect(g[0].detalle).not.toBe('Gas');
+    expect(g[0].detalle).toBe('2026-08-03 a 2026-08-17');
+  });
+
+  it('con nombres distintos dentro del grupo sí los lista · ahí el detalle informa', () => {
+    // Mismo grupo (la clave ignora los números) pero nombres literales distintos.
+    const g = agruparResueltas([
+      linea(1, { veredicto: 'cuadra', previsto: { id: 1, descripcion: 'Cuota préstamo 3/240', importe: -454, fecha: '2026-08-01' } }),
+      linea(2, { veredicto: 'cuadra', previsto: { id: 2, descripcion: 'Cuota préstamo 4/240', importe: -253, fecha: '2026-09-01' } }),
+    ]);
+    expect(g).toHaveLength(1);
+    expect(g[0].detalle).toContain('3/240');
+    expect(g[0].detalle).toContain('4/240');
+  });
+
+  it('una sola línea del mismo día no inventa un rango', () => {
+    const g = agruparResueltas([linea(1, { veredicto: 'cuadra', fecha: '2026-08-03' })]);
+    expect(g[0].detalle).toBe('2026-08-03');
+  });
 });
 
 describe('«la próxima vez, sola» · dice la verdad de lo aprendido', () => {

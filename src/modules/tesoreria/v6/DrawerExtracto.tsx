@@ -65,6 +65,20 @@ import chasis from './DrawerV6.module.css';
 
 type Paso = 'soltar' | 'procesando' | 'resolver' | 'guardando';
 
+/**
+ * «Banc Sabadell · ****2715 · 102 líneas».
+ *
+ * Los cuatro últimos dígitos solo se enseñan si la cuenta los tiene: sin ellos
+ * salían cuatro asteriscos sueltos, que no identifican nada y encima parecen un
+ * dato que no se ha cargado.
+ */
+function tituloDeLaSesion(cuenta: Account | null, cuantasLineas: number): string {
+  const lineas = `${cuantasLineas} ${cuantasLineas === 1 ? 'línea' : 'líneas'}`;
+  if (!cuenta) return lineas;
+  const cuatro = cuenta.ultimosCuatro?.trim();
+  return [cuenta.alias, cuatro ? `****${cuatro}` : null, lineas].filter(Boolean).join(' · ');
+}
+
 export interface DrawerExtractoProps {
   abierto: boolean;
   /** Fijada al entrar desde una cuenta · `null` = puerta global (hero). */
@@ -550,6 +564,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       abrirCrear={setCreando}
       nombrarPrevisto={nombrarPrevisto}
       nombrarPrevistoPorId={nombrarPrevistoPorId}
+      sinCaja
     />
   );
 
@@ -587,11 +602,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     return (
       <>
         <PanelConciliar
-          titularCuenta={
-            cuentaActiva
-              ? `${cuentaActiva.alias} · ****${cuentaActiva.ultimosCuatro ?? ''} · ${lineas.length} líneas`
-              : `${lineas.length} líneas`
-          }
+          titularCuenta={tituloDeLaSesion(cuentaActiva, lineas.length)}
           colorBanco={cuentaActiva ? colorDeBanco(cuentaActiva) : undefined}
           elCuadre={elCuadre}
           necesitan={necesitan}
