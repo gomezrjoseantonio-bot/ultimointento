@@ -137,13 +137,24 @@ function ayudaDe(s: MovementSuggestion): string {
  * igual porque la línea existe igual. Que ATLAS no tenga nada que proponer no es
  * motivo para dejar al usuario delante de un churro del banco sin salida.
  */
-export function propuestaDeLinea(sugerencias: MovementSuggestion[]): Propuesta {
+export function propuestaDeLinea(
+  sugerencias: MovementSuggestion[],
+  atribucion?: { alias?: string; concepto: string; ejercicio: number } | null,
+): Propuesta {
   const s = laQueManda(sugerencias ?? []);
+  // FASE 2 · lo que el usuario declaró el año pasado responde a la pregunta que
+  // de verdad atasca el extracto: de qué piso es. Se añade al porqué, no al
+  // titular: es una pista fuerte, no una certeza, y la decisión sigue siendo
+  // suya.
+  const porLaDeclaracion = atribucion
+    ? `en tu declaración de ${atribucion.ejercicio}, ${atribucion.concepto.toLowerCase()} es de ${atribucion.alias ?? 'uno de tus pisos'}`
+    : null;
+
   if (!s) {
     return {
       tono: 'pregunta',
-      titular: 'No sé qué es · dímelo tú una vez',
-      ayuda: 'si subes la factura, la leo y relleno proveedor e importe solo',
+      titular: atribucion ? `Parece ${atribucion.concepto.toLowerCase()} de un piso` : 'No sé qué es · dímelo tú una vez',
+      ayuda: porLaDeclaracion ?? 'si subes la factura, la leo y relleno proveedor e importe solo',
       seRecuerda: false,
     };
   }
@@ -154,7 +165,7 @@ export function propuestaDeLinea(sugerencias: MovementSuggestion[]): Propuesta {
   return {
     tono,
     titular: titularDe(s.action),
-    ayuda: ayudaDe(s),
+    ayuda: porLaDeclaracion ? `${ayudaDe(s)} · ${porLaDeclaracion}` : ayudaDe(s),
     // La heurística no escribe regla · prometer que se recuerda sería mentir.
     seRecuerda: s.via !== 'heuristica' && s.action.kind !== 'ignore',
   };

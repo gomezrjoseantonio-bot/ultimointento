@@ -112,6 +112,35 @@ describe('la tarjeta no promete lo que no cumple', () => {
   });
 });
 
+describe('FASE 2 · el piso que dice tu declaración llega a la tarjeta', () => {
+  const atrib = { alias: 'Tenderina', concepto: 'IBI', ejercicio: 2025 };
+
+  it('sin ninguna sugerencia, la declaración ya dice qué parece', () => {
+    const p = propuestaDeLinea([], atrib);
+    expect(p.titular).toContain('ibi');
+    expect(p.ayuda).toContain('Tenderina');
+    expect(p.ayuda).toContain('2025');
+  });
+
+  it('con sugerencia, se suma al porqué sin pisar el titular', () => {
+    const p = propuestaDeLinea(
+      [sug({ via: 'learning_rule', confidence: 85, action: { kind: 'assign_to_contract' } })],
+      atrib,
+    );
+    expect(p.titular).toContain('renta');
+    expect(p.ayuda).toContain('Tenderina');
+  });
+
+  it('sin piso conocido no se inventa un alias', () => {
+    const p = propuestaDeLinea([], { concepto: 'Comunidad', ejercicio: 2025 });
+    expect(p.ayuda).toContain('uno de tus pisos');
+  });
+
+  it('sin atribución, la frase de siempre', () => {
+    expect(propuestaDeLinea([]).ayuda).toContain('subes la factura');
+  });
+});
+
 describe('personal · solo por lo que el usuario enseñó', () => {
   it('una regla aprendida que dice personal cuenta', () => {
     expect(
@@ -132,6 +161,38 @@ describe('personal · solo por lo que el usuario enseñó', () => {
   it('esa línea de Amazon se queda en «te necesitan», no se esconde', () => {
     const l = linea(1);
     expect(bucketDeLinea(l, decisionesVacias(), new Set())).toBe('te_necesitan');
+  });
+});
+
+describe('FASE 2 · lo reconocido contra los libros del usuario', () => {
+  it('una cuota de préstamo reconocida cae en «resueltas», no en «te necesitan»', () => {
+    const l = linea(1);
+    expect(bucketDeLinea(l, decisionesVacias(), new Set(), new Set([1]))).toBe('resueltas');
+  });
+
+  it('sin reconocer sigue pidiendo al usuario', () => {
+    expect(bucketDeLinea(linea(1), decisionesVacias(), new Set(), new Set())).toBe('te_necesitan');
+  });
+
+  it('lo que el usuario ignoró manda sobre lo reconocido', () => {
+    const d = decisionesVacias();
+    d.ignorados.add(1);
+    expect(bucketDeLinea(linea(1), d, new Set(), new Set([1]))).toBe('ignorados');
+  });
+
+  it('saber QUÉ es pesa más que saber de quién es', () => {
+    // Reconocida Y marcada personal · manda el reconocimiento.
+    expect(bucketDeLinea(linea(1), decisionesVacias(), new Set([1]), new Set([1]))).toBe('resueltas');
+  });
+
+  it('el cuadre sigue en pie con líneas reconocidas', () => {
+    const lineas = Array.from({ length: 102 }, (_, i) => linea(i + 1));
+    const c = cuadre(lineas, decisionesVacias(), new Set(), new Set([1, 2, 3, 4, 5]));
+    expect(c.delBanco).toBe(102);
+    expect(c.colocadas).toBe(102);
+    expect(c.porBucket.resueltas).toBe(5);
+    expect(c.porBucket.te_necesitan).toBe(97);
+    expect(c.cuadra).toBe(true);
   });
 });
 

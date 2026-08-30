@@ -52,6 +52,7 @@ export function bucketDeLinea(
   linea: LineaExtracto,
   decisiones: DecisionesSesion,
   personales?: ReadonlySet<number>,
+  reconocidas?: ReadonlySet<number>,
 ): Bucket {
   switch (veredictoEfectivo(linea, decisiones)) {
     case 'cuadra':
@@ -59,6 +60,13 @@ export function bucketDeLinea(
     case 'ignorada':
       return 'ignorados';
     default:
+      // FASE 2 · reconocida contra un libro del usuario (la cuota 7 de su
+      // préstamo, el pago de su inversión). No casó con una previsión porque
+      // para el pasado no hay previsiones que casar, pero está tan resuelta
+      // como si hubiera casado: fecha e importe exactos contra un dato que
+      // escribió él. Va antes que `personal` porque saber QUÉ es una línea
+      // pesa más que saber de quién es.
+      if (reconocidas?.has(linea.movementId)) return 'resueltas';
       // El montón «personal» va DESPUÉS de los dos anteriores a propósito. Que
       // una línea sea tuya y no de un piso no la desconcilia ni la designora:
       // «resueltas» e «ignorados» son actos —uno del emparejador, otro del
@@ -93,6 +101,7 @@ export function cuadre(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion,
   personales?: ReadonlySet<number>,
+  reconocidas?: ReadonlySet<number>,
 ): Cuadre {
   const porBucket: Record<Bucket, number> = {
     resueltas: 0,
@@ -103,7 +112,7 @@ export function cuadre(
   const huerfanas: number[] = [];
 
   for (const l of lineas) {
-    const b = bucketDeLinea(l, decisiones, personales);
+    const b = bucketDeLinea(l, decisiones, personales, reconocidas);
     if (b in porBucket) porBucket[b] += 1;
     else huerfanas.push(l.movementId);
   }
@@ -124,6 +133,7 @@ export function lineasDelBucket(
   decisiones: DecisionesSesion,
   bucket: Bucket,
   personales?: ReadonlySet<number>,
+  reconocidas?: ReadonlySet<number>,
 ): LineaExtracto[] {
-  return lineas.filter((l) => bucketDeLinea(l, decisiones, personales) === bucket);
+  return lineas.filter((l) => bucketDeLinea(l, decisiones, personales, reconocidas) === bucket);
 }

@@ -30,8 +30,15 @@ import {
 } from './deteccionDeBanco';
 import { bankProfilesService } from './bankProfilesService';
 import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
-import { suggestForUnmatched, MovementSuggestion, SuggestionAction } from './movementSuggestionService';
-import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
+import { suggestForUnmatched, MovementSuggestion } from './movementSuggestionService';
+import {
+  applySuggestion,
+  deriveCategoryFromEvent,
+  feedLearningRule,
+} from './aplicarSugerencia';
+import { reconocerDeterministas, nadaReconocido, type LoQueSeReconoce } from './deterministas/matcheoDeterminista';
+import { aplicarReconocimiento, baseDe } from './deterministas/cierreDeterminista';
+import type { OrigenDeterminista } from './deterministas/tipos';
 import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
 import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
@@ -62,12 +69,32 @@ export interface OrchestratorResult {
   duplicatesSkipped: number;
   matchResult: MatchResult;
   suggestions: Map<number, MovementSuggestion[]>;
+  /**
+   * FASE 2 · lo que ATLAS reconoce mirando los libros que el usuario ya le dio
+   * (cuadro del préstamo, venta, pagos de inversión, nómina) y el piso que
+   * probablemente paga cada gasto, según su última declaración.
+   *
+   * No va contra `treasuryEvents` a propósito: las previsiones solo existen del
+   * mes en curso hacia delante (`treasuryBootstrapService.ts:124`) y el extracto
+   * trae el pasado, así que para casi todo el fichero no hay previsión contra la
+   * que casar. Ese es el motivo real de que se reconocieran dos de cien.
+   */
+  reconocido: LoQueSeReconoce;
   bankProfileUsed?: string;
   warnings: string[];
 }
 
 export interface ConfirmationPayload {
   approvedMatches: { movementId: number; treasuryEventId: number }[];
+  /**
+   * Lo reconocido contra un origen determinista, que NO es una previsión y por
+   * tanto no cabe en `approvedMatches` (que exige un `treasuryEventId`).
+   *
+   * Se pasa el reconocimiento entero y no solo su id porque el origen no es una
+   * fila que se pueda releer por clave: es una pieza dentro de otra cosa —el
+   * periodo 7 del cuadro de un préstamo, el pago 5 de una inversión—.
+   */
+  approvedDeterministic?: OrigenDeterminista[];
   approvedSuggestions: { movementId: number; suggestionIndex: number }[];
   ignoredMovementIds: number[];
   /**
@@ -259,6 +286,24 @@ async function procesarLoteParseado(
   const matchResult = await matchBatch(insertResult.insertedIds, options.matchOptions);
   const suggestions = await suggestForUnmatched(matchResult.sinMatch);
 
+  // Lo determinista se mira sobre las líneas que NO casaron con una previsión:
+  // lo que ya cuadró no necesita que se le busque un origen, y buscárselo solo
+  // podría contradecir lo que el emparejador ya resolvió.
+  const reconocido = await (async (): Promise<LoQueSeReconoce> => {
+    try {
+      const db2 = await initDB();
+      const sinCasar: Movement[] = [];
+      for (const id of matchResult.sinMatch) {
+        const m = (await db2.get('movements', id)) as Movement | undefined;
+        if (m) sinCasar.push(m);
+      }
+      return await reconocerDeterministas(sinCasar);
+    } catch (err) {
+      console.warn('[orchestrator] no se pudo reconocer contra los libros del usuario', err);
+      return nadaReconocido();
+    }
+  })();
+
   await updateImportBatchSummary(importBatchId, movementsParsed, insertResult.inserted, insertResult.duplicates);
 
   return {
@@ -268,6 +313,7 @@ async function procesarLoteParseado(
     duplicatesSkipped: insertResult.duplicates,
     matchResult,
     suggestions,
+    reconocido,
     bankProfileUsed: ctx.bankProfileUsed,
     warnings: ctx.warnings,
   };
@@ -405,6 +451,24 @@ export async function confirmDecisions(
       deriveCategoryFromEvent(event),
       event.counterparty ?? event.providerName
     );
+  }
+
+  // FASE 2 · lo reconocido contra los libros del usuario.
+  //
+  // Va DESPUÉS de los matches contra previsiones: si una línea cuadró con un
+  // previsto, esa es la verdad más fuerte —el usuario la anotó para esa
+  // fecha— y no se pisa con un origen determinista.
+  for (const origen of payload.approvedDeterministic ?? []) {
+    if (movementIdsTouched.has(origen.movementId)) continue;
+    try {
+      const cerrado = await aplicarReconocimiento(baseDe(db as never), origen, now);
+      if (cerrado) movementIdsTouched.add(origen.movementId);
+    } catch (err) {
+      // Una fuente que falla no puede tumbar el Guardar entero: el resto de
+      // decisiones del usuario ya están aplicadas y la línea, en el peor caso,
+      // se queda sin conciliar y sigue visible. Nada se pierde (FASE 1).
+      console.error('[orchestrator] no se pudo aplicar un reconocimiento determinista', err);
+    }
   }
 
   // Reconciliar contra un Confirmado que ya tenías · "las dos cosas".
@@ -639,155 +703,6 @@ function hashMovement(m: Movement): string {
   return `${m.accountId}|${m.date}|${cents}|${(m.description ?? '').trim()}`;
 }
 
-async function applySuggestion(movement: Movement, suggestion: MovementSuggestion, now: string): Promise<void> {
-  const db = await initDB();
-
-  switch (suggestion.action.kind) {
-    case 'create_treasury_event':
-    case 'assign_to_contract':
-    case 'mark_personal_expense': {
-      const event = buildTreasuryEventFromAction(movement, suggestion.action, now);
-      const eventId = (await db.add('treasuryEvents', event)) as number;
-      await db.put('treasuryEvents', { ...event, id: eventId, executedMovementId: movement.id });
-      await db.put('movements', {
-        ...movement,
-        unifiedStatus: 'conciliado',
-        statusConciliacion: 'match_manual',
-        updatedAt: now,
-      });
-      await feedLearningRule(movement, deriveCategoryFromAction(suggestion.action));
-      return;
-    }
-    case 'ignore':
-      await db.put('movements', {
-        ...movement,
-        unifiedStatus: 'no_planificado',
-        statusConciliacion: 'sin_match',
-        updatedAt: now,
-      });
-      return;
-  }
-}
-
-function buildTreasuryEventFromAction(
-  movement: Movement,
-  action: SuggestionAction,
-  now: string
-): TreasuryEvent {
-  const base = {
-    amount: Math.abs(movement.amount),
-    predictedDate: movement.date,
-    description: movement.description,
-    accountId: movement.accountId,
-    status: 'executed' as const,
-    actualDate: movement.date,
-    // Magnitud · misma convención que el punteo manual y que `approvedMatches`.
-    actualAmount: Math.abs(movement.amount),
-    executedMovementId: movement.id,
-    executedAt: now,
-    generadoPor: 'user' as const,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  switch (action.kind) {
-    case 'create_treasury_event':
-      return {
-        ...base,
-        type: action.type,
-        sourceType: action.sourceType,
-        sourceId: typeof action.sourceId === 'number' ? action.sourceId : undefined,
-        ambito: action.ambito,
-        inmuebleId: action.inmuebleId,
-        categoryKey: action.categoryKey,
-      };
-    case 'assign_to_contract':
-      return {
-        ...base,
-        type: movement.amount >= 0 ? 'income' : 'expense',
-        sourceType: 'contract',
-        sourceId: action.contractId,
-        // De QUÉ contrato es este cobro. `sourceId` es el enlace legacy y
-        // `contratoId` el principal (el que mira `esRentaDeContrato`): sin los
-        // dos el evento quedaba huérfano —ningún contrato lo reconocía como su
-        // renta— y encima era invisible para el dedupe de previsiones, así que
-        // el mes acababa con el cobro real y la previsión duplicada.
-        contratoId: action.contractId,
-        ambito: 'INMUEBLE',
-      };
-    case 'mark_personal_expense':
-      return {
-        ...base,
-        type: movement.amount >= 0 ? 'income' : 'expense',
-        sourceType: 'personal_expense',
-        ambito: 'PERSONAL',
-        categoryKey: action.categoryKey,
-      };
-    case 'ignore':
-      // Defensive: applySuggestion handles `ignore` directly without calling
-      // this builder. Throw so a future caller doesn't silently misuse it.
-      throw new Error('buildTreasuryEventFromAction: ignore action has no event representation');
-  }
-}
-
-interface DerivedCategory {
-  categoria: string;
-  ambito: 'PERSONAL' | 'INMUEBLE';
-  inmuebleId?: string;
-}
-
-function deriveCategoryFromEvent(event: TreasuryEvent): DerivedCategory | null {
-  const categoria = event.categoryKey ?? event.categoryLabel;
-  if (!categoria) return null;
-  return {
-    categoria,
-    ambito: event.ambito ?? 'PERSONAL',
-    inmuebleId: event.inmuebleId != null ? String(event.inmuebleId) : undefined,
-  };
-}
-
-function deriveCategoryFromAction(action: SuggestionAction): DerivedCategory | null {
-  switch (action.kind) {
-    case 'create_treasury_event':
-      if (!action.categoryKey) return null;
-      return {
-        categoria: action.categoryKey,
-        ambito: action.ambito,
-        inmuebleId: action.inmuebleId != null ? String(action.inmuebleId) : undefined,
-      };
-    case 'mark_personal_expense':
-      return { categoria: action.categoryKey, ambito: 'PERSONAL' };
-    case 'assign_to_contract':
-      return null; // contract-bound learning is too instance-specific to generalise
-    case 'ignore':
-      return null;
-  }
-}
-
-async function feedLearningRule(
-  movement: Movement,
-  derived: DerivedCategory | null,
-  contraparteConfirmada?: string
-): Promise<void> {
-  if (!derived) return;
-  try {
-    const learnKey = buildLearnKey(movement);
-    // T16-fix-functional · pasar el movimiento permite a createOrUpdateRule
-    // rellenar counterpartyPattern/descriptionPattern/amountSign y propagar
-    // movimientoId al history[] (B2 + B8 del audit T16).
-    await createOrUpdateRule({
-      learnKey,
-      categoria: derived.categoria,
-      ambito: derived.ambito,
-      inmuebleId: derived.inmuebleId,
-      movement,
-      contraparteConfirmada,
-    });
-  } catch (err) {
-    // Learning is opportunistic — do not block confirmation if it fails.
-    console.warn('[orchestrator] feedLearningRule failed', err);
-  }
-}
 
 // Re-export the matching/suggestion types so consumers don't need three imports.
 export type { MatchResult } from './movementMatchingService';
