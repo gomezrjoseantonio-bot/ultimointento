@@ -221,6 +221,12 @@
   padding-right: 4px;
   min-height: 0;
 }
+/* Un hijo de un contenedor flex encoge por defecto (`flex-shrink: 1`), y el
+   encogido ocurre ANTES que el desbordamiento: con 95 tarjetas dentro de una
+   columna de altura fija, cada una se comprimía a un píxel y el `overflow:
+   hidden` de `.tarjeta` se tragaba su contenido. La columna salía en blanco:
+   95 rayas y ni una letra. Esto lo prohíbe para todo hijo, ahora y después. */
+.scroll > * { flex-shrink: 0; }
 
 /* ── Tarjeta de acción · columna izquierda ───────────────────────────────── */
 
@@ -343,8 +349,19 @@
   border: 1px solid var(--atlas-v5-line);
   color: var(--atlas-v5-ink-4);
 }
-.filaTxt { flex: 1; min-width: 0; }
+/* `min-width: 0` es lo que permite que un hijo flex se encoja por debajo de su
+   contenido; sin él, `text-overflow: ellipsis` no recorta nada. Y sin
+   `display: flex` esto era un elemento inline, donde ni el ancho flexible ni el
+   recorte se aplican: por eso el concepto, su detalle y el importe salían
+   pisándose en una sola línea ("…GAS POWER12297335165,08 €"). */
+.filaTxt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 .filaA {
+  display: block;
   font-size: 12.5px;
   color: var(--atlas-v5-ink-2);
   font-weight: 500;
@@ -353,6 +370,7 @@
   white-space: nowrap;
 }
 .filaB {
+  display: block;
   font-size: 10.5px;
   color: var(--atlas-v5-ink-4);
   margin-top: 1px;

@@ -51,6 +51,25 @@ export function nombreDeLineaResuelta(l: LineaExtracto): string {
 }
 
 /**
+ * El renglón pequeño de la fila · de qué se compone el grupo.
+ *
+ * Solo tiene sentido cuando aporta algo que el título no dice ya. Con cuatro
+ * cargos de la misma luz, los nombres distintos son UNO y el detalle repetía el
+ * título palabra por palabra («Gas» debajo de «Gas»); ahí lo que informa es
+ * cuándo pasaron, no cómo se llaman.
+ */
+function detalleDelGrupo(delGrupo: LineaExtracto[], nombres: string[]): string {
+  const distintos = Array.from(new Set(nombres));
+  if (distintos.length > 1) return distintos.slice(0, 3).join(' · ');
+
+  const fechas = delGrupo.map((l) => l.fecha).filter(Boolean).sort();
+  const desde = fechas[0];
+  const hasta = fechas[fechas.length - 1];
+  if (!desde) return '';
+  return desde === hasta ? desde : `${desde} a ${hasta}`;
+}
+
+/**
  * Agrupa las resueltas para la columna derecha.
  *
  * Orden: primero los grupos con más líneas, y a igualdad el de más dinero en
@@ -75,11 +94,7 @@ export function agruparResueltas(lineas: LineaExtracto[]): GrupoResuelto[] {
     grupos.push({
       clave,
       titulo: nombres[0],
-      // Con una sola línea el detalle repetiría el título · mejor la fecha.
-      detalle:
-        delGrupo.length === 1
-          ? delGrupo[0].fecha
-          : Array.from(new Set(nombres)).slice(0, 3).join(' · '),
+      detalle: detalleDelGrupo(delGrupo, nombres),
       cuantas: delGrupo.length,
       total,
     });
