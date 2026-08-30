@@ -268,7 +268,6 @@ export function payloadDeConfirmacion(
   decisiones: DecisionesSesion
 ): {
   approvedMatches: Array<{ movementId: number; treasuryEventId: number }>;
-  approvedSuggestions: Array<{ movementId: number; suggestionIndex: number }>;
   ignoredMovementIds: number[];
   /**
    * Líneas que cuadran con un Confirmado que ya tenías · al aplicarlas, ese
@@ -315,11 +314,11 @@ export function payloadDeConfirmacion(
     }
   }
 
-  // `approvedSuggestions` queda vacío a propósito: §4.7 ofrece asignar a un
-  // previsto o crear un movimiento, no aceptar sugerencias de categoría. El
-  // campo existe porque el servicio lo pide y lo usa el camino de importación
-  // antiguo.
-  return { approvedMatches, approvedSuggestions: [], ignoredMovementIds, reconciliacionesConfirmado };
+  // Ya no hay `approvedSuggestions`: ese canal se retiró en la 2.0.2 porque
+  // nadie lo llenaba —§4.7 ofrece asignar a un previsto o crear un movimiento,
+  // no aceptar sugerencias de categoría— y lo que había al otro lado no creaba
+  // la fila fiscal.
+  return { approvedMatches, ignoredMovementIds, reconciliacionesConfirmado };
 }
 
 /**

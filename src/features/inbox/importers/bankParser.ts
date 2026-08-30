@@ -1,5 +1,6 @@
 // ATLAS HOTFIX: Robust Bank Statement Parser - XLS/XLSX/CSV with header detection and fallback
 import { ParsedMovement, SheetInfo, HeaderDetectionResult, BankParseResult } from '../../../types/bankProfiles';
+import { columnaDeReferencia } from '../../../services/importador/columnaDeReferencia';
 import { bankProfilesService } from '../../../services/bankProfilesService';
 import { telemetry, qaChecklist } from '../../../services/telemetryService';
 import { parseEsNumber } from '../../../utils/numberUtils';
@@ -524,6 +525,25 @@ export class BankParserService {
           normalizedDetectedColumns.valueDate !== undefined
         ) {
           normalizedDetectedColumns.date = normalizedDetectedColumns.valueDate;
+        }
+
+        // El identificador que escribe el banco · pasada APARTE.
+        //
+        // El bucle de arriba consume cada columna con el PRIMER tipo cuyo alias
+        // casa, y en la tabla `description` va antes que `reference`. Con las
+        // cabeceras de BBVA, `Movimiento` y `Observaciones` —las dos columnas
+        // donde vive el número de contrato del préstamo— casaban con un alias de
+        // `description`, perdían contra `Concepto`, y se quedaban sin dueño.
+        //
+        // Esto solo rellena `reference` si quedó vacío y solo con una columna que
+        // no se llevó nadie: ninguna asignación que ya funcionara puede cambiar.
+        if (normalizedDetectedColumns.reference === undefined) {
+          const rescatada = columnaDeReferencia(
+            normalizedRow,
+            Object.values(normalizedDetectedColumns),
+            (t) => this.normalizeText(t),
+          );
+          if (rescatada !== undefined) normalizedDetectedColumns.reference = rescatada;
         }
 
         return {

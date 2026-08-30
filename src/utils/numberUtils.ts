@@ -103,18 +103,31 @@ export function parseEsNumber(input: string, opts: ParseOptions = {}): ParseResu
 
     result = parseFloat(`${cleanInteger}.${decimalPart}`);
   } else if (cleaned.includes('.')) {
-    // Rule: Only dots - apply heuristic
-    const dotIndex = cleaned.lastIndexOf('.');
-    const afterDot = cleaned.substring(dotIndex + 1);
-    
-    if (afterDot.length === 2) {
-      // Exactly 2 digits after dot → treat as decimal (bank export style)
+    // Rule: Only dots · ¿separador de miles o decimal?
+    //
+    // Un separador de miles agrupa SIEMPRE de tres en tres. "285.4" no puede
+    // ser doscientos ochenta y cinco mil cuatro —eso se escribe "285.004"—, así
+    // que ese punto es un decimal.
+    //
+    // La regla anterior era "decimal si detrás hay exactamente 2 dígitos", y
+    // metía en miles todo lo demás: la cuota de un préstamo exportada como
+    // `-285.4` entraba en la base como `-2854`, diez veces su valor. Los
+    // importes con dos decimales acertaban por casualidad, que es lo que hizo
+    // que el fallo pasara desapercibido.
+    const grupos = cleaned.split('.');
+    const esAgrupacionDeMiles =
+      grupos.length > 1 && grupos.slice(1).every((g) => /^\d{3}$/.test(g)) && /^\d{1,3}$/.test(grupos[0]);
+
+    if (!esAgrupacionDeMiles) {
+      // El ÚLTIMO punto es el decimal; cualquier punto anterior, miles.
+      const dotIndex = cleaned.lastIndexOf('.');
+      const afterDot = cleaned.substring(dotIndex + 1);
       const beforeDot = cleaned.substring(0, dotIndex).replace(/[.\s]/g, '');
-      if (!/^\d+$/.test(beforeDot) || !/^\d{2}$/.test(afterDot)) {
-        return { 
-          value: null, 
+      if (!/^\d+$/.test(beforeDot) || !/^\d+$/.test(afterDot)) {
+        return {
+          value: null,
           code: 'INVALID_NUMBER_ES',
-          message: 'Invalid format for dot-decimal interpretation' 
+          message: 'Invalid format for dot-decimal interpretation'
         };
       }
       result = parseFloat(`${beforeDot}.${afterDot}`);

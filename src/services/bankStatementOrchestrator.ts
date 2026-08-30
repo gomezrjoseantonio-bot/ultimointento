@@ -31,11 +31,7 @@ import {
 import { bankProfilesService } from './bankProfilesService';
 import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
 import { suggestForUnmatched, MovementSuggestion } from './movementSuggestionService';
-import {
-  applySuggestion,
-  deriveCategoryFromEvent,
-  feedLearningRule,
-} from './aplicarSugerencia';
+import { deriveCategoryFromEvent, feedLearningRule } from './aplicarSugerencia';
 import { reconocerDeterministas, nadaReconocido, type LoQueSeReconoce } from './deterministas/matcheoDeterminista';
 import { aplicarReconocimiento, baseDe } from './deterministas/cierreDeterminista';
 import type { OrigenDeterminista } from './deterministas/tipos';
@@ -95,7 +91,6 @@ export interface ConfirmationPayload {
    * periodo 7 del cuadro de un préstamo, el pago 5 de una inversión—.
    */
   approvedDeterministic?: OrigenDeterminista[];
-  approvedSuggestions: { movementId: number; suggestionIndex: number }[];
   ignoredMovementIds: number[];
   /**
    * Líneas del extracto que son un movimiento que YA tenías anotado
@@ -366,24 +361,7 @@ export async function confirmDecisions(
   const db = await initDB();
   const now = new Date().toISOString();
 
-  // Resolve every suggestion up front so we can fail fast before mutating state.
   const movementIdsTouched = new Set<number>();
-  const suggestionsByMovement = new Map<number, MovementSuggestion>();
-  for (const approval of payload.approvedSuggestions) {
-    const movement = (await db.get('movements', approval.movementId)) as Movement | undefined;
-    if (!movement) {
-      throw new Error(`Movimiento ${approval.movementId} no encontrado al confirmar sugerencia`);
-    }
-    const suggestionMap = await suggestForUnmatched([approval.movementId]);
-    const suggestions = suggestionMap.get(approval.movementId) ?? [];
-    const suggestion = suggestions[approval.suggestionIndex];
-    if (!suggestion) {
-      throw new Error(
-        `Sugerencia índice ${approval.suggestionIndex} no encontrada para movimiento ${approval.movementId}`
-      );
-    }
-    suggestionsByMovement.set(approval.movementId, suggestion);
-  }
 
   // Apply matches: link existing movement to existing predicted event.
   for (const { movementId, treasuryEventId } of payload.approvedMatches) {
@@ -481,14 +459,6 @@ export async function confirmDecisions(
     movementIdsTouched.add(importMovementId);
   }
 
-  // Apply approved suggestions.
-  for (const [movementId, suggestion] of suggestionsByMovement) {
-    const movement = (await db.get('movements', movementId)) as Movement | undefined;
-    if (!movement) continue;
-    await applySuggestion(movement, suggestion, now);
-    movementIdsTouched.add(movementId);
-  }
-
   // Mark ignored movements as reviewed-but-not-conciliated.
   for (const movementId of payload.ignoredMovementIds) {
     if (movementIdsTouched.has(movementId)) continue;
@@ -547,15 +517,37 @@ function filterByPeriod(
   });
 }
 
-function isoDate(value: Date | string | undefined): string | null {
+/**
+ * El DÍA de calendario, no el instante.
+ *
+ * Antes hacía `.toISOString()`, que pasa a UTC. Como `parseSpanishDate`
+ * construye `new Date(año, mes-1, día)` —medianoche LOCAL—, en España (UTC+1/+2)
+ * esa conversión devolvía siempre el día anterior: el 2 de febrero a las 00:00
+ * de Madrid es el 1 de febrero a las 23:00 en UTC. Toda fecha de cargo del
+ * extracto entraba en la base corrida un día.
+ *
+ * Se lee con los mismos componentes con los que se escribió.
+ */
+export function isoDate(value: Date | string | undefined): string | null {
   if (!value) return null;
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) return null;
-    return value.toISOString().slice(0, 10);
+    return diaLocal(value);
   }
+  // Una cadena que YA es un día ISO se respeta tal cual: reparsearla la haría
+  // pasar por UTC y volvería a correrla.
+  const yaEsDia = /^\d{4}-\d{2}-\d{2}/.exec(value);
+  if (yaEsDia) return yaEsDia[0];
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString().slice(0, 10);
+  return diaLocal(parsed);
+}
+
+/** El día que marca el reloj de quien mira · sin pasar por UTC. */
+function diaLocal(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
 async function persistImportBatch(

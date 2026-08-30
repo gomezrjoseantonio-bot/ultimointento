@@ -312,7 +312,10 @@ describe('lo que viaja al pulsar Guardar', () => {
   });
 
   it('no manda sugerencias · §4.7 no ofrece aceptarlas', () => {
-    expect(payloadDeConfirmacion(tres(), decisionesVacias()).approvedSuggestions).toEqual([]);
+    // El canal se retiró en la 2.0.2: no es que viaje vacío, es que ya no
+    // existe. Lo que había al otro lado nunca se ejecutaba y además no creaba
+    // la fila fiscal del gasto.
+    expect(payloadDeConfirmacion(tres(), decisionesVacias())).not.toHaveProperty('approvedSuggestions');
   });
 
   it('manda a persistir solo lo ignorado en ESTA sesión', () => {
