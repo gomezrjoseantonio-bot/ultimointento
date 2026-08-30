@@ -40,6 +40,15 @@ export interface LineaExtractoItemProps {
   abrirCrear: (linea: LineaExtracto) => void;
   nombrarPrevisto: (ev: TreasuryEvent) => string;
   nombrarPrevistoPorId: (id: number | null | undefined, respaldo: string) => string;
+  /**
+   * Dentro de una tarjeta de conciliar, esta línea NO pinta su propia caja.
+   *
+   * La tarjeta ya tiene borde, radio y fondo; sin esto salía una caja dentro de
+   * otra, con dos bordes concéntricos y un hueco muerto debajo por el
+   * `margin-bottom` de la línea. Es una propiedad del CONTENEDOR, no del
+   * contenido, y por eso la decide quien monta la línea.
+   */
+  sinCaja?: boolean;
 }
 
 const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
@@ -64,6 +73,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
   abrirCrear,
   nombrarPrevisto,
   nombrarPrevistoPorId,
+  sinCaja = false,
 }) => {
   const v = veredictoEfectivo(l, decisiones);
   const asignado = decisiones.asignados.get(l.movementId);
@@ -82,7 +92,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
     : undefined;
 
   return (
-    <div className={styles.linea}>
+    <div className={sinCaja ? styles.lineaDesnuda : styles.linea}>
       <div className={styles.lineaTop}>
         {/* El texto LITERAL del banco · §4.7. */}
         <div className={styles.lineaTexto}>{l.textoBanco}</div>

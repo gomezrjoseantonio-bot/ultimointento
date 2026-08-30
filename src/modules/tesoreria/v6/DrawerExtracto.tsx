@@ -564,6 +564,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       abrirCrear={setCreando}
       nombrarPrevisto={nombrarPrevisto}
       nombrarPrevistoPorId={nombrarPrevistoPorId}
+      sinCaja
     />
   );
 
