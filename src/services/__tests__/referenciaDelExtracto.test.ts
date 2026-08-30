@@ -11,6 +11,7 @@
 
 import { bankProfilesService } from '../bankProfilesService';
 import { hashMovement } from '../bankStatementOrchestrator';
+import { referenciaDeLaFila } from '../importador/celdaDeReferencia';
 import type { BankProfile } from '../../types/bankProfiles';
 import type { Movement } from '../db';
 
@@ -117,13 +118,38 @@ describe('la guarda · reimportar el mismo extracto no duplica', () => {
     expect(hashMovement(otro)).not.toBe(hashMovement(movimiento('x')));
   });
 });
-// ── Lo que estos tests NO pueden cubrir, dicho aquí y no en el PR ──────────
-//
-// El último tramo —`csvParserService.parseMovement` leyendo `mapping.reference`
-// y poniéndolo en el `ParsedMovement`— no se puede probar aquí: ese módulo usa
-// `import.meta.env` (`csvParserService.ts:79`) y jest no lo sabe transformar, así
-// que ni siquiera se puede importar. Es una limitación previa a este cambio.
-//
-// Lo que sí queda probado arriba es la decisión: qué columna se elige, que no se
-// roba ninguna y que la huella de deduplicación no cambia. El tramo que falta se
-// comprueba sobre el dato real, en el navegador (ver el PR).
+
+describe('el recorrido completo · de la fila real a la referencia', () => {
+  // Esto es lo que antes solo se podía comprobar a mano, en el navegador y con
+  // los datos reales delante. Ahora lo prueba el código: `mapHeaders` elige la
+  // columna y `referenciaDeLaFila` lee la celda; lo único que queda después es
+  // la asignación al `ParsedMovement`, que es la misma variable.
+
+  it('la cuota del préstamo de BBVA sale con su número de contrato', async () => {
+    const m = bankProfilesService.mapHeaders(CABECERAS, await perfilBBVA());
+    expect(referenciaDeLaFila(CUOTA_BBVA, m)).toBe('0182-5322-27-0830842450');
+  });
+
+  it('el recibo de Bankinter sale con el nombre del prestamista', async () => {
+    const m = bankProfilesService.mapHeaders(CABECERAS, await perfilBBVA());
+    expect(referenciaDeLaFila(CUOTA_BANKINTER, m)).toContain('BANKINTER CONSUMER FINANCE');
+  });
+
+  it('un fichero sin columna de referencia no inventa una', async () => {
+    const simples = ['Fecha', 'Concepto', 'Importe'];
+    const m = bankProfilesService.mapHeaders(simples, await perfilBBVA());
+    expect(referenciaDeLaFila(['31/07/2026', 'Cuota', -285.4], m)).toBeUndefined();
+  });
+
+  it('una celda vacía es «no hay», no una referencia en blanco', async () => {
+    const m = bankProfilesService.mapHeaders(CABECERAS, await perfilBBVA());
+    const sinObservaciones = [...CUOTA_BBVA];
+    sinObservaciones[m.reference] = '   ';
+    expect(referenciaDeLaFila(sinObservaciones, m)).toBeUndefined();
+  });
+
+  it('una fila más corta de lo esperado no revienta', async () => {
+    const m = bankProfilesService.mapHeaders(CABECERAS, await perfilBBVA());
+    expect(referenciaDeLaFila(['31/07/2026', '31/07/2026', 'Cuota'], m)).toBeUndefined();
+  });
+});
