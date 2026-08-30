@@ -253,6 +253,12 @@ class EnhancedCSVParser {
     const amountValue = row[mapping.amount];
     const descriptionValue = row[mapping.description] || '';
     const counterpartyValue = mapping.counterparty !== undefined ? row[mapping.counterparty] : undefined;
+    // El texto con el que el banco identifica la operación (nº de contrato del
+    // préstamo, nombre del prestamista, nº de recibo). `ParsedMovement.reference`
+    // existía y `insertMovements` ya lo escribía en el movimiento, pero nadie lo
+    // leía del fichero: el cableado estaba a medias de punta a punta y ese dato
+    // se perdía en cada importación.
+    const referenceValue = mapping.reference !== undefined ? row[mapping.reference] : undefined;
 
     // Validate required fields
     if (!dateValue || !amountValue) return null;
@@ -277,8 +283,12 @@ class EnhancedCSVParser {
         date,
         valueDate,
         amount,
+        // NO se toca: `hashMovement` dedupica por esta cadena. Reescribirla —por
+        // ejemplo pegándole el identificador— haría que reimportar un extracto
+        // solapado no reconociera la línea y duplicara el cargo.
         description: String(descriptionValue).trim(),
         counterparty: counterpartyValue ? String(counterpartyValue).trim() : undefined,
+        reference: referenceValue ? String(referenceValue).trim() : undefined,
         originalRow,
         rawData: row.reduce((acc, cell, index) => {
           acc[`col_${index}`] = cell;
