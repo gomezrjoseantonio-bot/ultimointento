@@ -695,7 +695,15 @@ async function insertMovements(
   return { insertedIds, inserted: insertedIds.length, duplicates };
 }
 
-function hashMovement(m: Movement): string {
+/**
+ * La huella con la que se detecta un duplicado entre importaciones.
+ *
+ * Se exporta para poder PROBAR lo que no se ve: que `reference` no entra aquí.
+ * Al llevar el identificador del banco al movimiento (FASE 2.0.1), lo único que
+ * no podía pasar era que esa huella cambiara — un extracto solapado dejaría de
+ * reconocer sus propias líneas y duplicaría los cargos.
+ */
+export function hashMovement(m: Movement): string {
   // Same dedup signature used by bankStatementImportService since 2025: the
   // tuple {accountId | date | amount-cents | description}. Idempotent across
   // re-imports of the exact same statement.

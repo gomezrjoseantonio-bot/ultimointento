@@ -116,6 +116,10 @@ class BankProfilesService {
     const normalizedHeaders = headers.map(h => this.normalizeText(h));
 
     for (const [fieldType, aliases] of Object.entries(profile.headerAliases)) {
+      // `reference` se resuelve aparte (`rescatarReferencia`): aquí gana la
+      // primera CABECERA que coincida, y para el identificador lo que tiene que
+      // ganar es la primera preferencia de la LISTA.
+      if (fieldType === 'reference') continue;
       for (let i = 0; i < normalizedHeaders.length; i++) {
         const header = normalizedHeaders[i];
         if (aliases.some(alias => this.normalizeText(alias) === header)) {
@@ -125,7 +129,52 @@ class BankProfilesService {
       }
     }
 
+    this.rescatarReferencia(mapping, normalizedHeaders, profile);
     return mapping;
+  }
+
+  /**
+   * Segunda pasada · sólo para `reference`, y sólo sobre columnas LIBRES.
+   *
+   * El problema que resuelve: el extracto de BBVA trae el número de contrato del
+   * préstamo ("0182-5322-27-0830842450") en `Movimiento` y en `Observaciones`, y
+   * ninguna de las dos llegaba al movimiento. `Movimiento` porque el bucle de
+   * arriba corta en la primera coincidencia y `Concepto` ya se había llevado
+   * `description`; `Observaciones` porque no coincidía con ningún alias de
+   * ningún papel. Sin ese texto, las siete cuotas del mismo préstamo llegan a la
+   * base con la misma descripción genérica y nada que las identifique.
+   *
+   * Va en una pasada APARTE y no tocando el bucle de arriba a propósito: así
+   * ninguna asignación que ya funcionaba puede cambiar. Lo único que hace es
+   * rellenar `reference` cuando quedó vacío, y sólo con una columna que nadie
+   * más haya reclamado — nunca robando `description`, de la que depende
+   * `hashMovement` para deduplicar entre importaciones.
+   *
+   * Se recorre por ORDEN DE ALIAS y no de cabecera: en el fichero de BBVA
+   * `Movimiento` aparece antes que `Observaciones`, pero sólo la segunda sirve
+   * para los dos casos —en el recibo de Bankinter, `Movimiento` trae el número
+   * de recibo, que cambia cada mes, y `Observaciones` el nombre del prestamista,
+   * que no—. El orden de la lista es la preferencia.
+   */
+  private rescatarReferencia(
+    mapping: Record<string, number>,
+    normalizedHeaders: string[],
+    profile: BankProfile
+  ): void {
+    if (mapping.reference !== undefined) return;
+
+    const ocupadas = new Set(Object.values(mapping));
+    const aliases = profile.headerAliases.reference ?? [];
+
+    for (const alias of aliases) {
+      const buscado = this.normalizeText(alias);
+      for (let i = 0; i < normalizedHeaders.length; i++) {
+        if (ocupadas.has(i)) continue;
+        if (normalizedHeaders[i] !== buscado) continue;
+        mapping.reference = i;
+        return;
+      }
+    }
   }
 
   /**
@@ -271,7 +320,10 @@ class BankProfilesService {
         valueDate: ['fecha valor', 'value date', 'fecha de valor'],
         amount: ['importe', 'amount', 'cantidad', 'monto', 'euros'],
         description: ['descripcion', 'description', 'concepto', 'detalle'],
-        counterparty: ['contraparte', 'counterparty', 'beneficiario', 'ordenante']
+        counterparty: ['contraparte', 'counterparty', 'beneficiario', 'ordenante'],
+        // Un fichero de un banco sin perfil tampoco puede perder el texto que
+        // identifica la operación · ver `rescatarReferencia`.
+        reference: ['referencia', 'ref', 'numero operacion', 'observaciones', 'concepto ampliado', 'detalle operacion', 'movimiento']
       },
       noisePatterns: [
         'saldo inicial', 'saldo final', 'saldo anterior', 'saldo actual', 
