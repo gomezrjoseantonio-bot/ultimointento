@@ -26,6 +26,15 @@ export interface GrupoResuelto {
   detalle: string;
   cuantas: number;
   total: number;
+  /**
+   * Las líneas de las que se compone · para poder abrir la fila.
+   *
+   * Antes el grupo contaba cuántas y sumaba el importe, y tiraba las líneas. La
+   * columna derecha no podía enseñar qué hay dentro de «4 · Gas» aunque
+   * quisiera: para cuando llegaba a pintarlo ya no lo tenía. Sin esto no hay
+   * «No es esto» posible, porque no hay a qué línea señalar.
+   */
+  lineas: LineaExtracto[];
 }
 
 /**
@@ -97,6 +106,7 @@ export function agruparResueltas(lineas: LineaExtracto[]): GrupoResuelto[] {
       detalle: detalleDelGrupo(delGrupo, nombres),
       cuantas: delGrupo.length,
       total,
+      lineas: delGrupo,
     });
   }
 

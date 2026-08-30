@@ -54,11 +54,22 @@ export function bucketDeLinea(
   personales?: ReadonlySet<number>,
   reconocidas?: ReadonlySet<number>,
 ): Bucket {
-  switch (veredictoEfectivo(linea, decisiones)) {
+  const veredicto = veredictoEfectivo(linea, decisiones);
+
+  // Ignorar es del usuario y va antes que nada: si él apartó la línea, ahí se
+  // queda aunque además la hubiera desemparejado.
+  if (veredicto === 'ignorada') return 'ignorados';
+
+  // «No es esto» · la corrección del usuario manda sobre las tres máquinas que
+  // pueden sacar una línea de «te necesitan» (el emparejador, el reconocedor y
+  // las reglas de personal). Va AQUÍ, antes del `case 'cuadra'`, y el orden no
+  // es cosmético: puesto después, el veredicto automático volvería a ganar y el
+  // «No es esto» no serviría justo sobre las líneas donde más falta hace.
+  if (decisiones.desemparejados?.has(linea.movementId)) return 'te_necesitan';
+
+  switch (veredicto) {
     case 'cuadra':
       return 'resueltas';
-    case 'ignorada':
-      return 'ignorados';
     default:
       // FASE 2 · reconocida contra un libro del usuario (la cuota 7 de su
       // préstamo, el pago de su inversión). No casó con una previsión porque

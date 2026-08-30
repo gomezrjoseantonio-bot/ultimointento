@@ -18,6 +18,15 @@ import styles from './PanelConciliar.module.css';
 export interface TarjetaAccionProps {
   propuesta: Propuesta;
   children: React.ReactNode;
+  /**
+   * La casilla de elegir · sólo aparece cuando hay alguien que escuche.
+   *
+   * Va en la banda de la propuesta y no dentro de la línea del banco para no
+   * tocar `LineaExtractoItem`, que es el camino que de verdad escribe en la
+   * base. Elegir no decide nada: sólo dice «esta también» para la acción en
+   * bloque de la barra.
+   */
+  elegible?: { etiqueta: string; elegida: boolean; onElegir: () => void };
 }
 
 /** El icono habla del TONO, no de la categoría · no adelanta un veredicto. */
@@ -33,9 +42,20 @@ const CLASE_POR_TONO: Record<Propuesta['tono'], string> = {
   pregunta: styles.tarjetaPregunta,
 };
 
-const TarjetaAccion: React.FC<TarjetaAccionProps> = ({ propuesta, children }) => (
-  <div className={`${styles.tarjeta} ${CLASE_POR_TONO[propuesta.tono]}`}>
+const TarjetaAccion: React.FC<TarjetaAccionProps> = ({ propuesta, children, elegible }) => (
+  <div
+    className={`${styles.tarjeta} ${CLASE_POR_TONO[propuesta.tono]} ${elegible?.elegida ? styles.tarjetaElegida : ''}`}
+  >
     <div className={styles.propuesta}>
+      {elegible && (
+        <input
+          type="checkbox"
+          className={styles.casilla}
+          checked={elegible.elegida}
+          onChange={elegible.onElegir}
+          aria-label={`Elegir ${elegible.etiqueta}`}
+        />
+      )}
       <span className={styles.propIco} aria-hidden="true">
         <IconoDeTono tono={propuesta.tono} />
       </span>

@@ -1,12 +1,21 @@
 // «El resto» · la columna derecha · lo que NO necesita al usuario.
 //
-// Tres montones cerrados (resueltas · personal · ignorados) y el panel dorado de
-// lo aprendido. Ninguno de los tres lista línea a línea: el extracto ya lo tiene
-// el usuario en su banco, y reimprimirlo aquí sería enterrar las seis decisiones
-// que sí importan bajo ciento y pico filas que no.
+// Tres montones (resueltas · personal · ignorados) y el panel dorado de lo
+// aprendido. Plegados de entrada: el extracto ya lo tiene el usuario en su
+// banco, y reimprimirlo aquí sería enterrar las seis decisiones que sí importan
+// bajo ciento y pico filas que no.
 //
-// Los tres montones son de LECTURA salvo «reactivar», que es la vuelta atrás de
-// la única acción destructiva-en-apariencia que ofrece la pantalla.
+// PLEGADO NO ES CERRADO. Antes lo era, y estaba mal: «los ok que me das personal
+// y no personal no veo lo que hay dentro, además si te equivocas ni puedo
+// corregirlo». Tenía las dos razones. Un montón que ATLAS llena solo, que el
+// usuario no puede abrir y del que no puede sacar nada no es un resumen: es un
+// sitio donde las equivocaciones se guardan calladas. Peor cuanto mejor
+// funciona el reconocedor, porque más cosas mete sin preguntar.
+//
+// Así que cada fila abre, dentro salen sus líneas con el texto literal del
+// banco, y cada una lleva su «No es esto» — que no borra nada: devuelve la línea
+// a «te necesitan», que es donde el usuario puede decidir. La vuelta atrás de
+// «ignorar» sigue siendo «reactivar».
 
 import React from 'react';
 import { Icons } from '../../../../design-system/v5';
@@ -23,10 +32,133 @@ export interface ColumnaRestoProps {
   aprendido: LoQueYaReconoce;
   /** Devuelve una línea ignorada a la circulación (§4.7). */
   onRecuperar: (movementId: number) => void;
+  /**
+   * «No es esto» · el usuario corrige a ATLAS sobre una línea que ATLAS colocó
+   * solo. La línea vuelve a «te necesitan». No borra ni oculta nada.
+   */
+  onNoEsEsto: (movementId: number) => void;
 }
 
 /** Cuántas filas se enseñan antes del «ver las N» · lo que cabe sin scroll. */
 const FILAS_VISIBLES = 5;
+
+interface MontonProps {
+  titulo: string;
+  icono: React.ReactNode;
+  iconoFila: React.ReactNode;
+  claseIcono?: string;
+  claseTitulo?: string;
+  lineas: LineaExtracto[];
+  vacio: string;
+  conDetalle?: boolean;
+  onNoEsEsto: (movementId: number) => void;
+}
+
+/**
+ * Un montón · la fila resumen y, al abrirla, las líneas que hay debajo.
+ *
+ * Los dos montones que ATLAS llena solo (resueltas y personal) son el mismo
+ * componente porque tienen el mismo problema y merecen la misma salida. Lo
+ * único que cambia entre ellos es el icono y si el renglón pequeño aporta algo.
+ */
+const Monton: React.FC<MontonProps> = ({
+  titulo,
+  icono,
+  iconoFila,
+  claseIcono,
+  claseTitulo,
+  lineas,
+  vacio,
+  conDetalle,
+  onNoEsEsto,
+}) => {
+  const [verTodos, setVerTodos] = React.useState(false);
+  const [abiertos, setAbiertos] = React.useState<ReadonlySet<string>>(new Set());
+
+  const grupos = React.useMemo(() => agruparResueltas(lineas), [lineas]);
+  const visibles = verTodos ? grupos : grupos.slice(0, FILAS_VISIBLES);
+
+  const alternar = (clave: string) =>
+    setAbiertos((previos) => {
+      const siguiente = new Set(previos);
+      if (siguiente.has(clave)) siguiente.delete(clave);
+      else siguiente.add(clave);
+      return siguiente;
+    });
+
+  return (
+    <div className={styles.bloque}>
+      <div className={styles.bloqueCab}>
+        <div className={`${styles.bloqueT} ${claseTitulo ?? ''}`}>
+          {icono}
+          {titulo} · {lineas.length}
+        </div>
+      </div>
+      {grupos.length === 0 ? (
+        <div className={styles.vacioBloque}>{vacio}</div>
+      ) : (
+        <>
+          {visibles.map((g) => {
+            const abierto = abiertos.has(g.clave);
+            return (
+              <div key={g.clave} className={styles.grupo}>
+                <button
+                  type="button"
+                  className={`${styles.fila} ${styles.filaAbrible}`}
+                  onClick={() => alternar(g.clave)}
+                  aria-expanded={abierto}
+                >
+                  <span className={`${styles.filaIco} ${claseIcono ?? ''}`} aria-hidden="true">
+                    {iconoFila}
+                  </span>
+                  <span className={styles.filaTxt}>
+                    <span className={styles.filaA}>
+                      {g.cuantas > 1 ? `${g.cuantas} · ${g.titulo}` : g.titulo}
+                    </span>
+                    {conDetalle && g.detalle && <span className={styles.filaB}>{g.detalle}</span>}
+                  </span>
+                  <span className={styles.filaN}>{importeConSigno(g.total)}</span>
+                  <span className={styles.filaChevron} aria-hidden="true">
+                    <Icons.ChevronDown size={13} />
+                  </span>
+                </button>
+                {abierto && (
+                  <div className={styles.dentro}>
+                    {g.lineas.map((l) => (
+                      <div key={l.movementId} className={styles.dentroFila}>
+                        <span className={styles.dentroTxt}>
+                          {/* El texto LITERAL del banco · es lo que el usuario
+                              puede reconocer en su cuenta para decidir. */}
+                          <span className={styles.dentroA}>{l.textoBanco}</span>
+                          <span className={styles.dentroB}>{l.fecha}</span>
+                        </span>
+                        <span className={styles.dentroN}>{importeConSigno(l.importe)}</span>
+                        <button
+                          type="button"
+                          className={styles.noEsEsto}
+                          onClick={() => onNoEsEsto(l.movementId)}
+                        >
+                          <Icons.Refresh size={12} />
+                          No es esto
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {grupos.length > FILAS_VISIBLES && (
+            <button type="button" className={styles.enlace} onClick={() => setVerTodos((v) => !v)}>
+              <Icons.ChevronDown size={13} />
+              {verTodos ? 'ver menos' : `ver las ${grupos.length}`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 const ColumnaResto: React.FC<ColumnaRestoProps> = ({
   resueltas,
@@ -34,107 +166,35 @@ const ColumnaResto: React.FC<ColumnaRestoProps> = ({
   ignoradas,
   aprendido,
   onRecuperar,
+  onNoEsEsto,
 }) => {
-  const [verTodasResueltas, setVerTodasResueltas] = React.useState(false);
-  const [verTodasPersonales, setVerTodasPersonales] = React.useState(false);
-
-  const gruposResueltas = React.useMemo(() => agruparResueltas(resueltas), [resueltas]);
-  const gruposPersonales = React.useMemo(() => agruparResueltas(personales), [personales]);
-
-  const visiblesResueltas = verTodasResueltas
-    ? gruposResueltas
-    : gruposResueltas.slice(0, FILAS_VISIBLES);
-  const visiblesPersonales = verTodasPersonales
-    ? gruposPersonales
-    : gruposPersonales.slice(0, FILAS_VISIBLES);
-
   return (
     <>
       {/* ── Resueltas solas ─────────────────────────────────────────────── */}
-      <div className={styles.bloque}>
-        <div className={styles.bloqueCab}>
-          <div className={`${styles.bloqueT} ${styles.bloqueTOk}`}>
-            <Icons.Success size={15} />
-            Resueltas solas · {resueltas.length}
-          </div>
-        </div>
-        {gruposResueltas.length === 0 ? (
-          <div className={styles.vacioBloque}>
-            Todavía ninguna. A medida que le digas qué es cada cosa, esta lista crece sola.
-          </div>
-        ) : (
-          <>
-            {visiblesResueltas.map((g) => (
-              <div key={g.clave} className={styles.fila}>
-                <span className={styles.filaIco} aria-hidden="true">
-                  <Icons.Check size={13} />
-                </span>
-                <span className={styles.filaTxt}>
-                  <span className={styles.filaA}>
-                    {g.cuantas > 1 ? `${g.cuantas} · ${g.titulo}` : g.titulo}
-                  </span>
-                  <span className={styles.filaB}>{g.detalle}</span>
-                </span>
-                <span className={styles.filaN}>{importeConSigno(g.total)}</span>
-              </div>
-            ))}
-            {gruposResueltas.length > FILAS_VISIBLES && (
-              <button
-                type="button"
-                className={styles.enlace}
-                onClick={() => setVerTodasResueltas((v) => !v)}
-              >
-                <Icons.ChevronDown size={13} />
-                {verTodasResueltas ? 'ver menos' : `ver las ${gruposResueltas.length}`}
-              </button>
-            )}
-          </>
-        )}
-      </div>
+      <Monton
+        titulo="Resueltas solas"
+        icono={<Icons.Success size={15} />}
+        iconoFila={<Icons.Check size={13} />}
+        claseTitulo={styles.bloqueTOk}
+        lineas={resueltas}
+        conDetalle
+        vacio="Todavía ninguna. A medida que le digas qué es cada cosa, esta lista crece sola."
+        onNoEsEsto={onNoEsEsto}
+      />
 
       {/* ── Personal ────────────────────────────────────────────────────── */}
-      <div className={styles.bloque}>
-        <div className={styles.bloqueCab}>
-          <div className={styles.bloqueT}>
-            <Icons.Personal size={15} />
-            Personal · {personales.length}
-          </div>
-        </div>
-        {gruposPersonales.length === 0 ? (
-          // Que esto salga vacío hoy NO es un fallo de la pantalla: una línea
-          // solo cae aquí cuando el usuario ya enseñó que es suya. En una cuenta
-          // recién importada nadie ha enseñado nada todavía.
-          <div className={styles.vacioBloque}>
-            Nada por ahora. Aquí caerá lo que ya me hayas dicho que es tuyo y no de un piso.
-          </div>
-        ) : (
-          <>
-            {visiblesPersonales.map((g) => (
-              <div key={g.clave} className={styles.fila}>
-                <span className={`${styles.filaIco} ${styles.filaIcoBrand}`} aria-hidden="true">
-                  <Icons.CreditCard size={13} />
-                </span>
-                <span className={styles.filaTxt}>
-                  <span className={styles.filaA}>
-                    {g.cuantas > 1 ? `${g.cuantas} · ${g.titulo}` : g.titulo}
-                  </span>
-                </span>
-                <span className={styles.filaN}>{importeConSigno(g.total)}</span>
-              </div>
-            ))}
-            {gruposPersonales.length > FILAS_VISIBLES && (
-              <button
-                type="button"
-                className={styles.enlace}
-                onClick={() => setVerTodasPersonales((v) => !v)}
-              >
-                <Icons.ChevronDown size={13} />
-                {verTodasPersonales ? 'ver menos' : `ver las ${gruposPersonales.length}`}
-              </button>
-            )}
-          </>
-        )}
-      </div>
+      {/* Que esto salga vacío hoy NO es un fallo de la pantalla: una línea solo
+          cae aquí cuando el usuario ya enseñó que es suya. En una cuenta recién
+          importada nadie ha enseñado nada todavía. */}
+      <Monton
+        titulo="Personal"
+        icono={<Icons.Personal size={15} />}
+        iconoFila={<Icons.CreditCard size={13} />}
+        claseIcono={styles.filaIcoBrand}
+        lineas={personales}
+        vacio="Nada por ahora. Aquí caerá lo que ya me hayas dicho que es tuyo y no de un piso."
+        onNoEsEsto={onNoEsEsto}
+      />
 
       {/* ── Ignorados · con la puerta de vuelta ─────────────────────────── */}
       <div className={styles.bloque}>
