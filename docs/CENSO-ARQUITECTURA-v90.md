@@ -31,6 +31,7 @@ los tres está bajo control.
 | `viviendaHabitual` · entidad retirada, lectores de compat | 🟢 legacy consciente | §4.4 |
 | `deudasFiscales` · se lee en Fiscal, **`crearDeuda` no lo llama nadie en producción** | 🟡 medio construido | §4.5 |
 | Un gasto de inmueble vive **a la vez** en `treasuryEvents` y `gastosInmueble` | 🟠 duplicación reconocida | §4.6 |
+| El punteo manual **no usa** el módulo de cierre: busca la línea solo por `treasuryEventId` y puede duplicarla | 🔴 mitigación incompleta | §4.6 |
 | Al conciliar, la clasificación del evento **se copia** al movimiento | 🟠 denormalización | §4.6 |
 | `inmuebleId` es `number` en unos stores y `string` en otros | 🔴 aristas frágiles | §3.3 |
 | El prefetch de `/personal` y `/mi-plan` pide 4 stores **que ya no existen** | 🟡 config muerta | §3.4 |
@@ -547,19 +548,62 @@ documenta el fallo exacto que produjo: puntear a mano cerraba la línea, subir e
 extracto **no**, y el gasto se quedaba en `previsto` y **fuera de las casillas de la
 declaración**. Tesorería se veía bien; la declaración salía mal.
 
-La mitigación es correcta y merece señalarse: el cierre se extrajo a un **módulo
-hoja único** que ambos caminos invocan, con el razonamiento explícito
-(`cierreLineaInmueble.ts:19-21`): *«El cierre vive aquí … para que los dos caminos
-escriban lo MISMO. Escrito dos veces volvería a divergir, que es exactamente cómo
-nació esto.»* Y fija jerarquía de verdad: **conciliado (banco) > confirmado
-(punteo) > previsto (estimación)**.
+**La mitigación es PARCIAL · lo compartido son los campos, no el cierre.** El
+comentario del fichero dice *«para que los dos caminos escriban lo MISMO»*, pero el
+código no hace eso: los caminos comparten la **pieza pura que calcula los campos**
+(`camposDeCierre`), no la orquestación de buscar-y-escribir. Verificado importador
+a importador:
 
-⚠️ **El riesgo no está eliminado, está contenido.** Sigue habiendo dos filas para un
-hecho, unidas por `gastosInmueble.treasuryEventId` (`types-inmuebles.ts:517`) y
-`.movimientoId` (`:512` — **`string`**, mientras `movements.id` es `number`: la
-misma fractura de tipo de §3.3). El invariante lo sostiene la disciplina de llamar
-al módulo de cierre, no el modelo de datos. Cualquier tercer camino que cierre un
-pago sin pasar por ahí reabre exactamente el mismo agujero. **Es el punto a vigilar.**
+| Camino | Qué importa de `cierreLineaInmueble` | Busca la línea por |
+|---|---|---|
+| Subir extracto · `bankStatementOrchestrator.ts:22,418` | `cerrarLineaDeGastoDelEvento` — la función completa | `treasuryEventId` **y** `origen`+`origenId` (`cierreLineaInmueble.ts:184,~210`) |
+| Anotar a mano · `altaMovimientoService.ts:34,497` | solo `aceptaCierre` + `camposDeCierre` | índice `origen-origenId` (propio) |
+| **Puntear una previsión · `treasuryConfirmationService.ts:35,423`** | **solo `camposDeCierre`** | **`findLineByTreasuryEventId` (`:216`) · SOLO por `treasuryEventId`** |
+
+Historia real del módulo — `git log` da **2 commits**, ambos del lado del extracto:
+`7eaf6e5` *«fix(fiscal): la importación de extracto cierra la línea de gasto
+(#1810)»* (lo crea) y `94d184d` *«fix(fiscal): conciliar escribe el dato del banco,
+no la estimación (#1812)»*. Es decir: el módulo nació para arreglar el camino del
+extracto, y el punteo manual **no se migró a él** — conserva su propio buscar y su
+propio escribir (`treasuryConfirmationService.ts:396` y `:439-447`).
+
+⚠️ **Asimetría con consecuencia, no cosmética.** Una línea nacida de un compromiso
+recurrente se escribe *«`origen:'recurrente'`, sin `treasuryEventId`»*
+(`altaMovimientoService.ts:425`, la crea `operacionFiscalService.ts:344`). Sobre
+ese estado:
+
+- el extracto la encuentra por `origen`+`origenId` y **la cierra**;
+- el punteo manual busca solo por `treasuryEventId`, **no la encuentra**, y cae a
+  la rama `else` que hace `add` (`treasuryConfirmationService.ts:445-446`) →
+  **segunda fila para el mismo gasto**.
+
+Es exactamente el daño que `altaMovimientoService.ts:423-428` describe y evita en
+*su* camino: *«su gasto ya tiene fila del mes … Crear otra lo contaría dos veces en
+la declaración.»* Dos de los tres caminos se defienden de esto; el punteo manual no.
+
+**Alcance de esta afirmación:** la asimetría de búsqueda está verificada en código
+(líneas arriba) y el doble conteo es su consecuencia directa, pero **no se ha
+ejecutado** el escenario ni existe test que lo cubra (ver abajo). Antes de tratarlo
+como bug confirmado, lo barato es escribirlo como test: puntear a mano un evento de
+recurrente cuya línea ya existe sin `treasuryEventId`, y contar filas.
+
+**Cobertura de test · asimétrica igual que el código.** El camino del extracto está
+bien probado: `__tests__/importacionCierraLinea.test.ts` ejercita
+`cerrarLineaDeGastoDelEvento` contra una base falsa con **11 casos**, incluida la vía
+`origenId` que era el fallo original, la idempotencia y el no-tocar-lo-ajeno; más
+`conciliacionDatosReales.test.ts` (importe y fecha reales) y
+`cierreLineaInmueble.test.ts` (piezas puras). Del punteo manual **no hay test de
+cierre**: `treasuryConfirmationService.test.ts:231` comprueba que *crea* la línea al
+confirmar, no que *cierre una preexistente*; y `cierreLineaInmueble.test.ts:78`
+—`describe('camposDeCierre · lo mismo que escribe el punteo manual')`— es un unit
+test del helper aislado, que no prueba nada sobre lo que `treasuryConfirmationService`
+hace con él. **El nombre del describe afirma una equivalencia que el test no
+comprueba.**
+
+Y sigue habiendo dos filas para un hecho, unidas por
+`gastosInmueble.treasuryEventId` (`types-inmuebles.ts:517`) y `.movimientoId`
+(`:512` — **`string`**, mientras `movements.id` es `number`: la misma fractura de
+§3.3).
 
 La segunda es la **herencia de clasificación** al conciliar
 (`bankStatementOrchestrator.ts:391-400`): `categoryKey`, `subtypeKey`, `conceptoId`,
