@@ -547,15 +547,37 @@ function filterByPeriod(
   });
 }
 
-function isoDate(value: Date | string | undefined): string | null {
+/**
+ * El DÍA de calendario, no el instante.
+ *
+ * Antes hacía `.toISOString()`, que pasa a UTC. Como `parseSpanishDate`
+ * construye `new Date(año, mes-1, día)` —medianoche LOCAL—, en España (UTC+1/+2)
+ * esa conversión devolvía siempre el día anterior: el 2 de febrero a las 00:00
+ * de Madrid es el 1 de febrero a las 23:00 en UTC. Toda fecha de cargo del
+ * extracto entraba en la base corrida un día.
+ *
+ * Se lee con los mismos componentes con los que se escribió.
+ */
+export function isoDate(value: Date | string | undefined): string | null {
   if (!value) return null;
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) return null;
-    return value.toISOString().slice(0, 10);
+    return diaLocal(value);
   }
+  // Una cadena que YA es un día ISO se respeta tal cual: reparsearla la haría
+  // pasar por UTC y volvería a correrla.
+  const yaEsDia = /^\d{4}-\d{2}-\d{2}/.exec(value);
+  if (yaEsDia) return yaEsDia[0];
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString().slice(0, 10);
+  return diaLocal(parsed);
+}
+
+/** El día que marca el reloj de quien mira · sin pasar por UTC. */
+function diaLocal(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
 async function persistImportBatch(
