@@ -25,6 +25,15 @@
 // cuota préstamo, IBI/tasas, comunidad, BIZUM/transferencias, AMAZON purchases.
 // Falls back to `ignore` at confidence 30 if nothing matches.
 //
+// EL SIGNO MANDA PRIMERO · por encima de las tres vías. Antes de que ninguna
+// palabra del texto del banco cuente, el importe ya ha dicho si el dinero entró
+// o salió, y eso no admite interpretación: un negativo no puede ser el cobro de
+// una renta y un positivo no puede ser un gasto. Cada regla mira su signo —así
+// el motivo que se le enseña al usuario es el bueno— y además todo lo que sale
+// de aquí pasa por `contradiceElSigno`, que es lo que impide que la regla que
+// alguien escriba dentro de un año se olvide de mirarlo. Ver
+// `sugerencias/signoDelMovimiento.ts`.
+//
 // Pure analysis: never mutates DB. The orchestrator (sub-task 17.5) applies
 // approved suggestions and is the only writer.
 import {
@@ -35,6 +44,7 @@ import {
   TreasuryEvent,
 } from './db';
 import { buildLearnKey, nombreDeContraparte } from './movementLearningService';
+import { contradiceElSigno } from './sugerencias/signoDelMovimiento';
 import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 
@@ -88,14 +98,17 @@ export async function suggestForUnmatched(
   for (const movement of movements) {
     const suggestions: MovementSuggestion[] = [];
 
-    const viaA = suggestFromCompromiso(movement, compromisos);
+    const viaA = respetandoElSigno(suggestFromCompromiso(movement, compromisos), movement.amount);
     if (viaA) suggestions.push(viaA);
     if (viaA && viaA.confidence >= SHORT_CIRCUIT_CONFIDENCE) {
       result.set(movement.id!, suggestions);
       continue;
     }
 
-    const viaB = suggestFromLearningRule(movement, learningRulesByKey);
+    const viaB = respetandoElSigno(
+      suggestFromLearningRule(movement, learningRulesByKey),
+      movement.amount,
+    );
     if (viaB) suggestions.push(viaB);
     if (viaB && viaB.confidence >= SHORT_CIRCUIT_CONFIDENCE) {
       result.set(movement.id!, suggestions);
@@ -109,6 +122,24 @@ export async function suggestForUnmatched(
   }
 
   return result;
+}
+
+/**
+ * El guardián · deja pasar la sugerencia sólo si no contradice el importe.
+ *
+ * Se descarta entera en vez de "corregirla" (darle la vuelta al `type`, por
+ * ejemplo) porque una propuesta que sale al revés del signo no es una propuesta
+ * buena mal etiquetada: es que la vía se equivocó de línea. Una regla aprendida
+ * que dice "gasto personal" sobre un abono de nómina no acierta cambiándole el
+ * tipo, acierta callándose y dejando que decida la vía siguiente — y si ninguna
+ * sabe, que lo diga el usuario.
+ */
+function respetandoElSigno(
+  sugerencia: MovementSuggestion | null,
+  amount: number,
+): MovementSuggestion | null {
+  if (!sugerencia) return null;
+  return contradiceElSigno(sugerencia.action, amount) ? null : sugerencia;
 }
 
 // ─── Vía A · compromisos recurrentes ─────────────────────────────────────────
@@ -335,8 +366,13 @@ function contratoDeLaContraparte(
 const HEURISTIC_RULES: HeuristicRule[] = [
   // Suministros (always evaluated before generic prestamo / bizum so
   // "RECIBO IBERDROLA CLIENTES SAU" doesn't fall into the BIZUM bucket).
+  //
+  // El `amount < 0` de ésta y de las tres siguientes no es defensivo: una línea
+  // de IBERDROLA en positivo es una devolución, y proponerla como gasto la
+  // sumaría al gasto del piso cuando lo que hace es restarlo.
   {
-    match: d =>
+    match: (d, amount) =>
+      amount < 0 &&
       /(IBERDROLA|ENDESA|NATURGY|REPSOL|CEPSA|TOTAL\s+ENERGIES|VODAFONE|MOVISTAR|ORANGE|YOIGO|MASMOVIL|JAZZTEL)/i.test(
         d
       ),
@@ -354,7 +390,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
   // Hipoteca / préstamo
   {
-    match: d => /(CUOTA\s+PRESTAMO|HIPOTECA|RECIBO\s+BANCO)/i.test(d),
+    match: (d, amount) => amount < 0 && /(CUOTA\s+PRESTAMO|HIPOTECA|RECIBO\s+BANCO)/i.test(d),
     build: () => ({
       confidence: 65,
       description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta',
@@ -369,7 +405,8 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
   // IBI / tasas / impuestos inmueble
   {
-    match: d => /(\bIBI\b|TASA\s+BASURA|AYUNTAMIENTO|CONTRIBUCION\s+URBANA)/i.test(d),
+    match: (d, amount) =>
+      amount < 0 && /(\bIBI\b|TASA\s+BASURA|AYUNTAMIENTO|CONTRIBUCION\s+URBANA)/i.test(d),
     build: () => ({
       confidence: 60,
       description: 'Posible impuesto del inmueble (IBI, tasa de basura, etc.)',
@@ -384,7 +421,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
   // Comunidad
   {
-    match: d => /(COMUNIDAD|ADMIN\s+FINCAS|FINCAS)/i.test(d),
+    match: (d, amount) => amount < 0 && /(COMUNIDAD|ADMIN\s+FINCAS|FINCAS)/i.test(d),
     build: () => ({
       confidence: 60,
       description: 'Posible cuota de comunidad de propietarios',
@@ -397,9 +434,16 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       },
     }),
   },
-  // BIZUM / transferencia recibida con NIF
+  // BIZUM / transferencia RECIBIDA · sólo cuando el dinero entra.
+  //
+  // Aquí estaba el bug de la captura: el `match` recibía el importe y no lo
+  // miraba, así que "Compra Bizum Iryo −70,48 €" salía como "Parece la renta de
+  // un inquilino". Peor todavía con "Bizum A Favor De Aroa Gómez −80 €": el
+  // texto del banco trae el nombre de una inquilina viva y el buscador de
+  // contraparte lo casaba con su contrato, subiendo la confianza a 60. El nombre
+  // coincidía porque Aroa es quien COBRA los 80 €.
   {
-    match: (d, _amount) => /(BIZUM|TRANSFERENCIA\s+RECIBIDA)/i.test(d),
+    match: (d, amount) => amount > 0 && /(BIZUM|TRANSFERENCIA\s+RECIBIDA)/i.test(d),
     build: (movement, contratos) => {
       // A qué contrato · sin esto el evento nacía sin `sourceId` ni
       // `contratoId`, huérfano: ni contaba para el estado de cobro del
@@ -417,6 +461,18 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       };
     },
   },
+  // BIZUM que SALE · el gemelo de la regla de arriba, para no dejar la línea con
+  // la frase genérica de "sin patrón reconocible". Sabemos algo de ella: sabemos
+  // que NO es un cobro. Decírselo al usuario le ahorra preguntarse por qué ATLAS
+  // no ha reconocido un Bizum que ve clarísimo.
+  {
+    match: (d, amount) => amount < 0 && /BIZUM/i.test(d),
+    build: () => ({
+      confidence: 30,
+      description: 'Bizum que sale de tu cuenta · lo pagas tú, así que no es el cobro de ninguna renta',
+      action: { kind: 'ignore' },
+    }),
+  },
   // Compras Amazon / AliExpress (only when amount is negative ⇒ gasto personal)
   {
     match: (d, amount) =>
@@ -432,21 +488,14 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
 ];
 
-function suggestFromHeuristics(movement: Movement, contratos: Contract[]): MovementSuggestion {
-  const description = (movement.description ?? '').trim();
-
-  for (const rule of HEURISTIC_RULES) {
-    if (rule.match(description, movement.amount)) {
-      const partial = rule.build(movement, contratos);
-      return {
-        movementId: movement.id!,
-        via: 'heuristica',
-        ...partial,
-      };
-    }
-  }
-
-  // Fallback: nothing matched, suggest ignoring.
+/**
+ * Lo que se dice cuando no se sabe · la tarjeta existe igual.
+ *
+ * Que ninguna vía tenga nada que proponer no puede dejar la línea sin sugerencia:
+ * la pantalla enseñaría el churro del banco pelado y sin salida, que es
+ * exactamente el bug que la pantalla de conciliar vino a matar.
+ */
+function noSeQueEs(movement: Movement): MovementSuggestion {
   return {
     movementId: movement.id!,
     via: 'heuristica',
@@ -454,4 +503,25 @@ function suggestFromHeuristics(movement: Movement, contratos: Contract[]): Movem
     description: 'Sin patrón reconocible · puedes ignorarlo o clasificarlo manualmente',
     action: { kind: 'ignore' },
   };
+}
+
+function suggestFromHeuristics(movement: Movement, contratos: Contract[]): MovementSuggestion {
+  const description = (movement.description ?? '').trim();
+
+  for (const rule of HEURISTIC_RULES) {
+    if (rule.match(description, movement.amount)) {
+      const partial = rule.build(movement, contratos);
+      const sugerencia: MovementSuggestion = {
+        movementId: movement.id!,
+        via: 'heuristica',
+        ...partial,
+      };
+      // El guardián · una heurística que contradiga el signo no se emite ni
+      // corregida ni a media confianza: se cae y la línea vuelve al "no sé qué
+      // es", que es la verdad.
+      return respetandoElSigno(sugerencia, movement.amount) ?? noSeQueEs(movement);
+    }
+  }
+
+  return noSeQueEs(movement);
 }
