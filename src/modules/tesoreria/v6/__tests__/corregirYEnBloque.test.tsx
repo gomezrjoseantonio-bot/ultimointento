@@ -140,6 +140,7 @@ function pintarPanel(over: Partial<React.ComponentProps<typeof PanelConciliar>> 
       onIgnorarVarias={() => undefined}
       cuentasTraspaso={[{ id: 7, nombre: 'Revolut' }, { id: 8, nombre: 'Efectivo' }]}
       onTraspasarVarias={() => undefined}
+      onClasificarVarias={() => undefined}
       onGuardar={() => undefined}
       onOtroFichero={() => undefined}
       {...over}
@@ -237,6 +238,26 @@ describe('actuar sobre varias a la vez', () => {
 });
 
 describe('clasificar varias de una vez · no sólo ignorarlas', () => {
+  it('cinco recibos del agua se clasifican de un gesto', () => {
+    // «quiero clasificarlo como gasto personal agua y solo me deja ignorar».
+    // Ignorar y traspasar es justo lo que NO se hace con cinco recibos del agua.
+    const clasificarVarias = jest.fn();
+    pintarPanel({ onClasificarVarias: clasificarVarias });
+
+    fireEvent.change(buscador(), { target: { value: 'bizum' } });
+    fireEvent.click(screen.getByRole('button', { name: /elegir las 3/i }));
+    fireEvent.click(screen.getByRole('button', { name: /clasificar las 3 como/i }));
+
+    expect(clasificarVarias).toHaveBeenCalledWith([1, 2, 3]);
+  });
+
+  it('con una sola elegida el botón habla en singular', () => {
+    pintarPanel();
+    fireEvent.click(screen.getAllByRole('checkbox', { name: /elegir/i })[0]);
+
+    expect(screen.getByRole('button', { name: /clasificar la 1 como/i })).toBeInTheDocument();
+  });
+
   it('elegir tres cargos y decir «son traspaso a Revolut» los manda juntos', () => {
     // La otra mitad de lo que pidió Jose: «marcarlos e ignorarlos O
     // CLASIFICARLOS todos a la vez». Con 28 cargos de Revolut, elegir la cuenta

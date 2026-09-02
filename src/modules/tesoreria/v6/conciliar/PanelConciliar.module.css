@@ -621,6 +621,15 @@
   color: var(--atlas-v5-ink);
 }
 .campoInput::placeholder { color: var(--atlas-v5-ink-5); }
+/* Las DOS cruces · `type="search"` trae la suya propia y quedaba pegada a la
+   nuestra. Se quita la del navegador y se deja la de ATLAS, que es la que está
+   etiquetada para lectores de pantalla. El `type` se mantiene porque es lo que
+   da el rol `searchbox`. */
+.campoInput::-webkit-search-cancel-button,
+.campoInput::-webkit-search-decoration {
+  appearance: none;
+  -webkit-appearance: none;
+}
 .campoX {
   border: none;
   background: none;
@@ -686,6 +695,13 @@
   gap: 5px;
 }
 .btnBloque:hover { border-color: var(--atlas-v5-ink-4); }
+/* La acción que de verdad resuelve la línea · destacada sobre las otras dos. */
+.btnBloqueFuerte {
+  background: var(--atlas-v5-brand);
+  border-color: var(--atlas-v5-brand);
+  color: var(--atlas-v5-on-brand);
+}
+.btnBloqueFuerte:hover { border-color: var(--atlas-v5-brand); }
 
 /* La casilla de elegir, dentro de la banda de propuesta. */
 .casilla {

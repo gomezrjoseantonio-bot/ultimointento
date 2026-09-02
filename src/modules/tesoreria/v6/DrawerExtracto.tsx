@@ -41,6 +41,7 @@ import {
   type LineaExtracto,
 } from './extractoSesion';
 import { useDecisionesDeSesion } from './decisionesDeSesion';
+import { valoresPorLinea } from './clasificarEnBloque';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
@@ -128,6 +129,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     marcarTraspasoLote,
     marcarCreado,
   } = useDecisionesDeSesion(lineas);
+  // Las elegidas que se van a clasificar de un gesto · la ficha se abre UNA vez
+  // y su concepto se aplica a todas, con el importe y la fecha de cada una.
+  const [clasificandoVarias, setClasificandoVarias] = useState<LineaExtracto[] | null>(null);
   const [asignando, setAsignando] = useState<number | null>(null);
   const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
@@ -244,6 +248,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setTarjetaDestino(null);
     setAsignando(null);
     setTraspasando(null);
+    setClasificandoVarias(null);
     setCreando(null);
     ficheroRef.current = null;
     pendienteRef.current = null;
@@ -550,11 +555,37 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     />
   );
 
+  /**
+   * «Clasificar las N como…» · la misma ficha, aplicada a todas.
+   *
+   * Reutiliza `crearDesdeFicha` línea a línea en vez de escribir un camino
+   * nuevo: ese es el único sitio que además de guardar el `Movement` crea la
+   * fila fiscal del gasto (`gastoDesdeMovimiento`) y da de alta las mejoras.
+   * Un atajo que se saltara eso dejaría cinco gastos impecables en Tesorería y
+   * ninguno en la declaración, que es el bug que arregló la #1825.
+   *
+   * En serie y no en paralelo a propósito: `origenIdRecurrenteDelGasto` lee y
+   * escribe el mismo origen recurrente para las cinco, y lanzarlas a la vez
+   * crearía cinco orígenes distintos para el mismo recibo del agua.
+   */
+  // Sin `useCallback` a propósito · esto vive después del `return null` de
+  // "drawer cerrado", así que un hook aquí se llamaría en unos renders y en
+  // otros no. Es un cierre que se usa en un solo sitio; memorizarlo no ahorra
+  // nada y romper el orden de los hooks lo rompe todo.
+  const clasificarVarias = async (v: GuardadoFicha) => {
+    const lineasAClasificar = clasificandoVarias ?? [];
+    const valores = valoresPorLinea(v, lineasAClasificar);
+    for (let i = 0; i < lineasAClasificar.length; i++) {
+      await crearDesdeFicha(lineasAClasificar[i], valores[i]);
+    }
+    setClasificandoVarias(null);
+  };
+
   // §4.5 prerrellenada · "Crear movimiento" desde una línea sin cuadre. Se monta
   // en las dos ramas del render (pantalla y dropzone), así que vive fuera.
   const fichaDeCreacion = (
     <FichaMovimiento
-      abierta={creando != null}
+      abierta={creando != null || clasificandoVarias != null}
       esEdicion={false}
       inicial={
         creando
@@ -565,13 +596,29 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
               fecha: creando.fecha,
               cuentaId: cuentaActiva?.id ?? null,
             }
-          : undefined
+          : clasificandoVarias?.length
+            ? {
+                // Se prellena con la primera para que el formulario no salga en
+                // blanco; el importe y la fecha de cada una los pone
+                // `valoresPorLinea` al guardar, no éstos.
+                tipo: clasificandoVarias[0].importe >= 0 ? 'ingreso' : 'gasto',
+                concepto: clasificandoVarias[0].textoBanco,
+                importe: clasificandoVarias[0].importe,
+                fecha: clasificandoVarias[0].fecha,
+                cuentaId: cuentaActiva?.id ?? null,
+              }
+            : undefined
       }
       cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
       inmuebles={inmuebles}
       tarjetas={tarjetas}
-      onCerrar={() => setCreando(null)}
-      onGuardar={(v) => (creando ? crearDesdeFicha(creando, v) : undefined)}
+      onCerrar={() => {
+        setCreando(null);
+        setClasificandoVarias(null);
+      }}
+      onGuardar={(v) =>
+        creando ? crearDesdeFicha(creando, v) : clasificandoVarias ? clasificarVarias(v) : undefined
+      }
     />
   );
 
@@ -602,6 +649,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           onIgnorarVarias={ignorarVarias}
           cuentasTraspaso={cuentasDestino}
           onTraspasarVarias={traspasarVarias}
+          onClasificarVarias={(ids) =>
+            setClasificandoVarias(lineas.filter((l) => ids.includes(l.movementId)))
+          }
           onGuardar={guardar}
           onOtroFichero={salirSinGuardar}
         />

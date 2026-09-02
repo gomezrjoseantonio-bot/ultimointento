@@ -173,7 +173,11 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     }
   });
 
-  it('4. "BIZUM A FUENTES" sin contratos ⇒ vía C assign_to_contract confidence 50', async () => {
+  // INVERTIDO · antes exigía `assign_to_contract` con 50 de confianza SIN
+  // contrato ninguno. Eso es lo que ponía «Parece la renta de un inquilino»
+  // sobre tres «Transferencia recibida» seguidas de +200, +83,37 y +200 €, sin
+  // un solo dato que dijera renta y con un botón que no lleva a ninguna parte.
+  it('4. "BIZUM A FUENTES" sin contratos ⇒ pregunta abierta, no una renta inventada', async () => {
     (buildLearnKey as jest.Mock).mockReturnValue('hash:no-rule');
     const stores: FakeStores = {
       movements: [
@@ -194,8 +198,9 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
 
     const heuristic = suggestions.find(s => s.via === 'heuristica');
     expect(heuristic).toBeDefined();
-    expect(heuristic!.confidence).toBe(50);
-    expect(heuristic!.action.kind).toBe('assign_to_contract');
+    expect(heuristic!.action.kind).not.toBe('assign_to_contract');
+    // Y dice qué lo resolvería, que es más útil que una afirmación falsa.
+    expect(heuristic!.description).toMatch(/de quién es/i);
   });
 
   it('Regression (Copilot review #1158): vía A skips positive movements — compromisos modelan gasto, no ingreso', async () => {

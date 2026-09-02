@@ -449,15 +449,33 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       // `contratoId`, huérfano: ni contaba para el estado de cobro del
       // inquilino ni lo veía el dedupe de previsiones.
       const contrato = contratoDeLaContraparte(movement, contratos);
-      const inquilino = contrato
-        ? `${contrato.inquilino?.nombre ?? ''} ${contrato.inquilino?.apellidos ?? ''}`.trim()
-        : '';
+      if (!contrato) {
+        // SIN INQUILINO NO HAY RENTA QUE PROPONER.
+        //
+        // Antes esto salía igual: `assign_to_contract` con `contractId`
+        // undefined y la frase «Parece la renta de un inquilino» encima. Dos
+        // cosas mal a la vez. Una, afirma lo que no sabe — sobre «Transferencia
+        // recibida · +200 €» no hay absolutamente nada que diga renta, y la
+        // misma frase salía sobre un ingreso de 83,37 €. Y dos, es una acción
+        // IMPOSIBLE de ejecutar: el evento nacería sin `sourceId` ni
+        // `contratoId`, huérfano, sin contar para el estado de cobro del
+        // inquilino ni para el dedupe de previsiones. Es exactamente el bug que
+        // arregló `asignarCobroAContrato`, servido desde la pantalla con una
+        // frase bonita delante.
+        //
+        // La pregunta abierta es la verdad, y además dice qué la resolvería.
+        return {
+          confidence: 30,
+          description:
+            'Un ingreso que no reconozco · si me dices de quién es una vez, el resto de sus cobros los coloco solos',
+          action: { kind: 'ignore' },
+        };
+      }
+      const inquilino = `${contrato.inquilino?.nombre ?? ''} ${contrato.inquilino?.apellidos ?? ''}`.trim();
       return {
-        confidence: contrato ? 60 : 50,
-        description: contrato
-          ? `Bizum o transferencia recibida · proponer asignarlo a la renta de ${inquilino}`
-          : 'Bizum o transferencia recibida · proponer asignar a un contrato de alquiler activo',
-        action: { kind: 'assign_to_contract', contractId: contrato?.id },
+        confidence: 60,
+        description: `Bizum o transferencia recibida · proponer asignarlo a la renta de ${inquilino}`,
+        action: { kind: 'assign_to_contract', contractId: contrato.id },
       };
     },
   },
