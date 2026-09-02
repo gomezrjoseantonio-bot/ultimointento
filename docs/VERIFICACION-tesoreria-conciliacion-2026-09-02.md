@@ -20,6 +20,8 @@ Todos los `fichero:línea` son sobre `9ef1381`. Un comentario del código nunca 
 | 4 | 2.1 · cascada de identificación de cuota | **NO EXISTE** · ni código ni commit | — |
 | 5 | #1834 · doble conteo de gasto | **MERGEADO** · test de regresión presente y **verde** | `28c1d98` (#1834) |
 
+Además de las cinco del encargo, después de #1830 entraron **#1833, #1835 y #1836**, que no eran fases numeradas y sí cambian el comportamiento de conciliar. Van en la **Parte A bis**.
+
 Las diez PRs #1827–#1836 están en `main` y ninguna ha sido revertida **[V]** (`git log --oneline origin/main`, los diez asuntos aparecen con su número).
 
 ### A.1 · FASE 1 · sigue viva
@@ -97,6 +99,85 @@ PASS src/services/__tests__/punteoManualCierraLinea.test.ts
 ```
 
 Comprueba contra `fake-indexeddb` real (no un doble) que `confirmTreasuryEvent` sobre una previsión de recurrente deja **una sola** fila en `gastosInmueble`, que es la que ya existía, en estado `confirmado`, con su `treasuryEventId` y conservando la `casillaAEAT` **[V]** (`punteoManualCierraLinea.test.ts:85-107`).
+
+---
+
+## PARTE A bis · TODO LO QUE SE HIZO DESPUÉS DE #1830, PR A PR
+
+La FASE 2 (#1830) no fue el final. Después entraron **seis PRs más**, todas en `main`, ninguna revertida **[V]**. Tres de ellas (#1833, #1835, #1836) no eran fases numeradas del tren y por eso no aparecían en el encargo, pero han cambiado el comportamiento de la pantalla de conciliar más que algunas de las que sí estaban.
+
+| PR | Commit | Qué toca | Estado |
+|---|---|---|---|
+| #1831 | `a4311b7` | importador · referencia | en `main` · corregida por #1832 |
+| #1832 | `670d344` | importador · ×10, fecha, parser muerto | en `main` |
+| #1833 | `dff4699` | **detector de sugerencias · el signo** | en `main` · **no estaba en el encargo** |
+| #1834 | `28c1d98` | fiscal · doble conteo + censo de stores | en `main` |
+| #1835 | `c9ac497` | **pantalla · abrir, corregir, buscar, bloque** | en `main` · **no estaba en el encargo** |
+| #1836 | `9ef1381` | **pantalla · enseñar la referencia, no afirmar, clasificar en bloque** | en `main` · **no estaba en el encargo** · es el HEAD |
+
+Tests de estas seis PRs, ejecutados hoy: **19 suites, 231 tests, 0 fallos [V]**.
+
+### #1833 · «el signo manda primero» — un negativo no puede ser una renta
+
+**El fallo real [V]:** el detector proponía «*Parece la renta de un inquilino*» sobre líneas que son dinero que **sale** (`Bizum A Favor De Aroa Gómez −80 €`). Y el nombre coincidía con una inquilina viva **precisamente porque es ella quien cobra**, lo que subía la confianza a 60.
+
+**Lo que se construyó [V]:** módulo nuevo `src/services/sugerencias/signoDelMovimiento.ts` (79 líneas) con la regla en un solo sitio:
+
+- `direccionDelImporte` (`:43`) — `>0 entra`, `<0 sale`, `0 ninguna`.
+- `direccionDeLaAccion` (`:57`) — `assign_to_contract` ⇒ entra; `mark_personal_expense` ⇒ sale; `create_treasury_event` según su `type`. `financing` queda fuera a propósito (una disposición entra, una cuota sale).
+- `contradiceElSigno` (`:74`) — el guardián.
+
+**[V] El guardián cubre las tres vías, comprobado una a una:** vía A en `movementSuggestionService.ts:101`, vía B en `:108`, y vía C **dentro** de `suggestFromHeuristics` en `:540` (`respetandoElSigno(sugerencia, movement.amount) ?? noSeQueEs(movement)`). La afirmación del commit se sostiene.
+
+**Diseño que importa para el replanteamiento [V]:** una sugerencia que contradice el signo **se descarta entera**, no se «corrige» dándole la vuelta al tipo (`:127-141`, comentario explícito). Y descartar nunca deja la tarjeta vacía: cae a `noSeQueEs(movement)`.
+
+**Alcance honesto:** esto **no** decide si la propuesta es acertada; sólo tira lo imposible. Un ingreso de 900 € puede ser una renta, la devolución de un préstamo o la venta de un sofá.
+
+Test: `src/services/__tests__/elSignoMandaPrimero.test.ts` (318 líneas) · **verde [V]**.
+
+### #1835 · «abrir lo que ATLAS cierra solo, corregirlo, y actuar en bloque»
+
+Cuatro carencias de la pantalla, y las cuatro eran de fondo, no de pintura.
+
+1. **ABRIR [V].** La columna derecha enseñaba «4 · Gas» y punto: `agruparResueltas` contaba, sumaba y **tiraba las líneas**. Ahora el grupo se las lleva dentro (`conciliar/agruparResueltas.ts:37` campo `lineas`, `:109` donde se rellena) y cada fila se despliega con el texto literal del banco, la fecha y el importe.
+
+2. **CORREGIR [V].** No existía vuelta atrás sobre lo que ATLAS cerraba solo. Se añade `desemparejados` a `DecisionesSesion` (`extractoSesion.ts:106-124`) y —esto es lo que lo hace funcionar— **va la primera** de las ramas de `bucketDeLinea` (`conciliarBuckets.ts:68`), justo detrás de «ignorada» y **antes** del `switch` del veredicto automático. Puesta después, el veredicto de la máquina volvería a ganar. **No borra nada:** devuelve la línea a «te necesitan». Y **no designora** — eso sigue siendo «reactivar», que son operaciones sobre poblaciones distintas.
+
+3. **BUSCAR [V].** `conciliar/buscarLineas.ts` — `filtrarPorTexto` (`:65`) busca sin acentos y con varias palabras que piden todas, sobre texto, fecha o importe. Y `atajosDeBusqueda` (`:96`) **calcula** los atajos contando palabras sobre el fichero que hay delante, en vez de una lista fija: así el botón siempre corresponde a algo que está ahí y su contador es verdad por construcción. Mínimo dos líneas para ser atajo (`:19-20`).
+
+4. **EN BLOQUE [V].** Selección por casilla + barra de acciones. Dos reglas con criterio: la barra toca **lo elegido que se ve** (si eliges el gas, buscas «bizum» y le das a ignorar, el gas no se lleva por delante), y el traspaso en bloque **sólo se ofrece sobre cargos**, porque la pata de salida de un traspaso es un cargo y ofrecerlo sobre un abono sería invitar a crear dinero.
+
+**Efecto colateral bueno [V]:** `DrawerExtracto.tsx` pasó de 800 líneas y el trinquete lo paró. Los doce gestos sobre una línea salieron a `decisionesDeSesion.ts` (259 líneas) — que es lo que son, mutaciones puras de `DecisionesSesion`, sin red ni base de datos. El drawer está hoy en **750 líneas [V]**.
+
+Tests: `abrirYCorregir`, `buscarLineas`, `conciliarLayout`, `corregirYEnBloque` · **verdes [V]**.
+
+### #1836 · «enseñar lo que el banco escribió, no afirmar lo que no se sabe»
+
+Es el HEAD de `main`, y **cierra el círculo de #1831/#1832**.
+
+1. **EL DATO ESTABA GUARDADO Y LA PANTALLA LO TIRABA [V].** Dos PRs costó llevar el nº de contrato hasta la base, y `construirLineas` hacía `textoBanco: m.description` y ahí se quedaba. Ahora la línea lleva `referencia` y `contraparte` (`extractoSesion.ts:227-228`) y se pintan bajo el texto del banco (`LineaExtractoItem.tsx:105-107`, unidas por « · »).
+
+   **Y van en campos APARTE, no concatenadas dentro de `description` [V].** No es estética: `generateLineHash` se calcula sobre `description`, y meterle la referencia dentro cambiaría el hash de todos los movimientos ya importados — el dedupe entre importaciones solapadas dejaría de reconocerlos y **los cargos se duplicarían**. Está escrito en el propio tipo (`extractoSesion.ts:38-47`).
+
+2. **LA PROPUESTA AFIRMABA LO QUE NO SABE [V].** «Parece la renta de un inquilino» salía **sin contrato ninguno**, con `action: { kind: 'assign_to_contract', contractId: undefined }`. Dos cosas mal: afirma lo que no sabe (la misma frase salía sobre +200 € y sobre +83,37 €), y **es una acción imposible de ejecutar** — el evento nacería sin `sourceId` ni `contratoId`, huérfano, sin contar para el estado de cobro ni para el dedupe de previsiones.
+
+   Verificado en el diff (`movementSuggestionService.ts:449-480`): ahora, sin contrato reconocido, devuelve `confidence: 30` con `action: { kind: 'ignore' }` y la frase honesta «*Un ingreso que no reconozco · si me dices de quién es una vez, el resto de sus cobros los coloco solos*». Con contrato, `confidence: 60` y `contractId: contrato.id` — ya no opcional.
+
+   **[V]** Dos tests viejos que exigían el `assign_to_contract` sin contrato fueron **invertidos, no borrados**, con el porqué al lado (`asignarCobroAContrato.test.ts`, `movementSuggestionService.test.ts` — ambos verdes hoy).
+
+3. **CLASIFICAR EN BLOQUE [V].** Con cinco recibos del agua marcados, la barra sólo ofrecía «ignorar» y «son traspaso» — justo lo que no se hace con cinco recibos del agua. Ahora la ficha se abre **una vez** y su concepto se aplica a todas: `clasificarEnBloque.ts:32` (`valoresPorLinea`).
+
+   **La regla que evita el desastre [V]:** se comparte **el concepto**; el **importe y la fecha salen de cada línea**, y **el tipo lo manda su signo** (`:36-38`). Copiar los de la primera metería gasto que nunca salió de la cuenta, con fecha falsa, y en la declaración. Por eso la regla vive en su propio módulo con sus propios tests.
+
+4. **LO QUE CUADRA, DICHO ANTES DE PULSAR [V].** El botón pasa de «Asignar a un previsto» a «Asignar a un previsto · 2 cuadran».
+
+Tests: `clasificarEnBloque`, `quePuedoPuntear`, `corregirYEnBloque`, `movementSuggestionService`, `asignarCobroAContrato` · **verdes [V]**.
+
+### Lo que estas tres PRs NO cambian
+
+**[V]** Ninguna toca el modelo de datos. `git show --stat` de las tres: no hay una sola línea en `bankStatementOrchestrator.ts`, ni en `statementSessionService.ts`, ni en `db.ts`, ni en `deterministas/`. Todo es pantalla (`modules/tesoreria/v6/`) y detector de sugerencias.
+
+Es decir: **el fallo central de la Parte B sigue intacto después de #1836.** Importar sigue escribiendo las 300+ líneas en `movements` (`orchestrator:683`), sigue habiendo un solo filtro para esconderlas, y sigue sin poderse retomar un fichero a medias. Lo que #1835 y #1836 arreglan es que ahora, **dentro de la sesión**, se ve lo que hay y se puede corregir y actuar en bloque — que era imprescindible, pero es otra capa.
 
 ---
 
