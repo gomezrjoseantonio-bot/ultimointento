@@ -63,7 +63,15 @@ El handoff decía «se aplicó en el módulo equivocado». **Es cierto y está c
 
 ### A.3 · 2.0.2 · el parser muerto se borró de verdad
 
-**[V]** `src/services/csvParserService.ts` **no existe** (`ls` → No such file). `grep -rn "csvParserService\|mapHeaders\|celdaDeReferencia" src` → **0 referencias de código**; sólo dos menciones en comentarios que explican el borrado.
+**[V]** `src/services/csvParserService.ts` **no existe** — `ls src/services/csvParserService.ts` → `No such file or directory`. Y `grep -rnE "csvParserService|mapHeaders|celdaDeReferencia" src` devuelve **tres líneas, ninguna de código vivo**:
+
+| Fichero:línea | Qué es |
+|---|---|
+| `src/services/__tests__/huellaDeDuplicado.test.ts:4` | comentario que explica el borrado |
+| `src/services/importador/columnaDeReferencia.ts:6` | comentario que explica el borrado |
+| `src/features/inbox/importers/bankParser.test.ts.disabled:18` | un `jest.fn()` que finge `mapHeaders` en un fichero de test **desactivado** (extensión `.disabled`: no lo recoge ningún runner) |
+
+O sea: **0 llamadas reales**. El residuo del `.disabled` no ejecuta ni compila, pero conviene saber que está ahí.
 
 **[V]** También se fue `src/pages/ProfileSeederPage.tsx` (−434) y `src/services/__tests__/referenciaDelExtracto.test.ts` (−155, el test que probaba el módulo equivocado).
 
