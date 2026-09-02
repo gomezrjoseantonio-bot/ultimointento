@@ -37,7 +37,7 @@ Los cinco hechos que condicionan cualquier diseño posterior:
 
 ### 1.2 · Está VIVA, pero mucho más flaca de lo que su documentación afirma · **[V]**
 
-Servicio completo (11 funciones CRUD): `src/services/explotacionAlquilerService.ts`.
+Servicio completo: `src/services/explotacionAlquilerService.ts` — **13 funciones exportadas** (3 helpers puros: `siguienteIdHabitacion:30`, `habitacionesPorDefecto:40`, `explotacionDesdeLegacy:58`; y 10 async de lectura/escritura: `:112, :123, :133, :140, :160, :203, :220, :229, :247, :261`), más la interface `AltaExplotacion:146`.
 
 **Consumidores reales del servicio, fuera de tests y de su propia migración — la lista entera:**
 
@@ -46,7 +46,18 @@ Servicio completo (11 funciones CRUD): `src/services/explotacionAlquilerService.
 | Pestaña "Disponibilidad" | `src/modules/inmuebles/components/contratos/TabDisponibilidad.tsx:12-19, 95, 402, 421, 442, 484, 590` | Lee el mapa, marca, actualiza, desmarca, añade habitación |
 | Hook de habitaciones del wizard de contrato | `src/modules/inmuebles/wizards/useHabitacionesContrato.ts:6, 26` | Lee la lista de habitaciones para el `<select>` |
 
-Y nada más. Verificado por grep exhaustivo de las 8 funciones exportadas del servicio en todo `src/`.
+Y nada más. Verificado con un grep de **las 13 funciones exportadas, una por una**, sobre todo `src/`.
+
+Ese grep completo destapa además algo que refuerza el diagnóstico: **4 exportaciones no las consume nadie de fuera del servicio.**
+
+| Exportación | Estado real |
+|---|---|
+| `getExplotaciones:112` | Solo uso interno (`:134`, desde `getExplotacionesPorInmueble`) |
+| `siguienteIdHabitacion:30` | Solo uso interno (`:236`) — exportada para sus tests |
+| `habitacionesPorDefecto:40` | Solo uso interno (`:105, :172`) — exportada para sus tests |
+| **`estaAlquilable:140`** | **MUERTA del todo.** Cero llamadas en el repo entero: ni consumidores, ni uso interno, ni tests. Su definición es la **única** aparición del identificador en todo `src/` |
+
+`estaAlquilable` merece un párrafo aparte, porque es la prueba más limpia de la tesis de este documento: es literalmente la función que responde *«¿está este inmueble en alquiler?»* — la pregunta central del modelo de explotación — y **en toda la aplicación nadie la hace ni una vez**. La entidad existe, el servicio la sabe responder, y ninguna pantalla ni ningún cálculo la consulta.
 
 **La pestaña ES alcanzable** (no es código muerto): `src/modules/inmuebles/pages/ContratosListPage.tsx:26, 35, 38, 204, 317-318` la registra como primera pestaña por defecto; la página está enrutada en `src/App.tsx:105`.
 
@@ -379,7 +390,7 @@ El censo mencionaba `gananciaPatrimonialService` y `documentMatchingService`. Co
 
 | Entidad | ¿Existe? | Estado | Qué le falta para soportar explotación con cambios de régimen, fianzas y venta que cierra rentas |
 |---|---|---|---|
-| **`explotacionAlquiler`** (`ExplotacionAlquiler`)<br>`types-inmuebles.ts:254` | **SÍ** · store propio v90, índice único `inmuebleId` | **A MEDIAS.** Vivo pero con 2 consumidores (UI Disponibilidad + hook de habitaciones). Los otros 3 que su comentario promete no existen | (a) **Histórico con fechas** — hoy `modo`/`estado` son valores únicos que se pisan; (b) **el régimen de gestión** (directo/garantizado), que hoy vive en `Contract`; (c) **cierre en la venta** — nadie la desmarca al vender ni al borrar el inmueble; (d) **retirar el legacy `Property.modoExplotacion`**, que sigue teniendo 5 lectores de producción; (e) cumplir de verdad las promesas de OPEX y validación, o borrar esos comentarios |
+| **`explotacionAlquiler`** (`ExplotacionAlquiler`)<br>`types-inmuebles.ts:254` | **SÍ** · store propio v90, índice único `inmuebleId` | **A MEDIAS.** Vivo pero con 2 consumidores (UI Disponibilidad + hook de habitaciones). Los otros 3 que su comentario promete no existen. De sus 13 exportaciones, 4 no las consume nadie de fuera — y `estaAlquilable:140` («¿está en alquiler?») está **muerta del todo**: cero llamadas en el repo | (a) **Histórico con fechas** — hoy `modo`/`estado` son valores únicos que se pisan; (b) **el régimen de gestión** (directo/garantizado), que hoy vive en `Contract`; (c) **cierre en la venta** — nadie la desmarca al vender ni al borrar el inmueble; (d) **retirar el legacy `Property.modoExplotacion`**, que sigue teniendo 5 lectores de producción; (e) cumplir de verdad las promesas de OPEX y validación, o borrar esos comentarios |
 | **`Property.modoExplotacion` / `.alquilerPorHabitaciones` / `.explotacion` / `.usoTipo`**<br>legacy pre-v90 | **SÍ** | **VIVO Y COMPITIENDO.** Debía quedar "de solo-lectura hasta que no queden lectores" (`v90-explotacionAlquiler.ts:20-21`) — quedan 5, y además se auto-cura en post-open (`post-open.ts:125-150`) | **Retirarlo.** Migrar los 5 lectores a `ExplotacionAlquiler` y desactivar el self-heal. Mientras esté vivo, cualquier modelo nuevo se construye sobre arenas movedizas |
 | **`HabitacionAlquiler`**<br>`types-inmuebles.ts:247` | **SÍ** · lista embebida (no store) | **A MEDIAS.** Ids estables `hab-N`, `Contract.habitacionId` apunta ahí. Pero solo puebla un `<select>` | (a) **Ocupación real por habitación** — `validateOccupancy` existe y está muerta; (b) fechas de disponibilidad por habitación; (c) enlazar `rentaObjetivo` con la renta real del contrato |
 | **`GestionDelegada`** (embebida en `Contract.gestion`)<br>`types-contratos.ts:123` | **SÍ, y sorprendentemente completa** | **VIVA de punta a punta**: wizard → panel → tesorería (`comision_gestion`) → punteo | (a) **No cuelga de la explotación** — el piso no sabe que está gestionado; (b) **sin sucesión** — nada enlaza el régimen que cesa con el que empieza; (c) **sin traspaso de fianza** a la gestora; (d) la agencia va duplicada en `Contract.inquilino` |
