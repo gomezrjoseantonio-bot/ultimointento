@@ -245,22 +245,22 @@ Otros escritores del `ejercicio` de una línea:
 
 ## 2.4 Check 4 · ¿El fichero real trae ambas fechas y se conservan?
 
-Ficheros reales en la raíz del repo, leídos directamente **[V]**:
+Ficheros reales de extractos (raíz del repo), leídos directamente **[V]**. Se identifican solo por banco y formato; no se reproducen nombres de fichero ni textos de movimientos:
 
 | Fichero (banco) | Cabecera | Columnas de fecha | Filas | op ≠ valor |
 |---|---|---|---|---|
-| `movements-392025.csv` / `.xlsx` (ING) | fila 6/5 | solo `F. VALOR` | — | n/a (una sola fecha) |
-| `03092025_2706_0003239635 (1).xlsx` (Sabadell) | fila 9 | `F. Operativa`, `F. Valor` | 27 | **2** |
-| `Movimientos_Cuenta_4437… (1).xlsx` (Unicaja) | fila 5 | `Fecha de operación`, `Fecha valor` | 23 | 0 |
-| `export202593 (1).xlsx` (Santander) | fila 8 | `FECHA OPERACIÓN`, `FECHA VALOR` | 24 | **6** |
+| ING · csv y xlsx | fila 6/5 | solo `F. VALOR` | — | n/a (una sola fecha) |
+| Sabadell · xlsx | fila 9 | `F. Operativa`, `F. Valor` | 27 | **2** |
+| Unicaja · xlsx | fila 5 | `Fecha de operación`, `Fecha valor` | 23 | 0 |
+| Santander · xlsx | fila 8 | `FECHA OPERACIÓN`, `FECHA VALOR` | 24 | **6** |
 
 Filas discrepantes reales:
 ```
-Santander · op 02/09/2025 · valor 31/08/2025 · Liquidacion Periodica Prestamo (×4)
-Santander · op 01/09/2025 · valor 31/08/2025 · Liquidacion Mensual Planeta Seguros
-Santander · op 28/08/2025 · valor 27/08/2025 · Bizum
-Sabadell  · op 29/08/2025 · valor 31/08/2025 · PRESTAMOS ADEUDO CUOTA
-Sabadell  · op 07/07/2025 · valor 05/07/2025 · ABONO TRANSFERENCIA
+Santander · op 02/09/2025 · valor 31/08/2025 · cuota de préstamo (×4)
+Santander · op 01/09/2025 · valor 31/08/2025 · recibo de seguro
+Santander · op 28/08/2025 · valor 27/08/2025 · pago por móvil
+Sabadell  · op 29/08/2025 · valor 31/08/2025 · cuota de préstamo
+Sabadell  · op 07/07/2025 · valor 05/07/2025 · transferencia recibida
 ```
 Ninguna cruza un 31/12 (los extractos son de julio-septiembre), pero **5 de 8 cruzan un cambio de mes** y el patrón es sistemático en las cuotas de préstamo: operación el primer hábil del mes siguiente, valor el último día del mes anterior. En enero eso es un cambio de ejercicio, y los intereses de préstamo son gasto deducible.
 
