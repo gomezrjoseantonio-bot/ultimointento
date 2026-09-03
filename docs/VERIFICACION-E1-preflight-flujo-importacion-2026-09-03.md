@@ -8,6 +8,32 @@ Convención:
 
 Todos los `fichero:línea` son sobre `b4af0d2`. Un comentario del código nunca se usa como prueba de comportamiento; cuando comentario y código difieren, se señala.
 
+**Rutas.** Para que las tablas quepan, un fichero se cita por su nombre corto salvo la primera vez o cuando hay homónimos. Cada nombre corto resuelve a UNA ruta del repo:
+
+| nombre corto | ruta repo-relativa |
+|---|---|
+| `bankStatementOrchestrator.ts` | `src/services/bankStatementOrchestrator.ts` |
+| `statementSessionService.ts` | `src/services/statementSessionService.ts` |
+| `statementIgnoredLinesService.ts` | `src/services/statementIgnoredLinesService.ts` |
+| `movementMatchingService.ts`, `movementSuggestionService.ts` | `src/services/…` |
+| `matcheoDeterminista.ts`, `cierreDeterminista.ts` | `src/services/deterministas/…` |
+| `reconciliarConfirmado.ts`, `conciliacionConfirmados.ts`, `reconciliarDuplicadosExistentes.ts` | `src/services/…` |
+| `traspasoDesdeMovimiento.ts`, `altaMovimientoService.ts`, `accountBalanceService.ts`, `treasuryApiService.ts`, `cuentasService.ts`, `dashboardService.ts`, `treasuryEventsService.ts`, `treasuryCreationService.ts`, `treasuryForecastService.ts`, `compromisoDetectionService.ts`, `onboardingDetectionService.ts`, `estimacionFiscalEnCursoService.ts`, `fondosService.ts`, `demoDataCleanupService.ts`, `__buscarApunteAudit.ts`, `__tarjetaDiagnostico.ts` | `src/services/…` |
+| `conciliarExtractoTarjeta.ts`, `extractoTarjeta.ts`, `compromisosRecurrentesService.ts` | `src/services/personal/…` |
+| `punteoModel.ts` | `src/services/punteo/punteoModel.ts` |
+| `backfillClasificacionConciliados.ts` | `src/services/migrations/…` |
+| `types-fiscal.ts`, `types-movimientos.ts`, `upgrade-a.ts` | `src/services/db/…` |
+| `db.ts` | `src/services/db.ts` |
+| `batchHashUtils.ts`, `duplicateDetection.ts` | `src/utils/…` |
+| `bankParser.ts` | `src/features/inbox/importers/bankParser.ts` |
+| `DrawerExtracto.tsx`, `TesoreriaV6Page.tsx`, `extractoSesion.ts`, `decisionesDeSesion.ts`, `conciliarBuckets.ts`, `PanelExtractoTarjeta.tsx` | `src/modules/tesoreria/v6/…` |
+| `ZonaSoltar.tsx` | `src/modules/tesoreria/v6/conciliar/ZonaSoltar.tsx` |
+| `PanelPage.tsx` | `src/modules/panel/PanelPage.tsx` (hay otros dos `PanelPage.tsx` en el repo; este documento solo cita este) |
+| `getCurrentSaldoCuenta.ts`, `presupuestoAnualService.ts` | `src/modules/mi-plan/wizards/utils/…`, `src/modules/mi-plan/services/…` |
+| `generateTesoreria.ts`, `comparativaService.ts`, `atlasExportService.ts`, `treasurySyncService.ts` | `src/modules/horizon/informes/generators/…`, `src/modules/horizon/proyeccion/comparativa/services/…`, `src/modules/horizon/herramientas/exporters/…`, `src/modules/horizon/tesoreria/services/…` |
+| `LineasAnualesTab.tsx` | `src/pages/GestionInmuebles/tabs/LineasAnualesTab.tsx` |
+| `*.test.ts` | `src/services/__tests__/…` salvo `extractoSesion.test.ts` (`src/modules/tesoreria/v6/__tests__/…`) |
+
 ---
 
 ## 0 · Lo esencial en diez líneas
@@ -18,7 +44,7 @@ Todos los `fichero:línea` son sobre `b4af0d2`. Un comentario del código nunca 
 4. **[V]** `importBatches` guarda **solo metadatos del lote** (`types-fiscal.ts:104-177`): nombre, cuenta, contadores, `hashLote`, `consolidadoAt`, `lineasIgnoradas[]` (hashes) y `lineasPendientes[]` (hoy siempre vacío). **No guarda las líneas del fichero ni el fichero.** El fichero solo sobrevive si el usuario pulsa Guardar, como documento (`statementSessionService.ts:143-173`).
 5. **[V]** El matcheo (`matchBatch`), las sugerencias, el reconocimiento determinista, la conciliación contra confirmados, el traspaso, la ficha de gasto/mejora y **toda la sesión del drawer** trabajan sobre **`Movement.id` ya insertado**. `LineaExtracto.movementId` (`extractoSesion.ts:29`) es la clave de todas las decisiones.
 6. **[V]** Hay **un** filtro de borradores (`statementSessionService.ts:36-58`) y **un** consumidor (`TesoreriaV6Page.tsx:221-229`). El censo cuenta **60 sitios de lectura de `movements` en producción** (38 ficheros) y **45 sitios de escritura**; ninguno de los otros 59 lectores aplica el filtro.
-7. **[V]** Saldo vivo (`accountBalanceService.ts:103-135`), Panel (`PanelPage.tsx:192`), saldo del wizard (`getCurrentSaldoCuenta.ts:40`), presupuesto, estimación fiscal, informes y exportación leen `movements` **sin** filtro: un extracto abierto sin guardar **ya cuenta** ahí.
+7. **[V]** Saldo vivo (`accountBalanceService.ts:103-135`), Panel (`src/modules/panel/PanelPage.tsx:192`), saldo del wizard (`getCurrentSaldoCuenta.ts:40`), presupuesto, estimación fiscal, informes y exportación leen `movements` **sin** filtro: un extracto abierto sin guardar **ya cuenta** ahí.
 8. **[V]** Hay tres huellas distintas de «la misma línea»: `hashLote` (SHA-256 del fichero), `hashMovement` (`accountId|fecha|céntimos|descripción cruda`) y `hashLinea` (`v1:fecha|céntimos|descripción normalizada`, sin cuenta). No coinciden entre sí.
 9. **[V]** El comentario «cirugía mayor» está en `statementSessionService.ts:16-19`. Su premisa «otro consumidor vivo» **ya no se sostiene**: `processFile` tiene hoy **un solo** llamante de producción (`DrawerExtracto.tsx:270`). La otra premisa («`matchBatch` trabaja sobre ids ya insertados») sigue siendo cierta.
 10. **[V]** Existe un precedente interno de «leer y emparejar sin escribir, aplicar al confirmar»: el extracto de **tarjeta** (`conciliarExtractoTarjeta.ts:1-12`, `planificarExtractoTarjeta` `:130` → `aplicarPlanTarjeta` `:154`). Es el patrón que E1 quiere para banco.
@@ -124,7 +150,7 @@ Campos con los que nace un movimiento importado (`:639-672`) **[V]**:
 | `importBatch` | id del lote |
 | `createdAt` / `updatedAt` | ahora |
 
-**[V]** El id del lote se genera en `:565`: `import_${Date.now()}_${random}`; el store `importBatches` tiene `keyPath: 'id'` sin autoincremento (`db/upgrade-a.ts:225`).
+**[V]** El id del lote se genera en `:565`: `import_${Date.now()}_${random}`; el store `importBatches` tiene `keyPath: 'id'` sin autoincremento (`src/services/db/upgrade-a.ts:225`).
 
 ### 1.4 · ¿Hay algún punto donde una línea NO se convierta en movimiento?
 
@@ -171,7 +197,7 @@ Durante la importación, solo estos cuatro **[V]**:
 | `usuario?`, `inboxItemId?` | | solo el camino muerto de `treasuryApiService` |
 | `createdAt` | ISO | `:580` |
 
-**[V]** Store: `db/upgrade-a.ts:224-228`, `keyPath: 'id'`, índices `accountId` y `createdAt`. Declarado en `db.ts:107`.
+**[V]** Store: `src/services/db/upgrade-a.ts:224-228`, `keyPath: 'id'`, índices `accountId` y `createdAt`. Declarado en `src/services/db.ts:107`.
 
 ### 2.2 · ¿Guarda las líneas del fichero?
 
@@ -242,7 +268,7 @@ Grupo B: lectores fuera del flujo que **no aplican** `sinBorradores`. Si importa
 |---|---|---|---|
 | **Saldo vivo** `calculateAccountBalanceAtDate` | `accountBalanceService.ts:103-135` | suma **todo** movimiento de la cuenta (`m.accountId === account.id`, sin mirar `unifiedStatus`, `source` ni `importBatch`) | **no** |
 | `calculateTotalInitialCash`, `rollForwardAccountBalancesToMonth` | `:140-150`, `:160-172` | `getAll('movements')` propio; el segundo **persiste** `account.balance`; lo llaman `treasurySyncService.ts:172` y `dashboardService.ts:1410` | **no** |
-| Panel («hoy tienes») | `PanelPage.tsx:192` → `:324-334` | saldo con `accountBalanceService` sobre `getAll` sin filtro | **no** |
+| Panel («hoy tienes») | `src/modules/panel/PanelPage.tsx:192` → `:324-334` | saldo con `accountBalanceService` sobre `getAll` sin filtro | **no** |
 | Saldo del wizard | `getCurrentSaldoCuenta.ts:37-41` | ídem | **no** |
 | Tesorería V6 | `TesoreriaV6Page.tsx:218-229` → `:361-380` | ídem pero **con** `sinBorradores` | **sí (el único)** |
 | Presupuesto anual | `presupuestoAnualService.ts:360` | | no |
