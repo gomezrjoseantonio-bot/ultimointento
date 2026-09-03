@@ -114,6 +114,13 @@ export interface HeaderDetectionResult {
   detectedColumns: Record<string, number>;
   confidence: number;
   fallbackRequired: boolean;
+  /**
+   * `true` cuando el extracto NO trae columna de fecha de operación/cargo y
+   * `date` se ha rellenado con la fecha VALOR (caso ING). La fecha de cargo es
+   * la que fija el ejercicio fiscal, así que esto no puede pasar en silencio:
+   * el parser lo marca aquí y `parseFile` lo convierte en un aviso visible.
+   */
+  sinFechaDeCargo?: boolean;
 }
 
 export interface BankParseResult extends ParseResult {
@@ -121,4 +128,6 @@ export interface BankParseResult extends ParseResult {
   selectedSheet?: string;
   headerDetection?: HeaderDetectionResult;
   needsManualMapping?: boolean;
+  /** Avisos del parseo que el usuario debe ver (p.ej. extracto sin fecha de cargo). */
+  warnings?: string[];
 }

@@ -207,6 +207,9 @@ export async function processFile(
   if (!parsed.success || !parsed.movements) {
     throw new Error(parsed.error ?? 'No se pudieron parsear movimientos del archivo.');
   }
+  // Lo que el parser tenga que decir del fichero (p.ej. «sin fecha de cargo»)
+  // llega al drawer por el mismo canal que el resto de avisos del import.
+  warnings.push(...(parsed.warnings ?? []));
 
   return procesarLoteParseado(file, options, parsed.movements, {
     hashLote,
