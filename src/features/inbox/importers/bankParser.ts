@@ -17,7 +17,11 @@ const COLUMN_ALIASES = {
     'fecha', 'fecha operacion', 'fecha operación', 
     'f operacion', 'f operación', 'f. operacion', 'f. operación', 'date', 
     'fecha mov', 'fecha movimiento', 'fecha de operacion', 'fecha de operación',
-    'completed date' // Revolut
+    'completed date', // Revolut
+    // Sabadell escribe «F. Operativa» (cabecera real del export xlsx). Sin este
+    // alias la columna no casaba, `date` caía en la fecha VALOR y un recibo con
+    // operativa 02/01 y valor 31/12 se iba al ejercicio anterior.
+    'f. operativa', 'f operativa', 'fecha operativa'
   ],
   amount: [
     'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto',
@@ -308,9 +312,19 @@ export class BankParserService {
     const headerRow = rawData[headerDetection.headerRow] || [];
     const bankDetection = await bankProfilesService.detectBank(headerRow);
 
+    const warnings: string[] = [];
+    if (headerDetection.sinFechaDeCargo) {
+      warnings.push(
+        'Este extracto no trae fecha de cargo (solo fecha valor): los movimientos ' +
+          'se han fechado por la fecha valor. Revisa los recibos de cambio de año, ' +
+          'porque la fecha de cargo es la que fija el ejercicio fiscal.'
+      );
+    }
+
     return {
       success: true,
       movements,
+      ...(warnings.length > 0 ? { warnings } : {}),
       metadata: {
         bankKey: bankDetection?.bankKey,
         bankName: bankDetection?.bankName,
@@ -520,11 +534,17 @@ export class BankParserService {
       if (score >= 3 && hasDateInfo && hasAmountInfo) {
         const normalizedDetectedColumns = { ...detectedColumns };
 
+        // Sin columna de fecha de operación/cargo solo queda la fecha valor
+        // (ING no trae otra). Se usa, pero se deja MARCADO: la fecha de cargo
+        // es la que fija el ejercicio fiscal y el usuario tiene que saber que
+        // este banco no la da. Los bancos que traen las dos no pasan por aquí.
+        let sinFechaDeCargo = false;
         if (
           normalizedDetectedColumns.date === undefined &&
           normalizedDetectedColumns.valueDate !== undefined
         ) {
           normalizedDetectedColumns.date = normalizedDetectedColumns.valueDate;
+          sinFechaDeCargo = true;
         }
 
         // El identificador que escribe el banco · pasada APARTE.
@@ -551,7 +571,8 @@ export class BankParserService {
           dataStartRow: row + 1,
           detectedColumns: normalizedDetectedColumns,
           confidence: Math.min(score / 6, 1), // Max confidence at 6+ matches
-          fallbackRequired: false
+          fallbackRequired: false,
+          ...(sinFechaDeCargo ? { sinFechaDeCargo: true } : {})
         };
       }
     }
