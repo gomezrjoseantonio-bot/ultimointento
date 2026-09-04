@@ -23,6 +23,10 @@ import type { Cuadre } from '../conciliarBuckets';
 import type { Propuesta } from './propuestaDeLinea';
 import type { LoQueYaReconoce } from './loQueYaReconoce';
 import TarjetaAccion from './TarjetaAccion';
+import CuadreConElBanco from './CuadreConElBanco';
+import YaEstaban from './YaEstaban';
+import type { LineaExtractoPersistida } from '../../../../services/db/types-lineasExtracto';
+import type { PropuestaDeAnclaje } from '../../../../services/anclajeSaldoExtracto';
 import ColumnaResto from './ColumnaResto';
 import { atajosDeBusqueda, filtrarPorTexto } from './buscarLineas';
 import styles from './PanelConciliar.module.css';
@@ -41,6 +45,12 @@ export interface PanelConciliarProps {
   avisos: string[];
   error: string | null;
   guardando: boolean;
+  /** E1.5-anclaje-saldo · el cuadre con el banco, si el fichero trae saldo. */
+  anclaje?: PropuestaDeAnclaje | null;
+  anclar?: boolean;
+  onAnclar?: (anclar: boolean) => void;
+  /** Las filas del fichero que ya estaban en ATLAS · se enseñan plegadas. */
+  yaEstaban?: ReadonlyArray<LineaExtractoPersistida>;
   /** El drawer monta aquí su `LineaExtractoItem`, con sus manejadores. */
   renderLinea: (linea: LineaExtracto) => React.ReactNode;
   onRecuperar: (lineaId: number) => void;
@@ -81,6 +91,10 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   avisos,
   error,
   guardando,
+  anclaje,
+  anclar = false,
+  onAnclar,
+  yaEstaban = [],
   renderLinea,
   onRecuperar,
   onNoEsEsto,
@@ -214,6 +228,10 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
         </div>
       ))}
       {error && <div className={`${styles.aviso} ${styles.avisoError}`}>{error}</div>}
+      {anclaje && onAnclar && (
+        <CuadreConElBanco propuesta={anclaje} anclar={anclar} onAnclar={onAnclar} desactivado={guardando} />
+      )}
+      <YaEstaban lineas={yaEstaban} />
 
       {/* ── Cuerpo · dos columnas, cada una con su scroll ──────────────── */}
       <div className={styles.cuerpo}>

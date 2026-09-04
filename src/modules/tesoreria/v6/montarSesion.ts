@@ -14,6 +14,7 @@ import { initDB } from '../../../services/db';
 import type { OrchestratorResult } from '../../../services/bankStatementOrchestrator';
 import { getIgnoredLineHashes } from '../../../services/statementIgnoredLinesService';
 import { confirmadosPorLineaExtracto } from '../../../services/conciliacionConfirmados';
+import { propuestaDeAnclaje, type PropuestaDeAnclaje } from '../../../services/anclajeSaldoExtracto';
 import { construirLineas, seOfrecePara, type LineaExtracto } from './extractoSesion';
 import {
   guardarDecisionDeLinea,
@@ -69,6 +70,28 @@ export interface SesionDelLote {
   lineas: LineaExtracto[];
   /** Las filas persistidas del lote (E1.1) · de ellas salen las decisiones (E1.3). */
   filas: LineaExtractoPersistida[];
+  /**
+   * E1.5-anclaje-saldo · lo que el banco dice del saldo frente a lo que ATLAS
+   * calcula, y la apertura que haría cuadrar. `null` si el fichero no trae
+   * columna de saldo. ATLAS propone; el usuario confirma al guardar.
+   */
+  anclaje: PropuestaDeAnclaje | null;
+  /** Las filas del fichero descartadas por estar YA en ATLAS · para enseñar cuáles. */
+  yaEstaban: LineaExtractoPersistida[];
+}
+
+/**
+ * «Banc Sabadell · ****2715 · 102 líneas».
+ *
+ * Los cuatro últimos dígitos solo se enseñan si la cuenta los tiene: sin ellos
+ * salían cuatro asteriscos sueltos, que no identifican nada y encima parecen un
+ * dato que no se ha cargado.
+ */
+export function tituloDeLaSesion(cuenta: Account | null, cuantasLineas: number): string {
+  const lineas = `${cuantasLineas} ${cuantasLineas === 1 ? 'línea' : 'líneas'}`;
+  if (!cuenta) return lineas;
+  const cuatro = cuenta.ultimosCuatro?.trim();
+  return [cuenta.alias, cuatro ? `****${cuatro}` : null, lineas].filter(Boolean).join(' · ');
 }
 
 /**
@@ -90,9 +113,17 @@ export async function leerSesionDelLote(res: OrchestratorResult, destino: Accoun
   // banco (D1), no duplica. E1.5 · por línea: el lote no tiene movimientos.
   const confirmados = confirmadosPorLineaExtracto(filas, todosMovs ?? [], destino.id as number);
   const previstos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
+  // Si el cuadre con el banco no se puede calcular, la sesión sigue igual:
+  // anclar es una propuesta, no una condición para conciliar.
+  const anclaje = await propuestaDeAnclaje(db, destino, filas).catch((err) => {
+    console.warn('[DrawerExtracto] no se pudo calcular el cuadre con el banco', err);
+    return null;
+  });
   return {
     previstos,
     lineas: construirLineas(filas, res.matchResult, previstos, ignoradasPrevias, confirmados),
     filas,
+    anclaje,
+    yaEstaban: filas.filter((f) => f.descarte === 'duplicada'),
   };
 }

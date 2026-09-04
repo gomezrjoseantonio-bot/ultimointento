@@ -318,7 +318,7 @@ describe('bankStatementOrchestrator', () => {
     expect(result.matchResult.sinMatch).toHaveLength(3);
     expect(result.suggestions.size).toBe(3);
     expect(result.bankProfileUsed).toBe('Sabadell');
-    expect(result.warnings).toEqual([]); // confidence 88 ≥ 80 → no low-confidence warning
+    expect(result.warnings).toEqual([]); // confidence 88 ≥ 80 → no low-confidence warning · sin duplicadas, sin aviso
     expect(stores.importBatches).toHaveLength(1);
 
     // EL CORTE · importar no crea movimientos; guarda líneas.
@@ -1045,6 +1045,8 @@ describe('E1.5 · el corte · saldo y minas', () => {
     expect(segundo.lineasImportadas).toBe(1);
     expect(segundo.duplicatesSkipped).toBe(3);
     expect(stores.movements).toHaveLength(0);
+    // Y se dice: el usuario ve «1 línea» sobre un fichero de 4 y tiene que saber por qué.
+    expect(segundo.warnings.join(' ')).toMatch(/3 líneas del fichero ya estaban en ATLAS/);
     const delSegundo = stores.lineasExtracto.filter((l) => l.importBatchId === segundo.importBatchId);
     expect(delSegundo.map((l) => l.descarte)).toEqual(['duplicada', 'duplicada', 'duplicada', undefined]);
     // Solo el cargo nuevo ha entrado al saldo.
