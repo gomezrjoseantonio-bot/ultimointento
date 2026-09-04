@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
-import type { Account, Movement, TreasuryEvent } from '../../../services/db';
+import type { Account, Movement, TreasuryEvent, LineaExtractoPersistida } from '../../../services/db';
 import { initDB } from '../../../services/db';
 import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
 import {
@@ -270,10 +270,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const res = esPdf(file) ? await processPdf(file, opc) : await processFile(file, opc);
         ficheroRef.current = file;
         const db = await initDB();
-        const [todosMovs, todosEventos, ignoradasPrevias] = await Promise.all([
+        const [todosMovs, todosEventos, ignoradasPrevias, lineasDelLote] = await Promise.all([
           db.getAll('movements') as Promise<Movement[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           getIgnoredLineHashes(destino.id),
+          // E1.2a · las líneas persistidas de ESTE lote (E1.1), por su índice
+          // `importBatchId`, solo para rellenar `lineaId`. Nada decide con ellas.
+          db.getAllFromIndex('lineasExtracto', 'importBatchId', res.importBatchId) as Promise<LineaExtractoPersistida[]>,
         ]);
         const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
         // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
@@ -282,7 +285,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setResultado(res);
         setPrevistos(abiertos);
         setLineas(
-          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados)
+          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados, lineasDelLote ?? [])
         );
         reiniciarDecisiones();
         setAbiertoEn(new Date().toISOString());

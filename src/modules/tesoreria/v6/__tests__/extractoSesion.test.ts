@@ -10,6 +10,7 @@
 
 import {
   construirLineas,
+  lineaIdPorMovementId,
   veredictoEfectivo,
   resumir,
   payloadDeConfirmacion,
@@ -540,5 +541,85 @@ describe('seOfrecePara · a qué previsión se le puede asignar una línea', () 
 
   it('sin cuenta destino no se ofrece nada que no sea la cuota huérfana', () => {
     expect(seOfrecePara(prev({ accountId: undefined }), undefined)).toBe(false);
+  });
+});
+
+
+// ─── E1.2a · `lineaId` convive con `movementId` · nada decide con él todavía ───
+describe('E1.2a · lineaId junto a movementId', () => {
+  const persistida = (id: number, movementIds: number[]) => ({ id, movementIds });
+
+  it('cada línea construida lleva AMBOS: movementId como hoy y lineaId apuntando a su fila', () => {
+    const lineas = construirLineas(
+      [mov(10, 'RECIBO IBERDROLA', -74.09), mov(11, 'RENTA MARZO', 650)],
+      sinMatches,
+      [],
+      new Set(),
+      new Map(),
+      [persistida(501, [10]), persistida(502, [11])]
+    );
+    expect(lineas.map((l) => [l.movementId, l.lineaId])).toEqual([
+      [10, 501],
+      [11, 502],
+    ]);
+  });
+
+  it('sin filas persistidas (tests · lotes anteriores a V91) no hay lineaId y todo sigue igual', () => {
+    const lineas = construirLineas([mov(10, 'COMISION', -3)], sinMatches, [], new Set());
+    expect(lineas[0].movementId).toBe(10);
+    expect(lineas[0].lineaId).toBeUndefined();
+    expect('lineaId' in lineas[0]).toBe(false);
+  });
+
+  it('pago múltiple · una línea con varios movimientos → todos con la MISMA lineaId', () => {
+    const lineas = construirLineas(
+      [mov(20, 'TRANSF FIANZA+MES', 700), mov(21, 'TRANSF FIANZA+MES', 700)],
+      sinMatches,
+      [],
+      new Set(),
+      new Map(),
+      [persistida(900, [20, 21])]
+    );
+    expect(lineas.map((l) => l.lineaId)).toEqual([900, 900]);
+  });
+
+  it('una fila de otro lote o descartada (sin movimientos) no se cuela', () => {
+    const lineas = construirLineas(
+      [mov(10, 'COMISION', -3)],
+      sinMatches,
+      [],
+      new Set(),
+      new Map(),
+      [persistida(1, [99]), persistida(2, []), { id: undefined, movementIds: [10] }]
+    );
+    expect(lineas[0].lineaId).toBeUndefined();
+  });
+
+  it('lineaIdPorMovementId · el mapa es el inverso exacto de movementIds', () => {
+    const m = lineaIdPorMovementId([persistida(5, [1, 2]), persistida(6, [3]), persistida(7, [])]);
+    expect(Array.from(m.entries())).toEqual([
+      [1, 5],
+      [2, 5],
+      [3, 6],
+    ]);
+  });
+
+  it('las decisiones siguen yendo por movementId · lineaId no cambia ningún veredicto ni payload', () => {
+    const lineas = construirLineas(
+      [mov(10, 'RECIBO IBERDROLA', -74.09)],
+      { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 92, reasons: [] }] },
+      [evt(5, 'Luz', -74)],
+      new Set(),
+      new Map(),
+      [persistida(501, [10])]
+    );
+    const d = decisionesVacias();
+    d.ignorados.add(10); // por movementId, como hoy
+    expect(veredictoEfectivo(lineas[0], d)).toBe('ignorada');
+    expect(payloadDeConfirmacion(lineas, d)).toEqual({
+      approvedMatches: [],
+      ignoredMovementIds: [10],
+      reconciliacionesConfirmado: [],
+    });
   });
 });
