@@ -473,16 +473,20 @@ describe('reconocerDeterministas · el lote de agosto contra los libros del usua
     (initDB as jest.Mock).mockResolvedValue(handle);
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const r = await reconocerDeterministas(LOTE);
-    expect(Array.from(r.origenes.keys())).toEqual([19, 10, 9]);
-    // Sin el origen de préstamo, la línea 1 SÍ recibe atribución por «PRESTAMO»
-    // · y las atribuciones salen en el orden de las líneas, no de las fuentes.
-    expect(Array.from(r.atribuciones.entries())).toEqual([
-      [1, { movementId: 1, inmuebleId: 4, concepto: 'Intereses', ejercicio: 2025 }],
-      [13, { movementId: 13, inmuebleId: 4, concepto: 'IBI', ejercicio: 2025 }],
-    ]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("'prestamos'"), expect.any(Error));
-    warn.mockRestore();
+    try {
+      const r = await reconocerDeterministas(LOTE);
+      expect(Array.from(r.origenes.keys())).toEqual([19, 10, 9]);
+      // Sin el origen de préstamo, la línea 1 SÍ recibe atribución por «PRESTAMO»
+      // · y las atribuciones salen en el orden de las líneas, no de las fuentes.
+      expect(Array.from(r.atribuciones.entries())).toEqual([
+        [1, { movementId: 1, inmuebleId: 4, concepto: 'Intereses', ejercicio: 2025 }],
+        [13, { movementId: 13, inmuebleId: 4, concepto: 'IBI', ejercicio: 2025 }],
+      ]);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("'prestamos'"), expect.any(Error));
+    } finally {
+      // Se restaura aunque falle una aserción · el espía no puede contaminar el resto.
+      warn.mockRestore();
+    }
   });
 
   it('dos préstamos con la misma cuota el mismo día · no se elige · la línea queda sin origen', async () => {
@@ -639,7 +643,9 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
     });
 
     it('un confirmado que ya no existe · la línea del import sube igual a Conciliado sin heredar nada', async () => {
-      stores.movements.splice(stores.movements.findIndex((r) => r.id === 21), 1);
+      const i = stores.movements.findIndex((r) => r.id === 21);
+      expect(i).toBeGreaterThanOrEqual(0); // si cambia el sembrado, que falle aquí y no borre otro
+      stores.movements.splice(i, 1);
       await guardar();
       expect(m(33)).toMatchObject({ unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico' });
       expect(m(33)!.categoryKey).toBeUndefined();
