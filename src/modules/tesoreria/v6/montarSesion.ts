@@ -14,7 +14,7 @@ import { initDB } from '../../../services/db';
 import type { OrchestratorResult } from '../../../services/bankStatementOrchestrator';
 import { getIgnoredLineHashes } from '../../../services/statementIgnoredLinesService';
 import { confirmadosPorLineaExtracto } from '../../../services/conciliacionConfirmados';
-import { propuestaDeAnclaje, type PropuestaDeAnclaje } from '../../../services/anclajeSaldoExtracto';
+import { propuestaDeApertura, type PropuestaDeApertura } from '../../../services/aperturaDerivada';
 import { construirLineas, seOfrecePara, type LineaExtracto } from './extractoSesion';
 import {
   guardarDecisionDeLinea,
@@ -71,11 +71,12 @@ export interface SesionDelLote {
   /** Las filas persistidas del lote (E1.1) · de ellas salen las decisiones (E1.3). */
   filas: LineaExtractoPersistida[];
   /**
-   * E1.5-anclaje-saldo · lo que el banco dice del saldo frente a lo que ATLAS
-   * calcula, y la apertura que haría cuadrar. `null` si el fichero no trae
-   * columna de saldo. ATLAS propone; el usuario confirma al guardar.
+   * §31 · lo que el banco dice del saldo frente a lo que ATLAS calcula, y la
+   * apertura DERIVADA que propone (retrocederla hasta la línea más antigua del
+   * fichero, o ajustar el saldo de hoy). `null` si el fichero no trae columna
+   * de saldo. ATLAS propone; el usuario confirma al guardar.
    */
-  anclaje: PropuestaDeAnclaje | null;
+  apertura: PropuestaDeApertura | null;
   /** Las filas del fichero descartadas por estar YA en ATLAS · para enseñar cuáles. */
   yaEstaban: LineaExtractoPersistida[];
 }
@@ -114,8 +115,8 @@ export async function leerSesionDelLote(res: OrchestratorResult, destino: Accoun
   const confirmados = confirmadosPorLineaExtracto(filas, todosMovs ?? [], destino.id as number);
   const previstos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
   // Si el cuadre con el banco no se puede calcular, la sesión sigue igual:
-  // anclar es una propuesta, no una condición para conciliar.
-  const anclaje = await propuestaDeAnclaje(db, destino, filas).catch((err) => {
+  // mover la apertura es una propuesta, no una condición para conciliar.
+  const apertura = await propuestaDeApertura(db, destino, filas).catch((err) => {
     console.warn('[DrawerExtracto] no se pudo calcular el cuadre con el banco', err);
     return null;
   });
@@ -123,7 +124,7 @@ export async function leerSesionDelLote(res: OrchestratorResult, destino: Accoun
     previstos,
     lineas: construirLineas(filas, res.matchResult, previstos, ignoradasPrevias, confirmados),
     filas,
-    anclaje,
+    apertura,
     yaEstaban: filas.filter((f) => f.descarte === 'duplicada'),
   };
 }

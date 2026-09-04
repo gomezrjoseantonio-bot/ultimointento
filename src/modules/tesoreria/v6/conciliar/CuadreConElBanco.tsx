@@ -1,34 +1,41 @@
 // ============================================================================
-// El cuadre con el banco · «el banco dice X, ATLAS calcula Y» · ¿anclo?
+// El cuadre con el banco · «el banco dice X, ATLAS calcula Y» · ¿muevo la apertura?
 // ============================================================================
 //
-// E1.5-anclaje-saldo. Cuando el extracto trae columna de saldo, ATLAS compara
-// lo que el banco afirma a la fecha de la última línea con lo que él calcula
-// a esa misma fecha. Si cuadra, lo dice. Si no, PROPONE fijar la apertura de
-// la cuenta para que cuadre y el usuario CONFIRMA con una casilla; se aplica
-// al Guardar. Nunca se ancla solo (§9: el saldo del fichero puede llevar
-// retenidos). Y si la cuenta ya tenía apertura, el descuadre se ve, no se pisa.
+// §31 · la apertura no se inventa, se DERIVA del extracto. Aquí se cuentan las
+// dos cosas y se ofrece UNA casilla:
+//
+//   · El CUADRE (§20) · lo que el banco afirma a la fecha de la línea más
+//     reciente frente a lo que ATLAS calcula. Se dice siempre, cuadre o no.
+//   · La PROPUESTA · si el fichero es más antiguo que la apertura, la apertura
+//     RETROCEDE hasta su línea más antigua con el saldo real del banco
+//     (`retroceso`); si cae dentro de lo que ATLAS ya cubría, se ajusta el
+//     saldo de hoy para cuadrar (`ajuste`).
+//
+// Nunca se aplica sola (§9: el saldo del fichero puede llevar retenidos o ir
+// por fecha valor): la casilla nace sin marcar y se aplica al Guardar.
 // ============================================================================
 
 import React from 'react';
 import { Icons } from '../../../../design-system/v5';
-import type { PropuestaDeAnclaje } from '../../../../services/anclajeSaldoExtracto';
+import type { PropuestaDeApertura } from '../../../../services/aperturaDerivada';
 import { fechaLarga, importeSaldo } from '../formatoV6';
 import styles from './CuadreBanco.module.css';
 
 export interface CuadreConElBancoProps {
-  propuesta: PropuestaDeAnclaje;
+  propuesta: PropuestaDeApertura;
   /** Lo que el usuario ha decidido · se aplica al guardar. */
-  anclar: boolean;
-  onAnclar: (anclar: boolean) => void;
+  aplicar: boolean;
+  onAplicar: (aplicar: boolean) => void;
   desactivado?: boolean;
 }
 
-const CuadreConElBanco: React.FC<CuadreConElBancoProps> = ({ propuesta, anclar, onAnclar, desactivado }) => {
+const CuadreConElBanco: React.FC<CuadreConElBancoProps> = ({ propuesta, aplicar, onAplicar, desactivado }) => {
   const p = propuesta;
   const banco = `El banco dice que a ${fechaLarga(p.fecha)} tenías ${importeSaldo(p.saldoBanco)}`;
 
-  if (p.cuadra) {
+  // Cuadra y no hay nada que mover · el caso bueno, una línea y fuera.
+  if (p.cuadra && !p.proponer) {
     return (
       <div className={`${styles.banco} ${styles.bancoOk}`} data-testid="cuadre-banco" data-estado="cuadra">
         <Icons.Check size={15} />
@@ -39,46 +46,82 @@ const CuadreConElBanco: React.FC<CuadreConElBancoProps> = ({ propuesta, anclar, 
     );
   }
 
-  if (!p.aplicable) {
+  // El aviso de descuadre (§20) · se mantiene tal cual, cambie o no la apertura.
+  const elCuadre = p.cuadra ? (
+    <span>
+      {banco} · <b>ATLAS calcula lo mismo</b>
+    </span>
+  ) : (
+    <span>
+      {banco} · ATLAS calcula <b>{importeSaldo(p.saldoAtlas)}</b> · {importeSaldo(Math.abs(p.descuadre))} de
+      diferencia
+      {p.aperturaActual.fecha
+        ? ` · tu apertura actual es ${importeSaldo(p.aperturaActual.saldo)} a ${fechaLarga(p.aperturaActual.fecha)}`
+        : ''}
+      .
+    </span>
+  );
+
+  if (!p.proponer) {
     return (
-      <div className={`${styles.banco} ${styles.bancoAviso}`} data-testid="cuadre-banco" data-estado="anterior">
+      <div className={`${styles.banco} ${styles.bancoAviso}`} data-testid="cuadre-banco" data-estado="descuadre">
         <Icons.Warning size={15} />
-        <span>
-          {banco} · ATLAS calcula {importeSaldo(p.saldoAtlas)}. Este extracto es <b>anterior a la apertura</b>{' '}
-          de la cuenta{p.aperturaActual.fecha ? ` (${fechaLarga(p.aperturaActual.fecha)})` : ''}, así que no se
-          ancla a él · si el saldo no cuadra, ajusta la apertura a mano.
-        </span>
+        <div className={styles.bancoTexto}>
+          {elCuadre}
+          <span className={styles.bancoNota}>
+            La apertura ya está donde tiene que estar · la diferencia viene de otro sitio, revisa los movimientos.
+          </span>
+        </div>
       </div>
     );
   }
 
-  // Hay apertura previa si la cuenta tiene FECHA de apertura, aunque el saldo
-  // sea 0: «0 € a 31 de agosto» es justo lo que explica el descuadre.
-  const teniaApertura = p.aperturaActual.fecha != null;
+  const esRetroceso = p.modo === 'retroceso';
   return (
-    <div className={`${styles.banco} ${styles.bancoAviso}`} data-testid="cuadre-banco" data-estado="descuadre">
+    <div
+      className={`${styles.banco} ${p.cuadra ? styles.bancoOk : styles.bancoAviso}`}
+      data-testid="cuadre-banco"
+      data-estado={p.cuadra ? 'cuadra' : 'descuadre'}
+      data-modo={p.modo}
+    >
       <Icons.Warning size={15} />
       <div className={styles.bancoTexto}>
-        <span>
-          {banco} · ATLAS calcula <b>{importeSaldo(p.saldoAtlas)}</b> · {importeSaldo(Math.abs(p.descuadre))} de
-          diferencia
-          {teniaApertura
-            ? ` · tu apertura actual es ${importeSaldo(p.aperturaActual.saldo)} a ${fechaLarga(p.aperturaActual.fecha as string)}`
-            : ''}
-          .
-        </span>
+        {elCuadre}
+        {esRetroceso && (
+          <span>
+            Este extracto empieza el {fechaLarga(p.extremos.masAntigua.fecha)}, <b>antes</b> de la apertura de tu
+            cuenta
+            {p.aperturaActual.fecha ? ` (${fechaLarga(p.aperturaActual.fecha)})` : ''} · el propio banco dice con
+            cuánto llegabas a su primera línea.
+          </span>
+        )}
         <label className={styles.bancoCheck}>
           <input
             type="checkbox"
-            checked={anclar}
+            checked={aplicar}
             disabled={desactivado}
-            onChange={(e) => onAnclar(e.target.checked)}
+            onChange={(e) => onAplicar(e.target.checked)}
           />
           <span>
-            Fijar mi saldo de apertura en <b>{importeSaldo(p.aperturaPropuesta)}</b> a {fechaLarga(p.fecha)} para
-            que cuadre con el banco · se aplica al guardar
+            {esRetroceso ? (
+              <>
+                Llevar mi apertura al {fechaLarga(p.apertura.fecha)} con <b>{importeSaldo(p.apertura.saldo)}</b> —el
+                saldo del banco en esa línea— para que ATLAS tenga todo el historial · se aplica al guardar
+              </>
+            ) : (
+              <>
+                Fijar mi saldo de apertura en <b>{importeSaldo(p.apertura.saldo)}</b> a{' '}
+                {fechaLarga(p.apertura.fecha)} para que cuadre con el banco · se aplica al guardar
+              </>
+            )}
           </span>
         </label>
+        {!p.cuadraTrasAplicar && (
+          <span className={styles.bancoNota}>
+            Aun así quedarían {importeSaldo(Math.abs(p.saldoBanco - p.saldoAtlasTrasAplicar))} de diferencia a{' '}
+            {fechaLarga(p.fecha)} · falta algún movimiento por registrar.
+          </span>
+        )}
         <span className={styles.bancoNota}>
           Si no reconoces ese saldo (retenidos, fecha valor), déjalo sin marcar y ajusta la apertura a mano.
         </span>
