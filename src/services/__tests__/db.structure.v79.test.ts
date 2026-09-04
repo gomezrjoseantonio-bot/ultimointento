@@ -41,6 +41,8 @@ const EXPECTED_STORES: Record<string, string[]> = {
   ingresos: ['fechaActualizacion', 'personalDataId', 'tipo'],
   inversiones: ['activo', 'entidad', 'tipo'],
   keyval: [],
+  // V91 · E1.1 · la línea del banco persistida (db.ts · upgrade-a.ts).
+  lineasExtracto: ['accountId', 'estado', 'hashLinea', 'importBatchId'],
   mejorasInmueble: ['ejercicio', 'inmueble-ejercicio', 'inmuebleId', 'movimientoId', 'treasuryEventId'],
   movementLearningRules: ['ambito', 'appliedCount', 'categoria', 'createdAt', 'learnKey'],
   // V87 · VOCABULARIO §3 · la tarjeta deja de ser una cuenta.

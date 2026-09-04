@@ -183,6 +183,19 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           explotacionStore.createIndex('inmuebleId', 'inmuebleId', { unique: true });
         }
 
+        // V91 · E1.1 · `lineasExtracto`: la línea del banco, persistida tal cual
+        // llegó. Índices para lo que las fases siguientes van a preguntar:
+        // «las líneas de este lote» (importBatchId), «las de esta cuenta»
+        // (accountId), «¿ya vi esta línea?» (hashLinea) y «las que siguen sin
+        // resolver» (estado). En E1.1 nadie lee el store.
+        if (!db.objectStoreNames.contains('lineasExtracto')) {
+          const lineasStore = db.createObjectStore('lineasExtracto', { keyPath: 'id', autoIncrement: true });
+          lineasStore.createIndex('importBatchId', 'importBatchId', { unique: false });
+          lineasStore.createIndex('accountId', 'accountId', { unique: false });
+          lineasStore.createIndex('hashLinea', 'hashLinea', { unique: false });
+          lineasStore.createIndex('estado', 'estado', { unique: false });
+        }
+
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
         if (!db.objectStoreNames.contains('mueblesInmueble')) {
           const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });
