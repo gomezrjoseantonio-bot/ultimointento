@@ -36,6 +36,7 @@ import { BankParserService } from '../../features/inbox/importers/bankParser';
 import { matchBatch } from '../movementMatchingService';
 import { suggestForUnmatched, MovementSuggestion } from '../movementSuggestionService';
 import { createOrUpdateRule } from '../movementLearningService';
+import { gastoDesdeMovimiento, mejoraDesdeMovimiento } from '../altaMovimientoService';
 
 jest.mock('../db', () => ({ initDB: jest.fn() }));
 jest.mock('../../features/inbox/importers/bankProfileMatcher', () => ({
@@ -83,6 +84,9 @@ interface FakeStores {
   accounts: any[];
   // E1.1 · la línea del banco persistida · nadie la lee aún.
   lineasExtracto: any[];
+  // E1.5-previo · las fichas que la sesión crea desde la ficha del movimiento.
+  gastosInmueble: any[];
+  mejorasInmueble: any[];
 }
 
 function buildStores(initial: Partial<FakeStores> = {}): FakeStores {
@@ -92,6 +96,8 @@ function buildStores(initial: Partial<FakeStores> = {}): FakeStores {
     importBatches: initial.importBatches ?? [],
     accounts: initial.accounts ?? [],
     lineasExtracto: initial.lineasExtracto ?? [],
+    gastosInmueble: initial.gastosInmueble ?? [],
+    mejorasInmueble: initial.mejorasInmueble ?? [],
   };
 }
 
@@ -115,6 +121,12 @@ function buildDb(s: FakeStores) {
       if (storeName === 'lineasExtracto') {
         const id = nextLineaId++;
         s.lineasExtracto.push({ ...row, id });
+        return id;
+      }
+      if (storeName === 'gastosInmueble' || storeName === 'mejorasInmueble') {
+        const list = s[storeName];
+        const id = (list.length + 1) * 10;
+        list.push({ ...row, id });
         return id;
       }
       throw new Error(`unsupported store add: ${String(storeName)}`);
@@ -796,5 +808,61 @@ describe('E1.3 · retomar un lote a medias', () => {
     expect(stores.lineasExtracto).toHaveLength(0);
     expect(stores.importBatches).toHaveLength(0);
     expect(await lotesAMedias()).toHaveLength(0);
+  });
+
+  it('8e. E1.5-previo · descartar el lote limpia las fichas de gasto/mejora creadas desde la sesión', async () => {
+    const res = await processFile(new File(['mock'], 'sabadell.xlsx'), { accountId: 42 });
+    const [gastoMov, mejoraMov, recurrenteMov] = stores.movements.filter((m) => m.amount < 0);
+
+    // Lo que hace la ficha a mitad de sesión · con los servicios REALES.
+    const gasto = await gastoDesdeMovimiento({
+      movementId: gastoMov.id as number,
+      inmuebleId: 4,
+      concepto: 'Luz Tenderina',
+      importe: gastoMov.amount,
+      fecha: gastoMov.date,
+      categoryKey: 'inmueble.suministros',
+      hoy: '2026-09-04',
+    });
+    expect(gasto.resultado).toBe('creada');
+    await mejoraDesdeMovimiento({
+      movementId: mejoraMov.id as number,
+      inmuebleId: 4,
+      concepto: 'Derrama fachada',
+      importe: mejoraMov.amount,
+      fecha: mejoraMov.date,
+    });
+    // Una fila de gasto que YA existía (la del recurrente) y la sesión solo cerró.
+    stores.gastosInmueble.push({
+      id: 900, inmuebleId: 4, ejercicio: 2026, fecha: recurrenteMov.date, concepto: 'Comunidad', categoria: 'comunidad',
+      casillaAEAT: '0109', importe: 45.23, origen: 'recurrente', origenId: 'recurrente-7-2026-4',
+      estado: 'confirmado', estadoTesoreria: 'confirmed', movimientoId: String(recurrenteMov.id), fechaValor: recurrenteMov.date,
+      cuentaBancaria: '42', createdAt: '', updatedAt: '',
+    });
+    // Y una ficha de OTRO movimiento, ajena al lote · no se toca.
+    stores.movements.push({ id: 5000, accountId: 42, date: '2026-03-01', amount: -80, description: 'otro', source: 'manual' } as any);
+    stores.gastosInmueble.push({ id: 901, inmuebleId: 4, ejercicio: 2026, fecha: '2026-03-01', concepto: 'Ajeno', categoria: 'suministro', casillaAEAT: '0113', importe: 80, origen: 'tesoreria', estado: 'confirmado', movimientoId: '5000', createdAt: '', updatedAt: '' });
+    stores.mejorasInmueble.push({ id: 902, inmuebleId: 4, ejercicio: 2026, descripcion: 'Ajena', tipo: 'mejora', importe: 80, fecha: '2026-03-01', movimientoId: 5000, createdAt: '', updatedAt: '' });
+    expect(stores.gastosInmueble).toHaveLength(3);
+    expect(stores.mejorasInmueble).toHaveLength(2);
+
+    const { removed, fichas } = await cancelImportBatch(res.importBatchId);
+
+    expect(removed).toBe(14);
+    expect(fichas).toEqual({ gastosBorrados: 1, gastosDesenlazados: 1, mejorasBorradas: 1 });
+    // Nada apunta a un movimiento que ya no existe.
+    const vivos = new Set(stores.movements.map((m) => m.id));
+    const huerfanas = (filas: any[]) =>
+      filas.filter((f) => f.movimientoId != null && !vivos.has(Number(f.movimientoId))).map((f) => f.id);
+    expect(huerfanas(stores.gastosInmueble)).toEqual([]);
+    expect(huerfanas(stores.mejorasInmueble)).toEqual([]);
+    // La del recurrente sobrevive, desenlazada y otra vez prevista.
+    const recurrente = stores.gastosInmueble.find((g) => g.id === 900);
+    expect(recurrente).toMatchObject({ origen: 'recurrente', estado: 'previsto', estadoTesoreria: 'predicted', importe: 45.23 });
+    expect(recurrente.movimientoId).toBeUndefined();
+    expect(recurrente.cuentaBancaria).toBeUndefined();
+    // Las ajenas al lote, intactas.
+    expect(stores.gastosInmueble.map((g) => g.id).sort()).toEqual([900, 901]);
+    expect(stores.mejorasInmueble.map((m) => m.id)).toEqual([902]);
   });
 });

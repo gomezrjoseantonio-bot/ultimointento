@@ -40,6 +40,7 @@ import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
 import type { DescarteLineaExtracto } from './db/types-lineasExtracto';
 import { lineaDesdeFila, lineasDelLote } from './lineasExtractoService';
+import { limpiarFichasDeMovimientos, type DbParaFichas, type FichasLimpiadas } from './fichasDelLote';
 
 export interface OrchestratorOptions {
   accountId: number;
@@ -478,10 +479,26 @@ export async function confirmDecisions(
   }
 }
 
-export async function cancelImportBatch(importBatchId: string): Promise<{ removed: number }> {
+export async function cancelImportBatch(
+  importBatchId: string
+): Promise<{ removed: number; fichas: FichasLimpiadas }> {
   const db = await initDB();
   const allMovements = ((await db.getAll('movements')) ?? []) as Movement[];
   const toRemove = allMovements.filter(m => m.importBatch === importBatchId && m.id != null);
+
+  // E1.5-previo · las fichas de gasto/mejora que el usuario creó desde la
+  // sesión apuntan a estos movimientos: se limpian ANTES de borrarlos, que es
+  // cuando aún se pueden encontrar. Sin esto quedaba una fila fiscal apuntando
+  // a un movimiento inexistente.
+  let fichas: FichasLimpiadas = { gastosBorrados: 0, gastosDesenlazados: 0, mejorasBorradas: 0 };
+  try {
+    fichas = await limpiarFichasDeMovimientos(
+      db as unknown as DbParaFichas,
+      toRemove.map(m => m.id as number)
+    );
+  } catch (err) {
+    console.warn('[orchestrator] cancelImportBatch: no se pudieron limpiar las fichas del lote', err);
+  }
 
   for (const movement of toRemove) {
     await db.delete('movements', movement.id!);
@@ -502,7 +519,7 @@ export async function cancelImportBatch(importBatchId: string): Promise<{ remove
     console.warn('[orchestrator] cancelImportBatch: importBatches row not found', err);
   }
 
-  return { removed: toRemove.length };
+  return { removed: toRemove.length, fichas };
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
