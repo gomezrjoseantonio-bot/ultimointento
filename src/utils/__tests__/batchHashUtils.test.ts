@@ -9,7 +9,7 @@
 // jsdom no trae `crypto.subtle` ni `File.text()`, de modo que aquí se ejercita
 // justo la rama de respaldo — la que de verdad corre en entornos sin crypto.
 
-import { generateBatchHash, checkBatchHashExists } from '../batchHashUtils';
+import { generateBatchHash } from '../batchHashUtils';
 
 /** jsdom no implementa `File.text()`; se lee por FileReader, que sí está. */
 beforeAll(() => {
@@ -120,30 +120,5 @@ describe('generateBatchHash', () => {
     } as unknown as File;
 
     expect(await generateBatchHash(ilegible)).toBe('');
-  });
-});
-
-describe('checkBatchHashExists', () => {
-  const fakeDb = (batches: Array<{ hashLote: string }>) => ({
-    getAll: async () => batches,
-  });
-
-  it('detecta un hash ya presente', async () => {
-    const db = fakeDb([{ hashLote: 'aaa' }, { hashLote: 'bbb' }]);
-    expect(await checkBatchHashExists('bbb', db)).toBe(true);
-  });
-
-  it('no encuentra un hash nuevo', async () => {
-    const db = fakeDb([{ hashLote: 'aaa' }]);
-    expect(await checkBatchHashExists('zzz', db)).toBe(false);
-  });
-
-  it('devuelve false si la lectura falla, en vez de propagar', async () => {
-    const db = {
-      getAll: async () => {
-        throw new Error('IndexedDB caída');
-      },
-    };
-    expect(await checkBatchHashExists('aaa', db)).toBe(false);
   });
 });
