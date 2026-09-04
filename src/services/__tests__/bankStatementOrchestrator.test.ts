@@ -558,9 +558,10 @@ describe('bankStatementOrchestrator', () => {
 //
 // Aditivo: nadie lee el store todavía. Lo que se protege aquí es que (a) por
 // cada movimiento creado hay UNA línea, (b) su `conceptoLiteral` es el texto del
-// parser CARÁCTER A CARÁCTER (sin trim ni normalizar: el dedupe entre
-// importaciones depende de él), (c) `movementIds` enlaza bien, y (d) lo que hoy
-// NO genera movimiento deja rastro con `descarte` en vez de perderse.
+// parser CARÁCTER A CARÁCTER (se guarda sin trim ni normalizar; las huellas
+// —`hashMovement` con `.trim()`, `hashLinea` normalizada— se derivan de él),
+// (c) `movementIds` enlaza bien, y (d) lo que hoy NO genera movimiento deja
+// rastro con `descarte` en vez de perderse.
 describe('E1.1 · lineasExtracto', () => {
   it('7. una línea por movimiento creado · conceptoLiteral EXACTO · movementIds enlaza', async () => {
     const parsed = makeParsed(14);

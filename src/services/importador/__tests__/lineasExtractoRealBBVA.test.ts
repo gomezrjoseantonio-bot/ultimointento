@@ -1,10 +1,12 @@
 // E1.1 · la línea de extracto persistida, sobre las filas REALES de BBVA.
 //
 // Lo que se prueba: que `conceptoLiteral` es el texto del fichero CARÁCTER A
-// CARÁCTER. No «parecido», no «normalizado»: igual. El dedupe entre
-// importaciones (`hashMovement`) depende de ese texto, y el hash de la línea de
-// la sesión (`hashLinea`) también. Un `trim` de más aquí duplicaría cargos al
-// reimportar un extracto solapado.
+// CARÁCTER. No «parecido», no «normalizado»: igual. Las dos huellas se derivan
+// de ese texto —`hashMovement` con `description.trim()` (mayúsculas, acentos y
+// espacios internos intactos) y `hashLinea` normalizado— y aquí se comprueba que
+// coinciden con las que calculan el orquestador y la sesión. Alterar el literal
+// por el camino cambiaría al menos una y duplicaría cargos al reimportar un
+// extracto solapado.
 //
 // Entra por el parser real (SheetJS + `BankParserService.parseSheet`, lo mismo
 // que ejecuta `processFile`) y sale por `lineaDesdeFila`, que es lo que el

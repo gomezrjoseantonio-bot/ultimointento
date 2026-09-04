@@ -8,9 +8,11 @@
 // que las persiste en el store `lineasExtracto`.
 //
 // Regla de oro (§16.1): lo crudo del banco es una COPIA FIEL. `conceptoLiteral`
-// es el texto EXACTO del banco, sin `trim` ni normalizar: `hashMovement` dedupe
-// por él entre importaciones (`bankStatementOrchestrator.hashMovement`), y
-// cambiarlo haría que un extracto solapado no reconociera sus propias líneas.
+// se guarda tal cual llegó, sin `trim` ni normalizar. Las huellas salen de él,
+// cada una con su propia transformación (`hashMovement` recorta los extremos
+// —`description.trim()`— y `hashLinea` normaliza entero), y por eso el literal
+// no se toca aquí: si se alterase por el camino, un extracto solapado dejaría de
+// reconocer sus propias líneas y duplicaría cargos.
 //
 // En E1.1 NADIE lee este store: el orquestador escribe la línea ADEMÁS del
 // movimiento, con `estado: 'resuelta'` porque hoy todo se materializa al

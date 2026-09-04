@@ -759,8 +759,11 @@ export interface LineaExtractoPersistida {
   /** Con signo, tal como lo dio el parser. */
   importe: number;
   /**
-   * El texto EXACTO del banco. Sin `trim`, sin normalizar, sin embellecer.
-   * `hashMovement` dedupe por él entre importaciones: alterarlo rompe el dedupe.
+   * El texto EXACTO del banco: se guarda sin `trim`, sin normalizar, sin
+   * embellecer. Las dos huellas se derivan de él y cada una lo transforma a su
+   * manera (`hashMovement` recorta los espacios de los extremos; `hashLinea`
+   * lo normaliza entero), así que alterar el literal —espacios internos,
+   * mayúsculas, acentos, puntuación— cambia al menos una y rompe el dedupe.
    */
   conceptoLiteral: string;
   contraparte?: string;
@@ -779,7 +782,7 @@ export interface LineaExtractoPersistida {
   // ── Huellas · las que ya calcula el orquestador, no otras ──────────────────
   /** `generateLineHash` · `v1:fecha|céntimos|concepto normalizado` (sin cuenta). */
   hashLinea: string;
-  /** `bankStatementOrchestrator.hashMovement` · `cuenta|fecha|céntimos|concepto crudo`. */
+  /** `bankStatementOrchestrator.hashMovement` · `cuenta|fecha|céntimos|concepto.trim()` (sin normalizar: mayúsculas, acentos y espacios internos cuentan). */
   hashMovement: string;
 
   // ── Estado ────────────────────────────────────────────────────────────────
