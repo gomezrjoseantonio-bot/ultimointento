@@ -517,13 +517,14 @@ export function movimientosAEfectivo(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): number[] {
-  const out: number[] = [];
+  // Frontera · de la línea decidida a los movimientos que la componen, sin
+  // repetir ninguno (dos tarjetas de un pago 1→N comparten línea).
+  const emitidos = new Set<number>();
   for (const l of lineas) {
     if (!decisiones.aEfectivo.has(l.lineaId) || decisiones.ignorados.has(l.lineaId)) continue;
-    // Frontera · de la línea decidida a los movimientos que la componen.
-    for (const movementId of movementIdsDe(l)) if (!out.includes(movementId)) out.push(movementId);
+    for (const movementId of movementIdsDe(l)) emitidos.add(movementId);
   }
-  return out;
+  return Array.from(emitidos);
 }
 
 /**
@@ -580,16 +581,17 @@ export function movimientosATraspaso(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): Array<{ movementId: number; cuentaDestinoId: number }> {
-  const out: Array<{ movementId: number; cuentaDestinoId: number }> = [];
+  // Frontera · de la línea decidida a los movimientos que la componen, sin
+  // repetir ninguno. El Map conserva el orden de inserción, como el array.
+  const porMovimiento = new Map<number, number>();
   for (const l of lineas) {
     if (!decisiones.aTraspaso.has(l.lineaId) || decisiones.ignorados.has(l.lineaId)) continue;
     const cuentaDestinoId = decisiones.aTraspaso.get(l.lineaId) as number;
-    // Frontera · de la línea decidida a los movimientos que la componen.
     for (const movementId of movementIdsDe(l)) {
-      if (!out.some((o) => o.movementId === movementId)) out.push({ movementId, cuentaDestinoId });
+      if (!porMovimiento.has(movementId)) porMovimiento.set(movementId, cuentaDestinoId);
     }
   }
-  return out;
+  return Array.from(porMovimiento, ([movementId, cuentaDestinoId]) => ({ movementId, cuentaDestinoId }));
 }
 
 /**

@@ -125,7 +125,7 @@ const Monton: React.FC<MontonProps> = ({
                 {abierto && (
                   <div className={styles.dentro}>
                     {g.lineas.map((l) => (
-                      <div key={l.lineaId} className={styles.dentroFila}>
+                      <div key={`${l.lineaId}:${l.movementId}`} className={styles.dentroFila}>
                         <span className={styles.dentroTxt}>
                           {/* El texto LITERAL del banco · es lo que el usuario
                               puede reconocer en su cuenta para decidir. */}
@@ -208,7 +208,7 @@ const ColumnaResto: React.FC<ColumnaRestoProps> = ({
           <div className={styles.vacioBloque}>Ninguna. Nada se aparta sin que tú lo digas.</div>
         ) : (
           ignoradas.map((l) => (
-            <div key={l.lineaId} className={styles.fila}>
+            <div key={`${l.lineaId}:${l.movementId}`} className={styles.fila}>
               <span className={`${styles.filaIco} ${styles.filaIcoMudo}`} aria-hidden="true">
                 <Icons.Minus size={13} />
               </span>

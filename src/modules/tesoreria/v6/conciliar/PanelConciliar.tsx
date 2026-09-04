@@ -371,7 +371,8 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
             ) : (
               visibles.map((l) => (
                 <TarjetaAccion
-                  key={l.lineaId}
+                  // Compuesta: en un pago 1→N varias tarjetas comparten lineaId.
+                  key={`${l.lineaId}:${l.movementId}`}
                   propuesta={
                     propuestas.get(l.movementId) ?? {
                       tono: 'pregunta',
