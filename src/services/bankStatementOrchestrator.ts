@@ -277,6 +277,17 @@ async function procesarLoteParseado(
 
   await updateImportBatchSummary(importBatchId, movementsParsed, insertResult.inserted, insertResult.duplicates);
 
+  // Lo que el fichero trae y ATLAS ya tenía (misma cuenta, fecha, importe y
+  // texto · de un extracto anterior o de un movimiento ya creado) se queda
+  // como está y no entra a la sesión. Se dice, para que «1.321 líneas» sobre
+  // un fichero de 1.341 no parezca que el import pierde dinero.
+  if (insertResult.duplicates > 0) {
+    ctx.warnings.push(
+      `${insertResult.duplicates} ${insertResult.duplicates === 1 ? 'línea del fichero ya estaba' : 'líneas del fichero ya estaban'} ` +
+        'en ATLAS (misma fecha, importe y concepto) · no se vuelven a traer ni se cuentan dos veces.'
+    );
+  }
+
   return {
     importBatchId,
     movementsParsed,
