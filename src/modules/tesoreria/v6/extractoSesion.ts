@@ -14,7 +14,7 @@
 
 import type { MatchResult } from '../../../services/movementMatchingService';
 import type { MovimientoConfirmadoRef } from '../../../services/conciliacionConfirmados';
-import type { Movement, TreasuryEvent } from '../../../services/db';
+import type { Movement, TreasuryEvent, LineaExtractoPersistida } from '../../../services/db';
 import { generateLineHash } from '../../../services/statementIgnoredLinesService';
 
 export type VeredictoLinea =
@@ -27,6 +27,16 @@ export type VeredictoLinea =
 export interface LineaExtracto {
   /** id del `Movement` que `processFile` ya insertó para esta línea. */
   movementId: number;
+  /**
+   * E1.2a · id del registro de esta línea en el store `lineasExtracto` (E1.1).
+   *
+   * Convive con `movementId` y, de momento, NO decide nada: todas las
+   * decisiones de la sesión (`DecisionesSesion`) siguen yendo por `movementId`.
+   * Está aquí para que E1.2b pueda pasar la sesión a hablar en líneas sin
+   * depender de que el movimiento exista. Opcional porque las líneas que se
+   * construyen sin el store (tests, batches anteriores a V91) no lo tienen.
+   */
+  lineaId?: number;
   /** Identidad estable de la línea · sobrevive a reimportar el mismo fichero. */
   hashLinea: string;
   /** El texto LITERAL del banco · §4.7 lo exige, sin limpiar ni embellecer. */
@@ -137,6 +147,24 @@ export function decisionesVacias(): DecisionesSesion {
 }
 
 /**
+ * E1.2a · `movementId → lineaId` a partir de las filas de `lineasExtracto`.
+ *
+ * Una línea puede haber engendrado VARIOS movimientos (§16.4 · `movementIds`
+ * es plural): todos apuntan a la MISMA `lineaId`. Una fila sin `id` o sin
+ * movimientos (descartada) no entra en el mapa.
+ */
+export function lineaIdPorMovementId(
+  lineasPersistidas: ReadonlyArray<Pick<LineaExtractoPersistida, 'id' | 'movementIds'>>
+): Map<number, number> {
+  const m = new Map<number, number>();
+  for (const l of lineasPersistidas) {
+    if (l.id == null) continue;
+    for (const movementId of l.movementIds ?? []) m.set(movementId, l.id);
+  }
+  return m;
+}
+
+/**
  * Construye las líneas de la sesión a partir de lo que devuelve el orquestador.
  *
  * `ignoradasPrevias` son hashes que el usuario ya ignoró en importaciones
@@ -154,7 +182,14 @@ export function construirLineas(
    * cosas".
    */
   confirmadosPorMovimiento: Map<number, MovimientoConfirmadoRef> = new Map(),
+  /**
+   * E1.2a · las filas de `lineasExtracto` de este lote, para rellenar `lineaId`.
+   * Se enlaza por `movementIds` (E1.1 lo deja en cada línea). Vacío = sin
+   * `lineaId`, y todo lo demás funciona igual.
+   */
+  lineasPersistidas: ReadonlyArray<Pick<LineaExtractoPersistida, 'id' | 'movementIds'>> = [],
 ): LineaExtracto[] {
+  const lineaIdPorMovimiento = lineaIdPorMovementId(lineasPersistidas);
   const eventoPorId = new Map<number, TreasuryEvent>();
   for (const e of eventos) if (e.id != null) eventoPorId.set(e.id, e);
 
@@ -218,8 +253,10 @@ export function construirLineas(
         ? 'cuadra'
         : 'resolver';
 
+    const lineaId = lineaIdPorMovimiento.get(m.id);
     lineas.push({
       movementId: m.id,
+      ...(lineaId != null ? { lineaId } : {}),
       hashLinea,
       textoBanco: m.description,
       // Vacío o en blanco no se propaga: un renglón vacío debajo del texto
