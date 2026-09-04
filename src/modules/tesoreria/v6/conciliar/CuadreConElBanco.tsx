@@ -14,7 +14,7 @@ import React from 'react';
 import { Icons } from '../../../../design-system/v5';
 import type { PropuestaDeAnclaje } from '../../../../services/anclajeSaldoExtracto';
 import { fechaLarga, importeSaldo } from '../formatoV6';
-import styles from './PanelConciliar.module.css';
+import styles from './CuadreBanco.module.css';
 
 export interface CuadreConElBancoProps {
   propuesta: PropuestaDeAnclaje;

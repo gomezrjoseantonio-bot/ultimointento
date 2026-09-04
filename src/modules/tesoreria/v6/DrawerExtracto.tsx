@@ -99,6 +99,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // E1.5-anclaje-saldo · la propuesta de cuadre con el banco y si el usuario la aceptó.
   const [anclaje, setAnclaje] = useState<PropuestaDeAnclaje | null>(null);
   const [anclar, setAnclar] = useState(false);
+  const [yaEstaban, setYaEstaban] = useState<LineaExtractoPersistida[]>([]);
   // E1.3 · los lotes sin guardar que se pueden retomar · se enseñan en Paso 1.
   const aMedias = useLotesAMedias(abierto && paso === 'soltar' && !tarjetaDestino);
   // Los doce gestos sobre una línea viven en su propio módulo · lo único que
@@ -236,6 +237,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setLineas([]);
     setAnclaje(null);
     setAnclar(false);
+    setYaEstaban([]);
     reiniciarDecisiones();
     setDeteccion(null);
     setTarjetaDestino(null);
@@ -265,6 +267,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setLineas(sesion.lineas);
       setAnclaje(sesion.anclaje);
       setAnclar(false);
+      setYaEstaban(sesion.yaEstaban);
       // Si falla, el panel dorado sale vacío y el resto de la pantalla
       // funciona igual: no saber qué se aprendió antes no impide conciliar.
       void listRules()
@@ -682,6 +685,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           anclaje={anclaje}
           anclar={anclar}
           onAnclar={setAnclar}
+          yaEstaban={yaEstaban}
           renderLinea={renderLinea}
           onRecuperar={recuperar}
           onNoEsEsto={desemparejar}

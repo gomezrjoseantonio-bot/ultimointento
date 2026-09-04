@@ -76,6 +76,8 @@ export interface SesionDelLote {
    * columna de saldo. ATLAS propone; el usuario confirma al guardar.
    */
   anclaje: PropuestaDeAnclaje | null;
+  /** Las filas del fichero descartadas por estar YA en ATLAS · para enseñar cuáles. */
+  yaEstaban: LineaExtractoPersistida[];
 }
 
 /**
@@ -122,5 +124,6 @@ export async function leerSesionDelLote(res: OrchestratorResult, destino: Accoun
     lineas: construirLineas(filas, res.matchResult, previstos, ignoradasPrevias, confirmados),
     filas,
     anclaje,
+    yaEstaban: filas.filter((f) => f.descarte === 'duplicada'),
   };
 }

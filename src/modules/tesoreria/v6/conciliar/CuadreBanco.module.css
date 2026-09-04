@@ -1,0 +1,65 @@
+/* El cuadre con el banco y las líneas que ya estaban · E1.5-anclaje-saldo.
+   Aparte de PanelConciliar.module.css para que aquél no pase de 800 líneas. */
+/* ── El cuadre con el banco · E1.5-anclaje-saldo ─────────────────────────── */
+
+.banco {
+  margin: 0 26px 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.banco svg { flex-shrink: 0; margin-top: 1px; }
+.banco b { font-family: var(--atlas-v5-font-mono-num); font-weight: 700; }
+.bancoOk {
+  background: var(--atlas-v5-pos-wash);
+  border: 1px solid var(--atlas-v5-pos);
+  color: var(--atlas-v5-pos);
+}
+.bancoAviso {
+  background: var(--atlas-v5-warn-wash);
+  border: 1px solid var(--atlas-v5-warn-border);
+  color: var(--atlas-v5-warn);
+}
+.bancoTexto { display: flex; flex-direction: column; gap: 6px; }
+.bancoCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--atlas-v5-on-navy-1);
+}
+.bancoCheck input { margin-top: 2px; }
+.bancoNota { opacity: 0.85; font-size: 11px; }
+
+/* ── Las que ya estaban en ATLAS · plegadas ─────────────────────────────── */
+
+.yaEstaban {
+  margin: 0 26px 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: var(--atlas-v5-navy-line-soft);
+  border: 1px solid var(--atlas-v5-border-translucent);
+  color: var(--atlas-v5-on-navy-2);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.yaEstaban summary { cursor: pointer; }
+.yaEstaban summary b { color: var(--atlas-v5-on-navy-1); font-family: var(--atlas-v5-font-mono-num); }
+.yaEstaban ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.yaEstaban li { display: grid; grid-template-columns: 82px 96px 1fr; gap: 10px; align-items: baseline; }
+.yaFecha, .yaImporte { font-family: var(--atlas-v5-font-mono-num); white-space: nowrap; }
+.yaImporte { text-align: right; color: var(--atlas-v5-on-navy-1); }
+.yaTexto { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
