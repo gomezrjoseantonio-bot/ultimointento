@@ -171,16 +171,3 @@ function bytesToBinaryString(bytes: Uint8Array): string {
   }
   return out;
 }
-
-/**
- * Check if a batch with the same hash already exists
- */
-export async function checkBatchHashExists(hash: string, db: any): Promise<boolean> {
-  try {
-    const allBatches = await db.getAll('importBatches');
-    return allBatches.some((batch: any) => batch.hashLote === hash);
-  } catch (error) {
-    console.error('Error checking batch hash:', error);
-    return false;
-  }
-}
