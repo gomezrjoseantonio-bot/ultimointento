@@ -26,6 +26,8 @@ import type { Account, Movement } from '../db';
 
 const linea = (over: Partial<LineaExtracto> = {}): LineaExtracto =>
   ({
+    // E1.2b · las decisiones van por lineaId · distinto de movementId a propósito.
+    lineaId: 100 + (over.movementId ?? 1),
     movementId: 1,
     hashLinea: 'h1',
     textoBanco: 'RECIBO /AQUALIA',
@@ -96,7 +98,7 @@ describe('§3.1 · los cuatro buckets', () => {
 
   it('una decisión del usuario manda sobre el veredicto automático', () => {
     const d = decisionesVacias();
-    d.ignorados.add(7);
+    d.ignorados.add(107); // la línea 7 · por su lineaId
     expect(bucketDeLinea(linea({ movementId: 7, veredicto: 'cuadra' }), d)).toBe<Bucket>('ignorados');
   });
 });
