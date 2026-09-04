@@ -279,6 +279,7 @@ export class BankParserService {
       defval: '',
       raw: false // Convert numbers/dates to strings for consistent processing
     }) as string[][];
+    const numericData = this.valoresNumericos(worksheet, XLSX);
 
     if (rawData.length === 0) {
       throw new Error('La hoja no contiene datos');
@@ -305,7 +306,8 @@ export class BankParserService {
     const movements = this.parseMovements(
       rawData, 
       headerDetection.dataStartRow, 
-      headerDetection.detectedColumns
+      headerDetection.detectedColumns,
+      numericData
     );
 
     // Try to detect bank profile
@@ -633,7 +635,8 @@ export class BankParserService {
   private parseMovements(
     data: string[][], 
     startRow: number, 
-    columns: Record<string, number>
+    columns: Record<string, number>,
+    numericData?: unknown[][]
   ): ParsedMovement[] {
     const movements: ParsedMovement[] = [];
     
@@ -642,7 +645,7 @@ export class BankParserService {
       if (!rowData || this.isJunkRow(rowData)) continue;
       
       try {
-        const movement = this.parseMovementRow(rowData, columns);
+        const movement = this.parseMovementRow(rowData, columns, numericData?.[row]);
         if (movement) {
           movement.originalRow = row; // Track original row number
           movements.push(movement);
@@ -664,7 +667,8 @@ export class BankParserService {
    */
   private parseMovementRow(
     rowData: string[], 
-    columns: Record<string, number>
+    columns: Record<string, number>,
+    numericRow?: unknown[]
   ): ParsedMovement | null {
     
     // Extract required fields
@@ -693,11 +697,8 @@ export class BankParserService {
     
     if (columns.cargo !== undefined && columns.abono !== undefined) {
       // Banco uses separate cargo/abono columns: amount = abono - cargo
-      const cargoStr = rowData[columns.cargo]?.trim() || '0';
-      const abonoStr = rowData[columns.abono]?.trim() || '0';
-      
-      const cargo = this.parseSpanishAmount(cargoStr);
-      const abono = this.parseSpanishAmount(abonoStr);
+      const cargo = this.importeDe(rowData, numericRow, columns.cargo, '0');
+      const abono = this.importeDe(rowData, numericRow, columns.abono, '0');
       
       if (isNaN(cargo) && isNaN(abono)) {
         return null; // Both invalid
@@ -706,14 +707,9 @@ export class BankParserService {
       amount = (isNaN(abono) ? 0 : abono) - (isNaN(cargo) ? 0 : cargo);
     } else if (columns.amount !== undefined) {
       // Single amount column
-      const amountStr = rowData[columns.amount]?.trim();
-      if (!amountStr) {
-        return null; // Missing amount
-      }
-      
-      amount = this.parseSpanishAmount(amountStr);
+      amount = this.importeDe(rowData, numericRow, columns.amount);
       if (isNaN(amount)) {
-        return null; // Invalid amount
+        return null; // Missing or invalid amount
       }
     } else {
       return null; // No amount columns found
@@ -722,7 +718,7 @@ export class BankParserService {
     // Optional fields
     const valueDateStr = columns.valueDate !== undefined ? rowData[columns.valueDate]?.trim() : undefined;
     const valueDate = valueDateStr ? this.parseSpanishDate(valueDateStr) : undefined;
-    const balance = columns.balance !== undefined ? this.parseSpanishAmount(rowData[columns.balance]?.trim() || '') : undefined;
+    const balance = columns.balance !== undefined ? this.importeDe(rowData, numericRow, columns.balance) : undefined;
     const reference = columns.reference !== undefined ? rowData[columns.reference]?.trim() : undefined;
     const counterparty = columns.counterparty !== undefined ? rowData[columns.counterparty]?.trim() : undefined;
     const currency = columns.currency !== undefined ? rowData[columns.currency]?.trim() : undefined;
@@ -824,6 +820,37 @@ export class BankParserService {
   }
 
   /**
+   * La hoja con sus celdas numéricas COMO NÚMEROS (`raw: true`).
+   *
+   * `rawData` se lee con `raw: false` para que fechas y textos lleguen tal
+   * cual los ve el usuario, pero eso convierte también los importes a su texto
+   * FORMATEADO: con configuración en-US (el xls de Santander) `1000` llega como
+   * "1,000.00", y el lector español rechazaba la fila entera. Todo importe de
+   * 1.000 € o más —nóminas, alquileres, traspasos— desaparecía del extracto.
+   * Misma forma que `rawData` (mismas opciones), así que fila y columna
+   * coinciden; solo se consulta para las columnas de importe y saldo.
+   */
+  private valoresNumericos(worksheet: any, XLSX: any): unknown[][] {
+    return XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true }) as unknown[][];
+  }
+
+  /**
+   * El importe de una columna · el valor numérico de la celda cuando lo hay
+   * (sin pasar por ningún formato de texto) y, si no, el texto parseado como
+   * número español (CSV, celdas de texto).
+   */
+  private importeDe(
+    rowData: string[],
+    numericRow: unknown[] | undefined,
+    col: number,
+    vacio = ''
+  ): number {
+    const crudo = numericRow?.[col];
+    if (typeof crudo === 'number' && Number.isFinite(crudo)) return crudo;
+    return this.parseSpanishAmount(rowData[col]?.trim() || vacio);
+  }
+
+  /**
    * Normalize text for comparison (lowercase, no accents, no punctuation)
    */
   private normalizeText(text: string): string {
@@ -899,8 +926,9 @@ export class BankParserService {
         defval: '',
         raw: false
       }) as string[][];
+      const numericData = this.valoresNumericos(worksheet, XLSX);
 
-      const movements = this.parseMovements(rawData, headerRow + 1, columnMapping);
+      const movements = this.parseMovements(rawData, headerRow + 1, columnMapping, numericData);
       const parseTime = Date.now() - startTime;
       
       telemetry.manualMappingComplete(operationId, columnMapping);

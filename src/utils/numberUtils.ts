@@ -63,6 +63,19 @@ export function parseEsNumber(input: string, opts: ParseOptions = {}): ParseResu
     }
   }
 
+  // Step 2b: formato INGLÉS con coma de millar · "1,000.00", "78,500.00".
+  //
+  // Excel formatea así las celdas numéricas cuando el fichero viene con
+  // configuración en-US (el xls de Santander), y un CSV puede traerlo igual.
+  // No hay ambigüedad posible: en español la coma es SIEMPRE el decimal y
+  // nunca va seguida de un punto. Si las comas agrupan de tres en tres y detrás
+  // hay un punto con decimales, son de millar y se quitan. Sin este paso, cada
+  // importe de 1.000 o más se rechazaba como "decimal demasiado largo" y la
+  // fila entera desaparecía del extracto.
+  if (/^\d{1,3}(,\d{3})+\.\d{1,2}$/.test(cleaned)) {
+    cleaned = cleaned.replace(/,/g, '');
+  }
+
   // Step 3: Check for multiple commas (invalid)
   const commaCount = (safeMatch(cleaned, /,/g) || []).length;
   if (commaCount > 1) {
