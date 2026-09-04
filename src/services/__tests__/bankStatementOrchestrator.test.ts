@@ -15,9 +15,9 @@ import {
   BankProfileNotDetectedError,
   StatementAlreadyImportedError,
   hashMovement,
-  reabrirLote,
   cancelImportBatch,
 } from '../bankStatementOrchestrator';
+import { reabrirLote } from '../reabrirLote';
 import {
   decisionDeLinea,
   decisionesDesdeFilas,

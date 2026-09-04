@@ -22,7 +22,10 @@ import type {
   ImportBatch,
   LineaExtractoPersistida,
 } from '../../../services/db';
+import { lineasDelLote } from '../../../services/lineasExtractoService';
 import { decisionesVacias, type DecisionesSesion } from './extractoSesion';
+
+export { lineasDelLote };
 
 /**
  * La foto de las decisiones de UNA línea, sacada de `DecisionesSesion`.
@@ -225,21 +228,4 @@ export async function lotesAMedias(): Promise<LoteAMedias[]> {
     });
   }
   return out.sort((a, b) => (a.timestampImport < b.timestampImport ? 1 : -1));
-}
-
-/**
- * Filas de `lineasExtracto` de un lote · por índice cuando el handle lo
- * ofrece, con respaldo `getAll` + filtro (mocks de test, backups parciales).
- */
-export async function lineasDelLote(
-  db: Awaited<ReturnType<typeof initDB>>,
-  importBatchId: string
-): Promise<LineaExtractoPersistida[]> {
-  const porIndice = (db as { getAllFromIndex?: unknown }).getAllFromIndex;
-  if (typeof porIndice === 'function') {
-    return ((await db.getAllFromIndex('lineasExtracto', 'importBatchId', importBatchId)) ??
-      []) as LineaExtractoPersistida[];
-  }
-  const todas = ((await db.getAll('lineasExtracto')) ?? []) as LineaExtractoPersistida[];
-  return todas.filter((l) => l.importBatchId === importBatchId);
 }

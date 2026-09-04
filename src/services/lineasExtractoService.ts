@@ -19,8 +19,9 @@
 // importar. Darle otro uso a `estado`/`comoSeResolvio` es de E1.2 en adelante.
 // ============================================================================
 
+import type { initDB } from './db';
 import type { ParsedMovement } from '../types/bankProfiles';
-import type { DescarteLineaExtracto, LineaExtractoPersistida } from './db/types-movimientos';
+import type { DescarteLineaExtracto, LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { generateLineHash } from '../utils/batchHashUtils';
 
 export interface DatosDeLinea {
@@ -76,4 +77,21 @@ export function lineaDesdeFila(row: ParsedMovement, d: DatosDeLinea): LineaExtra
     updatedAt: d.ahora,
   };
   return linea;
+}
+
+/**
+ * Filas de `lineasExtracto` de un lote · por índice `importBatchId` cuando el
+ * handle lo ofrece, con respaldo `getAll` + filtro (mocks de test, backups
+ * parciales).
+ */
+export async function lineasDelLote(
+  db: Awaited<ReturnType<typeof initDB>>,
+  importBatchId: string
+): Promise<LineaExtractoPersistida[]> {
+  const porIndice = (db as { getAllFromIndex?: unknown }).getAllFromIndex;
+  if (typeof porIndice === 'function') {
+    return ((await db.getAllFromIndex('lineasExtracto', 'importBatchId', importBatchId)) ?? []) as LineaExtractoPersistida[];
+  }
+  const todas = ((await db.getAll('lineasExtracto')) ?? []) as LineaExtractoPersistida[];
+  return todas.filter((l) => l.importBatchId === importBatchId);
 }
