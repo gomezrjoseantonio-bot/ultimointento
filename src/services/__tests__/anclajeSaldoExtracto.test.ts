@@ -24,11 +24,12 @@ jest.mock('../db', () => ({ initDB: jest.fn() }));
 // Funciones planas, no `jest.fn`: CRA resetea las implementaciones de los
 // mocks antes de cada test (`resetMocks`) y un `jest.fn` con implementación en
 // la factoría se quedaría en nada. `servicioConoceLaCuenta` simula la caché.
-const estadoMock = { servicioConoceLaCuenta: true, updates: 0 };
+const estadoMock = { servicioConoceLaCuenta: true, otroFallo: null as string | null, updates: 0 };
 jest.mock('../cuentasService', () => ({
   cuentasService: {
     update: async (id: number, data: Record<string, unknown>) => {
       estadoMock.updates += 1;
+      if (estadoMock.otroFallo) throw new Error(estadoMock.otroFallo);
       if (!estadoMock.servicioConoceLaCuenta) throw new Error('Cuenta no encontrada');
       const db = await (jest.requireMock('../db').initDB as jest.Mock)();
       const cuenta = await db.get('accounts', id);
@@ -116,6 +117,7 @@ const saldoAtlasEl = (dia: string, account: Account) =>
 
 beforeEach(() => {
   estadoMock.servicioConoceLaCuenta = true;
+  estadoMock.otroFallo = null;
   estadoMock.updates = 0;
   stores = { accounts: [cuenta()], movements: [], treasuryEvents: [], lineasExtracto: SANTANDER.map((l) => ({ ...l })) };
   (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
@@ -232,6 +234,12 @@ describe('aplicar · solo tras confirmar', () => {
     await aplicarAnclaje(42, { fecha: '2026-09-02', saldoBanco: 2635.4 });
     expect(estadoMock.updates).toBe(1);
     expect(stores.accounts[0]).toMatchObject({ openingBalance: 2648.67, openingBalanceDate: '2026-09-02' });
+  });
+
+  it('cualquier otro fallo al escribir la cuenta SUBE · no se esconde con el fallback', async () => {
+    estadoMock.otroFallo = 'Un traspaso va de una cuenta a OTRA.';
+    await expect(aplicarAnclaje(42, { fecha: '2026-09-02', saldoBanco: 2635.4 })).rejects.toThrow(/OTRA/);
+    expect(stores.accounts[0]).toMatchObject({ openingBalance: 0 });
   });
 
   it('una cuenta que ya no existe · error claro, nada escrito', async () => {

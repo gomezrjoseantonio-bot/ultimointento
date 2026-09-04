@@ -43,6 +43,22 @@ describe('el cuadre con el banco', () => {
     expect(screen.getByTestId('cuadre-banco').textContent).toMatch(/tu apertura actual es 1\.000 €/);
   });
 
+  it('apertura explícita a 0 con fecha · también se enseña · es lo que explica el descuadre', () => {
+    render(<CuadreConElBanco propuesta={base} anclar={false} onAnclar={() => undefined} />);
+    expect(screen.getByTestId('cuadre-banco').textContent).toMatch(/tu apertura actual es 0 € a .*31 ago 2026/);
+  });
+
+  it('sin fecha de apertura no hay apertura previa que enseñar', () => {
+    render(
+      <CuadreConElBanco
+        propuesta={{ ...base, aperturaActual: { saldo: 0, fecha: null } }}
+        anclar={false}
+        onAnclar={() => undefined}
+      />
+    );
+    expect(screen.getByTestId('cuadre-banco').textContent).not.toMatch(/tu apertura actual/);
+  });
+
   it('cuadra · lo dice y no propone nada', () => {
     render(<CuadreConElBanco propuesta={{ ...base, cuadra: true, descuadre: 0, saldoAtlas: 2635.4 }} anclar={false} onAnclar={() => undefined} />);
     expect(screen.getByTestId('cuadre-banco').getAttribute('data-estado')).toBe('cuadra');

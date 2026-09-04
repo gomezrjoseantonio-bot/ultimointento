@@ -202,9 +202,11 @@ export async function aplicarAnclaje(
   const apertura = { openingBalance: propuesta.aperturaPropuesta, openingBalanceDate: ancla.fecha };
   try {
     await cuentasService.update(accountId, apertura);
-  } catch {
-    // La caché del servicio de cuentas puede no conocer esta cuenta (se creó
-    // por otro camino); la base es la verdad y es donde lee el hub.
+  } catch (err) {
+    // Solo si la caché del servicio de cuentas no conoce esta cuenta (se creó
+    // por otro camino): la base es la verdad y es donde lee el hub. Cualquier
+    // otro fallo sube, que esconderlo dejaría un estado a medias sin señal.
+    if (!(err instanceof Error && /Cuenta no encontrada/.test(err.message))) throw err;
     await db.put('accounts', {
       ...account,
       ...apertura,

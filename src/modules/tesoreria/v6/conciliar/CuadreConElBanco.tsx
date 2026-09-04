@@ -52,7 +52,9 @@ const CuadreConElBanco: React.FC<CuadreConElBancoProps> = ({ propuesta, anclar, 
     );
   }
 
-  const teniaApertura = p.aperturaActual.saldo !== 0;
+  // Hay apertura previa si la cuenta tiene FECHA de apertura, aunque el saldo
+  // sea 0: «0 € a 31 de agosto» es justo lo que explica el descuadre.
+  const teniaApertura = p.aperturaActual.fecha != null;
   return (
     <div className={`${styles.banco} ${styles.bancoAviso}`} data-testid="cuadre-banco" data-estado="descuadre">
       <Icons.Warning size={15} />
@@ -60,8 +62,8 @@ const CuadreConElBanco: React.FC<CuadreConElBancoProps> = ({ propuesta, anclar, 
         <span>
           {banco} · ATLAS calcula <b>{importeSaldo(p.saldoAtlas)}</b> · {importeSaldo(Math.abs(p.descuadre))} de
           diferencia
-          {teniaApertura && p.aperturaActual.fecha
-            ? ` · tu apertura actual es ${importeSaldo(p.aperturaActual.saldo)} a ${fechaLarga(p.aperturaActual.fecha)}`
+          {teniaApertura
+            ? ` · tu apertura actual es ${importeSaldo(p.aperturaActual.saldo)} a ${fechaLarga(p.aperturaActual.fecha as string)}`
             : ''}
           .
         </span>
