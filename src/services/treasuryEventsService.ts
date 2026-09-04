@@ -1,4 +1,5 @@
 import { initDB, Movement, Account } from './db';
+import { calculateAccountBalanceAtDate, corteParaSaldoVivo, leerLineasParaSaldo } from './accountBalanceService';
 import { getTreasuryProjections } from './treasuryForecastService';
 
 // Domain Events Types
@@ -50,60 +51,45 @@ export const emitTreasuryEvent = async (event: TreasuryDomainEvent): Promise<voi
 };
 
 /**
- * Recalculate account balance based on movements (by value date)
+ * E1.5 · D3 · `account.balance` sale del HUB ÚNICO (`accountBalanceService`).
+ *
+ * Antes esto sumaba `movements` por su cuenta —sin eventos comprometidos, sin
+ * excluir la compra a crédito, sin corte, sin casado implícito— y escribía el
+ * mismo campo que `rollForwardAccountBalancesToMonth`: dos definiciones de
+ * saldo que divergían, y la previsión (`treasuryForecastService`) leía esta.
+ * Ahora es el saldo VIVO del hub (corte mañana, reales futuros incluidos, y las
+ * líneas del extracto sin resolver), el mismo que ven Tesorería y el Panel.
  */
 export const recalculateAccountBalance = async (accountId: number): Promise<void> => {
   try {
     const db = await initDB();
-    
-    // Get account
     const account = await db.get('accounts', accountId);
     if (!account) return;
-    
-    // Get all movements for this account
-    const allMovements = await db.getAll('movements');
-    const accountMovements = allMovements.filter(mov => mov.accountId === accountId);
-    
-    // Sort by date (value date if available, otherwise operation date)
-    accountMovements.sort((a, b) => {
-      const dateA = new Date(a.valueDate || a.date);
-      const dateB = new Date(b.valueDate || b.date);
-      return dateA.getTime() - dateB.getTime();
+
+    const [treasuryEvents, movements, lineas] = await Promise.all([
+      db.getAll('treasuryEvents'),
+      db.getAll('movements'),
+      leerLineasParaSaldo(db),
+    ]);
+    // Fecha LOCAL · a medianoche en España la UTC da el día anterior.
+    const ahora = new Date();
+    const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+    const balance = calculateAccountBalanceAtDate({
+      account,
+      cutoffDate: corteParaSaldoVivo(hoy),
+      treasuryEvents,
+      movements,
+      lineas,
+      incluirRealesFuturos: true,
     });
-    
-    // Calculate balance from opening balance + movements.
-    // Frontera del saldo inicial: `openingBalance` es el saldo YA existente a
-    // `openingBalanceDate`, así que un movimiento ANTERIOR a esa fecha ya está
-    // dentro y sumarlo lo contaría dos veces. Se excluye lo estrictamente
-    // anterior a la apertura (el sintético `isOpeningBalance` ya se salta).
-    const openingDate = account.openingBalanceDate
-      ? (account.openingBalanceDate.includes('T')
-          ? account.openingBalanceDate.split('T')[0]
-          : account.openingBalanceDate)
-      : undefined;
 
-    let balance = account.openingBalance || 0;
-
-    for (const movement of accountMovements) {
-      if (movement.isOpeningBalance) continue;
-      if (openingDate) {
-        const movDate = (movement.valueDate || movement.date || '').slice(0, 10);
-        if (movDate && movDate < openingDate) continue;
-      }
-      balance += movement.amount;
-    }
-    
-    // Update account balance
-    const updatedAccount = {
+    await db.put('accounts', {
       ...account,
       balance,
-      updatedAt: new Date().toISOString()
-    };
-    
-    await db.put('accounts', updatedAccount);
-    
+      updatedAt: new Date().toISOString(),
+    });
+
     console.log(`💰 Updated balance for account ${account.name}: ${balance}€`);
-    
   } catch (error) {
     console.error('Error recalculating account balance:', error);
     throw error;

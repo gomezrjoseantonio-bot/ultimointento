@@ -16,7 +16,7 @@
 
 import { initDB } from '../../../../services/db';
 import type { Account, Movement, TreasuryEvent } from '../../../../services/db';
-import { calculateAccountBalanceAtDate } from '../../../../services/accountBalanceService';
+import { calculateAccountBalanceAtDate, leerLineasParaSaldo } from '../../../../services/accountBalanceService';
 import { cuentasService } from '../../../../services/cuentasService';
 
 /**
@@ -34,10 +34,12 @@ export async function loadSaldosActualesCuentas(): Promise<{
   saldos: Map<number, number>;
 }> {
   const db = await initDB();
-  const [cuentasActivasRaw, treasuryEvents, movements] = await Promise.all([
+  const [cuentasActivasRaw, treasuryEvents, movements, lineas] = await Promise.all([
     cuentasService.list(),
     db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
     db.getAll('movements') as Promise<Movement[]>,
+    // E1.5 · las líneas del extracto sin resolver también son dinero movido.
+    leerLineasParaSaldo(db),
   ]);
 
   // Cutoff = mañana (en formato ISO YYYY-MM-DD). Garantiza incluir todo el
@@ -57,6 +59,7 @@ export async function loadSaldosActualesCuentas(): Promise<{
       cutoffDate,
       treasuryEvents,
       movements,
+      lineas,
       // Saldo VIVO · la realidad cuenta aunque el banco la valore por delante.
       incluirRealesFuturos: true,
     });

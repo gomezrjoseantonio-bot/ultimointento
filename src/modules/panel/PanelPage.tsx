@@ -30,6 +30,7 @@ import {
   calculateAccountBalanceAtDate,
   corteParaSaldoVivo,
 } from '../../services/accountBalanceService';
+import { leerLineasParaSaldo, type LineaParaSaldo } from '../../services/accountBalanceService';
 import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import {
   calcularKpisHero,
@@ -135,6 +136,8 @@ const PanelPage: React.FC = () => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
+  // E1.5 · las líneas del extracto sin resolver también son dinero movido.
+  const [lineasExtracto, setLineasExtracto] = useState<LineaParaSaldo[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [escenario, setEscenario] = useState<Escenario | null>(null);
   const [compromisos, setCompromisos] = useState<CompromisoRecurrente[]>([]);
@@ -179,7 +182,7 @@ const PanelPage: React.FC = () => {
   const loadPanelData = useCallback(async () => {
     try {
       const [db, ctx] = await Promise.all([initDB(), getFiscalContextSafe()]);
-      const [props, items, accs, prest, tevents, movs, conts, comps, escenarios, matcher] =
+      const [props, items, accs, prest, tevents, movs, conts, comps, escenarios, matcher, lineas] =
         await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           getAllCartaItems(),
@@ -211,6 +214,9 @@ const PanelPage: React.FC = () => {
               console.warn('[panel] no se pudo cargar matcher de valoraciones', e);
               return null;
             }),
+          // E1.5 · las líneas del extracto · el saldo suma las que aún no
+          // tienen movimiento (importadas y sin resolver).
+          leerLineasParaSaldo(db),
         ]);
       if (!isMountedRef.current) return;
       // Solo inmuebles ACTIVOS suman al patrimonio. Un inmueble VENDIDO ya no
@@ -224,6 +230,7 @@ const PanelPage: React.FC = () => {
       setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
       setTreasuryEvents(tevents);
       setMovements(movs);
+      setLineasExtracto(lineas);
       setContracts(conts);
       setCompromisos(comps);
       setEscenario(escenarios[0] ?? null);
@@ -345,6 +352,7 @@ const PanelPage: React.FC = () => {
           cutoffDate: corte,
           treasuryEvents,
           movements,
+          lineas: lineasExtracto,
           // Saldo VIVO · misma regla que Tesorería: la realidad del extracto
           // cuenta aunque el banco la valore por delante de hoy.
           incluirRealesFuturos: true,
@@ -352,7 +360,7 @@ const PanelPage: React.FC = () => {
       );
     }
     return m;
-  }, [cuentasVivas, treasuryEvents, movements, today]);
+  }, [cuentasVivas, treasuryEvents, movements, lineasExtracto, today]);
 
   // KPIs del hero de Tesorería (§4.1) · calculados con SU propia función, para
   // que el Panel no pueda desviarse: el saldo de hoy, lo que queda por

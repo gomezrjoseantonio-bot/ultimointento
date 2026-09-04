@@ -10,7 +10,9 @@ jest.mock('../services/db', () => ({
 import {
   calculateAccountBalanceAtDate,
   calculateTotalInitialCash,
+  esLineaHuerfana,
   rollForwardAccountBalancesToMonth,
+  type LineaParaSaldo,
 } from '../services/accountBalanceService';
 import { initDB } from '../services/db';
 
@@ -397,6 +399,101 @@ describe('accountBalanceService', () => {
     // 250000 (apertura) − 500 (evento post) − 1000 (mov post) = 248500.
     // Los dos flujos del 15/3 quedan fuera: ya están dentro del saldo de apertura.
     expect(value).toBe(248500);
+  });
+
+  // ── E1.5 · las líneas del extracto sin movimiento ─────────────────────────
+  describe('E1.5 · el saldo cuenta las líneas del extracto que aún no tienen movimiento', () => {
+    const cuenta = {
+      id: 7, iban: 'ES7', status: 'ACTIVE', activa: true, createdAt: '', updatedAt: '',
+      openingBalance: 1000, openingBalanceDate: '2026-01-01',
+    } as any;
+    const linea = (over: Partial<LineaParaSaldo> = {}): LineaParaSaldo => ({
+      accountId: 7, fechaOperacion: '2026-08-10', importe: -80, movementIds: [], ...over,
+    });
+    const saldo = (lineas: LineaParaSaldo[] | undefined, extra: Record<string, unknown> = {}) =>
+      calculateAccountBalanceAtDate({
+        account: cuenta, cutoffDate: '2026-09-01', treasuryEvents: [], movements: [], lineas, ...extra,
+      } as any);
+
+    it('una línea HUÉRFANA (sin movimiento, sin descarte) suma su importe', () => {
+      expect(saldo([linea()])).toBe(920);
+      expect(saldo([linea(), linea({ importe: 380 })])).toBe(1300);
+    });
+
+    it('una línea que ya engendró movimiento NO suma · suma su movimiento, y no dos veces', () => {
+      const mov = { accountId: 7, amount: -80, date: '2026-08-10', id: 5 } as any;
+      expect(saldo([linea({ movementIds: [5] })], { movements: [mov] })).toBe(920);
+    });
+
+    it('el candado · una línea DUPLICADA no suma (su dinero ya está en la importación anterior)', () => {
+      const yaImportado = { accountId: 7, amount: -80, date: '2026-08-10', id: 5 } as any;
+      expect(saldo([linea({ descarte: 'duplicada' })], { movements: [yaImportado] })).toBe(920);
+      // Tampoco lo que no se pudo leer.
+      expect(saldo([linea({ descarte: 'sin_fecha', fechaOperacion: '' }), linea({ descarte: 'sin_importe', importe: 0 })])).toBe(1000);
+    });
+
+    it('mismo corte y misma frontera de apertura que los movimientos', () => {
+      // Después del corte · no cuenta (salvo saldo vivo).
+      expect(saldo([linea({ fechaOperacion: '2026-09-15' })])).toBe(1000);
+      expect(saldo([linea({ fechaOperacion: '2026-09-15' })], { incluirRealesFuturos: true })).toBe(920);
+      // Anterior a la apertura · ya está en el saldo inicial.
+      expect(saldo([linea({ fechaOperacion: '2025-12-20' })])).toBe(1000);
+      // Otra cuenta · no es de esta.
+      expect(saldo([linea({ accountId: 8 })])).toBe(1000);
+    });
+
+    it('ignorar (§29) no crea movimiento · la línea sigue sumando', () => {
+      expect(saldo([{ ...linea(), atencion: 'silenciada' } as any])).toBe(920);
+    });
+
+    it('HOY el término vale 0 · con la base actual (toda línea tiene movimiento o descarte) el saldo es IDÉNTICO', () => {
+      const movs = [
+        { id: 1, accountId: 7, amount: -80, date: '2026-08-10' },
+        { id: 2, accountId: 7, amount: 380, date: '2026-08-05' },
+      ] as any[];
+      const eventos = [{ accountId: 7, type: 'expense', amount: 50, predictedDate: '2026-08-12', status: 'confirmed' }] as any[];
+      // Las líneas tal como las deja E1.1: una por movimiento, más las descartadas.
+      const lineasDeHoy = [
+        linea({ movementIds: [1] }),
+        linea({ movementIds: [2], importe: 380, fechaOperacion: '2026-08-05' }),
+        linea({ descarte: 'duplicada' }),
+        linea({ descarte: 'sin_fecha', fechaOperacion: '' }),
+      ];
+      const sinLineas = saldo(undefined, { movements: movs, treasuryEvents: eventos });
+      expect(saldo(lineasDeHoy, { movements: movs, treasuryEvents: eventos })).toBe(sinLineas);
+      expect(sinLineas).toBe(1250);
+    });
+
+    it('esLineaHuerfana · el criterio, explícito', () => {
+      expect(esLineaHuerfana(linea())).toBe(true);
+      expect(esLineaHuerfana(linea({ movementIds: [1] }))).toBe(false);
+      expect(esLineaHuerfana(linea({ descarte: 'duplicada' }))).toBe(false);
+      expect(esLineaHuerfana(linea({ fechaOperacion: '' }))).toBe(false);
+    });
+
+    it('calculateTotalInitialCash y rollForward leen las líneas una vez y las pasan al hub', async () => {
+      mockDB.getAll.mockImplementation(async (table: string) => {
+        if (table === 'accounts') return [{ id: 1, status: 'ACTIVE', activa: true, openingBalance: 100, openingBalanceDate: '2024-01-01', balance: 100 }];
+        if (table === 'lineasExtracto') return [
+          { accountId: 1, fechaOperacion: '2024-02-10', importe: -30, movementIds: [] },
+          { accountId: 1, fechaOperacion: '2024-02-11', importe: -99, movementIds: [], descarte: 'duplicada' },
+        ];
+        return [];
+      });
+      expect(await calculateTotalInitialCash('2024-03-01')).toBe(70);
+      await rollForwardAccountBalancesToMonth(2024, 3);
+      expect(mockDB.put).toHaveBeenCalledWith('accounts', expect.objectContaining({ id: 1, balance: 70 }));
+      expect(mockDB.getAll.mock.calls.filter((c: unknown[]) => c[0] === 'lineasExtracto')).toHaveLength(2);
+    });
+
+    it('si el store de líneas no existe (base vieja) el saldo es el de siempre', async () => {
+      mockDB.getAll.mockImplementation(async (table: string) => {
+        if (table === 'accounts') return [{ id: 1, status: 'ACTIVE', activa: true, openingBalance: 100, openingBalanceDate: '2024-01-01' }];
+        if (table === 'lineasExtracto') throw new Error('NotFoundError');
+        return [];
+      });
+      expect(await calculateTotalInitialCash('2024-03-01')).toBe(100);
+    });
   });
 
   it('sums all active accounts as total initial cash', async () => {

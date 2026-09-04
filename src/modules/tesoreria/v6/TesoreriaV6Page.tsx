@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ToastHost, showToastV5 } from '../../../design-system/v5';
 import { initDB, type Account, type Movement, type TreasuryEvent } from '../../../services/db';
-import { calculateAccountBalanceAtDate, corteParaSaldoVivo } from '../../../services/accountBalanceService';
+import { calculateAccountBalanceAtDate, corteParaSaldoVivo, leerLineasParaSaldo, type LineaParaSaldo } from '../../../services/accountBalanceService';
 import {
   calcularKpisHero,
   rangoDelMes,
@@ -96,6 +96,8 @@ interface Estado {
   cuentas: Account[];
   eventos: TreasuryEvent[];
   movimientos: Movement[];
+  /** E1.5 · las líneas del extracto · el saldo suma las que aún no tienen movimiento. */
+  lineas: LineaParaSaldo[];
   inmuebles: Array<{ id: number; alias: string }>;
 }
 
@@ -109,7 +111,7 @@ const TesoreriaV6Page: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const esMovil = useEsMovil();
-  const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], inmuebles: [] });
+  const [estado, setEstado] = useState<Estado>({ cuentas: [], eventos: [], movimientos: [], lineas: [], inmuebles: [] });
   const [cargando, setCargando] = useState(true);
   /** Orden guardado de las cuentas (§4.2) · sigue siendo el orden POR DEFECTO
    *  de la tabla; la ordenación por cabecera lo pisa solo en sesión. */
@@ -211,7 +213,7 @@ const TesoreriaV6Page: React.FC = () => {
       console.warn('[TesoreriaV6] no se pudieron regenerar los recibos de tarjeta', err);
     }
     const db = await initDB();
-    const [cuentas, eventos, movimientos, properties, ordenGuardado, borradores] =
+    const [cuentas, eventos, movimientos, properties, ordenGuardado, borradores, lineas] =
       await Promise.all([
         db.getAll('accounts') as Promise<Account[]>,
         db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
@@ -219,6 +221,7 @@ const TesoreriaV6Page: React.FC = () => {
         db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string; state?: string }>>,
         leerOrdenCuentas(),
         batchesEnBorrador(),
+        leerLineasParaSaldo(db),
       ]);
     setEstado({
       cuentas: cuentas ?? [],
@@ -227,6 +230,7 @@ const TesoreriaV6Page: React.FC = () => {
       // la lista de la cuenta. Se filtra aquí, en el único punto de carga de la
       // V6, y no en cada consumidor: así no hay forma de olvidarlo en uno.
       movimientos: sinBorradores(movimientos ?? [], borradores),
+      lineas: lineas ?? [],
       inmuebles: (properties ?? [])
         // Un inmueble VENDIDO (o de baja) ya no recibe apuntes: sale del selector
         // de la ficha para no poder asignarle un gasto nuevo. Mismo criterio que
@@ -344,6 +348,12 @@ const TesoreriaV6Page: React.FC = () => {
   const porCuenta = useMemo(() => {
     const eventos = new Map<number, TreasuryEvent[]>();
     const movimientos = new Map<number, Movement[]>();
+    const lineas = new Map<number, LineaParaSaldo[]>();
+    for (const l of estado.lineas) {
+      const arr = lineas.get(l.accountId);
+      if (arr) arr.push(l);
+      else lineas.set(l.accountId, [l]);
+    }
     for (const e of estado.eventos) {
       if (e.accountId == null) continue;
       const arr = eventos.get(e.accountId);
@@ -355,8 +365,8 @@ const TesoreriaV6Page: React.FC = () => {
       if (arr) arr.push(m);
       else movimientos.set(m.accountId, [m]);
     }
-    return { eventos, movimientos };
-  }, [estado.eventos, estado.movimientos]);
+    return { eventos, movimientos, lineas };
+  }, [estado.eventos, estado.movimientos, estado.lineas]);
 
   const saldoPorCuenta = useMemo(() => {
     const m = new Map<number, number>();
@@ -370,6 +380,7 @@ const TesoreriaV6Page: React.FC = () => {
           cutoffDate: corte,
           treasuryEvents: porCuenta.eventos.get(c.id) ?? [],
           movements: porCuenta.movimientos.get(c.id) ?? [],
+          lineas: porCuenta.lineas.get(c.id) ?? [],
           // Saldo VIVO · un cargo/abono real del extracto cuenta aunque el banco
           // lo valore un par de días adelante (la remuneración mensual).
           incluirRealesFuturos: true,
