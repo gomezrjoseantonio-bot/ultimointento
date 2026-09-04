@@ -105,8 +105,9 @@ const CuadreConElBanco: React.FC<CuadreConElBancoProps> = ({ propuesta, aplicar,
           <span>
             {esRetroceso ? (
               <>
-                Llevar mi apertura al {fechaLarga(p.apertura.fecha)} con <b>{importeSaldo(p.apertura.saldo)}</b> —el
-                saldo del banco en esa línea— para que ATLAS tenga todo el historial · se aplica al guardar
+                Llevar mi apertura al {fechaLarga(p.apertura.fecha)} con <b>{importeSaldo(p.apertura.saldo)}</b> —lo
+                que tenías ANTES de esa primera línea, según el saldo del banco— para que ATLAS tenga todo el
+                historial · se aplica al guardar
               </>
             ) : (
               <>

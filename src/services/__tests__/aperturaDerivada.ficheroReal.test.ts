@@ -36,8 +36,10 @@ const SALDO_DEL_BANCO = 53512.05;
 /** §31 · saldo de la línea más antigua (56.846,36) menos su importe (−100). */
 const APERTURA_DERIVADA = 56946.36;
 
+// La cuenta del test es SINTÉTICA · del fichero solo se usan sus importes y
+// sus saldos, que es lo que este test verifica. Ningún IBAN real aquí.
 const cuenta = (over: Partial<Account>): Account =>
-  ({ id: CUENTA, iban: 'ES6100490052632210412715', alias: 'Santander', ...over }) as Account;
+  ({ id: CUENTA, iban: 'ES0000000000000000000000', alias: 'Cuenta de prueba', ...over }) as Account;
 
 /** El saldo de ATLAS el 2 de septiembre de 2025, con el fichero dentro. */
 const saldoEl2 = (account: Account, lineas: LineaExtractoPersistida[]): number =>
