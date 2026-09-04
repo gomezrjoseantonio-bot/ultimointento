@@ -6,12 +6,12 @@
 // aplicadores). Esto comprueba que los servicios REALES la usan y que el
 // resultado en la base es el que se quiere:
 //
-//   · B1 · `confirmDecisions` cuadra la línea del extracto con un previsto
-//   · B2 · `aplicarReconciliacionConfirmado` colapsa la línea del extracto
-//          contra un Confirmado ya punteado
+//   · B1 · `confirmDecisions` cuadra la LÍNEA del extracto con un previsto ·
+//          E1.5: el movimiento NACE aquí, desde la línea
+//   · B2 · `aplicarReconciliacionConfirmado` · D1: la línea confirma un
+//          Confirmado ya punteado, que SE CONSERVA y recibe el aval del banco
 //
-// y que los dos textos —el del banco y el del usuario— conviven en el
-// movimiento sin pisarse.
+// y que los dos textos —el del banco y el del usuario— conviven sin pisarse.
 // ============================================================================
 
 import { confirmDecisions } from '../bankStatementOrchestrator';
@@ -31,6 +31,7 @@ interface Stores {
   gastosInmueble: any[];
   importBatches: any[];
   accounts: any[];
+  lineasExtracto: any[];
 }
 
 let stores: Stores;
@@ -38,18 +39,23 @@ let stores: Stores;
 /** El recibo del agua · previsto 82,00 € el 27-8, cargado 87,40 € el 3-9. */
 function sembrar(): void {
   stores = {
-    // La línea que llegó en el extracto · el texto crudo del banco.
-    movements: [
+    // E1.5 · importar NO crea movimientos: lo que hay es la LÍNEA del banco.
+    movements: [],
+    lineasExtracto: [
       {
-        id: 31,
+        id: 310,
         accountId: 9,
-        amount: -87.4,
-        date: '2026-09-03',
-        valueDate: '2026-09-04',
-        description: 'ADEUDO RECIBO AQUALIA SA 0034ES',
-        source: 'import',
-        unifiedStatus: 'no_planificado',
-        statusConciliacion: 'sin_match',
+        importe: -87.4,
+        fechaOperacion: '2026-09-03',
+        fechaValor: '2026-09-04',
+        conceptoLiteral: 'ADEUDO RECIBO AQUALIA SA 0034ES',
+        importBatchId: 'lote-1',
+        hashLinea: 'v1:x',
+        hashMovement: '9|2026-09-03|-8740|ADEUDO RECIBO AQUALIA SA 0034ES',
+        estado: 'pendiente',
+        movementIds: [],
+        createdAt: '',
+        updatedAt: '',
       },
     ],
     treasuryEvents: [
@@ -129,6 +135,9 @@ const db: any = {
 
 const linea = () => stores.gastosInmueble[0];
 const movimiento = (id: number) => stores.movements.find((m) => m.id === id);
+/** E1.5 · el movimiento que NACIÓ de la línea al guardar. */
+const nacido = () => stores.movements.find((m) => m.source === 'import');
+const filaLinea = () => stores.lineasExtracto[0];
 
 beforeEach(() => {
   sembrar();
@@ -140,10 +149,22 @@ beforeEach(() => {
 describe('B1 · confirmDecisions escribe el dato del banco en la línea de gasto', () => {
   const cuadrar = () =>
     confirmDecisions('lote-1', {
-      approvedMatches: [{ movementId: 31, treasuryEventId: 7 }],
-      approvedSuggestions: [],
-      ignoredMovementIds: [],
+      approvedMatches: [{ lineaId: 310, treasuryEventId: 7 }],
+      ignoredLineaIds: [],
     });
+
+  it('E1.5 · el movimiento NACE al guardar, desde la línea, y la línea queda enlazada', async () => {
+    expect(stores.movements).toHaveLength(0);
+    await cuadrar();
+    expect(stores.movements).toHaveLength(1);
+    expect(nacido()).toMatchObject({
+      accountId: 9, amount: -87.4, date: '2026-09-03', valueDate: '2026-09-04',
+      source: 'import', importBatch: 'lote-1', unifiedStatus: 'conciliado', statusConciliacion: 'match_manual',
+    });
+    // Mina M1 · el id lo puso el store, no es el de la línea.
+    expect(nacido().id).not.toBe(310);
+    expect(filaLinea()).toMatchObject({ movementIds: [nacido().id], estado: 'resuelta', comoSeResolvio: 'confirmada' });
+  });
 
   it('la línea se deduce por 87,40 · no por los 82,00 previstos', async () => {
     await cuadrar();
@@ -161,7 +182,7 @@ describe('B1 · confirmDecisions escribe el dato del banco en la línea de gasto
     await cuadrar();
     expect(linea().estado).toBe('confirmado');
     expect(linea().estadoTesoreria).toBe('confirmed');
-    expect(linea().movimientoId).toBe('31');
+    expect(linea().movimientoId).toBe(String(nacido().id));
     expect(linea().treasuryEventId).toBe(7);
   });
 
@@ -174,12 +195,12 @@ describe('B1 · confirmDecisions escribe el dato del banco en la línea de gasto
   // D1 · los dos textos conviven.
   it('el texto del banco NO se toca · el hash del dedupe depende de él', async () => {
     await cuadrar();
-    expect(movimiento(31).description).toBe('ADEUDO RECIBO AQUALIA SA 0034ES');
+    expect(nacido().description).toBe('ADEUDO RECIBO AQUALIA SA 0034ES');
   });
 
   it('y el nombre de la previsión se guarda aparte', async () => {
     await cuadrar();
-    expect(movimiento(31).descripcionPrevision).toBe('Agua Tenderina');
+    expect(nacido().descripcionPrevision).toBe('Agua Tenderina');
   });
 
   // D3 · magnitud, como el punteo manual.
@@ -190,13 +211,14 @@ describe('B1 · confirmDecisions escribe el dato del banco en la línea de gasto
   });
 });
 
-// ─── B2 · colapsar contra un Confirmado ya punteado ─────────────────────────
+// ─── B2 · D1 · la línea confirma un Confirmado ya punteado ──────────────────
 
-describe('B2 · el colapso no deja la línea de gasto huérfana', () => {
+describe('B2 · D1 · el confirmado se conserva con el aval del banco', () => {
   /**
    * El usuario punteó a mano ANTES de subir el extracto: hay un movimiento 20
-   * con los 82,00 previstos, y la línea le apunta. Al subir el extracto, la
-   * misma operación llega como movimiento 31 y el 20 se borra.
+   * con los 82,00 previstos, y la línea de gasto le apunta. Al subir el
+   * extracto, la misma operación llega como LÍNEA (310): el 20 se queda, toma
+   * el importe y las fechas del banco, y la línea queda enlazada a él.
    */
   function conPunteoPrevio(): void {
     stores.movements.push({
@@ -227,13 +249,19 @@ describe('B2 · el colapso no deja la línea de gasto huérfana', () => {
   }
 
   const colapsar = () =>
-    aplicarReconciliacionConfirmado(db, movimiento(31), 20, '2026-09-05T00:00:00.000Z');
+    aplicarReconciliacionConfirmado(
+      db,
+      { amount: -87.4, date: '2026-09-03', valueDate: '2026-09-04' },
+      20,
+      '2026-09-05T00:00:00.000Z',
+    );
 
-  it('la línea deja de apuntar al movimiento borrado', async () => {
+  it('el confirmado sobrevive · nada nace y nada se borra', async () => {
     conPunteoPrevio();
     await colapsar();
-    expect(movimiento(20)).toBeUndefined();
-    expect(linea().movimientoId).toBe('31');
+    expect(movimiento(20)).toBeDefined();
+    expect(stores.movements).toHaveLength(1);
+    expect(linea().movimientoId).toBe('20');
   });
 
   it('y se queda con el importe del banco · conciliado manda sobre confirmado', async () => {
@@ -251,21 +279,29 @@ describe('B2 · el colapso no deja la línea de gasto huérfana', () => {
     expect(linea().treasuryEventId).toBe(7);
   });
 
-  it('el evento se repunta al movimiento del extracto, en magnitud', async () => {
+  it('el evento sigue en el confirmado · con el dato del banco, en magnitud', async () => {
     conPunteoPrevio();
     await colapsar();
-    expect(stores.treasuryEvents[0].executedMovementId).toBe(31);
+    expect(stores.treasuryEvents[0].executedMovementId).toBe(20);
     expect(stores.treasuryEvents[0].actualAmount).toBe(87.4);
+    expect(stores.treasuryEvents[0].actualDate).toBe('2026-09-03');
   });
 
-  it('el texto del banco sobrevive y el del usuario se guarda aparte', async () => {
+  it('el confirmado conserva el texto del usuario y sube a conciliado con las fechas del banco', async () => {
     conPunteoPrevio();
     await colapsar();
-    expect(movimiento(31).description).toBe('ADEUDO RECIBO AQUALIA SA 0034ES');
-    expect(movimiento(31).descripcionPrevision).toBe('Agua Tenderina');
+    expect(movimiento(20)).toMatchObject({
+      description: 'Agua Tenderina',
+      amount: -87.4,
+      date: '2026-09-03',
+      valueDate: '2026-09-04',
+      unifiedStatus: 'conciliado',
+      statusConciliacion: 'match_automatico',
+      categoryKey: 'suministro_inmueble',
+    });
   });
 
-  it('un ejercicio DECLARADO no se repunta ni se reescribe', async () => {
+  it('un ejercicio DECLARADO no se reescribe', async () => {
     conPunteoPrevio();
     linea().estado = 'declarado';
     await colapsar();

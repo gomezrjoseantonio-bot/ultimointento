@@ -55,6 +55,11 @@ function esConfirmadoEmparejable(m: Movement): boolean {
   // reconociera, duplicándolo. Lo conciliado DE VERDAD tiene `source:'import'`.
   if (m.source !== 'manual') return false;
   if (m.isOpeningBalance) return false;
+  // E1.5 · D1 · un confirmado que YA recibió el aval de un extracto lleva
+  // `match_automatico`: no se ofrece a una segunda línea (otro extracto con un
+  // cargo igual a pocos días) o se enlazarían dos líneas a un solo movimiento
+  // y una de las dos desaparecería del saldo.
+  if (m.statusConciliacion === 'match_automatico') return false;
   // Una PATA de traspaso SÍ está en el extracto de su cuenta (§4.4): al subir
   // ese extracto, su línea debe cuadrar con la pata ya creada y subirla a
   // conciliado, sin duplicar. Antes se excluía toda `transferMetadata`, y por eso
@@ -161,7 +166,7 @@ export function confirmadosPorLinea(
  * (`linea.movementIds`) se excluyen de los candidatos, igual que hoy se
  * excluyen las propias líneas del lote —y se excluyen por su id de
  * movimiento, no por el de línea, que son numeraciones distintas—. Las líneas
- * descartadas no entran. No la llama nadie todavía: activarla es E1.5.
+ * descartadas no entran. E1.5 · es la puerta que usa la sesión (`montarSesion`).
  */
 export function confirmadosPorLineaExtracto(
   lineas: LineaExtractoPersistida[],

@@ -18,7 +18,6 @@ import {
 } from '../../modules/tesoreria/v6/conciliarBuckets';
 import {
   decisionesVacias,
-  lineasPendientes,
   type LineaExtracto,
 } from '../../modules/tesoreria/v6/extractoSesion';
 import { calculateAccountBalanceAtDate } from '../accountBalanceService';
@@ -105,30 +104,11 @@ describe('§3.1 · los cuatro buckets', () => {
 
 // ── 2 · NO-BORRADO · el candado que más dinero toca ─────────────────────────
 //
-// Hoy `consolidarSesion` borra el `Movement` de toda línea que llegue en
-// `lineasPendientes`, y ahí llegaban las sin resolver Y las apartadas por fecha.
-// Este test pasa de rojo a verde con el cambio.
-
-
-describe('§4.2 · guardar no borra ninguna línea', () => {
-  it('una línea sin resolver NO se manda a desmaterializar', () => {
-    const sinResolver = linea({ movementId: 9, veredicto: 'resolver' });
-    expect(lineasPendientes([sinResolver], decisionesVacias())).toEqual([]);
-  });
-
-  it('ni siquiera las que antes se apartaban por fecha', () => {
-    const viejas = [
-      linea({ movementId: 10, veredicto: 'mes_cerrado' as never }),
-      linea({ movementId: 11, veredicto: 'mes_anterior' as never }),
-    ];
-    expect(lineasPendientes(viejas, decisionesVacias())).toEqual([]);
-  });
-
-  it('una ignorada tampoco · ignorar es apartar, no destruir', () => {
-    expect(lineasPendientes([linea({ movementId: 12, veredicto: 'ignorada' })], decisionesVacias()))
-      .toEqual([]);
-  });
-});
+// Antes `consolidarSesion` borraba el `Movement` de toda línea que llegara en
+// `lineasPendientes`. E1.5 lo hizo estructural: importar ya no crea
+// movimientos y consolidar no recibe ninguna lista (`consolidarSesion(id)`).
+// Una línea sin resolver es una LÍNEA, cuenta en el saldo como tal y no hay
+// nada que borrar. El candado vive en `statementSessionService.test.ts`.
 
 // ── 3 · CORTE POR SALDO · colocar no es contar ──────────────────────────────
 //

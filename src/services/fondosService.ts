@@ -9,7 +9,7 @@
 
 import { initDB } from './db';
 import type { Account, Movement, TreasuryEvent } from './db';
-import { calculateAccountBalanceAtDate } from './accountBalanceService';
+import { calculateAccountBalanceAtDate, leerLineasParaSaldo } from './accountBalanceService';
 import type { FondoAhorro, FondoTipo, CuentaAsignada, Objetivo } from '../types/miPlan';
 
 // ── UUID helper ───────────────────────────────────────────────────────────────
@@ -32,14 +32,16 @@ async function getSaldoCuenta(cuentaId: number): Promise<number> {
     // NO devolver `openingBalance` crudo (queda obsoleto al haber movimientos).
     // El saldo real se calcula con `accountBalanceService` · cutoff = mañana
     // para incluir eventos confirmados de hoy · patrón canónico del repo.
-    const [treasuryEvents, movements] = await Promise.all([
+    const [treasuryEvents, movements, lineas] = await Promise.all([
       db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
       db.getAll('movements') as Promise<Movement[]>,
+      // E1.5 · las líneas del extracto sin resolver también son dinero movido.
+      leerLineasParaSaldo(db),
     ]);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const cutoffDate = tomorrow.toISOString().split('T')[0];
-    return calculateAccountBalanceAtDate({ account: cuenta, cutoffDate, treasuryEvents, movements });
+    return calculateAccountBalanceAtDate({ account: cuenta, cutoffDate, treasuryEvents, movements, lineas });
   } catch {
     return 0;
   }

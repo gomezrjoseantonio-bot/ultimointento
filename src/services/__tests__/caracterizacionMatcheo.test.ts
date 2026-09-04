@@ -19,12 +19,20 @@
 //                                fuentes y que un origen tapa la atribución.
 //   · conciliación con confirmados · `confirmadosPorLinea` (qué línea casa con
 //                                qué confirmado, 1:1) y `confirmDecisions` con
-//                                `reconciliacionesConfirmado` (qué funde en la
-//                                línea del import y qué borra).
+//                                `reconciliacionesConfirmado` (qué se conserva
+//                                y qué queda enlazado · D1).
 //
 // Cuando algo de lo que sale parece un fallo, el test lo fija IGUAL y lo deja
 // anotado con «HOY:» en el nombre o en un comentario. Arreglarlo no es de esta
 // tarea: primero se congela lo que hay, después se decide.
+//
+// E1.5 · D1 · los seis tests de «confirmDecisions con reconciliacionesConfirmado»
+// CAMBIARON con el corte y capturan el comportamiento NUEVO: antes el import
+// creaba un movimiento duplicado y al guardar se BORRABA el confirmado
+// (sobrevivía la línea del import heredando su clasificación); ahora no nace
+// ningún duplicado, el Confirmado se CONSERVA con el aval del banco (importe y
+// fechas reales, conciliado) y la línea queda enlazada a él. Los tests del
+// matcheo en sí (`confirmadosPorLinea`, `emparejarConfirmados`) no cambian.
 //
 // Los 13 de `conciliacionCaminosCompletos.test.ts` cubren el GUARDAR (B1
 // confirmDecisions con un match aprobado a mano · B2 el colapso contra un
@@ -522,10 +530,27 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
     mov({ id: 34, importBatch: 'lote-sept', date: '2026-09-06', amount: -12.99, description: 'NETFLIX.COM' }),
   ];
 
+  /** E1.5 · las FILAS del lote de septiembre · lo que hay en la base tras importar. */
+  const LINEAS_SEPT = LOTE_SEPT.map((m) => ({
+    id: 500 + (m.id as number),
+    accountId: m.accountId,
+    importe: m.amount,
+    fechaOperacion: m.date,
+    fechaValor: m.valueDate ?? m.date,
+    conceptoLiteral: m.description,
+    importBatchId: 'lote-sept',
+    hashLinea: `v1:${m.id}`,
+    hashMovement: `h${m.id}`,
+    estado: 'pendiente',
+    movementIds: [],
+    createdAt: '',
+    updatedAt: '',
+  }));
+
   function sembrarSeptiembre(): void {
     stores = {
+      lineasExtracto: [...LINEAS_SEPT],
       movements: [
-        ...LOTE_SEPT,
         // 20 · el agua punteada a mano el 1-9 (previsto 7 ejecutado sobre él).
         mov({ id: 20, source: 'manual', importBatch: undefined, date: '2026-09-01', amount: -87.4, description: 'Agua Tenderina', reference: 'treasury_event:7', categoryKey: 'suministro_inmueble', ambito: 'INMUEBLE', inmuebleId: '1', unifiedStatus: 'conciliado' }),
         // 21 · la renta de Laura anotada a mano el mismo día.
@@ -551,7 +576,7 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
   beforeEach(sembrarSeptiembre);
 
   it('confirmadosPorLinea · qué línea casa con qué confirmado · 1:1, el más cercano primero', () => {
-    const refs = confirmadosPorLinea(LOTE_SEPT, stores.movements as Movement[], CUENTA);
+    const refs = confirmadosPorLinea(LOTE_SEPT, [...LOTE_SEPT, ...(stores.movements as Movement[])], CUENTA);
     expect(Array.from(refs.entries())).toEqual([
       // A 0 días va primero · la renta.
       [33, { id: 21, descripcion: 'Renta Laura', importe: 380, fecha: '2026-09-05' }],
@@ -569,65 +594,72 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
     expect(emparejarConfirmados([{ ...linea, date: '2026-09-06' }], [confirmado])).toEqual(new Map([[40, 20]]));
   });
 
-  describe('confirmDecisions con reconciliacionesConfirmado · qué funde, qué borra', () => {
+  // E1.5 · D1 · estos seis tests cambiaron con el corte (ver cabecera): capturan
+  // el comportamiento NUEVO · el Confirmado se conserva con el aval del banco.
+  describe('confirmDecisions con reconciliacionesConfirmado · D1 · qué se conserva, qué queda enlazado', () => {
     const guardar = () =>
       confirmDecisions('lote-sept', {
         approvedMatches: [],
-        ignoredMovementIds: [32],
+        ignoredLineaIds: [532],
         reconciliacionesConfirmado: [
-          { importMovementId: 31, confirmadoMovementId: 20 },
-          { importMovementId: 33, confirmadoMovementId: 21 },
+          { lineaId: 531, confirmadoMovementId: 20 },
+          { lineaId: 533, confirmadoMovementId: 21 },
         ],
       });
     const m = (id: number) => stores.movements.find((r) => r.id === id) as Movement | undefined;
+    const fila = (id: number) => stores.lineasExtracto.find((r) => r.id === id) as Record<string, unknown>;
 
-    it('los confirmados se BORRAN · el dinero no se cuenta dos veces', async () => {
+    it('los confirmados se CONSERVAN · no nace ningún movimiento y no se borra ninguno', async () => {
       await guardar();
-      expect(m(20)).toBeUndefined();
-      expect(m(21)).toBeUndefined();
-      expect(stores.movements.map((r) => r.id).sort()).toEqual([22, 23, 24, 31, 32, 33, 34]);
+      expect(m(20)).toBeDefined();
+      expect(m(21)).toBeDefined();
+      expect(stores.movements.map((r) => r.id).sort()).toEqual([20, 21, 22, 23, 24]);
     });
 
-    it('la línea del import HEREDA la clasificación y sube a Conciliado · el texto del banco no se toca', async () => {
+    it('el confirmado recibe el aval del banco · importe y fechas reales, conciliado · conserva su clasificación y su texto', async () => {
       await guardar();
-      expect(m(31)).toMatchObject({
-        description: 'ADEUDO RECIBO AQUALIA SA 0034ES',
-        descripcionPrevision: 'Agua Tenderina',
+      expect(m(20)).toMatchObject({
+        description: 'Agua Tenderina',
         categoryKey: 'suministro_inmueble',
         ambito: 'INMUEBLE',
         inmuebleId: '1',
+        amount: -87.4,
+        date: '2026-09-03',
+        valueDate: '2026-09-04',
         unifiedStatus: 'conciliado',
         movementState: 'Conciliado',
         statusConciliacion: 'match_automatico',
-        source: 'import',
-        importBatch: 'lote-sept',
+        source: 'manual',
       });
-      expect(m(33)).toMatchObject({
-        description: 'BIZUM DE LAURA SANCHEZ',
-        descripcionPrevision: 'Renta Laura',
+      expect(m(21)).toMatchObject({
+        description: 'Renta Laura',
         categoryKey: 'alquiler',
         inmuebleId: '4',
+        date: '2026-09-05',
         unifiedStatus: 'conciliado',
         statusConciliacion: 'match_automatico',
       });
+      // La línea queda ENLAZADA al confirmado · deja de sumar por sí misma.
+      expect(fila(531)).toMatchObject({ movementIds: [20], estado: 'resuelta', comoSeResolvio: 'confirmada' });
+      expect(fila(533)).toMatchObject({ movementIds: [21], estado: 'resuelta', comoSeResolvio: 'confirmada' });
     });
 
-    it('el previsto punteado se RE-APUNTA a la línea del import · con el dato del banco en magnitud', async () => {
+    it('el previsto punteado sigue en el confirmado · con el dato del banco en magnitud', async () => {
       await guardar();
       expect(stores.treasuryEvents[0]).toMatchObject({
         id: 7,
         status: 'executed',
-        movementId: 31,
-        executedMovementId: 31,
+        movementId: 20,
+        executedMovementId: 20,
         actualDate: '2026-09-03',
         actualAmount: 87.4,
       });
     });
 
-    it('la línea de gasto que declaraba el agua se repunta y se queda con el dato del banco', async () => {
+    it('la línea de gasto que declaraba el agua le sigue apuntando y se queda con el dato del banco', async () => {
       await guardar();
       expect(stores.gastosInmueble[0]).toMatchObject({
-        movimientoId: '31',
+        movimientoId: '20',
         importe: 87.4,
         fecha: '2026-09-03',
         fechaValor: '2026-09-04',
@@ -636,20 +668,19 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
       });
     });
 
-    it('el duplicado intra-lote (32) se queda como línea del banco sin conciliar · ignorada, no borrada', async () => {
+    it('el duplicado intra-lote (532) se queda como línea · ignorada (§29), sin movimiento y sumando en el saldo', async () => {
       await guardar();
-      expect(m(32)).toMatchObject({ unifiedStatus: 'no_planificado', statusConciliacion: 'sin_match', source: 'import' });
-      expect(m(34)).toMatchObject({ unifiedStatus: 'no_planificado', statusConciliacion: 'sin_match' });
+      expect(fila(532)).toMatchObject({ atencion: 'silenciada', estado: 'pendiente', movementIds: [] });
+      expect(fila(534)).toMatchObject({ estado: 'pendiente', movementIds: [] });
+      expect(fila(534).atencion).toBeUndefined();
     });
 
-    it('un confirmado que ya no existe · la línea del import sube igual a Conciliado sin heredar nada', async () => {
-      const i = stores.movements.findIndex((r) => r.id === 21);
-      expect(i).toBeGreaterThanOrEqual(0); // si cambia el sembrado, que falle aquí y no borre otro
-      stores.movements.splice(i, 1);
+    it('un confirmado que ya no existe · la línea se queda a resolver, sin enlazar y sin movimiento', async () => {
+      stores.movements.splice(stores.movements.findIndex((r) => r.id === 21), 1);
       await guardar();
-      expect(m(33)).toMatchObject({ unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico' });
-      expect(m(33)!.categoryKey).toBeUndefined();
-      expect(m(33)!.descripcionPrevision).toBeUndefined();
+      expect(fila(533)).toMatchObject({ estado: 'pendiente', movementIds: [] });
+      // No ha nacido ningún movimiento para la línea · el 22 es el import de un lote viejo, sembrado.
+      expect(stores.movements.map((r) => r.id).sort()).toEqual([20, 22, 23, 24]);
     });
   });
 });

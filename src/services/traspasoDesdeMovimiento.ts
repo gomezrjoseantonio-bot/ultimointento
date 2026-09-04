@@ -19,6 +19,7 @@
 import { initDB } from './db';
 import type { Movement } from './db';
 import { TRANSFER_KEYS } from './categoryCatalog';
+import { materializarLinea, type BaseParaMaterializar } from './materializarLinea';
 
 export class MovimientoNoEncontradoError extends Error {
   constructor() {
@@ -136,4 +137,27 @@ export async function convertirEnTraspaso(
   });
 
   return { movementId, movementIdDestino };
+}
+
+/**
+ * E1.5 · la misma conversión, desde la LÍNEA del extracto.
+ *
+ * Tras el corte la línea no tiene movimiento hasta que se resuelve: aquí NACE
+ * (pata de salida, `materializarLinea` · a mano) y acto seguido se convierte
+ * como siempre. D2 · la línea queda enlazada SOLO a su pata (la de esta
+ * cuenta); la de entrada la cuenta la cuenta destino. Idempotente por los dos
+ * lados: la línea no vuelve a materializarse y el par no se duplica.
+ */
+export async function convertirLineaEnTraspaso(
+  lineaId: number,
+  cuentaDestinoId: number
+): Promise<ResultadoConversion> {
+  const db = await initDB();
+  const { movement } = await materializarLinea(
+    db as unknown as BaseParaMaterializar,
+    lineaId,
+    new Date().toISOString(),
+    'a_mano'
+  );
+  return convertirEnTraspaso(movement.id as number, cuentaDestinoId);
 }

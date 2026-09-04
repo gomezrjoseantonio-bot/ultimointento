@@ -94,7 +94,7 @@ export async function reconocerDeterministas(movimientos: Movement[]): Promise<L
  * Cada línea se convierte en el `Movement` que `insertMovements` habría creado
  * (en memoria, sin escribir) y se cruza con los MISMOS libros. Los mapas
  * hablan en `lineaId`. Las líneas descartadas no entran, igual que hoy no
- * tienen movimiento. No la llama nadie todavía: activarla es E1.5.
+ * tienen movimiento. E1.5 · es la puerta que usa el orquestador.
  */
 export async function reconocerDeterministasDeLineas(
   lineas: LineaExtractoPersistida[]

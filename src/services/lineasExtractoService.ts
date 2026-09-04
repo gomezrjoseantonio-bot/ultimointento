@@ -68,9 +68,10 @@ export function lineaDesdeFila(row: ParsedMovement, d: DatosDeLinea): LineaExtra
     ...(row.rawData != null ? { datosCrudos: row.rawData } : {}),
     hashLinea: generateLineHash({ date: d.fechaOperacion, amount: d.importe, description: conceptoLiteral }),
     hashMovement: d.hashMovement,
-    // E1.1 · todo lo que genera movimiento nace «resuelta» porque hoy el import
-    // lo materializa; lo descartado no llegó a procesarse.
-    estado: d.descarte ? 'sin_procesar' : 'resuelta',
+    // E1.5 · importar ya NO crea el movimiento: la línea nace PENDIENTE y
+    // pasa a «resuelta» cuando el usuario (o el motor) la resuelve y nace su
+    // movimiento (`materializarLinea`). Lo descartado no llegó a procesarse.
+    estado: d.descarte ? 'sin_procesar' : 'pendiente',
     ...(d.descarte ? { descarte: d.descarte } : {}),
     movementIds: [...d.movementIds],
     createdAt: d.ahora,

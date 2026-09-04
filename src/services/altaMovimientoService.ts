@@ -28,6 +28,7 @@
 // ============================================================================
 
 import { initDB } from './db';
+import { materializarLinea, type BaseParaMaterializar } from './materializarLinea';
 import type { Movement } from './db';
 import { createTransfer } from './treasuryTransferService';
 import type { GastoInmueble, MejoraInmueble } from './db/types-inmuebles';
@@ -198,7 +199,24 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
  * de amortizaciones, no el de gastos deducibles.
  */
 /**
- * La mejora sale de una línea de extracto · el movimiento YA existe.
+ * E1.5 · el movimiento sobre el que trabaja la ficha · el que ya existe
+ * (`movementId`) o el que NACE de la línea (`lineaId` · `materializarLinea`, a
+ * mano). Con los dos, manda el movimiento.
+ */
+async function idDelMovimiento(
+  db: Awaited<ReturnType<typeof initDB>>,
+  params: { movementId?: number; lineaId?: number },
+  ahora: string
+): Promise<number> {
+  if (params.movementId != null) return params.movementId;
+  if (params.lineaId == null) throw new Error('Hace falta el movimiento o la línea del extracto.');
+  const { movement } = await materializarLinea(db as unknown as BaseParaMaterializar, params.lineaId, ahora, 'a_mano');
+  return movement.id as number;
+}
+
+/**
+ * La mejora sale de una línea de extracto · el movimiento YA existe (o nace de
+ * la línea, E1.5).
  *
  * Aquí no hay nada que crear en `movements`: el dinero salió del banco y ese
  * apunte es realidad, no una elección. Lo que cambia es el TRATAMIENTO FISCAL,
@@ -209,7 +227,10 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
  * el banco, y al reimportar el extracto volvería a aparecer.
  */
 export async function mejoraDesdeMovimiento(params: {
-  movementId: number;
+  /** El movimiento, si ya existe. */
+  movementId?: number;
+  /** E1.5 · o la LÍNEA del extracto · el movimiento nace aquí si aún no lo tenía. */
+  lineaId?: number;
   inmuebleId: number;
   concepto: string;
   importe: number;
@@ -218,8 +239,9 @@ export async function mejoraDesdeMovimiento(params: {
   const db = await initDB();
   const ahora = new Date().toISOString();
   const fecha = params.fecha.slice(0, 10);
+  const movementId = await idDelMovimiento(db, params, ahora);
 
-  const movimiento = (await db.get('movements', params.movementId)) as Movement | undefined;
+  const movimiento = (await db.get('movements', movementId)) as Movement | undefined;
   if (movimiento) {
     await db.put('movements', {
       ...movimiento,
@@ -241,7 +263,7 @@ export async function mejoraDesdeMovimiento(params: {
     importe: Math.abs(params.importe),
     fecha,
     // Queda enlazada al apunte bancario que la pagó · así se puede rastrear.
-    movimientoId: String(params.movementId),
+    movimientoId: String(movementId),
     estadoTesoreria: 'confirmed',
     createdAt: ahora,
     updatedAt: ahora,
@@ -428,7 +450,10 @@ export interface ResultadoGastoFiscal {
  * real del banco, que es lo que había que hacer desde el principio.
  */
 export async function gastoDesdeMovimiento(params: {
-  movementId: number;
+  /** El movimiento, si ya existe. */
+  movementId?: number;
+  /** E1.5 · o la LÍNEA del extracto · el movimiento nace aquí si aún no lo tenía. */
+  lineaId?: number;
   inmuebleId?: number | null;
   concepto: string;
   /** Con signo, como lo trae el banco · la línea guarda magnitud. */
@@ -449,8 +474,9 @@ export async function gastoDesdeMovimiento(params: {
   const ahora = new Date().toISOString();
   const fecha = params.fecha.slice(0, 10);
   const hoy = (params.hoy ?? new Date().toISOString()).slice(0, 10);
+  const movementId = await idDelMovimiento(db, params, ahora);
 
-  const movimiento = (await db.get('movements', params.movementId)) as Movement | undefined;
+  const movimiento = (await db.get('movements', movementId)) as Movement | undefined;
 
   // El movimiento se clasifica siempre · eso ya lo decidió el usuario, y vale
   // aunque la fila fiscal no llegue a escribirse.
@@ -482,8 +508,9 @@ export async function gastoDesdeMovimiento(params: {
   const casillaAEAT = resolveCasillaAEAT(params.categoryKey ?? undefined);
   if (!casillaAEAT) return { resultado: 'falta_casilla' };
 
+  // Mina M6 · aquí va el id del MOVIMIENTO, nunca el de la línea.
   const cierre = camposDeCierre({
-    id: params.movementId,
+    id: movementId,
     amount: params.importe,
     date: fecha,
     valueDate: movimiento?.valueDate,

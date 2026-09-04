@@ -1,4 +1,61 @@
 import { initDB, Account, TreasuryEvent, Movement } from './db';
+import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
+
+// ============================================================================
+// E1.5 · el saldo cuenta las LÍNEAS del extracto que aún no tienen movimiento
+// ============================================================================
+//
+// Tras el corte (E1.5) importar guarda la línea y NO crea el movimiento: el
+// movimiento nace al resolver. Mientras tanto el dinero YA se movió en el
+// banco, y el saldo tiene que decirlo (§20 · §29). Por eso el hub suma, además
+// de los movimientos, las líneas HUÉRFANAS de la cuenta:
+//
+//   saldo = apertura + Σ eventos comprometidos + Σ movimientos
+//         + Σ líneas con `movementIds` vacío Y sin `descarte`      ← nuevo
+//
+// Los dos candados del término nuevo:
+//   · `movementIds` vacío · si la línea ya engendró movimiento, ese movimiento
+//     es quien suma. Sin esto, doble conteo.
+//   · sin `descarte` · una línea `duplicada` nace sin movimiento pero su dinero
+//     ya está en la importación anterior; `sin_fecha` no se puede situar y
+//     `sin_importe` vale 0. Sin esto, doble conteo de cada extracto solapado.
+//
+// Ignorar (§29) no crea movimiento → la línea sigue sumando. Correcto sin
+// código extra: silenciar un recordatorio no es un estado de dinero.
+//
+// Antes del corte este término vale EXACTAMENTE 0 €: toda línea tiene
+// movimiento o descarte. Se mergea probado y sin mover un euro.
+// ============================================================================
+
+/** Lo que el saldo necesita de una línea del extracto. */
+export type LineaParaSaldo = Pick<
+  LineaExtractoPersistida,
+  'accountId' | 'fechaOperacion' | 'importe' | 'movementIds' | 'descarte'
+>;
+
+/**
+ * ¿Suma esta línea por sí misma? · HUÉRFANA = sin movimiento detrás, sin
+ * descarte y con fecha. Una vez resuelta (`movementIds` no vacío) deja de
+ * sumar ella y suma su movimiento.
+ */
+export function esLineaHuerfana(l: LineaParaSaldo): boolean {
+  return (l.movementIds?.length ?? 0) === 0 && !l.descarte && Boolean(l.fechaOperacion);
+}
+
+/**
+ * Las líneas de `lineasExtracto`, para pasárselas al hub. Se leen UNA vez,
+ * fuera de cualquier bucle por cuenta (el hub filtra por `accountId`). Si el
+ * store no existe (base anterior a V91, mocks), no hay líneas: `[]`.
+ */
+export async function leerLineasParaSaldo(
+  db: { getAll: (store: never) => Promise<unknown> }
+): Promise<LineaParaSaldo[]> {
+  try {
+    return ((await db.getAll('lineasExtracto' as never)) ?? []) as LineaParaSaldo[];
+  } catch {
+    return [];
+  }
+}
 
 function toDateOnly(date: string | undefined): string | undefined {
   if (!date) return undefined;
@@ -67,8 +124,15 @@ export function calculateAccountBalanceAtDate(params: {
    * dejan en `false` para no colar en un mes algo del mes siguiente.
    */
   incluirRealesFuturos?: boolean;
+  /**
+   * E1.5 · las líneas del extracto (todas o las de la cuenta · el hub filtra).
+   * Solo suman las HUÉRFANAS (`esLineaHuerfana`), con el mismo corte y la
+   * misma frontera de apertura que los movimientos. Opcional: sin líneas el
+   * cálculo es el de siempre.
+   */
+  lineas?: LineaParaSaldo[];
 }): number {
-  const { account, cutoffDate, treasuryEvents, movements, incluirRealesFuturos = false } = params;
+  const { account, cutoffDate, treasuryEvents, movements, incluirRealesFuturos = false, lineas } = params;
   const accountOpeningDate = toDateOnly(account.openingBalanceDate);
   const openingDateApplies = !accountOpeningDate || accountOpeningDate <= cutoffDate;
   const openingBalance = openingDateApplies ? (account.openingBalance ?? 0) : 0;
@@ -136,15 +200,27 @@ export function calculateAccountBalanceAtDate(params: {
   const eventsDelta = committedPriorEvents
     .reduce((sum, e) => sum + getSignedEventAmount(e), 0);
 
-  return openingBalance + eventsDelta + movementsDelta;
+  // E1.5 · lo que el banco ya movió y nadie ha resuelto todavía. Mismo corte
+  // y misma frontera que los movimientos, para que el Panel y Tesorería sigan
+  // cuadrando entre sí. Sin casado implícito: una línea no es una previsión.
+  const lineasDelta = (lineas ?? []).reduce((sum, l) => {
+    if (l.accountId !== account.id || !esLineaHuerfana(l)) return sum;
+    const fecha = toDateOnly(l.fechaOperacion) as string;
+    if (!(incluirRealesFuturos || fecha < cutoffDate)) return sum;
+    if (!isAfterOpening(fecha)) return sum;
+    return sum + l.importe;
+  }, 0);
+
+  return openingBalance + eventsDelta + movementsDelta + lineasDelta;
 }
 
 export async function calculateTotalInitialCash(cutoffDate: string): Promise<number> {
   const db = await initDB();
-  const [accounts, treasuryEvents, movements] = await Promise.all([
+  const [accounts, treasuryEvents, movements, lineas] = await Promise.all([
     db.getAll('accounts'),
     db.getAll('treasuryEvents'),
     db.getAll('movements'),
+    leerLineasParaSaldo(db),
   ]);
 
   return accounts
@@ -155,6 +231,7 @@ export async function calculateTotalInitialCash(cutoffDate: string): Promise<num
         cutoffDate,
         treasuryEvents,
         movements,
+        lineas,
       });
     }, 0);
 }
@@ -162,10 +239,11 @@ export async function calculateTotalInitialCash(cutoffDate: string): Promise<num
 export async function rollForwardAccountBalancesToMonth(year: number, month: number): Promise<void> {
   const db = await initDB();
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
-  const [accounts, treasuryEvents, movements] = await Promise.all([
+  const [accounts, treasuryEvents, movements, lineas] = await Promise.all([
     db.getAll('accounts'),
     db.getAll('treasuryEvents'),
     db.getAll('movements'),
+    leerLineasParaSaldo(db),
   ]);
 
   for (const account of accounts) {
@@ -176,6 +254,7 @@ export async function rollForwardAccountBalancesToMonth(year: number, month: num
       cutoffDate: monthStart,
       treasuryEvents,
       movements,
+      lineas,
     });
 
     if (account.balance !== computedBalance) {

@@ -27,6 +27,13 @@ import type { MovementSuggestion, SuggestionAction } from '../../../../services/
 import { CONCEPTOS_BASE } from '../../../../services/conceptos/conceptosBase';
 
 /**
+ * E1.5 · lo que este traductor necesita de una sugerencia · vale la de un
+ * movimiento y la de una línea (`SugerenciaPorLinea`): ni una ni otra llevan
+ * aquí su id, solo la vía y la acción.
+ */
+export type SugerenciaLegible = Omit<MovementSuggestion, 'movementId'>;
+
+/**
  * El tono de la tarjeta · gobierna el color del filo izquierdo en el mockup.
  *
  * `confirma` es el caso del suministro variable: sabemos qué es, pero el importe
@@ -67,8 +74,8 @@ export function etiquetaDeCategoria(categoryKey: string | null | undefined): str
 }
 
 /** La sugerencia que manda · la de más confianza, y a igualdad la primera. */
-function laQueManda(sugerencias: MovementSuggestion[]): MovementSuggestion | null {
-  let mejor: MovementSuggestion | null = null;
+function laQueManda(sugerencias: SugerenciaLegible[]): SugerenciaLegible | null {
+  let mejor: SugerenciaLegible | null = null;
   for (const s of sugerencias) {
     if (!mejor || s.confidence > mejor.confidence) mejor = s;
   }
@@ -85,7 +92,7 @@ function laQueManda(sugerencias: MovementSuggestion[]): MovementSuggestion | nul
  * que el usuario haya decidido nada — que es la misma clase de bug que esta
  * pantalla viene a matar, solo que en vez de borrar la línea la esconde.
  */
-export function esPersonalReconocido(sugerencias: MovementSuggestion[]): boolean {
+export function esPersonalReconocido(sugerencias: SugerenciaLegible[]): boolean {
   return sugerencias.some(
     (s) =>
       (s.via === 'learning_rule' || s.via === 'compromiso_recurrente') &&
@@ -116,7 +123,7 @@ function titularDe(action: SuggestionAction): string {
 }
 
 /** El porqué · de dónde sale la propuesta, en el idioma del usuario. */
-function ayudaDe(s: MovementSuggestion): string {
+function ayudaDe(s: SugerenciaLegible): string {
   switch (s.via) {
     case 'compromiso_recurrente':
       return 'te lo cobran cada mes y esta vez cuadra el proveedor, la cuenta y el día';
@@ -138,7 +145,7 @@ function ayudaDe(s: MovementSuggestion): string {
  * motivo para dejar al usuario delante de un churro del banco sin salida.
  */
 export function propuestaDeLinea(
-  sugerencias: MovementSuggestion[],
+  sugerencias: SugerenciaLegible[],
   atribucion?: { alias?: string; concepto: string; ejercicio: number } | null,
 ): Propuesta {
   const s = laQueManda(sugerencias ?? []);

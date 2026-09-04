@@ -51,9 +51,9 @@ export type Bucket = 'resueltas' | 'te_necesitan' | 'personal' | 'ignorados';
 export function bucketDeLinea(
   linea: LineaExtracto,
   decisiones: DecisionesSesion,
-  /** Por `movementId` · vienen de las sugerencias, que son de los servicios. */
+  /** Por `lineaId` (E1.5) · vienen de las sugerencias por línea. */
   personales?: ReadonlySet<number>,
-  /** Por `movementId` · viene del reconocedor, que es de los servicios. */
+  /** Por `lineaId` (E1.5) · viene del reconocedor por línea. */
   reconocidas?: ReadonlySet<number>,
 ): Bucket {
   const veredicto = veredictoEfectivo(linea, decisiones);
@@ -79,12 +79,12 @@ export function bucketDeLinea(
       // como si hubiera casado: fecha e importe exactos contra un dato que
       // escribió él. Va antes que `personal` porque saber QUÉ es una línea
       // pesa más que saber de quién es.
-      if (reconocidas?.has(linea.movementId)) return 'resueltas';
+      if (reconocidas?.has(linea.lineaId)) return 'resueltas';
       // El montón «personal» va DESPUÉS de los dos anteriores a propósito. Que
       // una línea sea tuya y no de un piso no la desconcilia ni la designora:
       // «resueltas» e «ignorados» son actos —uno del emparejador, otro del
       // usuario— y esto es solo de quién es el gasto.
-      if (personales?.has(linea.movementId)) return 'personal';
+      if (personales?.has(linea.lineaId)) return 'personal';
       // `resolver` y todo lo demás —incluidos los antiguos `mes_cerrado` y
       // `mes_anterior`, que ya no apartan— piden una decisión.
       return 'te_necesitan';
