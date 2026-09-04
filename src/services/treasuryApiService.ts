@@ -8,7 +8,7 @@
  * - PUT /api/treasury/accounts/:id → edita
  */
 
-import { initDB, Account, AccountStatus, Movement } from './db';
+import { initDB, Account, AccountStatus } from './db';
 import { emitTreasuryEvent } from './treasuryEventsService';
 
 // IBAN validation regex (simplified European format)
