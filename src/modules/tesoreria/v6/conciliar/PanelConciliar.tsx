@@ -26,7 +26,7 @@ import TarjetaAccion from './TarjetaAccion';
 import CuadreConElBanco from './CuadreConElBanco';
 import YaEstaban from './YaEstaban';
 import type { LineaExtractoPersistida } from '../../../../services/db/types-lineasExtracto';
-import type { PropuestaDeAnclaje } from '../../../../services/anclajeSaldoExtracto';
+import type { PropuestaDeApertura } from '../../../../services/aperturaDerivada';
 import ColumnaResto from './ColumnaResto';
 import { atajosDeBusqueda, filtrarPorTexto } from './buscarLineas';
 import styles from './PanelConciliar.module.css';
@@ -45,10 +45,10 @@ export interface PanelConciliarProps {
   avisos: string[];
   error: string | null;
   guardando: boolean;
-  /** E1.5-anclaje-saldo · el cuadre con el banco, si el fichero trae saldo. */
-  anclaje?: PropuestaDeAnclaje | null;
-  anclar?: boolean;
-  onAnclar?: (anclar: boolean) => void;
+  /** §31 · el cuadre con el banco y la apertura derivada, si el fichero trae saldo. */
+  apertura?: PropuestaDeApertura | null;
+  aplicarApertura?: boolean;
+  onAplicarApertura?: (aplicar: boolean) => void;
   /** Las filas del fichero que ya estaban en ATLAS · se enseñan plegadas. */
   yaEstaban?: ReadonlyArray<LineaExtractoPersistida>;
   /** El drawer monta aquí su `LineaExtractoItem`, con sus manejadores. */
@@ -91,9 +91,9 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   avisos,
   error,
   guardando,
-  anclaje,
-  anclar = false,
-  onAnclar,
+  apertura,
+  aplicarApertura = false,
+  onAplicarApertura,
   yaEstaban = [],
   renderLinea,
   onRecuperar,
@@ -228,8 +228,13 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
         </div>
       ))}
       {error && <div className={`${styles.aviso} ${styles.avisoError}`}>{error}</div>}
-      {anclaje && onAnclar && (
-        <CuadreConElBanco propuesta={anclaje} anclar={anclar} onAnclar={onAnclar} desactivado={guardando} />
+      {apertura && onAplicarApertura && (
+        <CuadreConElBanco
+          propuesta={apertura}
+          aplicar={aplicarApertura}
+          onAplicar={onAplicarApertura}
+          desactivado={guardando}
+        />
       )}
       <YaEstaban lineas={yaEstaban} />
 

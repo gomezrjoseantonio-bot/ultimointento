@@ -48,12 +48,14 @@ describe('la cuenta de Efectivo', () => {
     expect(screen.queryByText('Banco / proveedor')).not.toBeInTheDocument();
   });
 
-  // Lo que sí hace falta saber es cuánto llevas encima y desde cuándo: es el
-  // punto de partida del saldo, igual que en cualquier otra cuenta.
-  it('sí pide cuánto hay y desde cuándo', () => {
+  // Lo que sí hace falta saber es cuánto llevas encima HOY: es el punto de
+  // partida del saldo, igual que en cualquier otra cuenta (§31 · la fecha la
+  // pone ATLAS, es hoy, y nadie tiene que inventarse una apertura).
+  it('sí pide cuánto hay hoy', () => {
     render(<CuentaWizard open onClose={() => {}} />);
     elegirEfectivo();
-    expect(screen.getByText('Saldo inicial')).toBeInTheDocument();
+    expect(screen.getByText('Saldo de hoy')).toBeInTheDocument();
+    expect(screen.getByText('¿Cuánto tienes hoy?')).toBeInTheDocument();
     expect(document.querySelector('input[type="date"]')).toBeInTheDocument();
   });
 

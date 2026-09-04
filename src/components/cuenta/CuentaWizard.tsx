@@ -926,10 +926,10 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
               </Block>
               )}
 
-              {/* B4 · SALDO INICIAL */}
-              <Block title="Saldo inicial">
+              {/* B4 · SALDO DE HOY · §31 · la apertura no se inventa, se deriva */}
+              <Block title={isEditing ? 'Saldo de la cuenta' : 'Saldo de hoy'}>
                   <div className={`${styles.fieldsRow} ${styles.rowSaldo}`}>
-                  <Field label="Importe" required>
+                  <Field label={isEditing ? 'Importe' : '¿Cuánto tienes hoy?'} required>
                     <div className={styles.inputSuffix}>
                       <input
                         className={`${styles.input} ${styles.inputMono}`}
@@ -942,18 +942,25 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
                       <span className={styles.suffix}>€</span>
                     </div>
                   </Field>
-                  <Field label="A fecha" required error={errors.fechaSaldo}>
+                  {/* Al crear, la fecha es HOY y no se pregunta: pedir «fecha de
+                      apertura» es pedir un dato que nadie tiene. Al editar sí se
+                      ve, porque puede venir derivada de un extracto y el usuario
+                      tiene que poder corregirla. */}
+                  <Field label="A fecha" hint={isEditing ? undefined : 'hoy'} required error={errors.fechaSaldo}>
                     <input
                       className={`${styles.input} ${errors.fechaSaldo ? styles.inputError : ''}`}
                       type="date"
                       value={form.fechaSaldo}
                       onChange={(e) => set('fechaSaldo', e.target.value)}
+                      disabled={!isEditing}
+                      data-testid="cuenta-fecha-saldo"
                     />
                   </Field>
                   </div>
                   <div className={styles.hintNote}>
-                  El saldo inicial es el punto de partida desde el que ATLAS calcula el cashflow.
-                  Los movimientos posteriores se acumulan a este saldo.
+                  {isEditing
+                    ? 'Es el punto más antiguo del que ATLAS tiene dato de esta cuenta. Si subes un extracto anterior, ATLAS te propondrá retroceder hasta él con el saldo real del banco.'
+                    : 'No hace falta el saldo del día que abriste la cuenta —nadie lo sabe—: pon lo que tienes hoy. Cuando subas un extracto, ATLAS lo confirma, y si el fichero es más antiguo la apertura retrocede sola hasta su primera línea con el saldo real del banco.'}
                   </div>
               </Block>
 

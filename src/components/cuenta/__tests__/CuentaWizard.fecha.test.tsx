@@ -28,21 +28,32 @@ afterAll(() => {
 
 const todayISO = () => new Date().toISOString().split('T')[0];
 
-describe('CuentaWizard · saldo inicial · fechas (P3)', () => {
-  it('"A fecha" defaultea a HOY', () => {
+describe('CuentaWizard · saldo de hoy · fechas (P3)', () => {
+  it('al crear, «A fecha» es HOY y no se pregunta · §31: la apertura no se inventa', () => {
     render(<CuentaWizard open onClose={() => {}} />);
     const fecha = document.querySelector('input[type="date"]') as HTMLInputElement;
     expect(fecha.value).toBe(todayISO());
+    // El dato que se pide es «¿cuánto tienes hoy?»; la fecha la pone ATLAS y
+    // retrocede sola cuando llega un extracto más antiguo.
+    expect(fecha.disabled).toBe(true);
+    expect(screen.getByText('¿Cuánto tienes hoy?')).toBeInTheDocument();
   });
 
-  it('el campo conserva el día que se escribe · sin off-by-one', () => {
+  it('al editar, la fecha sí se toca · conserva el día que se escribe, sin off-by-one', () => {
     // Este test nació contra la vista previa, que enseñaba un día menos al
     // formatear en horario local. La vista previa se eliminó en §10 —enseñaba
     // una cuenta que no era la real y no reaccionaba—, pero el off-by-one
     // sigue siendo un riesgo vivo en cuanto alguien vuelva a formatear esta
     // fecha, así que el test se queda apuntando al dato en vez de al pintado.
-    render(<CuentaWizard open onClose={() => {}} />);
+    render(
+      <CuentaWizard
+        open
+        onClose={() => {}}
+        editingAccount={{ id: 7, alias: 'Santander', openingBalance: 100, openingBalanceDate: '2026-06-01' } as never}
+      />
+    );
     const fecha = document.querySelector('input[type="date"]') as HTMLInputElement;
+    expect(fecha.disabled).toBe(false);
     fireEvent.change(fecha, { target: { value: '2026-06-08' } });
 
     expect(fecha.value).toBe('2026-06-08');

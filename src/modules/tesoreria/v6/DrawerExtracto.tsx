@@ -49,7 +49,7 @@ import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { convertirLineaEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
-import { aplicarAnclaje, type PropuestaDeAnclaje } from '../../../services/anclajeSaldoExtracto';
+import { aplicarApertura, type PropuestaDeApertura } from '../../../services/aperturaDerivada';
 import PanelConciliar from './conciliar/PanelConciliar';
 import ZonaSoltar from './conciliar/ZonaSoltar';
 import {
@@ -96,9 +96,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [tarjetaDestino, setTarjetaDestino] = useState<{ id: number; alias: string } | null>(null);
   const [resultado, setResultado] = useState<OrchestratorResult | null>(null);
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
-  // E1.5-anclaje-saldo · la propuesta de cuadre con el banco y si el usuario la aceptó.
-  const [anclaje, setAnclaje] = useState<PropuestaDeAnclaje | null>(null);
-  const [anclar, setAnclar] = useState(false);
+  // §31 · la apertura derivada que ATLAS propone y si el usuario la aceptó.
+  const [apertura, setApertura] = useState<PropuestaDeApertura | null>(null);
+  const [aplicarLaApertura, setAplicarLaApertura] = useState(false);
   const [yaEstaban, setYaEstaban] = useState<LineaExtractoPersistida[]>([]);
   // E1.3 · los lotes sin guardar que se pueden retomar · se enseñan en Paso 1.
   const aMedias = useLotesAMedias(abierto && paso === 'soltar' && !tarjetaDestino);
@@ -235,8 +235,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setAvisoReimport(null);
     setResultado(null);
     setLineas([]);
-    setAnclaje(null);
-    setAnclar(false);
+    setApertura(null);
+    setAplicarLaApertura(false);
     setYaEstaban([]);
     reiniciarDecisiones();
     setDeteccion(null);
@@ -265,8 +265,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setResultado(res);
       setPrevistos(sesion.previstos);
       setLineas(sesion.lineas);
-      setAnclaje(sesion.anclaje);
-      setAnclar(false);
+      setApertura(sesion.apertura);
+      setAplicarLaApertura(false);
       setYaEstaban(sesion.yaEstaban);
       // Si falla, el panel dorado sale vacío y el resto de la pantalla
       // funciona igual: no saber qué se aprendió antes no impide conciliar.
@@ -448,10 +448,10 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         );
       }
 
-      // E1.5-anclaje-saldo · solo si el usuario lo marcó · se recalcula ahora,
-      // con los movimientos que acaban de nacer, y se escribe la apertura.
-      if (anclar && anclaje?.aplicable && !anclaje.cuadra) {
-        await aplicarAnclaje(cuentaActiva.id, anclaje);
+      // §31 · solo si el usuario lo marcó · se recalcula ahora, con los
+      // movimientos que acaban de nacer, y se escribe la apertura derivada.
+      if (aplicarLaApertura && apertura?.proponer) {
+        await aplicarApertura(cuentaActiva.id, apertura.extremos);
       }
 
       // Lo último · la sesión deja de estar «a medias». Lo sin resolver no se
@@ -464,7 +464,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setError(err instanceof Error ? err.message : 'No se pudo guardar el extracto.');
       setPaso('resolver');
     }
-  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, anclar, anclaje, onGuardado, reiniciar, onCerrar]);
+  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, aplicarLaApertura, apertura, onGuardado, reiniciar, onCerrar]);
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
@@ -682,9 +682,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           avisos={resultado?.warnings ?? []}
           error={error}
           guardando={paso === 'guardando'}
-          anclaje={anclaje}
-          anclar={anclar}
-          onAnclar={setAnclar}
+          apertura={apertura}
+          aplicarApertura={aplicarLaApertura}
+          onAplicarApertura={setAplicarLaApertura}
           yaEstaban={yaEstaban}
           renderLinea={renderLinea}
           onRecuperar={recuperar}
