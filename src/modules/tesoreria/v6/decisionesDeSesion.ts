@@ -23,18 +23,30 @@
 // una identidad que cambia en cada render los invalidaría a todos.
 // ============================================================================
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   decisionesVacias,
   idsIgualesAResolver,
   type DecisionesSesion,
   type LineaExtracto,
 } from './extractoSesion';
+import { cambiosDeDecision, type CambioDeDecision } from './decisionesPersistidas';
+
+export interface OpcionesDeSesion {
+  /**
+   * E1.3 · se llama tras cada gesto con las líneas cuya decisión cambió, para
+   * persistirlas. NO se llama al cargar decisiones (`cargarDecisiones`) ni al
+   * reiniciar: eso no es un gesto del usuario.
+   */
+  onCambio?: (cambios: CambioDeDecision[]) => void;
+}
 
 export interface AccionesDeSesion {
   decisiones: DecisionesSesion;
   /** Vuelve al estado inicial · al abrir otro fichero. */
   reiniciarDecisiones: () => void;
+  /** E1.3 · carga las decisiones de un lote retomado · sin pasar por `onCambio`. */
+  cargarDecisiones: (d: DecisionesSesion) => void;
   ignorar: (lineaId: number) => void;
   recuperar: (lineaId: number) => void;
   desemparejar: (lineaId: number) => void;
@@ -49,8 +61,33 @@ export interface AccionesDeSesion {
   marcarCreado: (lineaId: number) => void;
 }
 
-export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion {
+export function useDecisionesDeSesion(
+  lineas: LineaExtracto[],
+  opciones: OpcionesDeSesion = {}
+): AccionesDeSesion {
   const [decisiones, setDecisiones] = useState<DecisionesSesion>(decisionesVacias);
+
+  // E1.3 · persistir lo que cambia. Se hace en un efecto y no dentro del
+  // `setState`, que debe ser puro (en StrictMode corre dos veces). `previas`
+  // es el último estado ya notificado; `enSilencio` marca que el siguiente
+  // cambio no es un gesto (cargar un lote, reiniciar) y no hay que avisar.
+  const previasRef = useRef<DecisionesSesion>(decisiones);
+  const enSilencioRef = useRef(false);
+  const onCambioRef = useRef(opciones.onCambio);
+  onCambioRef.current = opciones.onCambio;
+  useEffect(() => {
+    const previas = previasRef.current;
+    previasRef.current = decisiones;
+    if (previas === decisiones) return;
+    if (enSilencioRef.current) {
+      enSilencioRef.current = false;
+      return;
+    }
+    const avisar = onCambioRef.current;
+    if (!avisar) return;
+    const cambios = cambiosDeDecision(previas, decisiones, new Date().toISOString());
+    if (cambios.length > 0) avisar(cambios);
+  }, [decisiones]);
 
   const conDecisiones = useCallback((mut: (d: DecisionesSesion) => void) => {
     setDecisiones((prev) => {
@@ -220,12 +257,21 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
     [conDecisiones],
   );
 
-  const reiniciarDecisiones = useCallback(() => setDecisiones(decisionesVacias()), []);
+  const reiniciarDecisiones = useCallback(() => {
+    enSilencioRef.current = true;
+    setDecisiones(decisionesVacias());
+  }, []);
+
+  const cargarDecisiones = useCallback((d: DecisionesSesion) => {
+    enSilencioRef.current = true;
+    setDecisiones(d);
+  }, []);
 
   return useMemo(
     () => ({
       decisiones,
       reiniciarDecisiones,
+      cargarDecisiones,
       ignorar,
       recuperar,
       desemparejar,
@@ -242,6 +288,7 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
     [
       decisiones,
       reiniciarDecisiones,
+      cargarDecisiones,
       ignorar,
       recuperar,
       desemparejar,

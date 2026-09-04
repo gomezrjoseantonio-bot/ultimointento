@@ -38,8 +38,8 @@ import type { OrigenDeterminista } from './deterministas/tipos';
 import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
 import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
-import type { DescarteLineaExtracto } from './db/types-movimientos';
-import { lineaDesdeFila } from './lineasExtractoService';
+import type { DescarteLineaExtracto } from './db/types-lineasExtracto';
+import { lineaDesdeFila, lineasDelLote } from './lineasExtractoService';
 
 export interface OrchestratorOptions {
   accountId: number;
@@ -485,6 +485,15 @@ export async function cancelImportBatch(importBatchId: string): Promise<{ remove
 
   for (const movement of toRemove) {
     await db.delete('movements', movement.id!);
+  }
+  // E1.3 · las líneas del lote se van con él: si se quedaran, el lote seguiría
+  // pareciendo «a medias» y sus decisiones sobrevivirían a un descarte.
+  try {
+    for (const linea of await lineasDelLote(db, importBatchId)) {
+      if (linea.id != null) await db.delete('lineasExtracto', linea.id);
+    }
+  } catch (err) {
+    console.warn('[orchestrator] cancelImportBatch: no se pudieron borrar las líneas del lote', err);
   }
   try {
     await db.delete('importBatches', importBatchId);

@@ -4,4 +4,5 @@
 export * from './types-inmuebles';
 export * from './types-contratos';
 export * from './types-movimientos';
+export * from './types-lineasExtracto';
 export * from './types-fiscal';

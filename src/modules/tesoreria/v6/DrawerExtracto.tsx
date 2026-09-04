@@ -7,8 +7,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
-import type { Account, Movement, TreasuryEvent, LineaExtractoPersistida } from '../../../services/db';
-import { initDB } from '../../../services/db';
+import type { Account, TreasuryEvent, LineaExtractoPersistida } from '../../../services/db';
 import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
 import {
   processFile,
@@ -18,8 +17,8 @@ import {
   StatementAlreadyImportedError,
   type OrchestratorResult,
 } from '../../../services/bankStatementOrchestrator';
-import { getIgnoredLineHashes, ignoreLine, recoverLine } from '../../../services/statementIgnoredLinesService';
-import { confirmadosPorLinea } from '../../../services/conciliacionConfirmados';
+import { reabrirLote } from '../../../services/reabrirLote';
+import { ignoreLine, recoverLine } from '../../../services/statementIgnoredLinesService';
 import { consolidarSesion, archivarExtracto } from '../../../services/statementSessionService';
 import {
   AVISO_GASTO_FISCAL,
@@ -28,10 +27,8 @@ import {
   origenIdRecurrenteDelGasto,
 } from '../../../services/altaMovimientoService';
 import {
-  construirLineas,
   veredictoEfectivo,
   payloadDeConfirmacion,
-  seOfrecePara,
   lineasAIgnorar,
   movimientosAEfectivo,
   movimientosATraspaso,
@@ -41,6 +38,8 @@ import {
   type LineaExtracto,
 } from './extractoSesion';
 import { useDecisionesDeSesion } from './decisionesDeSesion';
+import { decisionesDesdeFilas, type LoteAMedias } from './decisionesPersistidas';
+import { leerSesionDelLote, persistirCambios, useLotesAMedias } from './montarSesion';
 import { valoresPorLinea } from './clasificarEnBloque';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
@@ -111,11 +110,14 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [tarjetaDestino, setTarjetaDestino] = useState<{ id: number; alias: string } | null>(null);
   const [resultado, setResultado] = useState<OrchestratorResult | null>(null);
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
+  // E1.3 · los lotes sin guardar que se pueden retomar · se enseñan en Paso 1.
+  const aMedias = useLotesAMedias(abierto && paso === 'soltar' && !tarjetaDestino);
   // Los doce gestos sobre una línea viven en su propio módulo · lo único que
   // necesitan es saber qué líneas hay (para el lote de las iguales).
   const {
     decisiones,
     reiniciarDecisiones,
+    cargarDecisiones,
     ignorar,
     recuperar,
     desemparejar,
@@ -128,7 +130,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     desmarcarTraspaso,
     marcarTraspasoLote,
     marcarCreado,
-  } = useDecisionesDeSesion(lineas);
+  } = useDecisionesDeSesion(lineas, { onCambio: persistirCambios });
   // Las elegidas que se van a clasificar de un gesto · la ficha se abre UNA vez
   // y su concepto se aplica a todas, con el importe y la fecha de cada una.
   const [clasificandoVarias, setClasificandoVarias] = useState<LineaExtracto[] | null>(null);
@@ -257,6 +259,30 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     if (!cuenta) setCuentaElegida(null);
   }, [cuenta, reiniciarDecisiones]);
 
+  /**
+   * Montar la sesión a partir de lo que devuelve el orquestador · vale para
+   * un fichero recién procesado y para un lote retomado (E1.3): lee los
+   * movimientos y las filas del lote (`leerSesionDelLote`), construye las
+   * líneas y deja el drawer en Paso 2. Las decisiones NO se tocan aquí: quien
+   * llama decide si parte de cero o carga las persistidas.
+   */
+  const montarSesion = useCallback(
+    async (res: OrchestratorResult, destino: Account): Promise<LineaExtractoPersistida[]> => {
+      const sesion = await leerSesionDelLote(res, destino);
+      setResultado(res);
+      setPrevistos(sesion.previstos);
+      setLineas(sesion.lineas);
+      // Si falla, el panel dorado sale vacío y el resto de la pantalla
+      // funciona igual: no saber qué se aprendió antes no impide conciliar.
+      void listRules()
+        .then(setReglas)
+        .catch(() => setReglas([]));
+      setPaso('resolver');
+      return sesion.filas;
+    },
+    []
+  );
+
   // ── Procesar ───────────────────────────────────────────────────────────────
   const procesar = useCallback(
     async (file: File, destino: Account, allowReimport = false) => {
@@ -269,32 +295,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const opc = { accountId: destino.id, allowReimport };
         const res = esPdf(file) ? await processPdf(file, opc) : await processFile(file, opc);
         ficheroRef.current = file;
-        const db = await initDB();
-        const [todosMovs, todosEventos, ignoradasPrevias, lineasDelLote] = await Promise.all([
-          db.getAll('movements') as Promise<Movement[]>,
-          db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
-          getIgnoredLineHashes(destino.id),
-          // E1.2a · las líneas persistidas de ESTE lote (E1.1), por su índice
-          // `importBatchId`, solo para rellenar `lineaId`. Nada decide con ellas.
-          db.getAllFromIndex('lineasExtracto', 'importBatchId', res.importBatchId) as Promise<LineaExtractoPersistida[]>,
-        ]);
-        const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
-        // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
-        const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id);
-        const abiertos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
-        setResultado(res);
-        setPrevistos(abiertos);
-        setLineas(
-          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados, lineasDelLote ?? [])
-        );
         reiniciarDecisiones();
         setAbiertoEn(new Date().toISOString());
-        // Si falla, el panel dorado sale vacío y el resto de la pantalla
-        // funciona igual: no saber qué se aprendió antes no impide conciliar.
-        void listRules()
-          .then(setReglas)
-          .catch(() => setReglas([]));
-        setPaso('resolver');
+        await montarSesion(res, destino);
       } catch (err) {
         if (err instanceof StatementAlreadyImportedError) {
           // Idempotencia (D1 bis) · se enseña cuándo se importó y se deja decidir.
@@ -306,7 +309,35 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setPaso('soltar');
       }
     },
-    [reiniciarDecisiones]
+    [reiniciarDecisiones, montarSesion]
+  );
+
+  // ── Retomar un lote a medias (E1.3) ────────────────────────────────────────
+  // El fichero ya no está (se perdió con la pestaña), así que al guardar no se
+  // archiva; todo lo demás —movimientos, líneas, decisiones— sí está.
+  const retomar = useCallback(
+    async (lote: LoteAMedias) => {
+      const destino = cuentas.find((c) => c.id === lote.accountId);
+      if (!destino || destino.id == null) {
+        setError('La cuenta de ese extracto ya no existe · no se puede retomar.');
+        return;
+      }
+      setPaso('procesando');
+      setError(null);
+      setAvisoReimport(null);
+      try {
+        const res = await reabrirLote(lote.importBatchId);
+        ficheroRef.current = null;
+        setCuentaElegida(destino);
+        setAbiertoEn(lote.timestampImport);
+        const filas = await montarSesion(res, destino);
+        cargarDecisiones(decisionesDesdeFilas(filas));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se pudo retomar el extracto.');
+        setPaso('soltar');
+      }
+    },
+    [cuentas, montarSesion, cargarDecisiones]
   );
 
   const recibirFichero = useCallback(
@@ -740,6 +771,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 if (destino && avisoReimport) void procesar(avisoReimport.file, destino, true);
               }}
               onOtroFichero={reiniciar}
+              aMedias={aMedias}
+              onRetomar={(lote) => void retomar(lote)}
             />
           )}
         </div>
