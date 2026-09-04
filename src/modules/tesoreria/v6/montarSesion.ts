@@ -23,6 +23,13 @@ import {
   type LoteAMedias,
 } from './decisionesPersistidas';
 
+// Las escrituras van en fila, una detrás de otra: `guardarDecisionDeLinea` es
+// leer la fila y volver a escribirla, y dos gestos seguidos sobre la misma
+// línea (o un IndexedDB lento) podrían completarse fuera de orden y dejar
+// persistida la decisión anterior. Con la cola, el orden de los gestos es el
+// orden en la base. Un fallo no rompe la cola: se avisa y sigue la siguiente.
+let cola: Promise<void> = Promise.resolve();
+
 /**
  * E1.3 · cada gesto se persiste en la fila de su línea. Si falla, la sesión
  * sigue en memoria como siempre: perder la copia durable no puede parar al
@@ -30,9 +37,11 @@ import {
  */
 export function persistirCambios(cambios: CambioDeDecision[]): void {
   for (const c of cambios) {
-    void guardarDecisionDeLinea(c.lineaId, c.decision).catch((err) =>
-      console.error('[DrawerExtracto] no se pudo persistir la decisión de la línea', c.lineaId, err),
-    );
+    cola = cola
+      .then(() => guardarDecisionDeLinea(c.lineaId, c.decision))
+      .catch((err) =>
+        console.error('[DrawerExtracto] no se pudo persistir la decisión de la línea', c.lineaId, err),
+      );
   }
 }
 
