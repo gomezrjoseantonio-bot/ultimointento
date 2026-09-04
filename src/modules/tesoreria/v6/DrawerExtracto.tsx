@@ -5,7 +5,7 @@
 // Paso 1 · dropzone. Paso 2 · emparejamiento (asignar · crear · ignorar). Un solo
 // botón Guardar consolida; el aspa sale SIN guardar y borra el batch.
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import type { Account, Movement, TreasuryEvent, LineaExtractoPersistida } from '../../../services/db';
 import { initDB } from '../../../services/db';
@@ -13,6 +13,7 @@ import { nombrarPrevisto as nombrarPrevistoModelo } from './nombrarPrevisto';
 import {
   processFile,
   processPdf,
+  reabrirLote,
   confirmDecisions,
   cancelImportBatch,
   StatementAlreadyImportedError,
@@ -41,6 +42,13 @@ import {
   type LineaExtracto,
 } from './extractoSesion';
 import { useDecisionesDeSesion } from './decisionesDeSesion';
+import {
+  decisionesDesdeFilas,
+  guardarDecisionDeLinea,
+  lineasDelLote,
+  lotesAMedias,
+  type LoteAMedias,
+} from './decisionesPersistidas';
 import { valoresPorLinea } from './clasificarEnBloque';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
@@ -111,11 +119,27 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const [tarjetaDestino, setTarjetaDestino] = useState<{ id: number; alias: string } | null>(null);
   const [resultado, setResultado] = useState<OrchestratorResult | null>(null);
   const [lineas, setLineas] = useState<LineaExtracto[]>([]);
+  // E1.3 · los lotes sin guardar que se pueden retomar · se enseñan en Paso 1.
+  const [aMedias, setAMedias] = useState<LoteAMedias[]>([]);
+  // E1.3 · cada gesto se persiste en la fila de su línea. Si falla, la sesión
+  // sigue en memoria como siempre: perder la copia durable no puede parar al
+  // usuario, y se avisa por consola para no esconderlo.
+  const persistirCambios = useCallback(
+    (cambios: Array<{ lineaId: number; decision: Parameters<typeof guardarDecisionDeLinea>[1] }>) => {
+      for (const c of cambios) {
+        void guardarDecisionDeLinea(c.lineaId, c.decision).catch((err) =>
+          console.error('[DrawerExtracto] no se pudo persistir la decisión de la línea', c.lineaId, err),
+        );
+      }
+    },
+    [],
+  );
   // Los doce gestos sobre una línea viven en su propio módulo · lo único que
   // necesitan es saber qué líneas hay (para el lote de las iguales).
   const {
     decisiones,
     reiniciarDecisiones,
+    cargarDecisiones,
     ignorar,
     recuperar,
     desemparejar,
@@ -128,7 +152,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     desmarcarTraspaso,
     marcarTraspasoLote,
     marcarCreado,
-  } = useDecisionesDeSesion(lineas);
+  } = useDecisionesDeSesion(lineas, { onCambio: persistirCambios });
   // Las elegidas que se van a clasificar de un gesto · la ficha se abre UNA vez
   // y su concepto se aplica a todas, con el importe y la fecha de cada una.
   const [clasificandoVarias, setClasificandoVarias] = useState<LineaExtracto[] | null>(null);
@@ -257,6 +281,54 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     if (!cuenta) setCuentaElegida(null);
   }, [cuenta, reiniciarDecisiones]);
 
+  // E1.3 · al abrir el Paso 1 se enseñan los lotes a medias. Si la lectura
+  // falla, la lista sale vacía y soltar un fichero funciona igual.
+  useEffect(() => {
+    if (!abierto || paso !== 'soltar' || tarjetaDestino) return;
+    let vivo = true;
+    lotesAMedias()
+      .then((l) => { if (vivo) setAMedias(l); })
+      .catch(() => { if (vivo) setAMedias([]); });
+    return () => { vivo = false; };
+  }, [abierto, paso, tarjetaDestino]);
+
+  /**
+   * Montar la sesión a partir de lo que devuelve el orquestador · vale para
+   * un fichero recién procesado y para un lote retomado (E1.3): lee los
+   * movimientos y las filas del lote, construye las líneas y deja el drawer
+   * en Paso 2. Las decisiones NO se tocan aquí: quien llama decide si parte
+   * de cero o carga las persistidas.
+   */
+  const montarSesion = useCallback(
+    async (res: OrchestratorResult, destino: Account): Promise<LineaExtractoPersistida[]> => {
+      const db = await initDB();
+      const [todosMovs, todosEventos, ignoradasPrevias, filasDelLote] = await Promise.all([
+        db.getAll('movements') as Promise<Movement[]>,
+        db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+        getIgnoredLineHashes(destino.id as number),
+        // E1.2 · las líneas persistidas de ESTE lote (E1.1): dan el `lineaId`.
+        lineasDelLote(db, res.importBatchId),
+      ]);
+      const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
+      // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
+      const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id as number);
+      const abiertos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
+      setResultado(res);
+      setPrevistos(abiertos);
+      setLineas(
+        construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados, filasDelLote)
+      );
+      // Si falla, el panel dorado sale vacío y el resto de la pantalla
+      // funciona igual: no saber qué se aprendió antes no impide conciliar.
+      void listRules()
+        .then(setReglas)
+        .catch(() => setReglas([]));
+      setPaso('resolver');
+      return filasDelLote;
+    },
+    []
+  );
+
   // ── Procesar ───────────────────────────────────────────────────────────────
   const procesar = useCallback(
     async (file: File, destino: Account, allowReimport = false) => {
@@ -269,32 +341,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const opc = { accountId: destino.id, allowReimport };
         const res = esPdf(file) ? await processPdf(file, opc) : await processFile(file, opc);
         ficheroRef.current = file;
-        const db = await initDB();
-        const [todosMovs, todosEventos, ignoradasPrevias, lineasDelLote] = await Promise.all([
-          db.getAll('movements') as Promise<Movement[]>,
-          db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
-          getIgnoredLineHashes(destino.id),
-          // E1.2a · las líneas persistidas de ESTE lote (E1.1), por su índice
-          // `importBatchId`, solo para rellenar `lineaId`. Nada decide con ellas.
-          db.getAllFromIndex('lineasExtracto', 'importBatchId', res.importBatchId) as Promise<LineaExtractoPersistida[]>,
-        ]);
-        const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
-        // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
-        const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id);
-        const abiertos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
-        setResultado(res);
-        setPrevistos(abiertos);
-        setLineas(
-          construirLineas(delLote, res.matchResult, abiertos, ignoradasPrevias, confirmados, lineasDelLote ?? [])
-        );
         reiniciarDecisiones();
         setAbiertoEn(new Date().toISOString());
-        // Si falla, el panel dorado sale vacío y el resto de la pantalla
-        // funciona igual: no saber qué se aprendió antes no impide conciliar.
-        void listRules()
-          .then(setReglas)
-          .catch(() => setReglas([]));
-        setPaso('resolver');
+        await montarSesion(res, destino);
       } catch (err) {
         if (err instanceof StatementAlreadyImportedError) {
           // Idempotencia (D1 bis) · se enseña cuándo se importó y se deja decidir.
@@ -306,7 +355,35 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setPaso('soltar');
       }
     },
-    [reiniciarDecisiones]
+    [reiniciarDecisiones, montarSesion]
+  );
+
+  // ── Retomar un lote a medias (E1.3) ────────────────────────────────────────
+  // El fichero ya no está (se perdió con la pestaña), así que al guardar no se
+  // archiva; todo lo demás —movimientos, líneas, decisiones— sí está.
+  const retomar = useCallback(
+    async (lote: LoteAMedias) => {
+      const destino = cuentas.find((c) => c.id === lote.accountId);
+      if (!destino || destino.id == null) {
+        setError('La cuenta de ese extracto ya no existe · no se puede retomar.');
+        return;
+      }
+      setPaso('procesando');
+      setError(null);
+      setAvisoReimport(null);
+      try {
+        const res = await reabrirLote(lote.importBatchId);
+        ficheroRef.current = null;
+        setCuentaElegida(destino);
+        setAbiertoEn(lote.timestampImport);
+        const filas = await montarSesion(res, destino);
+        cargarDecisiones(decisionesDesdeFilas(filas));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No se pudo retomar el extracto.');
+        setPaso('soltar');
+      }
+    },
+    [cuentas, montarSesion, cargarDecisiones]
   );
 
   const recibirFichero = useCallback(
@@ -740,6 +817,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
                 if (destino && avisoReimport) void procesar(avisoReimport.file, destino, true);
               }}
               onOtroFichero={reiniciar}
+              aMedias={aMedias}
+              onRetomar={(lote) => void retomar(lote)}
             />
           )}
         </div>

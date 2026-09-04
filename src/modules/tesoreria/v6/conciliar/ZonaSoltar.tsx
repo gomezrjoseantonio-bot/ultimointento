@@ -14,6 +14,7 @@ import { Icons } from '../../../../design-system/v5';
 import type { Account } from '../../../../services/db';
 import { cuentasEnUso } from '../../../../services/cuentasEnUso';
 import type { DeteccionCuenta } from '../detectarCuenta';
+import type { LoteAMedias } from '../decisionesPersistidas';
 import styles from '../DrawerExtracto.module.css';
 
 export interface ZonaSoltarProps {
@@ -32,6 +33,20 @@ export interface ZonaSoltarProps {
   onFichero: (f: File) => void;
   onImportarDeTodasFormas: () => void;
   onOtroFichero: () => void;
+  /**
+   * E1.3 · lotes sin guardar que se pueden retomar. Ubicación provisional
+   * (acordada): aquí, antes de soltar otro fichero. La pantalla fina es de la
+   * fase visual (§22.6).
+   */
+  aMedias?: LoteAMedias[];
+  onRetomar?: (lote: LoteAMedias) => void;
+}
+
+/** «3 sep 2026» a partir de un ISO · sin pasar por UTC dos veces. */
+function diaDe(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /** El título del aviso · por qué no se sabe a qué cuenta va este fichero. */
@@ -58,11 +73,47 @@ const ZonaSoltar: React.FC<ZonaSoltarProps> = ({
   onFichero,
   onImportarDeTodasFormas,
   onOtroFichero,
+  aMedias = [],
+  onRetomar,
 }) => {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const nombreCuenta = (accountId: number) => {
+    const c = cuentas.find((x) => x.id === accountId);
+    return c ? `${c.alias}${c.ultimosCuatro ? ` · ****${c.ultimosCuatro}` : ''}` : 'cuenta borrada';
+  };
 
   return (
     <div className={styles.zonaWrap}>
+      {/* E1.3 · lo que dejaste a medias · retomar en vez de subir otro. */}
+      {aMedias.length > 0 && onRetomar && !procesando && (
+        <div className={styles.avisoCuenta} aria-label="Extractos a medias">
+          <div className={styles.avisoT}>
+            {aMedias.length === 1
+              ? 'Tienes un extracto a medias'
+              : `Tienes ${aMedias.length} extractos a medias`}
+          </div>
+          <div className={styles.avisoS}>
+            Puedes retomarlo donde lo dejaste · las decisiones que tomaste siguen ahí.
+          </div>
+          {aMedias.map((lote) => (
+            <div key={lote.importBatchId} className={styles.avisoAcciones}>
+              <span>
+                {lote.filename} · {nombreCuenta(lote.accountId)} · {diaDe(lote.timestampImport)} ·{' '}
+                {lote.decididas} de {lote.lineas} {lote.lineas === 1 ? 'línea decidida' : 'líneas decididas'}
+              </span>
+              <button
+                type="button"
+                className={styles.btnLinea}
+                onClick={() => onRetomar(lote)}
+                aria-label={`Retomar ${lote.filename}`}
+              >
+                Retomar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!cuenta && deteccion && deteccion.estado !== 'detectada' && (
         <div className={styles.avisoCuenta}>
           <div className={styles.avisoT}>{tituloDeDeteccion(deteccion)}</div>

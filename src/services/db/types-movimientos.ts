@@ -748,6 +748,33 @@ export type AtencionLineaExtracto = 'recordar' | 'silenciada';
  */
 export type DescarteLineaExtracto = 'duplicada' | 'sin_fecha' | 'sin_importe';
 
+/**
+ * E1.3 · la decisión del usuario sobre una línea, tal cual está en la sesión.
+ *
+ * Es la serialización directa de las siete estructuras de `DecisionesSesion`
+ * (`extractoSesion.ts`) para UNA línea: se guarda tras cada gesto y se vuelve
+ * a cargar al retomar un lote a medias. No se interpreta al guardar (varias
+ * marcas pueden convivir, igual que en la sesión); `atencion` y
+ * `comoSeResolvio` son el RESUMEN derivado, no la fuente.
+ */
+export interface DecisionDeLineaPersistida {
+  /** «Asignar a un previsto» · el `treasuryEvent` elegido. */
+  asignadoA?: number;
+  /** «Ignorar» · §29: silencia el recordatorio, no saca la línea del saldo. */
+  ignorada?: true;
+  /** «Crear movimiento» · clasificada desde la ficha. */
+  creada?: true;
+  /** Venía ignorada de otra importación y el usuario la recuperó. */
+  recuperada?: true;
+  /** «Es efectivo» · al guardar se convierte en traspaso a Efectivo. */
+  aEfectivo?: true;
+  /** «Es traspaso» · la cuenta destino. */
+  traspasoA?: number;
+  /** «No es esto» · la corrección sobre lo que ATLAS colocó solo. */
+  desemparejada?: true;
+  decididaAt: string;
+}
+
 export interface LineaExtractoPersistida {
   id?: number;
 
@@ -790,6 +817,8 @@ export interface LineaExtractoPersistida {
   comoSeResolvio?: ComoSeResolvioLinea;
   atencion?: AtencionLineaExtracto;
   descarte?: DescarteLineaExtracto;
+  /** E1.3 · lo que el usuario decidió sobre esta línea en la sesión · para retomarla. */
+  decision?: DecisionDeLineaPersistida;
 
   // ── Enlace ────────────────────────────────────────────────────────────────
   /** Movimientos nacidos de esta línea · PLURAL · vacío si aún ninguno. */

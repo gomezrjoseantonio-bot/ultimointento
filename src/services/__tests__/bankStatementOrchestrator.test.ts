@@ -15,7 +15,21 @@ import {
   BankProfileNotDetectedError,
   StatementAlreadyImportedError,
   hashMovement,
+  reabrirLote,
+  cancelImportBatch,
 } from '../bankStatementOrchestrator';
+import {
+  decisionDeLinea,
+  decisionesDesdeFilas,
+  guardarDecisionDeLinea,
+  lotesAMedias,
+} from '../../modules/tesoreria/v6/decisionesPersistidas';
+import {
+  construirLineas,
+  decisionesVacias,
+  payloadDeConfirmacion,
+  seOfrecePara,
+} from '../../modules/tesoreria/v6/extractoSesion';
 import { initDB, Movement, TreasuryEvent } from '../db';
 import { bankProfileMatcher } from '../../features/inbox/importers/bankProfileMatcher';
 import { BankParserService } from '../../features/inbox/importers/bankParser';
@@ -676,5 +690,111 @@ describe('E1.1 · lineasExtracto', () => {
     expect(sinImporte.fechaOperacion).toBe('2026-05-04');
     expect(sinImporte.conceptoLiteral).toBe('SIN IMPORTE');
     expect(sinImporte.movementIds).toEqual([]);
+  });
+});
+
+// ─── E1.3 · retomar un lote a medias ───────────────────────────────────────
+//
+// Lo que se prueba, de punta a punta con el mismo fake de base:
+//   procesar → decidir (persistiendo) → «cerrar» (tirar la memoria) → reabrir
+//   → la sesión se reconstruye idéntica y el payload a `confirmDecisions` es
+//   el mismo que habría salido sin cerrar. Y descartar el lote borra también
+//   sus líneas, para que no vuelva a salir como «a medias».
+describe('E1.3 · retomar un lote a medias', () => {
+  const sesionDe = async (importBatchId: string) => {
+    const delLote = stores.movements.filter((m) => m.importBatch === importBatchId);
+    const filas = stores.lineasExtracto.filter((l) => l.importBatchId === importBatchId);
+    const abiertos = stores.treasuryEvents.filter((e) => seOfrecePara(e, 42));
+    return { delLote, filas, abiertos };
+  };
+
+  it('8. reabrirLote devuelve lo mismo que processFile, sin leer fichero ni insertar', async () => {
+    const primero = await processFile(new File(['mock'], 'sabadell.xlsx'), { accountId: 42 });
+    const movimientosAntes = stores.movements.length;
+    const lineasAntes = stores.lineasExtracto.length;
+
+    const reabierto = await reabrirLote(primero.importBatchId);
+
+    expect(reabierto.importBatchId).toBe(primero.importBatchId);
+    expect(reabierto.matchResult.matches.map((m) => m.movementId)).toEqual(
+      primero.matchResult.matches.map((m) => m.movementId)
+    );
+    expect(reabierto.matchResult.sinMatch).toEqual(primero.matchResult.sinMatch);
+    expect(reabierto.suggestions.size).toBe(primero.suggestions.size);
+    expect(reabierto.movementsInserted).toBe(14);
+    expect(reabierto.warnings.join(' ')).toMatch(/retomada/i);
+    // Nada nuevo en la base.
+    expect(stores.movements).toHaveLength(movimientosAntes);
+    expect(stores.lineasExtracto).toHaveLength(lineasAntes);
+    expect(stores.importBatches).toHaveLength(1);
+  });
+
+  it('8b. un lote guardado no se reabre · y uno inexistente tampoco', async () => {
+    const r = await processFile(new File(['mock'], 'sabadell.xlsx'), { accountId: 42 });
+    stores.importBatches[0].consolidadoAt = '2026-09-04T10:00:00.000Z';
+    await expect(reabrirLote(r.importBatchId)).rejects.toThrow(/ya se guardó/);
+    await expect(reabrirLote('import_no_existe')).rejects.toThrow(/ya no existe/);
+  });
+
+  it('8c. procesar → decidir → cerrar → reabrir · la sesión vuelve idéntica y el payload es el mismo', async () => {
+    const res = await processFile(new File(['mock'], 'sabadell.xlsx'), { accountId: 42 });
+    const { delLote, filas, abiertos } = await sesionDe(res.importBatchId);
+    const lineas = construirLineas(delLote, res.matchResult, abiertos, new Set(), new Map(), filas);
+    expect(lineas).toHaveLength(14);
+
+    // El usuario decide: asigna una a mano, ignora dos, marca un traspaso y
+    // una retirada de efectivo, y desempareja una que ATLAS había casado.
+    const d = decisionesVacias();
+    d.asignados.set(lineas[11].lineaId, 1000); // una sin match, asignada a mano
+    d.ignorados.add(lineas[12].lineaId);
+    d.ignorados.add(lineas[13].lineaId);
+    d.aTraspaso.set(lineas[1].lineaId, 7);
+    d.aEfectivo.add(lineas[3].lineaId);
+    d.desemparejados.add(lineas[0].lineaId);
+    // Persistir como lo hace el drawer tras cada gesto.
+    for (const l of lineas) {
+      await guardarDecisionDeLinea(l.lineaId, decisionDeLinea(d, l.lineaId, '2026-09-04T10:00:00.000Z'));
+    }
+    const payloadAntesDeCerrar = payloadDeConfirmacion(lineas, d);
+    const movimientosAntes = stores.movements.map((m) => ({ ...m }));
+
+    // «Cerrar»: la memoria de React se tira. Solo queda la base.
+    // Sale como a medias, con sus decisiones contadas.
+    const lotes = await lotesAMedias();
+    expect(lotes).toHaveLength(1);
+    expect(lotes[0]).toMatchObject({ importBatchId: res.importBatchId, lineas: 14, decididas: 6 });
+
+    // Reabrir.
+    const reabierto = await reabrirLote(res.importBatchId);
+    const otraVez = await sesionDe(res.importBatchId);
+    const lineas2 = construirLineas(otraVez.delLote, reabierto.matchResult, otraVez.abiertos, new Set(), new Map(), otraVez.filas);
+    const d2 = decisionesDesdeFilas(otraVez.filas);
+
+    expect(d2).toEqual(d);
+    expect(lineas2.map((l) => [l.lineaId, l.movementId, l.veredicto])).toEqual(
+      lineas.map((l) => [l.lineaId, l.movementId, l.veredicto])
+    );
+    expect(payloadDeConfirmacion(lineas2, d2)).toEqual(payloadAntesDeCerrar);
+
+    // §29 · persistir decisiones (incluido ignorar) no ha tocado ningún movimiento.
+    expect(stores.movements).toEqual(movimientosAntes);
+    // Y las filas ignoradas dicen «silenciada», no otra cosa.
+    const ignoradas = stores.lineasExtracto.filter((l) => d.ignorados.has(l.id));
+    expect(ignoradas.map((l) => l.atencion)).toEqual(['silenciada', 'silenciada']);
+    expect(ignoradas.map((l) => l.estado)).toEqual(['resuelta', 'resuelta']);
+  });
+
+  it('8d. descartar el lote borra sus movimientos Y sus líneas · deja de estar a medias', async () => {
+    const res = await processFile(new File(['mock'], 'sabadell.xlsx'), { accountId: 42 });
+    expect(stores.lineasExtracto).toHaveLength(14);
+    expect(await lotesAMedias()).toHaveLength(1);
+
+    const { removed } = await cancelImportBatch(res.importBatchId);
+
+    expect(removed).toBe(14);
+    expect(stores.movements).toHaveLength(0);
+    expect(stores.lineasExtracto).toHaveLength(0);
+    expect(stores.importBatches).toHaveLength(0);
+    expect(await lotesAMedias()).toHaveLength(0);
   });
 });
