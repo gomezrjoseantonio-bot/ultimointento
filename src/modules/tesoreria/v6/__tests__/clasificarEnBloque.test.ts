@@ -23,6 +23,7 @@ import type { LineaExtracto } from '../extractoSesion';
 import type { GuardadoFicha } from '../FichaMovimiento';
 
 const linea = (id: number, importe: number, fecha: string): LineaExtracto => ({
+  lineaId: 100 + id,
   movementId: id,
   hashLinea: `h${id}`,
   textoBanco: 'Adeudo de canal isabel ii',

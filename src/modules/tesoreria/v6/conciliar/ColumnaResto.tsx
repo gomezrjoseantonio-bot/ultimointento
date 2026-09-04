@@ -31,12 +31,12 @@ export interface ColumnaRestoProps {
   ignoradas: LineaExtracto[];
   aprendido: LoQueYaReconoce;
   /** Devuelve una línea ignorada a la circulación (§4.7). */
-  onRecuperar: (movementId: number) => void;
+  onRecuperar: (lineaId: number) => void;
   /**
    * «No es esto» · el usuario corrige a ATLAS sobre una línea que ATLAS colocó
    * solo. La línea vuelve a «te necesitan». No borra ni oculta nada.
    */
-  onNoEsEsto: (movementId: number) => void;
+  onNoEsEsto: (lineaId: number) => void;
 }
 
 /** Cuántas filas se enseñan antes del «ver las N» · lo que cabe sin scroll. */
@@ -51,7 +51,7 @@ interface MontonProps {
   lineas: LineaExtracto[];
   vacio: string;
   conDetalle?: boolean;
-  onNoEsEsto: (movementId: number) => void;
+  onNoEsEsto: (lineaId: number) => void;
 }
 
 /**
@@ -125,7 +125,7 @@ const Monton: React.FC<MontonProps> = ({
                 {abierto && (
                   <div className={styles.dentro}>
                     {g.lineas.map((l) => (
-                      <div key={l.movementId} className={styles.dentroFila}>
+                      <div key={`${l.lineaId}:${l.movementId}`} className={styles.dentroFila}>
                         <span className={styles.dentroTxt}>
                           {/* El texto LITERAL del banco · es lo que el usuario
                               puede reconocer en su cuenta para decidir. */}
@@ -136,7 +136,7 @@ const Monton: React.FC<MontonProps> = ({
                         <button
                           type="button"
                           className={styles.noEsEsto}
-                          onClick={() => onNoEsEsto(l.movementId)}
+                          onClick={() => onNoEsEsto(l.lineaId)}
                         >
                           <Icons.Refresh size={12} />
                           No es esto
@@ -208,7 +208,7 @@ const ColumnaResto: React.FC<ColumnaRestoProps> = ({
           <div className={styles.vacioBloque}>Ninguna. Nada se aparta sin que tú lo digas.</div>
         ) : (
           ignoradas.map((l) => (
-            <div key={l.movementId} className={styles.fila}>
+            <div key={`${l.lineaId}:${l.movementId}`} className={styles.fila}>
               <span className={`${styles.filaIco} ${styles.filaIcoMudo}`} aria-hidden="true">
                 <Icons.Minus size={13} />
               </span>
@@ -220,7 +220,7 @@ const ColumnaResto: React.FC<ColumnaRestoProps> = ({
                 type="button"
                 className={styles.enlace}
                 style={{ marginTop: 0 }}
-                onClick={() => onRecuperar(l.movementId)}
+                onClick={() => onRecuperar(l.lineaId)}
               >
                 <Icons.Refresh size={13} />
                 reactivar

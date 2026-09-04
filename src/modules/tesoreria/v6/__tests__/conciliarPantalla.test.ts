@@ -19,6 +19,7 @@ import type { MovementSuggestion } from '../../../../services/movementSuggestion
 import type { MovementLearningRule } from '../../../../services/db/types-movimientos';
 
 const linea = (id: number, extra: Partial<LineaExtracto> = {}): LineaExtracto => ({
+  lineaId: 100 + id,
   movementId: id,
   hashLinea: `h${id}`,
   textoBanco: `LINEA ${id}`,
@@ -176,7 +177,7 @@ describe('FASE 2 · lo reconocido contra los libros del usuario', () => {
 
   it('lo que el usuario ignoró manda sobre lo reconocido', () => {
     const d = decisionesVacias();
-    d.ignorados.add(1);
+    d.ignorados.add(101);
     expect(bucketDeLinea(linea(1), d, new Set(), new Set([1]))).toBe('ignorados');
   });
 
@@ -211,7 +212,7 @@ describe('el cuadre aguanta con el cuarto montón lleno', () => {
   it('lo ignorado gana a lo personal · el acto del usuario manda', () => {
     const l = linea(7);
     const d = decisionesVacias();
-    d.ignorados.add(7);
+    d.ignorados.add(107);
     expect(bucketDeLinea(l, d, new Set([7]))).toBe('ignorados');
   });
 

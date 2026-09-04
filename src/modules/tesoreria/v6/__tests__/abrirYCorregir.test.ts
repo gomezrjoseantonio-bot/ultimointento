@@ -27,6 +27,8 @@ import { bucketDeLinea, cuadre } from '../conciliarBuckets';
 import { decisionesVacias, type DecisionesSesion, type LineaExtracto } from '../extractoSesion';
 
 const linea = (over: Partial<LineaExtracto> & { movementId: number }): LineaExtracto => ({
+  // E1.2b · lineaId distinto de movementId a propósito: las decisiones van por lineaId.
+  lineaId: 100 + over.movementId,
   hashLinea: `h${over.movementId}`,
   textoBanco: 'GAS Visalia-Domestica Energia',
   fecha: '2026-08-24',
@@ -94,7 +96,7 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
     });
 
     expect(bucketDeLinea(l, decisionesVacias())).toBe('resueltas');
-    expect(bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(1)))).toBe('te_necesitan');
+    expect(bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(101)))).toBe('te_necesitan');
   });
 
   it('una línea RECONOCIDA contra un libro también vuelve · el reconocedor no es infalible', () => {
@@ -103,7 +105,7 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
 
     expect(bucketDeLinea(l, decisionesVacias(), undefined, reconocidas)).toBe('resueltas');
     expect(
-      bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(2)), undefined, reconocidas),
+      bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(102)), undefined, reconocidas),
     ).toBe('te_necesitan');
   });
 
@@ -114,7 +116,7 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
     const personales = new Set([3]);
 
     expect(bucketDeLinea(l, decisionesVacias(), personales)).toBe('personal');
-    expect(bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(3)), personales)).toBe(
+    expect(bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(103)), personales)).toBe(
       'te_necesitan',
     );
   });
@@ -124,8 +126,8 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
     // esta puerta no lo pisa: para eso está «reactivar».
     const l = linea({ movementId: 4 });
     const d = conDecisiones((x) => {
-      x.ignorados.add(4);
-      x.desemparejados.add(4);
+      x.ignorados.add(104);
+      x.desemparejados.add(104);
     });
 
     expect(bucketDeLinea(l, d)).toBe('ignorados');
@@ -137,7 +139,7 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
       linea({ movementId: 2, veredicto: 'cuadra' }),
       linea({ movementId: 3 }),
     ];
-    const d = conDecisiones((x) => x.desemparejados.add(1));
+    const d = conDecisiones((x) => x.desemparejados.add(101));
 
     const c = cuadre(lineas, d);
 

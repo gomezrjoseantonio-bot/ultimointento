@@ -25,18 +25,30 @@ export type VeredictoLinea =
 ;
 
 export interface LineaExtracto {
-  /** id del `Movement` que `processFile` ya insertó para esta línea. */
+  /**
+   * E1.2b · LA identidad de la línea en la sesión: el id de su fila en el
+   * store `lineasExtracto` (E1.1). Todas las decisiones (`DecisionesSesion`) y
+   * todos los gestos (`decisionesDeSesion`) claven por este id, no por el del
+   * movimiento. Así la sesión puede hablar de una línea del banco sin depender
+   * de que su movimiento exista todavía (E1.5).
+   */
+  lineaId: number;
+  /**
+   * id del `Movement` que `processFile` insertó para esta línea (mientras el
+   * movimiento siga naciendo al importar). La sesión NO decide por él; es lo
+   * que se le entrega a los servicios que operan sobre movimientos ya creados
+   * (`confirmDecisions`, traspasos, ficha de gasto) en la frontera
+   * (`payloadDeConfirmacion` y compañía).
+   */
   movementId: number;
   /**
-   * E1.2a · id del registro de esta línea en el store `lineasExtracto` (E1.1).
-   *
-   * Convive con `movementId` y, de momento, NO decide nada: todas las
-   * decisiones de la sesión (`DecisionesSesion`) siguen yendo por `movementId`.
-   * Está aquí para que E1.2b pueda pasar la sesión a hablar en líneas sin
-   * depender de que el movimiento exista. Opcional porque las líneas que se
-   * construyen sin el store (tests, batches anteriores a V91) no lo tienen.
+   * §16.4 · TODOS los movimientos que esta línea ha engendrado, según la fila
+   * persistida (`LineaExtractoPersistida.movementIds`). Hoy siempre uno; un
+   * pago múltiple (fianza + dos meses) traerá varios. La frontera traduce
+   * `lineaId → movementIds` con `movementIdsDe`. Opcional: sin él vale
+   * `[movementId]`.
    */
-  lineaId?: number;
+  movementIds?: number[];
   /** Identidad estable de la línea · sobrevive a reimportar el mismo fichero. */
   hashLinea: string;
   /** El texto LITERAL del banco · §4.7 lo exige, sin limpiar ni embellecer. */
@@ -83,13 +95,21 @@ export interface ResumenSesion {
   ignoradas: number;
 }
 
-/** Lo que el usuario ha decidido a mano · se aplica todo junto al Guardar. */
+/**
+ * Lo que el usuario ha decidido a mano · se aplica todo junto al Guardar.
+ *
+ * E1.2b · las siete estructuras claven por `lineaId` (la fila de
+ * `lineasExtracto`), NO por `movementId`. La traducción a movimientos ocurre
+ * en la frontera con los servicios (`payloadDeConfirmacion`,
+ * `movimientosAEfectivo`, `movimientosATraspaso`), que es lo único que sigue
+ * hablando en `movementId`.
+ */
 export interface DecisionesSesion {
-  /** movementId → treasuryEventId elegido en "Asignar a un previsto". */
+  /** lineaId → treasuryEventId elegido en "Asignar a un previsto". */
   asignados: Map<number, number>;
-  /** movementIds que el usuario mandó a ignorar en ESTA sesión. */
+  /** lineaIds que el usuario mandó a ignorar en ESTA sesión. */
   ignorados: Set<number>;
-  /** movementIds para los que se creó un movimiento suelto desde la ficha. */
+  /** lineaIds para las que se creó un movimiento suelto desde la ficha. */
   creados: Set<number>;
   /**
    * Líneas que venían ignoradas de una importación anterior y el usuario ha
@@ -99,7 +119,7 @@ export interface DecisionesSesion {
    */
   recuperados: Set<number>;
   /**
-   * movementIds que el usuario ha marcado como RETIRADA DE EFECTIVO.
+   * lineaIds que el usuario ha marcado como RETIRADA DE EFECTIVO.
    *
    * No es un ignorado ni un movimiento suelto: al guardar, ese cargo se
    * convierte en la pata de salida de un traspaso a la cuenta de Efectivo y
@@ -107,7 +127,7 @@ export interface DecisionesSesion {
    */
   aEfectivo: Set<number>;
   /**
-   * movementId → cuenta destino · el usuario ha marcado esta línea como un
+   * lineaId → cuenta destino · el usuario ha marcado esta línea como un
    * TRASPASO a otra cuenta suya (P1/P3). Es el caso general de `aEfectivo`: al
    * importar, un traspaso entra como un cargo normal y sin esto se cuenta como
    * gasto (hunde el saldo y lo cuela en el gráfico). Al guardar, ese cargo se
@@ -117,7 +137,7 @@ export interface DecisionesSesion {
    */
   aTraspaso: Map<number, number>;
   /**
-   * movementIds sobre los que el usuario ha dicho «No es esto».
+   * lineaIds sobre las que el usuario ha dicho «No es esto».
    *
    * Es la vuelta atrás que faltaba. Una línea cae en «resueltas» porque el
    * emparejador dijo que casaba con un previsto, o porque el reconocedor la
@@ -189,7 +209,13 @@ export function construirLineas(
    */
   lineasPersistidas: ReadonlyArray<Pick<LineaExtractoPersistida, 'id' | 'movementIds'>> = [],
 ): LineaExtracto[] {
-  const lineaIdPorMovimiento = lineaIdPorMovementId(lineasPersistidas);
+  const persistidaPorMovimiento = new Map<number, { id: number; movementIds: number[] }>();
+  for (const l of lineasPersistidas) {
+    if (l.id == null) continue;
+    for (const movementId of l.movementIds ?? []) {
+      persistidaPorMovimiento.set(movementId, { id: l.id, movementIds: [...(l.movementIds ?? [])] });
+    }
+  }
   const eventoPorId = new Map<number, TreasuryEvent>();
   for (const e of eventos) if (e.id != null) eventoPorId.set(e.id, e);
 
@@ -253,10 +279,20 @@ export function construirLineas(
         ? 'cuadra'
         : 'resolver';
 
-    const lineaId = lineaIdPorMovimiento.get(m.id);
+    // E1.2b · sin fila persistida no hay identidad de sesión. No se inventa
+    // una: desde V91 el orquestador escribe la línea ANTES de que el drawer la
+    // construya, así que llegar aquí sin ella es un error de programación, no
+    // un caso de datos.
+    const persistida = persistidaPorMovimiento.get(m.id);
+    if (!persistida) {
+      throw new Error(
+        `E1.2b · el movimiento ${m.id} no tiene fila en lineasExtracto; la sesión no puede identificarlo`
+      );
+    }
     lineas.push({
+      lineaId: persistida.id,
       movementId: m.id,
-      ...(lineaId != null ? { lineaId } : {}),
+      movementIds: persistida.movementIds,
       hashLinea,
       textoBanco: m.description,
       // Vacío o en blanco no se propaga: un renglón vacío debajo del texto
@@ -281,6 +317,18 @@ export function construirLineas(
 }
 
 /**
+ * E1.2b · la FRONTERA · los movimientos que hay detrás de una línea.
+ *
+ * Es la única traducción `lineaId → movementId(s)` de la sesión: quien
+ * necesite hablar con un servicio que opera sobre movimientos ya creados pasa
+ * por aquí. Soporta 1→N (§16.4) y cae a `[movementId]` cuando la línea no
+ * trae la lista (tests, líneas construidas a mano).
+ */
+export function movementIdsDe(l: Pick<LineaExtracto, 'movementId' | 'movementIds'>): number[] {
+  return l.movementIds && l.movementIds.length > 0 ? l.movementIds : [l.movementId];
+}
+
+/**
  * Veredicto EFECTIVO de una línea, ya contadas las decisiones del usuario.
  *
  * Se calcula al vuelo en vez de mutar las líneas: así "recuperar" una ignorada
@@ -292,24 +340,24 @@ export function veredictoEfectivo(
   decisiones: DecisionesSesion
 ): VeredictoLinea {
   // Ignorar gana a todo: es la última palabra del usuario sobre esa línea.
-  if (decisiones.ignorados.has(linea.movementId)) return 'ignorada';
-  if (decisiones.asignados.has(linea.movementId)) return 'cuadra';
-  if (decisiones.creados.has(linea.movementId)) return 'cuadra';
+  if (decisiones.ignorados.has(linea.lineaId)) return 'ignorada';
+  if (decisiones.asignados.has(linea.lineaId)) return 'cuadra';
+  if (decisiones.creados.has(linea.lineaId)) return 'cuadra';
   // Resuelta: el cargo se queda, convertido en traspaso a la cuenta de
   // efectivo. Por eso NO cuenta como pendiente y su movimiento sobrevive a
   // `consolidarSesion`, que es lo contrario de lo que pasa con lo sin resolver.
-  if (decisiones.aEfectivo.has(linea.movementId)) return 'cuadra';
+  if (decisiones.aEfectivo.has(linea.lineaId)) return 'cuadra';
   // Marcada como traspaso a otra cuenta · igual que efectivo: el cargo se queda
   // (convertido en la pata de salida), no cuenta como pendiente y sobrevive a
   // `consolidarSesion`.
-  if (decisiones.aTraspaso.has(linea.movementId)) return 'cuadra';
+  if (decisiones.aTraspaso.has(linea.lineaId)) return 'cuadra';
 
   // Recuperar una ignorada de una importación anterior, o un mes anterior
   // apartado, la devuelve al flujo · no la da por buena: vuelve a "a resolver"
   // salvo que además cuadre sola.
   if (
     linea.veredicto === 'ignorada' &&
-    decisiones.recuperados.has(linea.movementId)
+    decisiones.recuperados.has(linea.lineaId)
   ) {
     return linea.previsto ? 'cuadra' : 'resolver';
   }
@@ -356,10 +404,22 @@ export function payloadDeConfirmacion(
   const ignoredMovementIds: number[] = [];
   const reconciliacionesConfirmado: Array<{ importMovementId: number; confirmadoMovementId: number }> = [];
 
+  // E1.2b · aquí está la FRONTERA: las decisiones se leen por `lineaId` y lo
+  // que sale va en `movementId`, que es lo que `confirmDecisions` entiende.
+  // Un movimiento no viaja dos veces aunque dos tarjetas compartan línea.
+  const emitidos = new Set<number>();
+  const cadaMovimiento = (l: LineaExtracto, f: (movementId: number) => void) => {
+    for (const movementId of movementIdsDe(l)) {
+      if (emitidos.has(movementId)) continue;
+      emitidos.add(movementId);
+      f(movementId);
+    }
+  };
+
   for (const l of lineas) {
     const v = veredictoEfectivo(l, decisiones);
     if (v === 'ignorada') {
-      ignoredMovementIds.push(l.movementId);
+      cadaMovimiento(l, (movementId) => ignoredMovementIds.push(movementId));
       continue;
     }
     if (v !== 'cuadra') continue;
@@ -367,25 +427,25 @@ export function payloadDeConfirmacion(
     // Marcada como efectivo o traspaso, NO se empareja con ningún previsto
     // aunque hubiera cuadrado sola: el usuario ha dicho qué es esa línea, y
     // confirmarle además un previsto lo daría por pagado dos veces.
-    if (decisiones.aEfectivo.has(l.movementId)) continue;
-    if (decisiones.aTraspaso.has(l.movementId)) continue;
+    if (decisiones.aEfectivo.has(l.lineaId)) continue;
+    if (decisiones.aTraspaso.has(l.lineaId)) continue;
 
     // Una asignación a mano gana al emparejamiento automático: es el usuario
     // corrigiendo, que es justo lo que la pantalla le ofrece hacer.
-    const eventoId = decisiones.asignados.get(l.movementId) ?? l.previsto?.id;
+    const eventoId = decisiones.asignados.get(l.lineaId) ?? l.previsto?.id;
     if (eventoId != null) {
-      approvedMatches.push({ movementId: l.movementId, treasuryEventId: eventoId });
+      cadaMovimiento(l, (movementId) => approvedMatches.push({ movementId, treasuryEventId: eventoId }));
       continue;
     }
 
     // Sin previsto, pero cuadra con un Confirmado que ya tenías: se reconcilia
     // (sube a Conciliado) salvo que el usuario lo haya resuelto a mano creando
     // un movimiento, que ya deja la línea clasificada por su cuenta.
-    if (l.confirmado && !decisiones.creados.has(l.movementId)) {
-      reconciliacionesConfirmado.push({
-        importMovementId: l.movementId,
-        confirmadoMovementId: l.confirmado.id,
-      });
+    if (l.confirmado && !decisiones.creados.has(l.lineaId)) {
+      const confirmadoMovementId = l.confirmado.id;
+      cadaMovimiento(l, (movementId) =>
+        reconciliacionesConfirmado.push({ importMovementId: movementId, confirmadoMovementId })
+      );
     }
   }
 
@@ -407,7 +467,7 @@ export function lineasAIgnorar(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): LineaExtracto[] {
-  return lineas.filter((l) => decisiones.ignorados.has(l.movementId));
+  return lineas.filter((l) => decisiones.ignorados.has(l.lineaId));
 }
 
 /**
@@ -441,8 +501,8 @@ export function hashesARecuperar(
   decisiones: DecisionesSesion
 ): string[] {
   return lineas
-    .filter((l) => l.veredicto === 'ignorada' && decisiones.recuperados.has(l.movementId))
-    .filter((l) => !decisiones.ignorados.has(l.movementId))
+    .filter((l) => l.veredicto === 'ignorada' && decisiones.recuperados.has(l.lineaId))
+    .filter((l) => !decisiones.ignorados.has(l.lineaId))
     .map((l) => l.hashLinea);
 }
 
@@ -457,10 +517,14 @@ export function movimientosAEfectivo(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): number[] {
-  return lineas
-    .filter((l) => decisiones.aEfectivo.has(l.movementId))
-    .filter((l) => !decisiones.ignorados.has(l.movementId))
-    .map((l) => l.movementId);
+  // Frontera · de la línea decidida a los movimientos que la componen, sin
+  // repetir ninguno (dos tarjetas de un pago 1→N comparten línea).
+  const emitidos = new Set<number>();
+  for (const l of lineas) {
+    if (!decisiones.aEfectivo.has(l.lineaId) || decisiones.ignorados.has(l.lineaId)) continue;
+    for (const movementId of movementIdsDe(l)) emitidos.add(movementId);
+  }
+  return Array.from(emitidos);
 }
 
 /**
@@ -495,9 +559,10 @@ export function contarIgualesSinResolver(
 }
 
 /**
- * A2 · movementIds de los cargos iguales a `linea` que siguen SIN RESOLVER
+ * A2 · lineaIds de los cargos iguales a `linea` que siguen SIN RESOLVER
  * (excluida ella) · los que marcaría "y las N iguales". No pisa lo ya cuadrado
- * ni ignorado, ni los ingresos (un traspaso es un cargo).
+ * ni ignorado, ni los ingresos (un traspaso es un cargo). Devuelve lineaIds
+ * porque lo que se hace con ellos es escribir DECISIONES (`traspasarVarias`).
  */
 export function idsIgualesAResolver(
   lineas: LineaExtracto[],
@@ -506,23 +571,27 @@ export function idsIgualesAResolver(
 ): number[] {
   const clave = claveDeLineaIgual(linea);
   return lineas
-    .filter((l) => l.movementId !== linea.movementId && l.importe < 0)
+    .filter((l) => l.lineaId !== linea.lineaId && l.importe < 0)
     .filter((l) => claveDeLineaIgual(l) === clave)
     .filter((l) => veredictoEfectivo(l, decisiones) === 'resolver')
-    .map((l) => l.movementId);
+    .map((l) => l.lineaId);
 }
 
 export function movimientosATraspaso(
   lineas: LineaExtracto[],
   decisiones: DecisionesSesion
 ): Array<{ movementId: number; cuentaDestinoId: number }> {
-  return lineas
-    .filter((l) => decisiones.aTraspaso.has(l.movementId))
-    .filter((l) => !decisiones.ignorados.has(l.movementId))
-    .map((l) => ({
-      movementId: l.movementId,
-      cuentaDestinoId: decisiones.aTraspaso.get(l.movementId) as number,
-    }));
+  // Frontera · de la línea decidida a los movimientos que la componen, sin
+  // repetir ninguno. El Map conserva el orden de inserción, como el array.
+  const porMovimiento = new Map<number, number>();
+  for (const l of lineas) {
+    if (!decisiones.aTraspaso.has(l.lineaId) || decisiones.ignorados.has(l.lineaId)) continue;
+    const cuentaDestinoId = decisiones.aTraspaso.get(l.lineaId) as number;
+    for (const movementId of movementIdsDe(l)) {
+      if (!porMovimiento.has(movementId)) porMovimiento.set(movementId, cuentaDestinoId);
+    }
+  }
+  return Array.from(porMovimiento, ([movementId, cuentaDestinoId]) => ({ movementId, cuentaDestinoId }));
 }
 
 /**

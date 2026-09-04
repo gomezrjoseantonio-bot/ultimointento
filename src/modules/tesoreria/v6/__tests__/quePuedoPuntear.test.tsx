@@ -34,7 +34,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { construirLineas } from '../extractoSesion';
+import { construirLineas as construirLineasReal } from '../extractoSesion';
 import type { Movement } from '../../../../services/db';
 import type { MatchResult } from '../../../../services/movementMatchingService';
 
@@ -47,6 +47,13 @@ const movimiento = (over: Partial<Movement> & { id: number }): Movement =>
     unifiedStatus: 'sin_planificar',
     ...over,
   }) as Movement;
+
+// E1.2b · `lineaId` es obligatorio · aquí se fabrica desde el movimiento.
+const construirLineas: typeof construirLineasReal = (movs, mr, evs, ign, conf = new Map(), pers) =>
+  construirLineasReal(
+    movs, mr, evs, ign, conf,
+    pers ?? movs.map((m) => ({ id: 100 + (m.id as number), movementIds: [m.id as number] }))
+  );
 
 const SIN_MATCHES: MatchResult = {
   matches: [],

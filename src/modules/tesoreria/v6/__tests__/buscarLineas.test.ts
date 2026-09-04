@@ -21,6 +21,7 @@ import { atajosDeBusqueda, filtrarPorTexto } from '../conciliar/buscarLineas';
 import type { LineaExtracto } from '../extractoSesion';
 
 const linea = (movementId: number, textoBanco: string, importe = -10): LineaExtracto => ({
+  lineaId: 100 + movementId,
   movementId,
   hashLinea: `h${movementId}`,
   textoBanco,

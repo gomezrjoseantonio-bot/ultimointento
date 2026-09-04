@@ -23,6 +23,8 @@ import type { LineaExtracto } from '../extractoSesion';
 import type { Cuadre } from '../conciliarBuckets';
 
 const linea = (id: number, texto: string, importe = -66.9): LineaExtracto => ({
+  // E1.2b · los gestos reciben lineaId (100 + id), no movementId.
+  lineaId: 100 + id,
   movementId: id,
   hashLinea: `h${id}`,
   textoBanco: texto,
@@ -82,7 +84,7 @@ describe('el montón se abre · ver qué hay dentro de un «ok»', () => {
     expect(botones).toHaveLength(2);
 
     fireEvent.click(botones[1]);
-    expect(noEsEsto).toHaveBeenCalledWith(2);
+    expect(noEsEsto).toHaveBeenCalledWith(102);
   });
 
   it('el montón PERSONAL también se abre y también se corrige', () => {
@@ -97,7 +99,7 @@ describe('el montón se abre · ver qué hay dentro de un «ok»', () => {
     fireEvent.click(screen.getByRole('button', { name: /CUOTA PRESTAMO/i }));
     fireEvent.click(screen.getByRole('button', { name: /no es esto/i }));
 
-    expect(noEsEsto).toHaveBeenCalledWith(9);
+    expect(noEsEsto).toHaveBeenCalledWith(109);
   });
 });
 
@@ -192,7 +194,7 @@ describe('actuar sobre varias a la vez', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /ignorar las 2/i }));
 
-    expect(ignorarVarias).toHaveBeenCalledWith([1, 2]);
+    expect(ignorarVarias).toHaveBeenCalledWith([101, 102]);
   });
 
   it('«elegir las 3 que se ven» coge lo filtrado · el flujo entero de un bizum', () => {
@@ -205,7 +207,7 @@ describe('actuar sobre varias a la vez', () => {
     fireEvent.click(screen.getByRole('button', { name: /elegir las 3/i }));
     fireEvent.click(screen.getByRole('button', { name: /ignorar las 3/i }));
 
-    expect(ignorarVarias).toHaveBeenCalledWith([1, 2, 3]);
+    expect(ignorarVarias).toHaveBeenCalledWith([101, 102, 103]);
   });
 
   it('sin nada marcado no hay barra · no estorba mientras no hace falta', () => {
@@ -233,7 +235,7 @@ describe('actuar sobre varias a la vez', () => {
     fireEvent.click(screen.getAllByRole('checkbox', { name: /elegir/i })[0]); // un bizum
 
     fireEvent.click(screen.getByRole('button', { name: /ignorar la 1/i }));
-    expect(ignorarVarias).toHaveBeenCalledWith([1]);
+    expect(ignorarVarias).toHaveBeenCalledWith([101]);
   });
 });
 
@@ -248,7 +250,7 @@ describe('clasificar varias de una vez · no sólo ignorarlas', () => {
     fireEvent.click(screen.getByRole('button', { name: /elegir las 3/i }));
     fireEvent.click(screen.getByRole('button', { name: /clasificar las 3 como/i }));
 
-    expect(clasificarVarias).toHaveBeenCalledWith([1, 2, 3]);
+    expect(clasificarVarias).toHaveBeenCalledWith([101, 102, 103]);
   });
 
   it('con una sola elegida el botón habla en singular', () => {
@@ -271,7 +273,7 @@ describe('clasificar varias de una vez · no sólo ignorarlas', () => {
       target: { value: '7' },
     });
 
-    expect(traspasarVarias).toHaveBeenCalledWith([1, 2, 3], 7);
+    expect(traspasarVarias).toHaveBeenCalledWith([101, 102, 103], 7);
   });
 
   it('no se ofrece sobre un ingreso · la salida de un traspaso es un cargo', () => {
