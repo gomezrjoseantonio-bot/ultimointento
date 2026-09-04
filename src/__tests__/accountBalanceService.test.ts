@@ -546,4 +546,60 @@ describe('accountBalanceService', () => {
       }),
     );
   });
+
+  // ── Un evento comprometido se coloca en el día en que MOVIÓ el dinero ──────
+  //
+  // El caso real: la cuenta anclada al saldo del banco del día 2 (E1.5-anclaje).
+  // Un recibo previsto para el día 4 que el banco cargó el día 1 está dentro
+  // de ese saldo. Antes el hub lo colocaba en el día 4 por `predictedDate` y
+  // no reconocía su movimiento (`executedMovementId`): al llegar el día 4 el
+  // saldo bajaba otra vez por el mismo recibo.
+  describe('un evento comprometido cuenta en su fecha REAL y una sola vez con su movimiento', () => {
+    const anclada = {
+      id: 42, iban: 'ES42', status: 'ACTIVE', activa: true, createdAt: '', updatedAt: '',
+      openingBalance: 2648.67, openingBalanceDate: '2026-09-02',
+    } as any;
+    const recibo = {
+      id: 700, accountId: 42, type: 'expense', amount: 98.44, predictedDate: '2026-09-04',
+      status: 'executed', executedMovementId: 7, actualDate: '2026-09-01', actualAmount: 98.44,
+    } as any;
+    const cargo = { id: 7, accountId: 42, amount: -98.44, date: '2026-09-01' } as any;
+
+    it('previsto el 4, cargado el 1 y anclado al 2 · no baja el saldo del día 5', () => {
+      const el5 = calculateAccountBalanceAtDate({
+        account: anclada, cutoffDate: '2026-09-06', treasuryEvents: [recibo], movements: [cargo], incluirRealesFuturos: true,
+      });
+      // El día 1 es anterior a la apertura: ni el cargo ni su recibo suman.
+      expect(el5).toBe(2648.67);
+    });
+
+    it('sin apertura por medio · el recibo y su cargo son UN solo −98,44', () => {
+      const cuenta = { ...anclada, openingBalance: 0, openingBalanceDate: '2026-08-01' };
+      const el1 = calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-02', treasuryEvents: [recibo], movements: [cargo] });
+      const el5 = calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [recibo], movements: [cargo] });
+      expect(el1).toBeCloseTo(-98.44, 2);
+      expect(el5).toBeCloseTo(-98.44, 2);
+    });
+
+    it('el vínculo por executedMovementId manda aunque el importe real difiera del previsto', () => {
+      // Previsto 30, real 13,38 el mismo día · el hub cuenta 13,38 una vez.
+      const gas = { id: 701, accountId: 42, type: 'expense', amount: 30, predictedDate: '2026-09-10', status: 'executed', executedMovementId: 8, actualDate: '2026-09-09', actualAmount: 13.38 } as any;
+      const mov = { id: 8, accountId: 42, amount: -13.38, date: '2026-09-09' } as any;
+      const cuenta = { ...anclada, openingBalance: 100, openingBalanceDate: '2026-09-01' };
+      expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-30', treasuryEvents: [gas], movements: [mov] })).toBeCloseTo(86.62, 2);
+    });
+
+    it('sin vínculo explícito, el casado implícito usa la fecha real', () => {
+      const sinId = { ...recibo, executedMovementId: undefined } as any;
+      const cuenta = { ...anclada, openingBalance: 0, openingBalanceDate: '2026-08-01' };
+      expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [sinId], movements: [cargo] })).toBeCloseTo(-98.44, 2);
+    });
+
+    it('un previsto sin puntear sigue en su fecha prevista', () => {
+      const previsto = { id: 702, accountId: 42, type: 'expense', amount: 40, predictedDate: '2026-09-04', status: 'predicted', actualDate: '2026-09-01' } as any;
+      const cuenta = { ...anclada, openingBalance: 0, openingBalanceDate: '2026-08-01' };
+      // No está comprometido: no suma en ningún corte.
+      expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [previsto], movements: [] })).toBe(0);
+    });
+  });
 });

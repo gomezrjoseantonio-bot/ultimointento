@@ -82,6 +82,35 @@ function isCommittedTreasuryEvent(event: TreasuryEvent): boolean {
   return event.status == null || event.status === 'confirmed' || event.status === 'executed';
 }
 
+/**
+ * El día en que un evento MUEVE el dinero · para uno comprometido, el real
+ * (`actualDate`, que estampa el punteo y el cuadre con el extracto); si no lo
+ * tiene, el previsto.
+ *
+ * Antes se miraba siempre `predictedDate`, y un recibo previsto para el 4 que
+ * el banco cargó el 1 se colocaba el 4: quedaba fuera del corte del día 2 (y
+ * de la apertura anclada a ese día) mientras su movimiento del día 1 ya
+ * estaba dentro del saldo del banco. Al llegar el día 4 el saldo bajaba por
+ * segunda vez. Medido en la cuenta de Jose: 151,44 € de menos tres días
+ * después de anclar.
+ */
+function fechaDelEvento(event: TreasuryEvent): string | undefined {
+  return toDateOnly(isCommittedTreasuryEvent(event) ? event.actualDate || event.predictedDate : event.predictedDate);
+}
+
+/**
+ * El movimiento que materializó el evento. El punteo (`confirmTreasuryEvent`),
+ * el cuadre con el extracto (`confirmDecisions`) y las patas de traspaso
+ * escriben `executedMovementId`; `movementId` es el nombre antiguo y nadie lo
+ * escribe ya, pero se respeta. Sin esto el hub no reconocía NINGÚN vínculo y
+ * caía siempre al casado implícito por fecha prevista e importe, que falla en
+ * cuanto el banco carga otro día.
+ */
+function movimientoDelEvento(event: TreasuryEvent): number | undefined {
+  const id = event.executedMovementId ?? event.movementId;
+  return Number.isFinite(id) ? (id as number) : undefined;
+}
+
 function buildEntryKey(accountId: number, date: string, signedAmount: number): string {
   return `${accountId}|${toDateOnly(date) ?? date}|${signedAmount}`;
 }
@@ -152,17 +181,17 @@ export function calculateAccountBalanceAtDate(params: {
     // sale en el recibo. Contarla aquí lo cobraría dos veces. Nace sin
     // `accountId` (ya no casaría), pero el guard explícito lo blinda.
     e.sourceType !== 'gasto_tarjeta' &&
-    toDateOnly(e.predictedDate) &&
-    toDateOnly(e.predictedDate)! < cutoffDate &&
-    isAfterOpening(toDateOnly(e.predictedDate)!)
+    fechaDelEvento(e) &&
+    fechaDelEvento(e)! < cutoffDate &&
+    isAfterOpening(fechaDelEvento(e)!)
   ));
 
   const committedPriorEvents = priorAccountEvents.filter(isCommittedTreasuryEvent);
 
   const reconciledMovementIds = new Set(
     committedPriorEvents
-      .map(event => event.movementId)
-      .filter((movementId): movementId is number => Number.isFinite(movementId))
+      .map(movimientoDelEvento)
+      .filter((movementId): movementId is number => movementId != null)
   );
 
   const rawMovements = movements.filter(m => (
@@ -182,8 +211,8 @@ export function calculateAccountBalanceAtDate(params: {
 
   const implicitMovementMatches = new Map<string, number>();
   for (const event of committedPriorEvents) {
-    if (Number.isFinite(event.movementId)) continue;
-    const key = buildEntryKey(account.id as number, event.predictedDate, getSignedEventAmount(event));
+    if (movimientoDelEvento(event) != null) continue;
+    const key = buildEntryKey(account.id as number, fechaDelEvento(event) as string, getSignedEventAmount(event));
     implicitMovementMatches.set(key, (implicitMovementMatches.get(key) ?? 0) + 1);
   }
 
