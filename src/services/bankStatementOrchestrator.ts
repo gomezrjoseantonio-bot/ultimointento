@@ -38,6 +38,8 @@ import type { OrigenDeterminista } from './deterministas/tipos';
 import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
 import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
+import type { DescarteLineaExtracto } from './db/types-movimientos';
+import { lineaDesdeFila } from './lineasExtractoService';
 
 export interface OrchestratorOptions {
   accountId: number;
@@ -631,10 +633,39 @@ async function insertMovements(
 
   for (const row of parsed) {
     const date = isoDate(row.date);
-    if (!date) continue;
     const amount = typeof row.amount === 'number' ? row.amount : Number(row.amount);
-    if (!Number.isFinite(amount)) continue;
     const description = row.description ?? '';
+
+    // E1.1 · la línea del banco se persiste SIEMPRE, ADEMÁS del movimiento y
+    // también cuando no genera ninguno. Antes una fila sin fecha o sin importe
+    // se perdía en silencio y una duplicada solo sumaba en un contador; ahora
+    // dejan rastro en `lineasExtracto` con su `descarte`. Nadie lee ese store
+    // todavía: cero cambio de comportamiento.
+    const importeSeguro = Number.isFinite(amount) ? amount : 0;
+    const persistirLinea = async (d: { movementIds: number[]; descarte?: DescarteLineaExtracto }) => {
+      await db.add(
+        'lineasExtracto',
+        lineaDesdeFila(row, {
+          accountId,
+          importBatchId,
+          fechaOperacion: date ?? '',
+          fechaValor: isoDate(row.valueDate) ?? date ?? '',
+          importe: importeSeguro,
+          hashMovement: hashMovement({ accountId, date: date ?? '', amount: importeSeguro, description } as Movement),
+          ahora: now,
+          ...d,
+        })
+      );
+    };
+
+    if (!date) {
+      await persistirLinea({ movementIds: [], descarte: 'sin_fecha' });
+      continue;
+    }
+    if (!Number.isFinite(amount)) {
+      await persistirLinea({ movementIds: [], descarte: 'sin_importe' });
+      continue;
+    }
 
     const candidate: Movement = {
       accountId,
@@ -680,11 +711,13 @@ async function insertMovements(
     // previo. Por eso el hash del nuevo NO se añade al set.
     if (existingHashes.has(hashMovement(candidate))) {
       duplicates++;
+      await persistirLinea({ movementIds: [], descarte: 'duplicada' });
       continue;
     }
 
     const id = (await db.add('movements', candidate)) as number;
     insertedIds.push(id);
+    await persistirLinea({ movementIds: [id] });
   }
 
   return { insertedIds, inserted: insertedIds.length, duplicates };

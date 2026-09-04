@@ -14,6 +14,7 @@ import {
   confirmDecisions,
   BankProfileNotDetectedError,
   StatementAlreadyImportedError,
+  hashMovement,
 } from '../bankStatementOrchestrator';
 import { initDB, Movement, TreasuryEvent } from '../db';
 import { bankProfileMatcher } from '../../features/inbox/importers/bankProfileMatcher';
@@ -66,6 +67,8 @@ interface FakeStores {
   treasuryEvents: TreasuryEvent[];
   importBatches: any[];
   accounts: any[];
+  // E1.1 · la línea del banco persistida · nadie la lee aún.
+  lineasExtracto: any[];
 }
 
 function buildStores(initial: Partial<FakeStores> = {}): FakeStores {
@@ -74,10 +77,12 @@ function buildStores(initial: Partial<FakeStores> = {}): FakeStores {
     treasuryEvents: initial.treasuryEvents ?? [],
     importBatches: initial.importBatches ?? [],
     accounts: initial.accounts ?? [],
+    lineasExtracto: initial.lineasExtracto ?? [],
   };
 }
 
 let nextMovementId = 1;
+let nextLineaId = 1;
 let stores: FakeStores;
 
 function buildDb(s: FakeStores) {
@@ -91,6 +96,11 @@ function buildDb(s: FakeStores) {
       if (storeName === 'treasuryEvents') {
         const id = (s.treasuryEvents.length + 1) * 1000;
         s.treasuryEvents.push({ ...row, id });
+        return id;
+      }
+      if (storeName === 'lineasExtracto') {
+        const id = nextLineaId++;
+        s.lineasExtracto.push({ ...row, id });
         return id;
       }
       throw new Error(`unsupported store add: ${String(storeName)}`);
@@ -153,6 +163,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   nextMovementId = 1;
+  nextLineaId = 1;
   stores = buildStores();
   (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
   (bankProfileMatcher.match as jest.Mock).mockResolvedValue({
@@ -540,5 +551,129 @@ describe('bankStatementOrchestrator', () => {
     } finally {
       mockService.getProfiles = originalGetProfiles;
     }
+  });
+});
+
+// ─── E1.1 · `lineasExtracto` · la línea del banco se persiste ADEMÁS del movimiento ───
+//
+// Aditivo: nadie lee el store todavía. Lo que se protege aquí es que (a) por
+// cada movimiento creado hay UNA línea, (b) su `conceptoLiteral` es el texto del
+// parser CARÁCTER A CARÁCTER (sin trim ni normalizar: el dedupe entre
+// importaciones depende de él), (c) `movementIds` enlaza bien, y (d) lo que hoy
+// NO genera movimiento deja rastro con `descarte` en vez de perderse.
+describe('E1.1 · lineasExtracto', () => {
+  it('7. una línea por movimiento creado · conceptoLiteral EXACTO · movementIds enlaza', async () => {
+    const parsed = makeParsed(14);
+    // Espacios dobles, espacios en los extremos, acentos y ñ: todo lo que un
+    // `trim` o un normalizador se comería. Tiene que llegar tal cual.
+    parsed[3].description = '  RECIBO  IBERDROLA   ÁÉ ñ · ¿? ';
+    parsed[5].valueDate = new Date('2026-04-22T00:00:00Z');
+    parsed[5].counterparty = 'IBERDROLA CLIENTES';
+    parsed[5].reference = 'REF-000123';
+    parsed[5].balance = 1234.56;
+    parsed[5].currency = 'EUR';
+    parsed[5].originalRow = 9;
+    (BankParserService as unknown as jest.Mock).mockImplementationOnce(() => ({
+      parseFile: jest.fn(async () => ({ success: true, movements: parsed, metadata: {} })),
+    }));
+
+    const result = await processFile(new File(['mock'], 'sabadell.xlsx'), { accountId: 42 });
+
+    // Lo de siempre no cambia.
+    expect(result.movementsInserted).toBe(14);
+    expect(result.duplicatesSkipped).toBe(0);
+    expect(stores.movements).toHaveLength(14);
+
+    // Y ADEMÁS hay una línea por movimiento.
+    expect(stores.lineasExtracto).toHaveLength(14);
+    for (let i = 0; i < parsed.length; i++) {
+      const linea = stores.lineasExtracto[i];
+      const mov = stores.movements[i];
+      expect(linea.conceptoLiteral).toBe(parsed[i].description);
+      expect(linea.conceptoLiteral.length).toBe(parsed[i].description.length);
+      expect(linea.movementIds).toEqual([mov.id]);
+      expect(linea.importe).toBe(mov.amount);
+      expect(linea.fechaOperacion).toBe(mov.date);
+      expect(linea.fechaValor).toBe(mov.valueDate);
+      expect(linea.accountId).toBe(42);
+      expect(linea.importBatchId).toBe(result.importBatchId);
+      expect(linea.estado).toBe('resuelta');
+      expect(linea.descarte).toBeUndefined();
+      // La huella es LA MISMA con la que el orquestador deduplica el movimiento.
+      expect(linea.hashMovement).toBe(hashMovement(mov));
+      expect(linea.hashLinea).toMatch(/^v1:/);
+    }
+    // Lo demás que trajo el banco viaja entero.
+    const l5 = stores.lineasExtracto[5];
+    expect(l5.fechaValor).toBe('2026-04-22');
+    expect(l5.contraparte).toBe('IBERDROLA CLIENTES');
+    expect(l5.referencia).toBe('REF-000123');
+    expect(l5.saldo).toBe(1234.56);
+    expect(l5.divisa).toBe('EUR');
+    expect(l5.filaOriginal).toBe(9);
+  });
+
+  it('7b. reimportar con allowReimport · las duplicadas dejan rastro con descarte y SIN movimiento', async () => {
+    const file = new File(['mock'], 'sabadell-extracto.xlsx');
+    const primero = await processFile(file, { accountId: 42 });
+    (matchBatch as jest.Mock).mockResolvedValueOnce({ matches: [], multiMatches: [], sinMatch: [] });
+    (suggestForUnmatched as jest.Mock).mockResolvedValueOnce(new Map());
+    const segundo = await processFile(file, { accountId: 42, allowReimport: true });
+
+    expect(segundo.movementsInserted).toBe(0);
+    expect(segundo.duplicatesSkipped).toBe(14);
+    expect(stores.movements).toHaveLength(14); // igual que antes de E1.1
+
+    expect(stores.lineasExtracto).toHaveLength(28);
+    const delSegundo = stores.lineasExtracto.filter((l) => l.importBatchId === segundo.importBatchId);
+    expect(delSegundo).toHaveLength(14);
+    for (const l of delSegundo) {
+      expect(l.descarte).toBe('duplicada');
+      expect(l.estado).toBe('sin_procesar');
+      expect(l.movementIds).toEqual([]);
+    }
+    // La misma línea, en los dos lotes, tiene la MISMA identidad.
+    const delPrimero = stores.lineasExtracto.filter((l) => l.importBatchId === primero.importBatchId);
+    expect(delSegundo.map((l) => l.hashLinea)).toEqual(delPrimero.map((l) => l.hashLinea));
+    expect(delSegundo.map((l) => l.hashMovement)).toEqual(delPrimero.map((l) => l.hashMovement));
+  });
+
+  it('7c. sin fecha y sin importe · dejan rastro en vez de perderse en silencio', async () => {
+    (BankParserService as unknown as jest.Mock).mockImplementationOnce(() => ({
+      parseFile: jest.fn(async () => ({
+        success: true,
+        movements: [
+          { date: new Date('2026-05-03T00:00:00Z'), amount: -12.5, description: 'CARGO NORMAL' },
+          { date: new Date('no es una fecha'), amount: -99, description: 'SIN FECHA' },
+          { date: new Date('2026-05-04T00:00:00Z'), amount: 'abc', description: 'SIN IMPORTE' },
+        ],
+        metadata: {},
+      })),
+    }));
+    (matchBatch as jest.Mock).mockResolvedValueOnce({ matches: [], multiMatches: [], sinMatch: [] });
+    (suggestForUnmatched as jest.Mock).mockResolvedValueOnce(new Map());
+
+    const result = await processFile(new File(['mock'], 'raro.xlsx'), { accountId: 42 });
+
+    // Lo de siempre: solo entra la buena.
+    expect(result.movementsParsed).toBe(3);
+    expect(result.movementsInserted).toBe(1);
+    expect(stores.movements).toHaveLength(1);
+
+    expect(stores.lineasExtracto).toHaveLength(3);
+    const [ok, sinFecha, sinImporte] = stores.lineasExtracto;
+    expect(ok.estado).toBe('resuelta');
+    expect(ok.movementIds).toEqual([stores.movements[0].id]);
+
+    expect(sinFecha.descarte).toBe('sin_fecha');
+    expect(sinFecha.fechaOperacion).toBe('');
+    expect(sinFecha.importe).toBe(-99);
+    expect(sinFecha.conceptoLiteral).toBe('SIN FECHA');
+    expect(sinFecha.movementIds).toEqual([]);
+
+    expect(sinImporte.descarte).toBe('sin_importe');
+    expect(sinImporte.fechaOperacion).toBe('2026-05-04');
+    expect(sinImporte.conceptoLiteral).toBe('SIN IMPORTE');
+    expect(sinImporte.movementIds).toEqual([]);
   });
 });
