@@ -58,7 +58,7 @@ con estos filtros sobre los movimientos (`:104-117`) **[V]**:
 - fecha `>= openingBalanceDate`;
 - y un **casado implícito por `cuenta|fecha|importe`** (`:118-134`) para eventos ejecutados sin `movementId` guardado.
 
-**[V] Los 8 sitios de llamada en producción:**
+**[V] Los 8 sitios de llamada al hub** — 6 vivos y 2 muertos (marcados, ver la nota bajo la tabla):
 
 | # | fichero:línea | qué pinta | corte |
 |---|---|---|---|
@@ -67,11 +67,11 @@ con estos filtros sobre los movimientos (`:104-117`) **[V]**:
 | 3 | `PanelPage.tsx:343` | «hoy tienes» del Panel | `corteParaSaldoVivo`, `incluirRealesFuturos: true` |
 | 4 | `TesoreriaV6Page.tsx:368` | SALDO de Tesorería V6 | idem |
 | 5 | `getCurrentSaldoCuenta.ts:55` | saldo de cuenta en los wizards de Mi Plan | mañana, `incluirRealesFuturos: true` |
-| 6 | `treasuryMonthOpeningBalance.ts:57` | saldo de apertura de un mes pasado/actual | inicio del mes |
-| 7 | `treasuryMonthOpeningBalance.ts:65` | base del roll-forward a meses futuros | inicio del mes en curso |
+| 6 | `treasuryMonthOpeningBalance.ts:57` | saldo de apertura de un mes pasado/actual · **muerto** | inicio del mes |
+| 7 | `treasuryMonthOpeningBalance.ts:65` | base del roll-forward a meses futuros · **muerto** | inicio del mes en curso |
+| 8 | `fondosService.ts:42` | saldo de la cuenta de un fondo | mañana |
 
 **[V] Ojo con 6 y 7:** `calculateTreasuryMonthOpeningBalance` (`treasuryMonthOpeningBalance.ts:46`) **no tiene ningún llamante de producción** — grep fuera de tests: solo su propio `treasuryMonthOpeningBalance.test.ts`. Es código muerto, como lo era `TreasuryImportAPI` antes de E1.0. **Candidato a retirarlo en vez de tocarlo**: son 2 de los 8 sitios que desaparecen gratis. Sitios de llamada **vivos: 6, en 5 ficheros**.
-| 8 | `fondosService.ts:42` | saldo de la cuenta de un fondo | mañana |
 
 **[V] Y dos consumidores indirectos por cada envoltorio:**
 - `calculateTotalInitialCash` → `presupuestoAnualService.ts:491` (saldo de partida del presupuesto), `proyeccionMensualService.ts:996` (caja inicial de la proyección).
@@ -202,6 +202,7 @@ Es la simplificación más grande que el corte permite, y hay que decidirla **an
 **[V] Qué hace hoy:** por cada `ParsedMovement`, persiste **siempre** la línea (`:654-668`) y **además**, si tiene fecha e importe y no es duplicada, inserta el `Movement` (`:727`) y enlaza (`:729`).
 
 **[V] Qué se rompe de lo que devuelve.** `InsertResult.insertedIds` (`:625`) tiene **dos consumidores**:
+
 | consumidor | línea | qué pasa tras el corte |
 |---|---|---|
 | `matchBatch(insertResult.insertedIds, …)` | `:286` | pasa a `matchLineas(lineas)` (puerta ya abierta) |
