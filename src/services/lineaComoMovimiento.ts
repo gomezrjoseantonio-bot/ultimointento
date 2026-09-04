@@ -33,10 +33,12 @@ import type { AtribucionDeterminista, OrigenDeterminista } from './deterministas
 /**
  * ¿Entra esta línea al matcheo?
  *
- * Igual que hoy: una fila descartada (`duplicada`, `sin_fecha`, `sin_importe`)
- * no tiene movimiento y por tanto nunca llega al matcheo; y sin `id` no hay
- * por dónde referirla. Es el mismo conjunto que hoy tiene `movementIds` no
- * vacío.
+ * El criterio es `id` + sin `descarte`, y NO `movementIds`: en E1.5 las
+ * líneas entrarán sin ningún movimiento detrás. Una fila descartada
+ * (`duplicada`, `sin_fecha`, `sin_importe`) no se procesa —hoy no tiene
+ * movimiento y mañana tampoco lo tendrá—, y sin `id` no hay por dónde
+ * referirla. Hoy (E1.1) este conjunto coincide con «`movementIds` no vacío»,
+ * pero es una coincidencia del momento, no el criterio.
  */
 export function entraAlMatcheo(linea: LineaExtractoPersistida): boolean {
   return linea.id != null && !linea.descarte;
@@ -134,6 +136,10 @@ export function matchResultPorLinea(r: MatchResult): MatchResultPorLinea {
   };
 }
 
+// En los mapas, el `lineaId` sale de la CLAVE y el `movementId` del valor se
+// descarta: la clave es quien identifica la línea, y así no puede quedar un
+// resultado incoherente si alguna vez clave y valor divergieran.
+
 export function sugerenciasPorLinea(
   r: Map<number, MovementSuggestion[]>
 ): Map<number, SugerenciaPorLinea[]> {
@@ -141,7 +147,7 @@ export function sugerenciasPorLinea(
   for (const [lineaId, sugerencias] of r) {
     out.set(
       lineaId,
-      sugerencias.map(({ movementId, ...resto }) => ({ lineaId: movementId, ...resto }))
+      sugerencias.map(({ movementId: _m, ...resto }) => ({ lineaId, ...resto }))
     );
   }
   return out;
@@ -149,12 +155,12 @@ export function sugerenciasPorLinea(
 
 export function reconocidoPorLinea(r: LoQueSeReconoce): LoQueSeReconocePorLinea {
   const origenes = new Map<number, OrigenPorLinea>();
-  for (const [lineaId, { movementId, ...resto }] of r.origenes) {
-    origenes.set(lineaId, { lineaId: movementId, ...resto });
+  for (const [lineaId, { movementId: _m, ...resto }] of r.origenes) {
+    origenes.set(lineaId, { lineaId, ...resto });
   }
   const atribuciones = new Map<number, AtribucionPorLinea>();
-  for (const [lineaId, { movementId, ...resto }] of r.atribuciones) {
-    atribuciones.set(lineaId, { lineaId: movementId, ...resto });
+  for (const [lineaId, { movementId: _m, ...resto }] of r.atribuciones) {
+    atribuciones.set(lineaId, { lineaId, ...resto });
   }
   return { origenes, atribuciones };
 }
