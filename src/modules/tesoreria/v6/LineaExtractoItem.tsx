@@ -27,12 +27,12 @@ export interface LineaExtractoItemProps {
   setAsignando: (id: number | null) => void;
   traspasando: number | null;
   setTraspasando: (id: number | null) => void;
-  asignar: (movementId: number, eventoId: number) => void;
-  ignorar: (movementId: number) => void;
-  marcarEfectivo: (movementId: number) => void;
-  desmarcarEfectivo: (movementId: number) => void;
-  marcarTraspaso: (movementId: number, cuentaDestinoId: number) => void;
-  desmarcarTraspaso: (movementId: number) => void;
+  asignar: (lineaId: number, eventoId: number) => void;
+  ignorar: (lineaId: number) => void;
+  marcarEfectivo: (lineaId: number) => void;
+  desmarcarEfectivo: (lineaId: number) => void;
+  marcarTraspaso: (lineaId: number, cuentaDestinoId: number) => void;
+  desmarcarTraspaso: (lineaId: number) => void;
   /** A2 · cuántas líneas iguales (mismo texto y signo) quedan sin resolver. */
   igualesSinResolver?: number;
   /** A2 · marca todas las iguales como traspaso a la misma cuenta de esta. */
@@ -76,7 +76,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
   sinCaja = false,
 }) => {
   const v = veredictoEfectivo(l, decisiones);
-  const asignado = decisiones.asignados.get(l.movementId);
+  const asignado = decisiones.asignados.get(l.lineaId);
   const previstoMostrado = asignado != null ? previstos.find((p) => p.id === asignado) : undefined;
   // Candidatos para asignar · una entrada por serie, por cercanía.
   const candidatos = candidatosDeLinea({ fecha: l.fecha, importe: l.importe }, previstos);
@@ -88,8 +88,8 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
   // concilia aparte (§4.4).
   const destinosTraspaso = cuentasEnUso(cuentas).filter((c) => c.id !== cuentaActivaId);
   const puedeSerTraspaso = l.importe < 0 && destinosTraspaso.length > 0;
-  const cuentaTraspaso = decisiones.aTraspaso.has(l.movementId)
-    ? cuentas.find((c) => c.id === decisiones.aTraspaso.get(l.movementId))
+  const cuentaTraspaso = decisiones.aTraspaso.has(l.lineaId)
+    ? cuentas.find((c) => c.id === decisiones.aTraspaso.get(l.lineaId))
     : undefined;
 
   return (
@@ -109,7 +109,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
       )}
       <div className={styles.lineaFecha}>{fechaLarga(l.fecha)}</div>
 
-      {decisiones.aEfectivo.has(l.movementId) ? (
+      {decisiones.aEfectivo.has(l.lineaId) ? (
         <div className={styles.veredicto}>
           <Icons.Check size={13} aria-hidden="true" />
           <span>
@@ -118,7 +118,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
           <button
             type="button"
             className={styles.btnLinea}
-            onClick={() => desmarcarEfectivo(l.movementId)}
+            onClick={() => desmarcarEfectivo(l.lineaId)}
           >
             Deshacer
           </button>
@@ -137,7 +137,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
           <button
             type="button"
             className={styles.btnLinea}
-            onClick={() => desmarcarTraspaso(l.movementId)}
+            onClick={() => desmarcarTraspaso(l.lineaId)}
           >
             Deshacer
           </button>
@@ -152,7 +152,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
               : l.previsto?.descripcion ?? (l.confirmado ? 'lo que ya tenías anotado' : 'un previsto')}
           </span>
         </div>
-      ) : asignando === l.movementId ? (
+      ) : asignando === l.lineaId ? (
         <div className={styles.acciones}>
           <select
             className={styles.selectPrevisto}
@@ -160,7 +160,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
             defaultValue=""
             onChange={(e) => {
               const id = Number(e.target.value);
-              if (id) asignar(l.movementId, id);
+              if (id) asignar(l.lineaId, id);
               setAsignando(null);
             }}
           >
@@ -173,7 +173,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
             ))}
           </select>
         </div>
-      ) : traspasando === l.movementId ? (
+      ) : traspasando === l.lineaId ? (
         <div className={styles.acciones}>
           <select
             className={styles.selectPrevisto}
@@ -181,7 +181,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
             defaultValue=""
             onChange={(e) => {
               const id = Number(e.target.value);
-              if (id) marcarTraspaso(l.movementId, id);
+              if (id) marcarTraspaso(l.lineaId, id);
               setTraspasando(null);
             }}
           >
@@ -205,7 +205,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
             <button
               type="button"
               className={styles.btnLinea}
-              onClick={() => setAsignando(l.movementId)}
+              onClick={() => setAsignando(l.lineaId)}
             >
               {cuadranDeImporte > 0
                 ? `Asignar a un previsto · ${cuadranDeImporte} ${cuadranDeImporte === 1 ? 'cuadra' : 'cuadran'}`
@@ -220,7 +220,7 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
             <button
               type="button"
               className={styles.btnLinea}
-              onClick={() => setTraspasando(l.movementId)}
+              onClick={() => setTraspasando(l.lineaId)}
             >
               Es traspaso
             </button>
@@ -230,12 +230,12 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
             <button
               type="button"
               className={styles.btnLinea}
-              onClick={() => marcarEfectivo(l.movementId)}
+              onClick={() => marcarEfectivo(l.lineaId)}
             >
               Es efectivo
             </button>
           )}
-          <button type="button" className={styles.btnLinea} onClick={() => ignorar(l.movementId)}>
+          <button type="button" className={styles.btnLinea} onClick={() => ignorar(l.lineaId)}>
             Ignorar
           </button>
         </div>

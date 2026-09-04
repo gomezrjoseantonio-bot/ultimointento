@@ -35,18 +35,18 @@ export interface AccionesDeSesion {
   decisiones: DecisionesSesion;
   /** Vuelve al estado inicial · al abrir otro fichero. */
   reiniciarDecisiones: () => void;
-  ignorar: (movementId: number) => void;
-  recuperar: (movementId: number) => void;
-  desemparejar: (movementId: number) => void;
-  ignorarVarias: (movementIds: number[]) => void;
-  traspasarVarias: (movementIds: number[], cuentaDestinoId: number) => void;
-  asignar: (movementId: number, eventoId: number) => void;
-  marcarEfectivo: (movementId: number) => void;
-  desmarcarEfectivo: (movementId: number) => void;
-  marcarTraspaso: (movementId: number, cuentaDestinoId: number) => void;
-  desmarcarTraspaso: (movementId: number) => void;
+  ignorar: (lineaId: number) => void;
+  recuperar: (lineaId: number) => void;
+  desemparejar: (lineaId: number) => void;
+  ignorarVarias: (lineaIds: number[]) => void;
+  traspasarVarias: (lineaIds: number[], cuentaDestinoId: number) => void;
+  asignar: (lineaId: number, eventoId: number) => void;
+  marcarEfectivo: (lineaId: number) => void;
+  desmarcarEfectivo: (lineaId: number) => void;
+  marcarTraspaso: (lineaId: number, cuentaDestinoId: number) => void;
+  desmarcarTraspaso: (lineaId: number) => void;
   marcarTraspasoLote: (linea: LineaExtracto) => void;
-  marcarCreado: (movementId: number) => void;
+  marcarCreado: (lineaId: number) => void;
 }
 
 export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion {
@@ -69,20 +69,20 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
   }, []);
 
   const ignorar = useCallback(
-    (movementId: number) =>
+    (lineaId: number) =>
       conDecisiones((d) => {
-        d.ignorados.add(movementId);
-        d.asignados.delete(movementId);
-        d.aTraspaso.delete(movementId);
+        d.ignorados.add(lineaId);
+        d.asignados.delete(lineaId);
+        d.aTraspaso.delete(lineaId);
       }),
     [conDecisiones],
   );
 
   const recuperar = useCallback(
-    (movementId: number) =>
+    (lineaId: number) =>
       conDecisiones((d) => {
-        d.ignorados.delete(movementId);
-        d.recuperados.add(movementId);
+        d.ignorados.delete(lineaId);
+        d.recuperados.add(lineaId);
       }),
     [conDecisiones],
   );
@@ -97,19 +97,19 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
    * donde estaba.
    */
   const desemparejar = useCallback(
-    (movementId: number) =>
+    (lineaId: number) =>
       conDecisiones((d) => {
-        d.desemparejados.add(movementId);
-        d.asignados.delete(movementId);
+        d.desemparejados.add(lineaId);
+        d.asignados.delete(lineaId);
       }),
     [conDecisiones],
   );
 
   /** Ignorar de un gesto lo que el usuario haya elegido en la pantalla. */
   const ignorarVarias = useCallback(
-    (movementIds: number[]) =>
+    (lineaIds: number[]) =>
       conDecisiones((d) => {
-        for (const id of movementIds) {
+        for (const id of lineaIds) {
           d.ignorados.add(id);
           d.asignados.delete(id);
           d.aTraspaso.delete(id);
@@ -126,9 +126,9 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
    * repetirlo a mano no añade ninguna información que ATLAS no tenga ya.
    */
   const traspasarVarias = useCallback(
-    (movementIds: number[], cuentaDestinoId: number) =>
+    (lineaIds: number[], cuentaDestinoId: number) =>
       conDecisiones((d) => {
-        for (const id of movementIds) {
+        for (const id of lineaIds) {
           d.aTraspaso.set(id, cuentaDestinoId);
           d.ignorados.delete(id);
           d.asignados.delete(id);
@@ -139,14 +139,14 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
   );
 
   const asignar = useCallback(
-    (movementId: number, eventoId: number) =>
+    (lineaId: number, eventoId: number) =>
       conDecisiones((d) => {
-        d.asignados.set(movementId, eventoId);
-        d.ignorados.delete(movementId);
-        d.aEfectivo.delete(movementId);
-        d.aTraspaso.delete(movementId);
+        d.asignados.set(lineaId, eventoId);
+        d.ignorados.delete(lineaId);
+        d.aEfectivo.delete(lineaId);
+        d.aTraspaso.delete(lineaId);
         // Asignar es decir QUÉ es · deshace el «No es esto» de antes.
-        d.desemparejados.delete(movementId);
+        d.desemparejados.delete(lineaId);
       }),
     [conDecisiones],
   );
@@ -154,43 +154,43 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
   // "Es efectivo" · el cargo pasa a un traspaso a Efectivo al guardar (sacar del
   // cajero no es gasto: el dinero cambia de sitio).
   const marcarEfectivo = useCallback(
-    (movementId: number) =>
+    (lineaId: number) =>
       conDecisiones((d) => {
-        d.aEfectivo.add(movementId);
-        d.ignorados.delete(movementId);
-        d.asignados.delete(movementId);
-        d.aTraspaso.delete(movementId);
+        d.aEfectivo.add(lineaId);
+        d.ignorados.delete(lineaId);
+        d.asignados.delete(lineaId);
+        d.aTraspaso.delete(lineaId);
       }),
     [conDecisiones],
   );
 
   const desmarcarEfectivo = useCallback(
-    (movementId: number) => conDecisiones((d) => d.aEfectivo.delete(movementId)),
+    (lineaId: number) => conDecisiones((d) => d.aEfectivo.delete(lineaId)),
     [conDecisiones],
   );
 
   // "Es traspaso" · el cargo pasa a un traspaso a la cuenta destino al guardar
   // (P1) · el dinero no se gasta, cambia de sitio.
   const marcarTraspaso = useCallback(
-    (movementId: number, cuentaDestinoId: number) =>
+    (lineaId: number, cuentaDestinoId: number) =>
       conDecisiones((d) => {
-        d.aTraspaso.set(movementId, cuentaDestinoId);
-        d.ignorados.delete(movementId);
-        d.asignados.delete(movementId);
-        d.aEfectivo.delete(movementId);
+        d.aTraspaso.set(lineaId, cuentaDestinoId);
+        d.ignorados.delete(lineaId);
+        d.asignados.delete(lineaId);
+        d.aEfectivo.delete(lineaId);
       }),
     [conDecisiones],
   );
 
   const desmarcarTraspaso = useCallback(
-    (movementId: number) => conDecisiones((d) => d.aTraspaso.delete(movementId)),
+    (lineaId: number) => conDecisiones((d) => d.aTraspaso.delete(lineaId)),
     [conDecisiones],
   );
 
   // A2 · las iguales sin resolver como traspaso a la misma cuenta (28 Revolut de un clic).
   const marcarTraspasoLote = useCallback(
     (linea: LineaExtracto) => {
-      const destino = decisiones.aTraspaso.get(linea.movementId);
+      const destino = decisiones.aTraspaso.get(linea.lineaId);
       if (destino == null) return;
       const ids = idsIgualesAResolver(lineas, decisiones, linea);
       conDecisiones((d) => {
@@ -212,10 +212,10 @@ export function useDecisionesDeSesion(lineas: LineaExtracto[]): AccionesDeSesion
    * dejarla en los dos sitios la contaría dos veces al guardar.
    */
   const marcarCreado = useCallback(
-    (movementId: number) =>
+    (lineaId: number) =>
       conDecisiones((d) => {
-        d.creados.add(movementId);
-        d.ignorados.delete(movementId);
+        d.creados.add(lineaId);
+        d.ignorados.delete(lineaId);
       }),
     [conDecisiones],
   );

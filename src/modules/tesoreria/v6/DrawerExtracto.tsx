@@ -470,7 +470,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
             importe: v.importe,
             fecha: v.fecha,
           });
-          marcarCreado(linea.movementId);
+          marcarCreado(linea.lineaId);
           setCreando(null);
         } catch (err) {
           console.error('[DrawerExtracto] no se pudo registrar la mejora', err);
@@ -498,7 +498,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         const aviso = AVISO_GASTO_FISCAL[r.resultado];
         if (aviso) setError(aviso);
         if (r.resultado === 'falta_casilla') return;
-        marcarCreado(linea.movementId);
+        marcarCreado(linea.lineaId);
         setCreando(null);
       } catch (err) {
         console.error('[DrawerExtracto] no se pudo clasificar la línea', err);
@@ -653,7 +653,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           cuentasTraspaso={cuentasDestino}
           onTraspasarVarias={traspasarVarias}
           onClasificarVarias={(ids) =>
-            setClasificandoVarias(lineas.filter((l) => ids.includes(l.movementId)))
+            setClasificandoVarias(lineas.filter((l) => ids.includes(l.lineaId)))
           }
           onGuardar={guardar}
           onOtroFichero={salirSinGuardar}

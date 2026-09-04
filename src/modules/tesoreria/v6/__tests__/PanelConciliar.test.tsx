@@ -14,6 +14,7 @@ import type { LineaExtracto } from '../extractoSesion';
 import type { Cuadre } from '../conciliarBuckets';
 
 const linea = (id: number, extra: Partial<LineaExtracto> = {}): LineaExtracto => ({
+  lineaId: 100 + id,
   movementId: id,
   hashLinea: `h${id}`,
   textoBanco: `GESTIÓ I ADMINISTRACIÓ DE FINQUES ${id}`,

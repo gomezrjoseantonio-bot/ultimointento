@@ -43,22 +43,22 @@ export interface PanelConciliarProps {
   guardando: boolean;
   /** El drawer monta aquí su `LineaExtractoItem`, con sus manejadores. */
   renderLinea: (linea: LineaExtracto) => React.ReactNode;
-  onRecuperar: (movementId: number) => void;
+  onRecuperar: (lineaId: number) => void;
   /** «No es esto» sobre una línea que ATLAS colocó solo · vuelve a «te necesitan». */
-  onNoEsEsto: (movementId: number) => void;
+  onNoEsEsto: (lineaId: number) => void;
   /** Ignorar de un gesto todas las elegidas · el remate de buscar y marcar. */
-  onIgnorarVarias: (movementIds: number[]) => void;
+  onIgnorarVarias: (lineaIds: number[]) => void;
   /** Cuentas a las que se puede traspasar en bloque · vacío si no hay ninguna. */
   cuentasTraspaso?: Array<{ id: number; nombre: string }>;
   /** «Son traspaso a esta cuenta» sobre todas las elegidas de un gesto. */
-  onTraspasarVarias?: (movementIds: number[], cuentaDestinoId: number) => void;
+  onTraspasarVarias?: (lineaIds: number[], cuentaDestinoId: number) => void;
   /**
    * «Clasificar las N como…» · abre la ficha UNA vez para todas las elegidas.
    *
    * Es la acción que faltaba y la única que resuelve una línea de verdad:
    * ignorar y traspasar son lo que NO se hace con cinco recibos del agua.
    */
-  onClasificarVarias?: (movementIds: number[]) => void;
+  onClasificarVarias?: (lineaIds: number[]) => void;
   onGuardar: () => void;
   onOtroFichero: () => void;
 }
@@ -112,15 +112,15 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   // buscas «bizum» y le das a ignorar, no puede llevarse por delante el gas que
   // ya no tienes delante: lo que no se ve, no se toca.
   const enJuego = React.useMemo(
-    () => visibles.filter((l) => elegidas.has(l.movementId)).map((l) => l.movementId),
+    () => visibles.filter((l) => elegidas.has(l.lineaId)).map((l) => l.lineaId),
     [visibles, elegidas],
   );
 
-  const alternarElegida = (movementId: number) =>
+  const alternarElegida = (lineaId: number) =>
     setElegidas((previas) => {
       const siguiente = new Set(previas);
-      if (siguiente.has(movementId)) siguiente.delete(movementId);
-      else siguiente.add(movementId);
+      if (siguiente.has(lineaId)) siguiente.delete(lineaId);
+      else siguiente.add(lineaId);
       return siguiente;
     });
 
@@ -131,7 +131,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   // traspaso al revés, que es dinero inventado. Ignorar, en cambio, vale para
   // cualquier signo, y por eso sigue ahí en los dos casos.
   const todoSonCargos =
-    enJuego.length > 0 && visibles.every((l) => !elegidas.has(l.movementId) || l.importe < 0);
+    enJuego.length > 0 && visibles.every((l) => !elegidas.has(l.lineaId) || l.importe < 0);
   const cabeTraspaso = todoSonCargos && cuentasTraspaso.length > 0 && onTraspasarVarias != null;
 
   return (
@@ -274,7 +274,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
                   type="button"
                   className={styles.enlace}
                   style={{ marginTop: 0 }}
-                  onClick={() => setElegidas(new Set(visibles.map((l) => l.movementId)))}
+                  onClick={() => setElegidas(new Set(visibles.map((l) => l.lineaId)))}
                 >
                   <Icons.Check size={13} />
                   elegir las {visibles.length} que se ven
@@ -371,7 +371,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
             ) : (
               visibles.map((l) => (
                 <TarjetaAccion
-                  key={l.movementId}
+                  key={l.lineaId}
                   propuesta={
                     propuestas.get(l.movementId) ?? {
                       tono: 'pregunta',
@@ -382,8 +382,8 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
                   }
                   elegible={{
                     etiqueta: l.textoBanco,
-                    elegida: elegidas.has(l.movementId),
-                    onElegir: () => alternarElegida(l.movementId),
+                    elegida: elegidas.has(l.lineaId),
+                    onElegir: () => alternarElegida(l.lineaId),
                   }}
                 >
                   {renderLinea(l)}

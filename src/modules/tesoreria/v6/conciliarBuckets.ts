@@ -51,7 +51,9 @@ export type Bucket = 'resueltas' | 'te_necesitan' | 'personal' | 'ignorados';
 export function bucketDeLinea(
   linea: LineaExtracto,
   decisiones: DecisionesSesion,
+  /** Por `movementId` · vienen de las sugerencias, que son de los servicios. */
   personales?: ReadonlySet<number>,
+  /** Por `movementId` · viene del reconocedor, que es de los servicios. */
   reconocidas?: ReadonlySet<number>,
 ): Bucket {
   const veredicto = veredictoEfectivo(linea, decisiones);
@@ -65,7 +67,7 @@ export function bucketDeLinea(
   // las reglas de personal). Va AQUÍ, antes del `case 'cuadra'`, y el orden no
   // es cosmético: puesto después, el veredicto automático volvería a ganar y el
   // «No es esto» no serviría justo sobre las líneas donde más falta hace.
-  if (decisiones.desemparejados?.has(linea.movementId)) return 'te_necesitan';
+  if (decisiones.desemparejados?.has(linea.lineaId)) return 'te_necesitan';
 
   switch (veredicto) {
     case 'cuadra':
@@ -125,7 +127,7 @@ export function cuadre(
   for (const l of lineas) {
     const b = bucketDeLinea(l, decisiones, personales, reconocidas);
     if (b in porBucket) porBucket[b] += 1;
-    else huerfanas.push(l.movementId);
+    else huerfanas.push(l.lineaId);
   }
 
   const colocadas = Object.values(porBucket).reduce((a, n) => a + n, 0);
