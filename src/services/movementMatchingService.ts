@@ -13,6 +13,8 @@ import { initDB, Movement, TreasuryEvent } from './db';
 import { pareceBizum, contraparteDeBizum } from './bizum';
 import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
 import { cargarAliasContraparte, nombreDeContraparte } from './movementLearningService';
+import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
+import { matchResultPorLinea, movimientosDesdeLineas, type MatchResultPorLinea } from './lineaComoMovimiento';
 
 /**
  * Los alias que el usuario ya enseñó · clave del nombre que manda el banco →
@@ -98,6 +100,41 @@ export async function matchBatch(
     return { matches: [], multiMatches: [], sinMatch: [] };
   }
 
+  return emparejarEnMemoria(db, movements, opts);
+}
+
+/**
+ * E1.4b · la misma entrada, por LÍNEA del extracto.
+ *
+ * Cada línea se convierte en el `Movement` que `insertMovements` habría
+ * creado (`movementDesdeLinea`, en memoria, sin escribir) y se empareja con la
+ * MISMA lógica que `matchBatch`: solo cambia de dónde viene el input. El
+ * resultado habla en `lineaId`. Las líneas descartadas no entran, igual que hoy
+ * no tienen movimiento. No la llama nadie todavía: activarla es E1.5.
+ */
+export async function matchLineas(
+  lineas: LineaExtractoPersistida[],
+  options?: MatchOptions
+): Promise<MatchResultPorLinea> {
+  const opts: Required<MatchOptions> = { ...DEFAULT_OPTIONS, ...options };
+  const movements = movimientosDesdeLineas(lineas);
+  if (movements.length === 0) {
+    return { matches: [], multiMatches: [], sinMatch: [] };
+  }
+  const db = await initDB();
+  return matchResultPorLinea(await emparejarEnMemoria(db, movements, opts));
+}
+
+/**
+ * El emparejamiento propiamente dicho, sobre movimientos YA en memoria · lo
+ * comparten la entrada por id (`matchBatch`) y la entrada por línea
+ * (`matchLineas`). Lee previstos y alias; no escribe.
+ */
+async function emparejarEnMemoria(
+  db: Awaited<ReturnType<typeof initDB>>,
+  movements: Movement[],
+  opts: Required<MatchOptions>
+): Promise<MatchResult> {
   const eventsByAccount = await loadCandidateEvents(db, movements);
   const alias = await cargarAliasContraparte();
   const allCandidates = collectCandidates(movements, eventsByAccount, alias, opts);

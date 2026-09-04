@@ -47,6 +47,8 @@ import { buildLearnKey, nombreDeContraparte } from './movementLearningService';
 import { contradiceElSigno } from './sugerencias/signoDelMovimiento';
 import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
+import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
+import { movimientosDesdeLineas, sugerenciasPorLinea, type SugerenciaPorLinea } from './lineaComoMovimiento';
 
 export type SuggestionVia = 'compromiso_recurrente' | 'learning_rule' | 'heuristica';
 
@@ -91,6 +93,35 @@ export async function suggestForUnmatched(
   }
   if (movements.length === 0) return result;
 
+  return sugerirEnMemoria(db, movements);
+}
+
+/**
+ * E1.4b · la misma entrada, por LÍNEA del extracto.
+ *
+ * Cada línea se convierte en el `Movement` que `insertMovements` habría
+ * creado (en memoria, sin escribir) y se pasa por las MISMAS tres vías. El
+ * mapa habla en `lineaId`. Las líneas descartadas no entran, igual que hoy no
+ * tienen movimiento. No la llama nadie todavía: activarla es E1.5.
+ */
+export async function suggestForLineas(
+  lineas: LineaExtractoPersistida[]
+): Promise<Map<number, SugerenciaPorLinea[]>> {
+  const movements = movimientosDesdeLineas(lineas);
+  if (movements.length === 0) return new Map();
+  const db = await initDB();
+  return sugerenciasPorLinea(await sugerirEnMemoria(db, movements));
+}
+
+/**
+ * Las tres vías sobre movimientos YA en memoria · lo comparten la entrada por
+ * id (`suggestForUnmatched`) y la entrada por línea (`suggestForLineas`).
+ */
+async function sugerirEnMemoria(
+  db: Awaited<ReturnType<typeof initDB>>,
+  movements: Movement[]
+): Promise<Map<number, MovementSuggestion[]>> {
+  const result = new Map<number, MovementSuggestion[]>();
   const compromisos = await loadActiveCompromisos(db);
   const learningRulesByKey = await loadLearningRulesIndex(db, movements);
   const contratosActivos = await loadActiveContracts(db);
