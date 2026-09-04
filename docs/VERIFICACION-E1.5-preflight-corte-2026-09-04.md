@@ -29,7 +29,7 @@ Las decisiones de producto del encabezado de la tarea (el saldo incluye lo no cl
 2. **[V] Con una excepción: hay un SEGUNDO cálculo de saldo, paralelo y divergente** — `recalculateAccountBalance` (`treasuryEventsService.ts:55-111`), que suma `movements` a mano y **persiste** `account.balance` (`:103`). No comparte una línea con el hub. Tres llamantes vivos.
 3. **[V] La fórmula anti-doble-conteo que propone la tarea es la correcta, pero le falta un guard:** `Σ movimientos + Σ líneas con movementIds vacío` cuenta **dos veces** cada línea con `descarte: 'duplicada'` — nace con `movementIds: []` (`bankStatementOrchestrator.ts:723`) y su dinero ya está en el movimiento de la importación anterior. El filtro correcto es `movementIds.length === 0 && !descarte`.
 4. **[V] El cambio de saldo se puede mergear ANTES del corte y es un no-op exacto hoy:** hoy toda línea que generó movimiento tiene `movementIds` con un id (`:729`) y toda la que no lo generó lleva `descarte` (`:671`, `:675`, `:723`). El término nuevo vale **cero euros** en la base actual. Es la única costura barata del corte.
-5. **[V] Los cuatro puntos de creación hacen HOY `get` antes de `put`** y ninguno crea: `confirmDecisions` (`:373`, `:461`, `:470`), `gastoDesdeMovimiento` (`altaMovimientoService.ts:453`), `mejoraDesdeMovimiento` (`:222`), `convertirEnTraspaso` (`traspasoDesdeMovimiento.ts:64`, con `throw MovimientoNoEncontradoError` en `:65`), `aplicarReconciliacionConfirmado` (`reconciliarConfirmado.ts:51`). Hay un **quinto** que la tarea no lista: `aplicarReconocimiento` (`cierreDeterminista.ts:95-98`), la vía de los deterministas.
+5. **[V] Los puntos de creación hacen HOY `get` antes de `put`** y ninguno crea: `confirmDecisions` (`:373`, `:461`, `:470`), `gastoDesdeMovimiento` (`altaMovimientoService.ts:453`), `mejoraDesdeMovimiento` (`:222`), `convertirEnTraspaso` (`traspasoDesdeMovimiento.ts:64`, con `throw MovimientoNoEncontradoError` en `:65`), `aplicarReconciliacionConfirmado` (`reconciliarConfirmado.ts:51`). Hay un **quinto** que la tarea no lista: `aplicarReconocimiento` (`cierreDeterminista.ts:95-98`), la vía de los deterministas.
 6. **[V] La mina más peligrosa del corte:** `movementDesdeLinea` (`lineaComoMovimiento.ts:53-86`) construye el movimiento en memoria **con `id: linea.id`** (`:57`). `movements` y `lineasExtracto` son los dos `keyPath 'id', autoIncrement` (`upgrade-a.ts:227`, `:192`), así que ese id **es una clave válida de otro movimiento real**. Hoy es inofensivo (nadie escribe ese objeto); en E1.5 el mismo objeto llega a `confirmDecisions`, que hace `db.put('movements', {...movement, …})` en `:398` y `:472`. Un `put` con ese id **pisa un movimiento ajeno sin error**.
 7. **[V] El dedupe entre importaciones se rompe con el corte** y la tarea no lo menciona: `insertMovements` construye el set de huellas con `getAll('movements')` (`:637-638`). Tras el corte, una línea sin resolver no tiene movimiento → reimportar un extracto **solapado** dejaría de reconocerla y **duplicaría el cargo**. El set tiene que incluir el `hashMovement` de las `lineasExtracto` existentes (el campo ya está persistido, `types-lineasExtracto.ts:95`).
 8. **[V] `consolidadoAt` YA NO está sin función.** E1-preflight §4.2 lo dio por retirable; desde E1.3 es el marcador de «lote a medias» que alimenta `decisionesPersistidas.ts:217` y guarda `reabrirLote.ts:37`. **Retirarlo mata «retomar un lote».**
@@ -159,7 +159,7 @@ y se suma `linea.importe` (ya viene con signo, `types-lineasExtracto.ts:69`).
 
 ## 2 · LOS PUNTOS DE CREACIÓN
 
-**[V] Los cinco (la tarea lista cuatro).** Todos hacen hoy `get` antes de `put` y **ninguno crea el movimiento**:
+**Cinco servicios · ocho sitios.** La tarea lista cuatro servicios; hay un quinto (`aplicarReconocimiento`, la vía de los deterministas). Esos cinco servicios se reparten en **ocho sitios de código** que hay que tocar —`confirmDecisions` tiene tres bloques independientes—, y son los ocho que numera la tabla. **[V]** Todos hacen hoy `get` antes de `put` y **ninguno crea el movimiento**:
 
 | # | pieza | fichero:línea | qué hace hoy | qué tiene que hacer en E1.5 |
 |---|---|---|---|---|
@@ -273,14 +273,14 @@ Ninguna de estas da error: todas producen un número equivocado o un dato pisado
 |---|---|---|---|
 | M1 | **`id: linea.id`** en el movimiento en memoria | `lineaComoMovimiento.ts:57`; escritores expuestos: `confirmDecisions:398`, `:472`, `cierreDeterminista.ts:98`, `reconciliarConfirmado.ts:58` | un `put` **pisa un movimiento real ajeno**. Los dos stores son `autoIncrement` desde 1 (`upgrade-a.ts:192`, `:227`), así que los ids **colisionan por diseño** |
 | M2 | **`descarte` sin excluir** en la fórmula de saldo | §1.4 | cada línea duplicada de un extracto solapado **suma dos veces** |
-| M3 | **`movementIds` no escrito** al crear | los 8 puntos de §2 | la línea sigue huérfana Y ya hay movimiento → **doble conteo** del mismo cargo |
+| M3 | **`movementIds` no escrito** al crear | los 8 sitios de §2 | la línea sigue huérfana Y ya hay movimiento → **doble conteo** del mismo cargo |
 | M4 | **dedupe sin las líneas** | `bankStatementOrchestrator.ts:637-638` | reimportar un extracto solapado **duplica cargos no resueltos** |
 | M5 | **`sinBorradores` no retirado** | `TesoreriaV6Page.tsx:229` | movimientos ya resueltos **invisibles** en Tesorería |
 | M6 | **`camposDeCierre` con un `lineaId`** | `altaMovimientoService.ts:486` | fila fiscal apuntando a un movimiento que no es el suyo |
 | M7 | **`movementIdsDe` con `movementIds` vacío** | `extractoSesion.ts:328` | el *fallback* `[l.movementId]` devuelve un id inexistente y el traspaso/efectivo falla o toca otro movimiento |
 | M8 | **invariante §16.4 en traspasos** | `types-lineasExtracto.ts:19-22` vs `traspasoDesdeMovimiento.ts:117`,`:126` | Σ importes de `movementIds` ≠ `importe` |
 | M9 | **`recalculateAccountBalance` sin tocar** | `treasuryEventsService.ts:55-111` | `account.balance` y la previsión (`treasuryForecastService.ts:240`) por debajo del saldo real |
-| M10 | **`importBatch` no puesto** en los movimientos nuevos | los 8 puntos de §2 | «salir sin guardar» deja movimientos huérfanos y el saldo inflado |
+| M10 | **`importBatch` no puesto** en los movimientos nuevos | los 8 sitios de §2 | «salir sin guardar» deja movimientos huérfanos y el saldo inflado |
 
 ---
 
@@ -290,7 +290,7 @@ Lectura del código, no decisión. Jose decidió no partirlo; esto es lo que CC 
 
 ### 6.1 · El corte propiamente dicho: **sí cabe, y además NO debería partirse**
 
-**[D]** Los ocho puntos de creación, `insertMovements`, la frontera de la sesión y las cuatro puertas de E1.4b son **una sola pieza**: cualquier corte intermedio deja la app en un estado donde importar no crea nada y resolver tampoco. No hay un punto medio mergeable. La decisión de Jose es técnicamente la correcta para esta parte.
+**[D]** Los ocho sitios de creación, `insertMovements`, la frontera de la sesión y las cuatro puertas de E1.4b son **una sola pieza**: cualquier corte intermedio deja la app en un estado donde importar no crea nada y resolver tampoco. No hay un punto medio mergeable. La decisión de Jose es técnicamente la correcta para esta parte.
 
 **[V]** Y el terreno está mucho mejor preparado de lo que sugería E1-preflight §6:
 - las cuatro puertas por línea ya existen y tienen tests de equivalencia (`matcheoPorLinea.equivalencia.test.ts`, `caracterizacionMatcheo.test.ts`);
