@@ -35,8 +35,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { construirLineas as construirLineasReal } from '../extractoSesion';
-import type { Movement } from '../../../../services/db';
+import type { Movement, LineaExtractoPersistida } from '../../../../services/db';
 import type { MatchResult } from '../../../../services/movementMatchingService';
+import { generateLineHash } from '../../../../services/statementIgnoredLinesService';
 
 const movimiento = (over: Partial<Movement> & { id: number }): Movement =>
   ({
@@ -48,11 +49,48 @@ const movimiento = (over: Partial<Movement> & { id: number }): Movement =>
     ...over,
   }) as Movement;
 
-// E1.2b · `lineaId` es obligatorio · aquí se fabrica desde el movimiento.
-const construirLineas: typeof construirLineasReal = (movs, mr, evs, ign, conf = new Map(), pers) =>
+// E1.5 · la sesión se construye desde las FILAS de `lineasExtracto`. Estos
+// tests describen la línea como un movimiento; el puente la convierte en la
+// fila que el import habría guardado (lineaId = 100 + id) y traduce el
+// emparejamiento a `lineaId`.
+const L = (movementId: number) => 100 + movementId;
+const filaDe = (m: Movement): LineaExtractoPersistida => ({
+  id: L(m.id as number),
+  fechaOperacion: m.date,
+  fechaValor: m.valueDate ?? m.date,
+  importe: m.amount,
+  conceptoLiteral: m.description,
+  ...(m.counterparty != null ? { contraparte: m.counterparty } : {}),
+  ...(m.reference != null ? { referencia: m.reference } : {}),
+  importBatchId: 'lote',
+  accountId: m.accountId,
+  hashLinea: generateLineHash({ date: m.date, amount: m.amount, description: m.description }),
+  hashMovement: '',
+  estado: 'pendiente',
+  movementIds: [],
+  createdAt: '',
+  updatedAt: '',
+});
+const construirLineas = (
+  movs: Movement[],
+  mr: MatchResult,
+  evs: Parameters<typeof construirLineasReal>[2],
+  ign: Set<string>,
+  conf: Map<number, { id: number; descripcion: string; importe: number; fecha: string }> = new Map(),
+) =>
   construirLineasReal(
-    movs, mr, evs, ign, conf,
-    pers ?? movs.map((m) => ({ id: 100 + (m.id as number), movementIds: [m.id as number] }))
+    movs.map(filaDe),
+    {
+      matches: (mr.matches ?? []).map(({ movementId, ...c }) => ({ lineaId: L(movementId), ...c })),
+      multiMatches: (mr.multiMatches ?? []).map((mm) => ({
+        lineaId: L(mm.movementId),
+        candidates: mm.candidates.map(({ movementId, ...c }) => ({ lineaId: L(movementId), ...c })),
+      })),
+      sinMatch: (mr.sinMatch ?? []).map(L),
+    },
+    evs,
+    ign,
+    new Map(Array.from(conf, ([movementId, ref]) => [L(movementId), ref])),
   );
 
 const SIN_MATCHES: MatchResult = {

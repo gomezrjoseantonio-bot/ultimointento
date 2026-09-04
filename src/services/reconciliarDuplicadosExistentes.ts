@@ -8,12 +8,13 @@
 // cargo, sin conciliar. La subida del mismo fichero está bloqueada por hash, así
 // que esos pares no se colapsan solos.
 //
-// Esta limpieza los reconcilia a posteriori, con el MISMO colapso que el import
-// (`aplicarReconciliacionConfirmado`). Es CONSERVADORA: solo toca confirmados que
-// son un previsto punteado (`treasury_event:`), que es donde mordió el bug —no
-// un movimiento anotado a mano suelto que casualmente coincida en importe—. Y es
-// idempotente: una vez colapsado, el superviviente es `source:'import'` y ya no
-// vuelve a casar.
+// Esta limpieza los reconcilia a posteriori, con el MISMO criterio que el import
+// (`aplicarReconciliacionConfirmado` · D1): el confirmado se QUEDA con el aval
+// del banco y el duplicado del import se borra. Es CONSERVADORA: solo toca
+// confirmados que son un previsto punteado (`treasury_event:`), que es donde
+// mordió el bug —no un movimiento anotado a mano suelto que casualmente
+// coincida en importe—. Y es idempotente: una vez avalado, el confirmado lleva
+// `match_automatico` y ya no vuelve a casar (`esConfirmadoEmparejable`).
 // ============================================================================
 
 import { initDB } from './db';
@@ -57,8 +58,20 @@ export async function reconciliarDuplicadosExistentes(): Promise<number> {
   for (const [importId, confirmadoId] of pares) {
     const importMov = porId.get(importId);
     if (!importMov) continue;
-    await aplicarReconciliacionConfirmado(db, importMov, confirmadoId, now);
-    n += 1;
+    // D1 · el confirmado se queda con el aval del banco; el duplicado del
+    // import se va (y su línea, si la hay, pasa a apuntar al confirmado).
+    const avalado = await aplicarReconciliacionConfirmado(
+      db,
+      {
+        amount: importMov.amount,
+        date: importMov.date,
+        ...(importMov.valueDate ? { valueDate: importMov.valueDate } : {}),
+        importMovementId: importId,
+      },
+      confirmadoId,
+      now
+    );
+    if (avalado != null) n += 1;
   }
   return n;
 }

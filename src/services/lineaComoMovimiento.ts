@@ -18,8 +18,8 @@
 // Precedente: el extracto de tarjeta (`conciliarExtractoTarjeta.ts`), que se
 // LEE y EMPAREJA sin escribir.
 //
-// Lo que NO hace: activar la puerta. El orquestador sigue insertando y
-// emparejando por movimiento (E1.1). Cruzar la puerta es E1.5.
+// E1.5 · la puerta está cruzada: el orquestador ya no inserta movimientos y
+// empareja por línea con estas funciones.
 // ============================================================================
 
 import type { Movement } from './db';
@@ -45,16 +45,32 @@ export function entraAlMatcheo(linea: LineaExtractoPersistida): boolean {
 }
 
 /**
- * El `Movement` que `insertMovements` habría creado para esta línea · en
- * memoria, sin tocar la base. Mismos campos, mismos valores por defecto.
+ * El `Movement` que el import habría creado para esta línea · en memoria,
+ * sin tocar la base. Mismos campos, mismos valores por defecto.
  *
- * `id` = `linea.id` (ver cabecera). Pura.
+ * `id` = `linea.id` (ver cabecera) · SOLO para el matcheo en memoria.
+ *
+ * ⚠ MINA M1 (E1.5-preflight §5) · este objeto NUNCA se escribe en `movements`:
+ * `movements` y `lineasExtracto` son los dos `autoIncrement` desde 1, así que
+ * `linea.id` es una clave válida de OTRO movimiento real, y un `put` con él lo
+ * pisaría sin error. Para CREAR el movimiento de una línea se usa
+ * `movementNuevoDesdeLinea` (sin id · el store lo asigna) vía
+ * `materializarLinea`. Pura.
  */
 export function movementDesdeLinea(linea: LineaExtractoPersistida): Movement {
+  return { id: linea.id, ...movementNuevoDesdeLinea(linea) };
+}
+
+/**
+ * E1.5 · el `Movement` que NACE de esta línea al resolverla · SIN `id`: lo
+ * asigna el store al insertarlo. Es el que escriben los puntos de creación
+ * (`materializarLinea`). Mismos campos que `insertMovements` escribía al
+ * importar antes del corte, para que nada aguas abajo note la diferencia.
+ */
+export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Movement, 'id'> {
   const description = linea.conceptoLiteral;
   const amount = linea.importe;
   return {
-    id: linea.id,
     accountId: linea.accountId,
     date: linea.fechaOperacion,
     valueDate: linea.fechaValor || linea.fechaOperacion,

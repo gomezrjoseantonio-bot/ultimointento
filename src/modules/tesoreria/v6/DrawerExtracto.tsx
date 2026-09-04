@@ -30,10 +30,9 @@ import {
   veredictoEfectivo,
   payloadDeConfirmacion,
   lineasAIgnorar,
-  movimientosAEfectivo,
-  movimientosATraspaso,
+  lineasAEfectivo,
+  lineasATraspaso,
   contarIgualesSinResolver, claveDeLineaIgual,
-  lineasPendientes,
   hashesARecuperar,
   type LineaExtracto,
 } from './extractoSesion';
@@ -49,7 +48,7 @@ import { cuadre, bucketDeLinea, type Bucket } from './conciliarBuckets';
 import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
-import { convertirEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
+import { convertirLineaEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
 import PanelConciliar from './conciliar/PanelConciliar';
 import ZonaSoltar from './conciliar/ZonaSoltar';
 import {
@@ -189,11 +188,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     const atribs = resultado?.reconocido?.atribuciones;
     if (!sugs && !atribs) return m;
     for (const l of lineas) {
-      const a = atribs?.get(l.movementId);
+      const a = atribs?.get(l.lineaId);
       m.set(
-        l.movementId,
+        l.lineaId,
         propuestaDeLinea(
-          sugs?.get(l.movementId) ?? [],
+          sugs?.get(l.lineaId) ?? [],
           a
             ? {
                 alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias,
@@ -215,7 +214,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     const sugs = resultado?.suggestions;
     if (!sugs) return s;
     for (const l of lineas) {
-      if (esPersonalReconocido(sugs.get(l.movementId) ?? [])) s.add(l.movementId);
+      if (esPersonalReconocido(sugs.get(l.lineaId) ?? [])) s.add(l.lineaId);
     }
     return s;
   }, [resultado, lineas]);
@@ -408,7 +407,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         approvedDeterministic: Array.from(
           (resultado.reconocido?.origenes ?? new Map()).values(),
         ).filter((o) => {
-          const linea = lineas.find((l) => l.movementId === o.movementId);
+          const linea = lineas.find((l) => l.lineaId === o.lineaId);
           // Sin línea no hay nada que cerrar; y si el usuario la asignó,
           // ignoró o resolvió a mano, su decisión manda sobre lo que ATLAS
           // dedujo del cuadro.
@@ -428,19 +427,19 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         await recoverLine(cuentaActiva.id, hash);
       }
 
-      // Retiradas de efectivo · el cargo YA existe, se transforma en la pata de
-      // salida y nace su espejo en Efectivo (crearlo de cero duplicaría el saldo).
+      // Retiradas de efectivo · E1.5 · nace el movimiento de la línea como pata
+      // de salida y su espejo en Efectivo (`materializarLinea` por dentro).
       if (cuentaEfectivo?.id != null) {
-        for (const movementId of movimientosAEfectivo(lineas, decisiones)) {
-          await convertirEnTraspaso(movementId, cuentaEfectivo.id);
+        for (const lineaId of lineasAEfectivo(lineas, decisiones)) {
+          await convertirLineaEnTraspaso(lineaId, cuentaEfectivo.id);
         }
       }
 
-      // Traspasos a otra cuenta propia (P1) · mismo mecanismo que efectivo: el
-      // cargo importado pasa a ser la pata de salida y nace su espejo en la
-      // cuenta destino. Así netea en el saldo y sale del gráfico (P2/P4).
-      for (const { movementId, cuentaDestinoId } of movimientosATraspaso(lineas, decisiones)) {
-        await convertirEnTraspaso(movementId, cuentaDestinoId);
+      // Traspasos a otra cuenta propia (P1) · mismo mecanismo que efectivo: la
+      // línea se materializa como pata de salida y nace su espejo en la cuenta
+      // destino. Así netea en el saldo y sale del gráfico (P2/P4).
+      for (const { lineaId, cuentaDestinoId } of lineasATraspaso(lineas, decisiones)) {
+        await convertirLineaEnTraspaso(lineaId, cuentaDestinoId);
       }
 
       // §4.7 · el fichero se archiva por cuenta y periodo (traga sus errores).
@@ -452,9 +451,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         );
       }
 
-      // Lo último · `consolidarSesion` DESMATERIALIZA (D4) las líneas sin resolver:
-      // borra sus movimientos para que no cuenten como conciliados en el saldo.
-      await consolidarSesion(resultado.importBatchId, lineasPendientes(lineas, decisiones));
+      // Lo último · la sesión deja de estar «a medias». Lo sin resolver no se
+      // materializa (D4): sigue siendo línea, y como línea cuenta en el saldo.
+      await consolidarSesion(resultado.importBatchId);
       await onGuardado();
       reiniciar();
       onCerrar();
@@ -466,7 +465,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
-    // `processFile` ya insertó los movimientos · cerrar es descartarlos.
+    // Cerrar es descartar el lote: sus líneas y lo que el usuario hubiera
+    // creado ya en la sesión (movimientos desde la ficha o traspasos, y sus
+    // fichas). Sin guardar no queda nada.
     if (resultado) {
       try {
         await cancelImportBatch(resultado.importBatchId);
@@ -480,9 +481,10 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
 
   // ── Acciones por línea · viven en `decisionesDeSesion` ────────────────────
   /**
-   * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. El
-   * `Movement` YA existe (`processFile` lo insertó), así que crear aquí es
-   * clasificarlo: familia, concepto e inmueble, sobre la ficha prerrellenada.
+   * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. E1.5 ·
+   * el `Movement` NACE aquí desde la línea (`materializarLinea` por dentro de
+   * la ficha) con la clasificación que el usuario elige: familia, concepto e
+   * inmueble, sobre la ficha prerrellenada.
    */
   const crearDesdeFicha = useCallback(
     async (linea: LineaExtracto, v: GuardadoFicha) => {
@@ -495,7 +497,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         }
         try {
           await mejoraDesdeMovimiento({
-            movementId: linea.movementId,
+            lineaId: linea.lineaId,
             inmuebleId: v.inmuebleId,
             concepto: v.concepto,
             importe: v.importe,
@@ -515,7 +517,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       try {
         const origenIdRecurrente = await origenIdRecurrenteDelGasto(v.inmuebleId, v.categoryKey, v.fecha);
         const r = await gastoDesdeMovimiento({
-          movementId: linea.movementId,
+          lineaId: linea.lineaId,
           inmuebleId: v.inmuebleId,
           concepto: v.concepto,
           importe: v.importe,

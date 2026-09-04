@@ -73,7 +73,6 @@ import {
   editarMovimiento,
   eliminarMovimiento,
 } from '../../../services/altaMovimientoService';
-import { batchesEnBorrador, sinBorradores } from '../../../services/statementSessionService';
 import { registrarDiagnosticoEnConsola } from '../../../services/duplicadosPrevisionService';
 import { registrarBusquedaEnConsola } from '../../../services/__buscarApunteAudit';
 import { registrarDiagnosticoTarjetasEnConsola } from '../../../services/__tarjetaDiagnostico';
@@ -213,23 +212,23 @@ const TesoreriaV6Page: React.FC = () => {
       console.warn('[TesoreriaV6] no se pudieron regenerar los recibos de tarjeta', err);
     }
     const db = await initDB();
-    const [cuentas, eventos, movimientos, properties, ordenGuardado, borradores, lineas] =
+    const [cuentas, eventos, movimientos, properties, ordenGuardado, lineas] =
       await Promise.all([
         db.getAll('accounts') as Promise<Account[]>,
         db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
         db.getAll('movements') as Promise<Movement[]>,
         db.getAll('properties') as Promise<Array<{ id?: number; alias?: string; address?: string; state?: string }>>,
         leerOrdenCuentas(),
-        batchesEnBorrador(),
         leerLineasParaSaldo(db),
       ]);
     setEstado({
       cuentas: cuentas ?? [],
       eventos: eventos ?? [],
-      // §4.7 · un extracto abierto y sin guardar NO mueve saldos ni asoma por
-      // la lista de la cuenta. Se filtra aquí, en el único punto de carga de la
-      // V6, y no en cada consumidor: así no hay forma de olvidarlo en uno.
-      movimientos: sinBorradores(movimientos ?? [], borradores),
+      // E1.5 · ya no hay «borradores» que esconder: importar no crea
+      // movimientos, y los que el usuario crea en una sesión sin guardar son
+      // realidad clasificada y se ven. Lo sin resolver cuenta en el saldo como
+      // LÍNEA (`lineas`), no como movimiento.
+      movimientos: movimientos ?? [],
       lineas: lineas ?? [],
       inmuebles: (properties ?? [])
         // Un inmueble VENDIDO (o de baja) ya no recibe apuntes: sale del selector

@@ -110,7 +110,7 @@ export async function matchBatch(
  * creado (`movementDesdeLinea`, en memoria, sin escribir) y se empareja con la
  * MISMA lógica que `matchBatch`: solo cambia de dónde viene el input. El
  * resultado habla en `lineaId`. Las líneas descartadas no entran, igual que hoy
- * no tienen movimiento. No la llama nadie todavía: activarla es E1.5.
+ * no tienen movimiento. E1.5 · es la puerta que usa el orquestador.
  */
 export async function matchLineas(
   lineas: LineaExtractoPersistida[],

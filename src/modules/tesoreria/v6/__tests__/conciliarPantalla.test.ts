@@ -168,7 +168,7 @@ describe('personal · solo por lo que el usuario enseñó', () => {
 describe('FASE 2 · lo reconocido contra los libros del usuario', () => {
   it('una cuota de préstamo reconocida cae en «resueltas», no en «te necesitan»', () => {
     const l = linea(1);
-    expect(bucketDeLinea(l, decisionesVacias(), new Set(), new Set([1]))).toBe('resueltas');
+    expect(bucketDeLinea(l, decisionesVacias(), new Set(), new Set([101]))).toBe('resueltas');
   });
 
   it('sin reconocer sigue pidiendo al usuario', () => {
@@ -178,17 +178,17 @@ describe('FASE 2 · lo reconocido contra los libros del usuario', () => {
   it('lo que el usuario ignoró manda sobre lo reconocido', () => {
     const d = decisionesVacias();
     d.ignorados.add(101);
-    expect(bucketDeLinea(linea(1), d, new Set(), new Set([1]))).toBe('ignorados');
+    expect(bucketDeLinea(linea(1), d, new Set(), new Set([101]))).toBe('ignorados');
   });
 
   it('saber QUÉ es pesa más que saber de quién es', () => {
     // Reconocida Y marcada personal · manda el reconocimiento.
-    expect(bucketDeLinea(linea(1), decisionesVacias(), new Set([1]), new Set([1]))).toBe('resueltas');
+    expect(bucketDeLinea(linea(1), decisionesVacias(), new Set([101]), new Set([101]))).toBe('resueltas');
   });
 
   it('el cuadre sigue en pie con líneas reconocidas', () => {
     const lineas = Array.from({ length: 102 }, (_, i) => linea(i + 1));
-    const c = cuadre(lineas, decisionesVacias(), new Set(), new Set([1, 2, 3, 4, 5]));
+    const c = cuadre(lineas, decisionesVacias(), new Set(), new Set([101, 102, 103, 104, 105]));
     expect(c.delBanco).toBe(102);
     expect(c.colocadas).toBe(102);
     expect(c.porBucket.resueltas).toBe(5);
@@ -200,7 +200,7 @@ describe('FASE 2 · lo reconocido contra los libros del usuario', () => {
 describe('el cuadre aguanta con el cuarto montón lleno', () => {
   it('124 del banco = 124 colocadas, con personales dentro', () => {
     const lineas = Array.from({ length: 124 }, (_, i) => linea(i + 1, i < 40 ? { veredicto: 'cuadra' } : {}));
-    const personales = new Set(lineas.slice(60, 92).map((l) => l.movementId));
+    const personales = new Set(lineas.slice(60, 92).map((l) => l.lineaId));
     const c = cuadre(lineas, decisionesVacias(), personales);
     expect(c.delBanco).toBe(124);
     expect(c.colocadas).toBe(124);
@@ -213,12 +213,12 @@ describe('el cuadre aguanta con el cuarto montón lleno', () => {
     const l = linea(7);
     const d = decisionesVacias();
     d.ignorados.add(107);
-    expect(bucketDeLinea(l, d, new Set([7]))).toBe('ignorados');
+    expect(bucketDeLinea(l, d, new Set([107]))).toBe('ignorados');
   });
 
   it('lo que cuadró no se saca de resueltas por ser personal', () => {
     const l = linea(8, { veredicto: 'cuadra' });
-    expect(bucketDeLinea(l, decisionesVacias(), new Set([8]))).toBe('resueltas');
+    expect(bucketDeLinea(l, decisionesVacias(), new Set([108]))).toBe('resueltas');
   });
 });
 

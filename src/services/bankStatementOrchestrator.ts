@@ -9,19 +9,17 @@
 //   - movementMatchingService       → propose pairings vs. treasuryEvents
 //   - movementSuggestionService     → propose actions for sin-match movements
 //
-// processFile is read-mostly: it parses, deduplicates, bulk-inserts the new
-// movements as `unifiedStatus='no_planificado'`, and then *proposes* matches
-// and suggestions. It does NOT touch treasuryEvents nor learning rules. The
-// user reviews the proposal in the UI, ticks/unticks rows, and confirms via
-// confirmDecisions, which is the single point that mutates everything else
-// atomically (event status, movement status, learning rules).
+// E1.5 · EL CORTE · processFile parsea, deduplica y guarda las LÍNEAS del
+// extracto (`lineasExtracto`) · NO crea ningún movimiento. Después *propone*
+// (emparejamiento, sugerencias, reconocimiento) sobre esas líneas con las
+// puertas por línea de E1.4b. El `Movement` nace SOLO al resolver
+// (`confirmarDecisiones`, la ficha, el traspaso → `materializarLinea`). Mientras
+// tanto la línea sin resolver cuenta en el saldo por sí misma
+// (`accountBalanceService`).
 //
-// cancelImportBatch lets the user undo a whole import in one click (e.g. wrong
-// file picked) — removes the inserted movements and the batch row.
-import { initDB, ImportBatch, Movement, MovementLearningRule, TreasuryEvent } from './db';
-import { cerrarLineaDeGastoDelEvento, type DbParaCierre } from './cierreLineaInmueble';
-import { sinMarcaDeDescarte } from './descarteDePrevision';
-import { contraparteDeBizum, pareceBizum } from './bizum';
+// cancelImportBatch deshace la sesión entera: las líneas del lote, los
+// movimientos que el usuario ya hubiera creado en ella y sus fichas.
+import { initDB, ImportBatch, Movement, MovementLearningRule } from './db';
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { bankProfileMatcher, BankFormat } from '../features/inbox/importers/bankProfileMatcher';
 import {
@@ -29,17 +27,19 @@ import {
   PROFILE_CONFIDENCE_THRESHOLD,
 } from './deteccionDeBanco';
 import { bankProfilesService } from './bankProfilesService';
-import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
-import { suggestForUnmatched, MovementSuggestion } from './movementSuggestionService';
-import { deriveCategoryFromEvent, feedLearningRule } from './aplicarSugerencia';
-import { reconocerDeterministas, nadaReconocido, type LoQueSeReconoce } from './deterministas/matcheoDeterminista';
-import { aplicarReconocimiento, baseDe } from './deterministas/cierreDeterminista';
-import type { OrigenDeterminista } from './deterministas/tipos';
-import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
+import { matchLineas, MatchOptions } from './movementMatchingService';
+import { suggestForLineas } from './movementSuggestionService';
+import { reconocerDeterministasDeLineas } from './deterministas/matcheoDeterminista';
 import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
-import type { DescarteLineaExtracto } from './db/types-lineasExtracto';
+import type { DescarteLineaExtracto, LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { lineaDesdeFila, lineasDelLote } from './lineasExtractoService';
+import {
+  entraAlMatcheo,
+  type LoQueSeReconocePorLinea,
+  type MatchResultPorLinea,
+  type SugerenciaPorLinea,
+} from './lineaComoMovimiento';
 import { limpiarFichasDeMovimientos, type DbParaFichas, type FichasLimpiadas } from './fichasDelLote';
 
 export interface OrchestratorOptions {
@@ -64,10 +64,13 @@ export interface OrchestratorOptions {
 export interface OrchestratorResult {
   importBatchId: string;
   movementsParsed: number;
-  movementsInserted: number;
+  /** E1.5 · líneas del lote que ENTRAN a la sesión (con fecha e importe, no duplicadas). */
+  lineasImportadas: number;
   duplicatesSkipped: number;
-  matchResult: MatchResult;
-  suggestions: Map<number, MovementSuggestion[]>;
+  /** Por `lineaId` (E1.5) · el emparejamiento con previstos. */
+  matchResult: MatchResultPorLinea;
+  /** Por `lineaId` (E1.5) · lo que se propone para lo no casado. */
+  suggestions: Map<number, SugerenciaPorLinea[]>;
   /**
    * FASE 2 · lo que ATLAS reconoce mirando los libros que el usuario ya le dio
    * (cuadro del préstamo, venta, pagos de inversión, nómina) y el piso que
@@ -78,29 +81,9 @@ export interface OrchestratorResult {
    * trae el pasado, así que para casi todo el fichero no hay previsión contra la
    * que casar. Ese es el motivo real de que se reconocieran dos de cien.
    */
-  reconocido: LoQueSeReconoce;
+  reconocido: LoQueSeReconocePorLinea;
   bankProfileUsed?: string;
   warnings: string[];
-}
-
-export interface ConfirmationPayload {
-  approvedMatches: { movementId: number; treasuryEventId: number }[];
-  /**
-   * Lo reconocido contra un origen determinista, que NO es una previsión y por
-   * tanto no cabe en `approvedMatches` (que exige un `treasuryEventId`).
-   *
-   * Se pasa el reconocimiento entero y no solo su id porque el origen no es una
-   * fila que se pueda releer por clave: es una pieza dentro de otra cosa —el
-   * periodo 7 del cuadro de un préstamo, el pago 5 de una inversión—.
-   */
-  approvedDeterministic?: OrigenDeterminista[];
-  ignoredMovementIds: number[];
-  /**
-   * Líneas del extracto que son un movimiento que YA tenías anotado
-   * (Confirmado). Al aplicarlas, ese confirmado sube a Conciliado con la
-   * clasificación que le pusiste, y la línea duplicada del import se borra.
-   */
-  reconciliacionesConfirmado?: { importMovementId: number; confirmadoMovementId: number }[];
 }
 
 
@@ -153,6 +136,11 @@ export class BankProfileNotDetectedError extends Error {
     this.name = 'BankProfileNotDetectedError';
   }
 }
+
+// E1.5 · Guardar vive en su propio módulo (habla en `lineaId` y crea los
+// movimientos). Se re-exporta desde aquí para que quien ya importaba
+// `confirmDecisions` del orquestador siga encontrándolo.
+export { confirmDecisions, type ConfirmationPayload } from './confirmarDecisiones';
 
 export async function processFile(
   file: File,
@@ -282,42 +270,50 @@ async function procesarLoteParseado(
     ctx.bankProfileUsed,
     ctx.hashLote
   );
-  const insertResult = await insertMovements(filteredMovements, options.accountId, importBatchId);
+  const insertResult = await insertLineas(filteredMovements, options.accountId, importBatchId);
 
-  const matchResult = await matchBatch(insertResult.insertedIds, options.matchOptions);
-  const suggestions = await suggestForUnmatched(matchResult.sinMatch);
-
-  // Lo determinista se mira sobre las líneas que NO casaron con una previsión:
-  // lo que ya cuadró no necesita que se le busque un origen, y buscárselo solo
-  // podría contradecir lo que el emparejador ya resolvió.
-  const reconocido = await (async (): Promise<LoQueSeReconoce> => {
-    try {
-      const db2 = await initDB();
-      const sinCasar: Movement[] = [];
-      for (const id of matchResult.sinMatch) {
-        const m = (await db2.get('movements', id)) as Movement | undefined;
-        if (m) sinCasar.push(m);
-      }
-      return await reconocerDeterministas(sinCasar);
-    } catch (err) {
-      console.warn('[orchestrator] no se pudo reconocer contra los libros del usuario', err);
-      return nadaReconocido();
-    }
-  })();
+  // E1.5 · el análisis va por LÍNEA (puertas de E1.4b) · no hay movimientos.
+  const propuesta = await analizarLineas(insertResult.lineas, options.matchOptions);
 
   await updateImportBatchSummary(importBatchId, movementsParsed, insertResult.inserted, insertResult.duplicates);
 
   return {
     importBatchId,
     movementsParsed,
-    movementsInserted: insertResult.inserted,
+    lineasImportadas: insertResult.inserted,
     duplicatesSkipped: insertResult.duplicates,
-    matchResult,
-    suggestions,
-    reconocido,
+    ...propuesta,
     bankProfileUsed: ctx.bankProfileUsed,
     warnings: ctx.warnings,
   };
+}
+
+/**
+ * E1.5 · emparejar, proponer y reconocer sobre LÍNEAS · lo comparten el import
+ * (`procesarLoteParseado`) y retomar un lote (`reabrirLote`). Lecturas puras.
+ *
+ * Lo determinista se mira sobre las líneas que NO casaron con una previsión:
+ * lo que ya cuadró no necesita que se le busque un origen, y buscárselo solo
+ * podría contradecir lo que el emparejador ya resolvió.
+ */
+export async function analizarLineas(
+  lineas: LineaExtractoPersistida[],
+  matchOptions?: MatchOptions
+): Promise<Pick<OrchestratorResult, 'matchResult' | 'suggestions' | 'reconocido'>> {
+  const entran = lineas.filter(entraAlMatcheo);
+  const matchResult = await matchLineas(entran, matchOptions);
+  const sinMatch = new Set(matchResult.sinMatch);
+  const sinCasar = entran.filter((l) => sinMatch.has(l.id as number));
+  const suggestions = await suggestForLineas(sinCasar);
+  const reconocido = await (async (): Promise<LoQueSeReconocePorLinea> => {
+    try {
+      return await reconocerDeterministasDeLineas(sinCasar);
+    } catch (err) {
+      console.warn('[orchestrator] no se pudo reconocer contra los libros del usuario', err);
+      return { origenes: new Map(), atribuciones: new Map() };
+    }
+  })();
+  return { matchResult, suggestions, reconocido };
 }
 
 // Reads the destination account from IndexedDB and infers its bank-profile key
@@ -357,125 +353,6 @@ async function deriveBankHintFromAccount(accountId: number): Promise<string | nu
     return null;
   } catch {
     return null;
-  }
-}
-
-export async function confirmDecisions(
-  importBatchId: string,
-  payload: ConfirmationPayload
-): Promise<void> {
-  const db = await initDB();
-  const now = new Date().toISOString();
-
-  const movementIdsTouched = new Set<number>();
-
-  // Apply matches: link existing movement to existing predicted event.
-  for (const { movementId, treasuryEventId } of payload.approvedMatches) {
-    const movement = (await db.get('movements', movementId)) as Movement | undefined;
-    const event = (await db.get('treasuryEvents', treasuryEventId)) as TreasuryEvent | undefined;
-    if (!movement || !event) continue;
-    if (event.status === 'executed') continue; // already matched in another flow
-
-    // Igual que el punteo manual: lo que se materializa deja de estar
-    // descartado. Ver `descarteDePrevision`.
-    await db.put('treasuryEvents', {
-      ...sinMarcaDeDescarte(event),
-      status: 'executed',
-      executedMovementId: movementId,
-      executedAt: now,
-      actualDate: movement.date,
-      // MAGNITUD, como el punteo manual (`treasuryConfirmationService:509`): el
-      // signo se deriva de `type` en todo el resto del flujo. Guardarlo con el
-      // signo del movimiento metía gastos en negativo donde el consumidor
-      // esperaba magnitud (p. ej. `presupuestoAnualService:345`).
-      actualAmount: Math.abs(movement.amount),
-    });
-    // La línea del banco HEREDA la clasificación de la previsión con la que
-    // cuadra: categoría, familia, ámbito e inmueble. Tú los definiste en el
-    // previsto; la conciliación no debe perderlos y quedarse solo con el texto
-    // en crudo del banco (que sí se conserva como descripción, para cotejar y
-    // para cruzar con la factura). Sin esto, cuadrar un gasto lo dejaba sin
-    // familia y no había forma de cruzarlo luego.
-    await db.put('movements', {
-      ...movement,
-      ...(event.categoryKey != null ? { categoryKey: event.categoryKey } : {}),
-      ...(event.subtypeKey != null ? { subtypeKey: event.subtypeKey } : {}),
-      // F2b · el concepto fino de la previsión también se hereda al cuadrar.
-      ...(event.conceptoId != null ? { conceptoId: event.conceptoId } : {}),
-      ...(event.ambito != null ? { ambito: event.ambito } : {}),
-      ...(event.inmuebleId != null ? { inmuebleId: String(event.inmuebleId) } : {}),
-      // Los DOS textos conviven. `description` se queda con el churro del banco
-      // —es la prueba, y `hashMovement` dedupica por él: reescribirlo haría que
-      // un reimport solapado no reconociera la línea y duplicara el cargo—, y
-      // el nombre que le puso el usuario en la previsión ("Agua Tenderina") se
-      // guarda aparte, que es lo que hace legibles los informes.
-      ...(event.description ? { descripcionPrevision: event.description } : {}),
-      unifiedStatus: 'conciliado',
-      statusConciliacion: 'match_manual',
-      updatedAt: now,
-    });
-    // La línea que DECLARA ese gasto también se cierra · si no, el pago queda
-    // conciliado en tesorería pero la declaración lo sigue viendo como una
-    // previsión y no lo deduce (`yaOcurrio`). Es el mismo cierre que hace el
-    // punteo manual, escrito una vez.
-    // La línea que DECLARA ese gasto se cierra CON EL DATO DEL BANCO: importe,
-    // fecha de cargo (que fija el ejercicio) y fecha valor. Cerrarla
-    // conservando lo previsto —lo que se hacía— deducía la estimación.
-    await cerrarLineaDeGastoDelEvento(db as unknown as DbParaCierre, event, movement);
-    movementIdsTouched.add(movementId);
-
-    // Feed learning so subsequent imports auto-classify by learnKey.
-    //
-    // Aquí el usuario no sólo dice de qué categoría es: dice de QUIÉN es. Al
-    // confirmar esta línea contra esta previsión está enseñando que el nombre
-    // que manda el banco y el que hay en el contrato son la misma persona, y
-    // eso es lo que viaja en `contraparteConfirmada`.
-    await feedLearningRule(
-      movement,
-      deriveCategoryFromEvent(event),
-      event.counterparty ?? event.providerName
-    );
-  }
-
-  // FASE 2 · lo reconocido contra los libros del usuario.
-  //
-  // Va DESPUÉS de los matches contra previsiones: si una línea cuadró con un
-  // previsto, esa es la verdad más fuerte —el usuario la anotó para esa
-  // fecha— y no se pisa con un origen determinista.
-  for (const origen of payload.approvedDeterministic ?? []) {
-    if (movementIdsTouched.has(origen.movementId)) continue;
-    try {
-      const cerrado = await aplicarReconocimiento(baseDe(db as never), origen, now);
-      if (cerrado) movementIdsTouched.add(origen.movementId);
-    } catch (err) {
-      // Una fuente que falla no puede tumbar el Guardar entero: el resto de
-      // decisiones del usuario ya están aplicadas y la línea, en el peor caso,
-      // se queda sin conciliar y sigue visible. Nada se pierde (FASE 1).
-      console.error('[orchestrator] no se pudo aplicar un reconocimiento determinista', err);
-    }
-  }
-
-  // Reconciliar contra un Confirmado que ya tenías · "las dos cosas".
-  // Una sola implementación del colapso, compartida con la limpieza de
-  // duplicados ya creados (`reconciliarConfirmado`).
-  for (const { importMovementId, confirmadoMovementId } of payload.reconciliacionesConfirmado ?? []) {
-    const importMov = (await db.get('movements', importMovementId)) as Movement | undefined;
-    if (!importMov) continue;
-    await aplicarReconciliacionConfirmado(db, importMov, confirmadoMovementId, now);
-    movementIdsTouched.add(importMovementId);
-  }
-
-  // Mark ignored movements as reviewed-but-not-conciliated.
-  for (const movementId of payload.ignoredMovementIds) {
-    if (movementIdsTouched.has(movementId)) continue;
-    const movement = (await db.get('movements', movementId)) as Movement | undefined;
-    if (!movement) continue;
-    await db.put('movements', {
-      ...movement,
-      unifiedStatus: 'no_planificado',
-      statusConciliacion: 'sin_match',
-      updatedAt: now,
-    });
   }
 }
 
@@ -639,114 +516,96 @@ async function updateImportBatchSummary(
 }
 
 interface InsertResult {
-  insertedIds: number[];
+  /** Las líneas del lote, ya persistidas (con su `id`). */
+  lineas: LineaExtractoPersistida[];
+  /** Las que ENTRAN a la sesión · con fecha e importe, no duplicadas. */
   inserted: number;
   duplicates: number;
 }
 
-async function insertMovements(
+/**
+ * E1.5 · guarda las LÍNEAS del extracto · NO crea ningún movimiento.
+ *
+ * Cada fila del parser deja su rastro en `lineasExtracto`: con `descarte`
+ * (`sin_fecha`, `sin_importe`, `duplicada`) si no puede entrar a la sesión, y
+ * PENDIENTE si entra. El movimiento nace al resolverla (`materializarLinea`).
+ *
+ * DEDUPE · mina M4 · la huella (`hashMovement`) se compara contra los
+ * movimientos que ya existen Y contra las líneas ya guardadas: tras el corte
+ * una línea sin resolver no tiene movimiento, y sin mirar las líneas un
+ * extracto SOLAPADO la volvería a traer y, al resolver, nacerían dos cargos
+ * del mismo dinero. Se deduplica SOLO contra lotes anteriores, no contra las
+ * otras filas de ESTE fichero: dos cargos idénticos el mismo día (la comunidad
+ * de dos pisos) son dos operaciones reales y entran las dos.
+ */
+async function insertLineas(
   parsed: ParsedMovement[],
   accountId: number,
   importBatchId: string
 ): Promise<InsertResult> {
   const db = await initDB();
   const now = new Date().toISOString();
-  const existing = ((await db.getAll('movements')) ?? []) as Movement[];
-  const existingHashes = new Set(existing.map(hashMovement));
+  const existingHashes = await huellasExistentes(db);
 
-  const insertedIds: number[] = [];
+  const lineas: LineaExtractoPersistida[] = [];
+  let inserted = 0;
   let duplicates = 0;
 
   for (const row of parsed) {
     const date = isoDate(row.date);
     const amount = typeof row.amount === 'number' ? row.amount : Number(row.amount);
     const description = row.description ?? '';
-
-    // E1.1 · la línea del banco se persiste SIEMPRE, ADEMÁS del movimiento y
-    // también cuando no genera ninguno. Antes una fila sin fecha o sin importe
-    // se perdía en silencio y una duplicada solo sumaba en un contador; ahora
-    // dejan rastro en `lineasExtracto` con su `descarte`. Nadie lee ese store
-    // todavía: cero cambio de comportamiento.
     const importeSeguro = Number.isFinite(amount) ? amount : 0;
-    const persistirLinea = async (d: { movementIds: number[]; descarte?: DescarteLineaExtracto }) => {
-      await db.add(
-        'lineasExtracto',
-        lineaDesdeFila(row, {
-          accountId,
-          importBatchId,
-          fechaOperacion: date ?? '',
-          fechaValor: isoDate(row.valueDate) ?? date ?? '',
-          importe: importeSeguro,
-          hashMovement: hashMovement({ accountId, date: date ?? '', amount: importeSeguro, description } as Movement),
-          ahora: now,
-          ...d,
-        })
-      );
+    const huella = hashMovement({ accountId, date: date ?? '', amount: importeSeguro, description } as Movement);
+
+    const persistir = async (d: { descarte?: DescarteLineaExtracto }) => {
+      const linea = lineaDesdeFila(row, {
+        accountId,
+        importBatchId,
+        fechaOperacion: date ?? '',
+        fechaValor: isoDate(row.valueDate) ?? date ?? '',
+        importe: importeSeguro,
+        hashMovement: huella,
+        ahora: now,
+        movementIds: [],
+        ...d,
+      });
+      const id = Number(await db.add('lineasExtracto', linea));
+      lineas.push({ ...linea, id });
     };
 
     if (!date) {
-      await persistirLinea({ movementIds: [], descarte: 'sin_fecha' });
+      await persistir({ descarte: 'sin_fecha' });
       continue;
     }
     if (!Number.isFinite(amount)) {
-      await persistirLinea({ movementIds: [], descarte: 'sin_importe' });
+      await persistir({ descarte: 'sin_importe' });
       continue;
     }
-
-    const candidate: Movement = {
-      accountId,
-      date,
-      valueDate: isoDate(row.valueDate) ?? date,
-      amount,
-      description,
-      // §Bizum · quién está al otro lado.
-      //
-      // El banco lo trae en el texto ("BIZUM DE ADNAN PARWEZ") y sin leerlo la
-      // línea cae en el saco de "transferencia recibida" sin dueño — que es
-      // justo el dato que la convierte en la renta de una habitación. Solo se
-      // rellena si el fichero no traía contraparte: lo que venga en su columna
-      // manda sobre lo que se deduzca del texto.
-      counterparty: row.counterparty ?? contraparteDeBizum(description),
-      ...(pareceBizum(description) ? { paymentMethod: 'Bizum' as const } : {}),
-      reference: row.reference,
-      balance: row.balance,
-      currency: row.currency,
-      unifiedStatus: 'no_planificado',
-      source: 'import',
-      type: amount >= 0 ? 'Ingreso' : 'Gasto',
-      origin: 'CSV',
-      movementState: 'Confirmado',
-      state: 'pending',
-      status: 'pendiente',
-      category: { tipo: amount >= 0 ? 'Ingresos' : 'Gastos' },
-      tags: [],
-      isAutoTagged: false,
-      ambito: 'PERSONAL',
-      statusConciliacion: 'sin_match',
-      importBatch: importBatchId,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Se deduplica SOLO contra movimientos que YA existían (de otros lotes), no
-    // contra las otras líneas de ESTE extracto. Un banco lista dos cargos
-    // idénticos —misma fecha, mismo importe, mismo concepto— cuando de verdad
-    // hubo dos (p.ej. la comunidad de dos pisos: Nº mov 839 y 840): son dos
-    // movimientos reales y deben entrar los dos. Reimportar el MISMO fichero ya
-    // lo frena el hash del lote (D1 bis); un fichero solapado sí casa contra lo
-    // previo. Por eso el hash del nuevo NO se añade al set.
-    if (existingHashes.has(hashMovement(candidate))) {
+    if (existingHashes.has(huella)) {
       duplicates++;
-      await persistirLinea({ movementIds: [], descarte: 'duplicada' });
+      await persistir({ descarte: 'duplicada' });
       continue;
     }
-
-    const id = (await db.add('movements', candidate)) as number;
-    insertedIds.push(id);
-    await persistirLinea({ movementIds: [id] });
+    // La huella de la nueva NO se añade al set: ver DEDUPE arriba.
+    await persistir({});
+    inserted++;
   }
 
-  return { insertedIds, inserted: insertedIds.length, duplicates };
+  return { lineas, inserted, duplicates };
+}
+
+/** Las huellas de todo lo que ya se importó · movimientos Y líneas (M4). */
+async function huellasExistentes(db: Awaited<ReturnType<typeof initDB>>): Promise<Set<string>> {
+  const existing = ((await db.getAll('movements')) ?? []) as Movement[];
+  const huellas = new Set(existing.map(hashMovement));
+  try {
+    const lineas = ((await db.getAll('lineasExtracto')) ?? []) as LineaExtractoPersistida[];
+    for (const l of lineas) if (l.hashMovement) huellas.add(l.hashMovement);
+  } catch {
+    // Base anterior a V91 · sin líneas que mirar.
+  }
+  return huellas;
 }
 
 /**
@@ -769,6 +628,7 @@ export function hashMovement(m: Movement): string {
 // Re-export the matching/suggestion types so consumers don't need three imports.
 export type { MatchResult } from './movementMatchingService';
 export type { MovementSuggestion } from './movementSuggestionService';
+export type { MatchResultPorLinea, SugerenciaPorLinea, LoQueSeReconocePorLinea } from './lineaComoMovimiento';
 // Acknowledge the imported MovementLearningRule type so editors don't flag it
 // as unused — `feedLearningRule` returns the shape implicitly via createOrUpdateRule.
 export type { MovementLearningRule };

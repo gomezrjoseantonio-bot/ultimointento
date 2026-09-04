@@ -23,6 +23,7 @@ import type {
   LineaExtractoPersistida,
 } from '../../../services/db';
 import { lineasDelLote } from '../../../services/lineasExtractoService';
+import { entraAlMatcheo } from '../../../services/lineaComoMovimiento';
 import { decisionesVacias, type DecisionesSesion } from './extractoSesion';
 
 export { lineasDelLote };
@@ -196,7 +197,7 @@ export interface LoteAMedias {
   filename: string;
   accountId: number;
   timestampImport: string;
-  /** Líneas del lote que generaron movimiento (las que la sesión enseña). */
+  /** Líneas del lote que entran a la sesión (con fecha e importe, no descartadas). */
   lineas: number;
   /** De ellas, las que ya tienen una decisión persistida. */
   decididas: number;
@@ -216,15 +217,17 @@ export async function lotesAMedias(): Promise<LoteAMedias[]> {
   for (const b of batches) {
     if (!b.id || b.consolidadoAt) continue;
     const filas = await lineasDelLote(db, b.id);
-    const conMovimiento = filas.filter((f) => f.movementIds.length > 0);
-    if (conMovimiento.length === 0) continue;
+    // E1.5 · lo que la sesión enseña son las líneas que ENTRAN (con fecha e
+    // importe, no descartadas), tengan o no movimiento todavía.
+    const retomables = filas.filter(entraAlMatcheo);
+    if (retomables.length === 0) continue;
     out.push({
       importBatchId: b.id,
       filename: b.filename,
       accountId: b.accountId,
       timestampImport: b.timestampImport,
-      lineas: conMovimiento.length,
-      decididas: conMovimiento.filter((f) => f.decision != null).length,
+      lineas: retomables.length,
+      decididas: retomables.filter((f) => f.decision != null).length,
     });
   }
   return out.sort((a, b) => (a.timestampImport < b.timestampImport ? 1 : -1));

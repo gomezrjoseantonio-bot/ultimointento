@@ -1,125 +1,41 @@
 // ============================================================================
-// Tesorería V6 · §4.7 · la sesión de importación como BORRADOR
+// Tesorería V6 · §4.7 · la sesión de importación · guardada o a medias
 // ============================================================================
 //
-// El problema que resuelve, en una frase: `processFile` inserta los movimientos
-// al procesar el fichero, pero §4.7 dice que "lo no resuelto no se mezcla con
-// la lista de la cuenta: espera en el extracto".
+// Un `ImportBatch` sin `consolidadoAt` es una sesión A MEDIAS: se ofrece
+// retomar (E1.3 · `lotesAMedias`, `reabrirLote`). Con `consolidadoAt` ya pasó
+// por Guardar.
 //
-// Las dos cosas no pueden ser verdad a la vez sin un filtro. Los movimientos
-// recién insertados nacen con `source: 'import'`, y en el modelo de punteo eso
-// es `conciliado` (`punteoModel.estadoDeMovimiento`). Sin este filtro, soltar
-// un fichero en la dropzone haría aparecer TODAS sus líneas en el drawer de
-// cuenta, ya conciliadas, antes de que el usuario mire ninguna — y moviendo el
-// saldo. Justo lo contrario de lo que pide la sección.
-//
-// La alternativa era reescribir `processFile` para no insertar hasta el final.
-// Se descartó: es cirugía mayor sobre un servicio en producción con otro
-// consumidor vivo, y el emparejamiento (`matchBatch`) trabaja sobre ids ya
-// insertados. Marcar la sesión es aditivo y se comprueba en un solo sitio.
-//
-// Regla: un `ImportBatch` sin `consolidadoAt` es un BORRADOR, y sus movimientos
-// no existen para nadie fuera del drawer que los está resolviendo.
+// E1.5 · lo que había aquí de «borrador» (`batchesEnBorrador`, `sinBorradores`)
+// se retiró con el corte: existía para esconder los movimientos que el import
+// insertaba antes de que el usuario mirara nada, y tras el corte importar no
+// inserta ninguno. Dejarlo habría escondido justo los movimientos que el
+// usuario YA resolvió en una sesión sin guardar. Y «desmaterializar» las
+// líneas pendientes al consolidar se retiró en FASE 1 (una línea del banco es
+// dinero que se movió); ya no hay nada que borrar.
 // ============================================================================
 
 import { initDB } from './db';
 import type { ImportBatch } from './db/types-fiscal';
-import type { Movement } from './db';
 
 /**
- * Ids de los batches que aún no han pasado por `Guardar`.
+ * Marca la sesión como guardada · deja de ofrecerse como «a medias».
  *
- * Se devuelve el conjunto entero y no un predicado por movimiento porque quien
- * llama tiene una lista larga y una sola pasada por `importBatches` cuesta
- * mucho menos que una consulta por fila.
- */
-export async function batchesEnBorrador(): Promise<Set<string>> {
-  const db = await initDB();
-  const batches = ((await db.getAll('importBatches')) ?? []) as ImportBatch[];
-  const borradores = new Set<string>();
-  for (const b of batches) {
-    if (!b.consolidadoAt && b.id) borradores.add(b.id);
-  }
-  return borradores;
-}
-
-/**
- * Quita los movimientos que todavía esperan en un extracto sin guardar.
- *
- * Los movimientos sin `importBatch` (alta a mano, punteo, inbox) pasan siempre:
- * no vienen de ninguna sesión de importación y no hay nada que esperar.
- */
-export function sinBorradores<T extends Pick<Movement, 'importBatch'>>(
-  movimientos: T[],
-  borradores: Set<string>
-): T[] {
-  if (borradores.size === 0) return movimientos;
-  return movimientos.filter((m) => !m.importBatch || !borradores.has(m.importBatch));
-}
-
-/**
- * Una línea que se quedó sin resolver al guardar.
- *
- * `movementId` es el registro que `processFile` insertó y que hay que borrar
- * para cumplir D4; el resto es lo que permite volver a enseñarla sin el fichero.
- */
-export interface LineaPendiente {
-  movementId?: number;
-  hashLinea: string;
-  fecha: string;
-  importe: number;
-  concepto: string;
-}
-
-/**
- * Marca la sesión como guardada · a partir de aquí sus movimientos cuentan.
- *
- * Se llama DESPUÉS de `confirmDecisions`, no antes: si la consolidación falla a
- * medias, más vale que la sesión siga siendo un borrador (invisible) que dejar
- * movimientos a medio resolver moviendo saldos.
+ * Se llama DESPUÉS de `confirmDecisions`, no antes: si algo falla a medias,
+ * más vale que la sesión siga a medias (retomable) que darla por cerrada.
  *
  * Idempotente: consolidar dos veces conserva la marca original, porque la fecha
  * que importa es la de la primera vez que el usuario dijo que sí.
  */
-export async function consolidarSesion(
-  importBatchId: string,
-  pendientes: LineaPendiente[] = []
-): Promise<void> {
+export async function consolidarSesion(importBatchId: string): Promise<void> {
   const db = await initDB();
   const batch = (await db.get('importBatches', importBatchId)) as ImportBatch | undefined;
   if (!batch) throw new Error(`Sesión de importación ${importBatchId} no encontrada`);
   if (batch.consolidadoAt) return;
 
-  // D4 · lo que quedó sin resolver NO SE MATERIALIZA. `processFile` ya había
-  // insertado un `Movement` por línea, así que "no materializarse" obliga a
-  // borrarlos: en cuanto el batch deje de ser borrador, cualquiera que siguiera
-  // en el store aparecería en la lista de la cuenta como conciliado y movería
-  // el saldo, que es justo lo que §4.7 prohíbe.
-  //
-  // La línea no se pierde: su identidad queda en el batch, que es lo que
-  // significa "sigue pendiente en la sesión de importación".
-  for (const p of pendientes) {
-    if (p.movementId == null) continue;
-    try {
-      await db.delete('movements', p.movementId);
-    } catch (err) {
-      console.warn('[statementSession] no se pudo desmaterializar la línea pendiente', err);
-    }
-  }
-
   await db.put('importBatches', {
     ...batch,
     consolidadoAt: new Date().toISOString(),
-    ...(pendientes.length > 0
-      ? {
-          lineasPendientes: pendientes.map(({ hashLinea, fecha, importe, concepto }) => ({
-            hashLinea,
-            fecha,
-            importe,
-            concepto,
-          })),
-        }
-      : {}),
   });
 }
 

@@ -101,7 +101,7 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
 
   it('una línea RECONOCIDA contra un libro también vuelve · el reconocedor no es infalible', () => {
     const l = linea({ movementId: 2 });
-    const reconocidas = new Set([2]);
+    const reconocidas = new Set([102]); // por lineaId (E1.5)
 
     expect(bucketDeLinea(l, decisionesVacias(), undefined, reconocidas)).toBe('resueltas');
     expect(
@@ -113,7 +113,7 @@ describe('«No es esto» · el usuario manda sobre el emparejador', () => {
     // El caso literal de la captura: una cuota de préstamo dentro del montón
     // «Personal», sin forma de sacarla.
     const l = linea({ movementId: 3, textoBanco: 'CUOTA PRESTAMO BBVA' });
-    const personales = new Set([3]);
+    const personales = new Set([103]); // por lineaId (E1.5)
 
     expect(bucketDeLinea(l, decisionesVacias(), personales)).toBe('personal');
     expect(bucketDeLinea(l, conDecisiones((d) => d.desemparejados.add(103)), personales)).toBe(

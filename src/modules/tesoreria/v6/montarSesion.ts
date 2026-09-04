@@ -13,7 +13,7 @@ import type { Account, Movement, TreasuryEvent, LineaExtractoPersistida } from '
 import { initDB } from '../../../services/db';
 import type { OrchestratorResult } from '../../../services/bankStatementOrchestrator';
 import { getIgnoredLineHashes } from '../../../services/statementIgnoredLinesService';
-import { confirmadosPorLinea } from '../../../services/conciliacionConfirmados';
+import { confirmadosPorLineaExtracto } from '../../../services/conciliacionConfirmados';
 import { construirLineas, seOfrecePara, type LineaExtracto } from './extractoSesion';
 import {
   guardarDecisionDeLinea,
@@ -86,13 +86,13 @@ export async function leerSesionDelLote(res: OrchestratorResult, destino: Accoun
     // E1.2 · las líneas persistidas de ESTE lote (E1.1): dan el `lineaId`.
     lineasDelLote(db, res.importBatchId),
   ]);
-  const delLote = (todosMovs ?? []).filter((m) => m.importBatch === res.importBatchId);
-  // "Las dos cosas" · lo que ya anotaste a mano sube a Conciliado, no duplica.
-  const confirmados = confirmadosPorLinea(delLote, todosMovs ?? [], destino.id as number);
+  // "Las dos cosas" · lo que ya anotaste a mano se conserva con el aval del
+  // banco (D1), no duplica. E1.5 · por línea: el lote no tiene movimientos.
+  const confirmados = confirmadosPorLineaExtracto(filas, todosMovs ?? [], destino.id as number);
   const previstos = (todosEventos ?? []).filter((e) => seOfrecePara(e, destino.id));
   return {
     previstos,
-    lineas: construirLineas(delLote, res.matchResult, previstos, ignoradasPrevias, confirmados, filas),
+    lineas: construirLineas(filas, res.matchResult, previstos, ignoradasPrevias, confirmados),
     filas,
   };
 }

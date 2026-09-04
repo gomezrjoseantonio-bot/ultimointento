@@ -45,7 +45,7 @@ function pintar(over: Partial<React.ComponentProps<typeof PanelConciliar>> = {})
       propuestas={
         new Map([
           [
-            1,
+            101, // por lineaId (E1.5)
             {
               tono: 'propone' as const,
               titular: 'Parece un gasto de un piso',

@@ -75,18 +75,28 @@ describe('reconciliar duplicados existentes', () => {
     mockDB.delete.mockResolvedValue(undefined);
   });
 
-  it('colapsa el par · borra el confirmado y sube la línea del import a conciliado', async () => {
+  // D1 (E1.5) · antes sobrevivía la línea del import y se borraba el confirmado
+  // (con todo su repunteo). Ahora es al revés: el confirmado SE QUEDA, con la
+  // clasificación que le puso el usuario y el aval del banco, y el duplicado del
+  // import se va.
+  it('colapsa el par · el confirmado se queda con el aval del banco y el duplicado del import se borra', async () => {
     const n = await reconciliarDuplicadosExistentes();
     expect(n).toBe(1);
-    // La línea del import sube a conciliado heredando la clasificación.
+    // El confirmado sube a conciliado con el importe y la fecha del banco.
     const putMov = mockDB.put.mock.calls.find((c) => c[0] === 'movements')![1];
-    expect(putMov.id).toBe(50);
+    expect(putMov.id).toBe(9);
     expect(putMov.unifiedStatus).toBe('conciliado');
+    expect(putMov.statusConciliacion).toBe('match_automatico');
     expect(putMov.categoryKey).toBe('inmueble.comunidad');
-    // El evento se re-apunta a la línea del import.
+    expect(putMov.date).toBe('2026-08-15');
+    expect(putMov.amount).toBe(-98.44);
+    // El evento sigue apuntando al confirmado · solo toma el dato real.
     const putEv = mockDB.put.mock.calls.find((c) => c[0] === 'treasuryEvents')![1];
-    expect(putEv.movementId).toBe(50);
-    // El confirmado se borra.
-    expect(mockDB.delete).toHaveBeenCalledWith('movements', 9);
+    expect(putEv.movementId).toBe(9);
+    expect(putEv.actualDate).toBe('2026-08-15');
+    expect(putEv.actualAmount).toBe(98.44);
+    // El duplicado del import se borra.
+    expect(mockDB.delete).toHaveBeenCalledWith('movements', 50);
+    expect(mockDB.delete).not.toHaveBeenCalledWith('movements', 9);
   });
 });

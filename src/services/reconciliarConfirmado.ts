@@ -1,30 +1,29 @@
 // ============================================================================
-// Colapsar un Confirmado contra la línea del extracto que lo confirma
+// D1 · el Confirmado se CONSERVA y recibe el aval del banco
 // ============================================================================
 //
-// UNA sola implementación del "las dos cosas": la usa el import al Guardar
-// (`confirmDecisions`) y la limpieza de duplicados ya creados
-// (`reconciliarDuplicadosExistentes`).
+// La línea del extracto y un movimiento que el usuario ya había anotado a mano
+// (Confirmado) son la MISMA operación. Hasta E1.5 el import creaba un segundo
+// movimiento para la línea y había que colapsar los dos: sobrevivía el del
+// import y se borraba el confirmado, repuntando todo lo que le apuntaba (patas
+// de traspaso, líneas de gasto, el evento). Cincuenta líneas de repunteo que
+// solo existían por el duplicado.
 //
-// La línea del extracto y el confirmado son la MISMA operación. Sobrevive la del
-// import —la palabra del banco: su texto y su fecha hacen que un reimport la
-// reconozca por hash y no la duplique—, hereda la clasificación del confirmado
-// y sube a Conciliado. El confirmado se borra: dejarlo contaría el dinero dos
-// veces. Y si el confirmado era la materialización de un previsto PUNTEADO
-// (`confirmTreasuryEvent` lo crea con `reference: treasury_event:<id>` y deja el
-// evento en `executed` apuntándole), su evento se RE-APUNTA a la línea del
-// import; si no, el saldo contaría el evento y la línea por separado (fechas
-// distintas) y volvería a duplicar.
+// Tras el corte no nace ningún duplicado, así que se hace lo natural (pieza X
+// §23: manda el conciliado, funde con lo existente): el Confirmado SIGUE
+// SIENDO el movimiento —sus patas, su línea de gasto y su evento le siguen
+// apuntando sin tocar nada—, sube a Conciliado y toma del banco lo que el banco
+// sabe mejor: el importe y las fechas reales. La línea del extracto queda
+// enlazada a él (`movementIds`) y deja de sumar por sí misma.
 //
-// Lo mismo vale para la línea de `gastosInmueble` que DECLARA el gasto: le
-// apuntaba al confirmado por `movimientoId`, así que al borrarlo se quedaba
-// señalando un id inexistente y con el importe previsto. Se repunta al
-// movimiento del import y se le escribe el dato del banco, que es el que manda.
+// La limpieza de duplicados anteriores al corte (`reconciliarDuplicadosExistentes`)
+// pasa por aquí con el mismo criterio invertido: el confirmado se queda, el
+// duplicado del import se va.
 // ============================================================================
 
 import type { initDB } from './db';
 import type { Movement, TreasuryEvent } from './db';
-import { isTransferKey } from './categoryCatalog';
+import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { repuntarLineasAlMovimiento, type DbParaCierre } from './cierreLineaInmueble';
 
 type DB = Awaited<ReturnType<typeof initDB>>;
@@ -36,102 +35,93 @@ export function eventIdDeReferencia(reference: unknown): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
+/** Lo que el banco dice de la operación · lo que el Confirmado toma como aval. */
+export interface AvalDelBanco {
+  /** Con signo · el del extracto. */
+  amount: number;
+  /** YYYY-MM-DD · fecha de cargo del banco. */
+  date: string;
+  valueDate?: string;
+  /**
+   * Solo para pares ANTERIORES al corte: el movimiento que el import creó para
+   * la misma línea. Es el duplicado y se borra; si alguna línea le apuntaba,
+   * pasa a apuntar al confirmado.
+   */
+  importMovementId?: number;
+}
+
 /**
- * Colapsa `confirmadoMovementId` sobre `importMov`: la línea del import hereda la
- * clasificación, sube a Conciliado, re-apunta el evento del previsto punteado y
- * la línea de gasto que lo declara, y borra el confirmado. Idempotente si el
- * confirmado ya no existe.
+ * Da al Confirmado `confirmadoMovementId` el aval del banco y lo sube a
+ * Conciliado. Devuelve su id, o `null` si ya no existe (nada que avalar).
+ *
+ * Idempotente: repetirlo deja lo mismo.
  */
 export async function aplicarReconciliacionConfirmado(
   db: DB,
-  importMov: Movement,
+  aval: AvalDelBanco,
   confirmadoMovementId: number,
   now: string,
-): Promise<void> {
+): Promise<number | null> {
   const confirmado = (await db.get('movements', confirmadoMovementId)) as Movement | undefined;
-  // Una pata de traspaso ya creada (§4.4): al subir el extracto de su cuenta, la
-  // línea del banco la confirma. Hereda además del resto la identidad de traspaso
-  // —`transferMetadata`, `type`, la categoría— para no perder que es un traspaso
-  // (los KPIs y el saldo la dejan fuera por `isTransferKey`), y luego se repunta
-  // su pata pareja. Sin esto, la línea sobreviviría como un ingreso/gasto normal.
-  const esTraspaso = confirmado != null && isTransferKey(confirmado.categoryKey);
-  await db.put('movements', {
-    ...importMov,
-    ...(confirmado
-      ? {
-          categoryKey: confirmado.categoryKey,
-          subtypeKey: confirmado.subtypeKey,
-          conceptoId: confirmado.conceptoId,
-          // Cómo lo llamaba el usuario. La `description` del import es el texto
-          // del banco y no se toca (el hash del dedupe depende de ella), así
-          // que el nombre legible se guarda aparte en vez de perderse.
-          descripcionPrevision:
-            confirmado.descripcionPrevision ?? confirmado.description,
-          inmuebleId: confirmado.inmuebleId,
-          ambito: confirmado.ambito,
-          ...(confirmado.tarjetaId != null ? { tarjetaId: confirmado.tarjetaId } : {}),
-          ...(esTraspaso
-            ? {
-                transferMetadata: confirmado.transferMetadata,
-                type: 'Transferencia' as const,
-                category: confirmado.category,
-              }
-            : {}),
-        }
-      : {}),
+  if (!confirmado || confirmado.id == null) return null;
+
+  // El Confirmado, con el aval: el importe y las fechas los pone el banco, todo
+  // lo demás —clasificación, texto del usuario, patas, `reference`— es suyo y
+  // se queda. `match_automatico` marca que YA tiene extracto detrás: no vuelve
+  // a ofrecerse a otra línea (`esConfirmadoEmparejable`).
+  const avalado: Movement = {
+    ...confirmado,
+    amount: aval.amount,
+    date: aval.date,
+    ...(aval.valueDate ? { valueDate: aval.valueDate } : {}),
     unifiedStatus: 'conciliado',
     movementState: 'Conciliado',
     statusConciliacion: 'match_automatico',
     updatedAt: now,
-  });
+  };
+  await db.put('movements', avalado);
 
-  if (confirmado?.id == null || confirmado.id === importMov.id) return;
-
-  // La pata pareja apuntaba con `pairMovementId` a este confirmado, que se va a
-  // borrar; se repunta a la línea del import, que es quien queda. Sin esto, la
-  // salida quedaría enlazada a un id inexistente y el par se rompería.
-  if (esTraspaso && importMov.id != null) {
-    const todos = (await db.getAll('movements')) as Movement[];
-    for (const m of todos) {
-      if (m.id == null || m.id === confirmado.id) continue;
-      if (m.transferMetadata?.pairMovementId === confirmado.id) {
-        await db.put('movements', {
-          ...m,
-          transferMetadata: { ...m.transferMetadata, pairMovementId: importMov.id },
-          updatedAt: now,
-        });
-      }
-    }
-  }
-
-  // La línea de gasto que apuntaba al confirmado pasa a apuntar al movimiento
-  // del import —que es el que sobrevive— y se queda con el importe y la fecha
-  // reales. Va ANTES del borrado: después ya no habría por dónde encontrarla.
-  if (importMov.id != null) {
-    try {
-      await repuntarLineasAlMovimiento(
-        db as unknown as DbParaCierre,
-        confirmado.id,
-        importMov,
-      );
-    } catch (err) {
-      console.warn('[reconciliarConfirmado] no se pudo repuntar la línea de gasto', err);
-    }
-  }
-
+  // Si era un previsto PUNTEADO, su evento sigue apuntándole · solo toma el
+  // dato real del banco (magnitud, como el punteo manual).
   const eventId = eventIdDeReferencia(confirmado.reference);
   if (eventId != null) {
     const ev = (await db.get('treasuryEvents', eventId)) as TreasuryEvent | undefined;
     if (ev && (ev.movementId === confirmado.id || ev.executedMovementId === confirmado.id)) {
       await db.put('treasuryEvents', {
         ...ev,
-        movementId: importMov.id,
-        executedMovementId: importMov.id,
-        actualDate: importMov.date,
-        actualAmount: Math.abs(importMov.amount),
+        actualDate: aval.date,
+        actualAmount: Math.abs(aval.amount),
         updatedAt: now,
       });
     }
   }
-  await db.delete('movements', confirmado.id);
+
+  // La línea de gasto que lo declara sigue apuntándole · se queda con el dato
+  // del banco (importe, fecha de cargo, fecha valor): conciliado manda.
+  try {
+    await repuntarLineasAlMovimiento(db as unknown as DbParaCierre, confirmado.id, avalado);
+  } catch (err) {
+    console.warn('[reconciliarConfirmado] no se pudo actualizar la línea de gasto', err);
+  }
+
+  // Pares anteriores al corte · el duplicado del import se va. Si alguna línea
+  // del extracto le apuntaba, pasa a apuntar al confirmado (que es quien queda).
+  if (aval.importMovementId != null && aval.importMovementId !== confirmado.id) {
+    try {
+      const lineas = ((await db.getAll('lineasExtracto')) ?? []) as LineaExtractoPersistida[];
+      for (const l of lineas) {
+        if (!l.movementIds?.includes(aval.importMovementId)) continue;
+        await db.put('lineasExtracto', {
+          ...l,
+          movementIds: l.movementIds.map((id) => (id === aval.importMovementId ? confirmado.id as number : id)),
+          updatedAt: now,
+        });
+      }
+    } catch {
+      // Base anterior a V91 · no hay líneas que repuntar.
+    }
+    await db.delete('movements', aval.importMovementId);
+  }
+
+  return confirmado.id;
 }

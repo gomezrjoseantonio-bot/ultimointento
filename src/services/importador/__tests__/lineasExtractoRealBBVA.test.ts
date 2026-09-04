@@ -30,7 +30,7 @@ async function movimientosDelExtracto() {
   return r.movements ?? [];
 }
 
-function lineaDe(row: Awaited<ReturnType<typeof movimientosDelExtracto>>[number], movementId: number) {
+function lineaDe(row: Awaited<ReturnType<typeof movimientosDelExtracto>>[number]) {
   const fecha = isoDate(row.date) ?? '';
   const importe = typeof row.amount === 'number' ? row.amount : Number(row.amount);
   return lineaDesdeFila(row, {
@@ -40,7 +40,8 @@ function lineaDe(row: Awaited<ReturnType<typeof movimientosDelExtracto>>[number]
     fechaValor: isoDate(row.valueDate) ?? fecha,
     importe,
     hashMovement: hashMovement({ accountId: 7, date: fecha, amount: importe, description: row.description ?? '' } as Movement),
-    movementIds: [movementId],
+    // E1.5 · importar no crea el movimiento: la línea nace sin él y pendiente.
+    movementIds: [],
     ahora: '2026-09-04T00:00:00.000Z',
   });
 }
@@ -56,7 +57,7 @@ describe('E1.1 · lineasExtracto · sobre el extracto real de BBVA', () => {
       const importeFila = fila[CABECERAS_BBVA.indexOf('Importe')] as number;
       const row = movs.find((m) => Math.abs(m.amount - importeFila) < 0.005);
       expect(row).toBeDefined();
-      const linea = lineaDe(row!, 1);
+      const linea = lineaDe(row!);
       const concepto = String(fila[COL_CONCEPTO]);
       expect(linea.conceptoLiteral).toBe(concepto);
       expect(Array.from(linea.conceptoLiteral)).toEqual(Array.from(concepto));
@@ -66,13 +67,13 @@ describe('E1.1 · lineasExtracto · sobre el extracto real de BBVA', () => {
   it('las huellas son las del orquestador y las de la sesión, no otras', async () => {
     const movs = await movimientosDelExtracto();
     const cuota = movs.find((m) => /amortizacion/i.test(m.description ?? ''))!;
-    const linea = lineaDe(cuota, 11);
+    const linea = lineaDe(cuota);
 
     expect(linea.fechaOperacion).toBe('2026-02-02');
     expect(linea.importe).toBeCloseTo(-285.4, 2);
     expect(linea.referencia).toContain('0182-5322-27-0830842450');
-    expect(linea.movementIds).toEqual([11]);
-    expect(linea.estado).toBe('resuelta');
+    expect(linea.movementIds).toEqual([]);
+    expect(linea.estado).toBe('pendiente');
 
     // hashLinea · los MISMOS tres datos que `extractoSesion.construirLineas`.
     expect(linea.hashLinea).toBe(

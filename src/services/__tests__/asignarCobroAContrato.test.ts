@@ -145,7 +145,7 @@ describe('assign_to_contract · el cobro queda vinculado a su contrato', () => {
     // Guardar el extracto sin decidir nada sobre esta línea.
     await confirmDecisions('lote-test', {
       approvedMatches: [],
-      ignoredMovementIds: [],
+      ignoredLineaIds: [],
     });
 
     // No se ha creado ningún evento a su espalda.
@@ -157,7 +157,7 @@ describe('assign_to_contract · el cobro queda vinculado a su contrato', () => {
     // El candado del contrato: si alguien reabre el canal, que sea a la vista.
     const payload: Parameters<typeof confirmDecisions>[1] = {
       approvedMatches: [],
-      ignoredMovementIds: [],
+      ignoredLineaIds: [],
     };
     expect(payload).not.toHaveProperty('approvedSuggestions');
   });

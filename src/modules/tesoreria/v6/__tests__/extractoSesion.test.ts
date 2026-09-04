@@ -10,16 +10,13 @@
 
 import {
   construirLineas as construirLineasReal,
-  lineaIdPorMovementId,
-  movementIdsDe,
   veredictoEfectivo,
   resumir,
   payloadDeConfirmacion,
   lineasAIgnorar,
-  lineasPendientes,
   hashesARecuperar,
-  movimientosAEfectivo,
-  movimientosATraspaso,
+  lineasAEfectivo,
+  lineasATraspaso,
   contarIgualesSinResolver,
   idsIgualesAResolver,
   claveDeLineaIgual,
@@ -28,7 +25,8 @@ import {
   seOfrecePara,
 } from '../extractoSesion';
 import type { MatchResult } from '../../../../services/movementMatchingService';
-import type { Movement, TreasuryEvent } from '../../../../services/db';
+import type { Movement, TreasuryEvent, LineaExtractoPersistida } from '../../../../services/db';
+import { generateLineHash } from '../../../../services/statementIgnoredLinesService';
 
 const mov = (id: number, description: string, amount: number, date = '2026-03-10') =>
   ({ id, description, amount, date, accountId: 1 }) as Movement;
@@ -45,20 +43,66 @@ const evt = (id: number, description: string, amount: number, date = '2026-03-10
 
 const sinMatches: MatchResult = { matches: [], multiMatches: [], sinMatch: [] };
 
-// E1.2b · `lineaId` es obligatorio y sale de la fila persistida (E1.1). En
-// estos tests la fila se fabrica desde el movimiento con un id DISTINTO
-// (100 + movementId) para que ninguna aserción pase por accidente confundiendo
-// una identidad con la otra. Las decisiones se escriben con esos lineaIds.
-const persistidasDe = (movs: Movement[]) => movs.map((m) => ({ id: 100 + (m.id as number), movementIds: [m.id as number] }));
+// E1.5 · la sesión se construye desde las FILAS de `lineasExtracto` y habla
+// SOLO en `lineaId`. Estos tests describen cada línea como si fuera el
+// movimiento que el banco trajo (`mov`); el puente la convierte en la fila que
+// el import guarda —con un `lineaId` DISTINTO (100 + id) para que ninguna
+// aserción pase por accidente confundiendo una identidad con la otra— y traduce
+// el emparejamiento (que estos fixtures escriben por movementId) a `lineaId`.
+// `pers` deja fijar qué movimientos tiene YA cada fila (un pago múltiple).
+type Persistida = { id: number; movementIds: number[] };
+const persistidasDe = (movs: Movement[]): Persistida[] =>
+  movs.map((m) => ({ id: 100 + (m.id as number), movementIds: [m.id as number] }));
 const L = (movementId: number) => 100 + movementId;
+const filaDe = (m: Movement, p: Persistida): LineaExtractoPersistida => ({
+  id: p.id,
+  fechaOperacion: m.date,
+  fechaValor: m.valueDate ?? m.date,
+  importe: m.amount,
+  conceptoLiteral: m.description,
+  ...(m.counterparty != null ? { contraparte: m.counterparty } : {}),
+  ...(m.reference != null ? { referencia: m.reference } : {}),
+  importBatchId: 'lote',
+  accountId: m.accountId,
+  hashLinea: generateLineHash({ date: m.date, amount: m.amount, description: m.description }),
+  hashMovement: '',
+  estado: p.movementIds.length ? 'resuelta' : 'pendiente',
+  movementIds: [...p.movementIds],
+  createdAt: '',
+  updatedAt: '',
+});
 const construirLineas = (
   movs: Movement[],
   mr: MatchResult,
   evs: TreasuryEvent[],
   ign: Set<string>,
-  conf: Parameters<typeof construirLineasReal>[4] = new Map(),
-  pers: Parameters<typeof construirLineasReal>[5] = persistidasDe(movs)
-) => construirLineasReal(movs, mr, evs, ign, conf, pers);
+  conf: Map<number, { id: number; descripcion: string; importe: number; fecha: string }> = new Map(),
+  pers: Persistida[] = persistidasDe(movs)
+) => {
+  const lineaDe = new Map<number, number>();
+  for (const p of pers) for (const id of p.movementIds) lineaDe.set(id, p.id);
+  const l = (movementId: number) => lineaDe.get(movementId) ?? L(movementId);
+  const filas = pers
+    .map((p) => {
+      const m = movs.find((x) => p.movementIds.includes(x.id as number));
+      return m ? filaDe(m, p) : null;
+    })
+    .filter((f): f is LineaExtractoPersistida => f != null);
+  return construirLineasReal(
+    filas,
+    {
+      matches: mr.matches.map(({ movementId, ...c }) => ({ lineaId: l(movementId), ...c })),
+      multiMatches: mr.multiMatches.map((mm) => ({
+        lineaId: l(mm.movementId),
+        candidates: mm.candidates.map(({ movementId, ...c }) => ({ lineaId: l(movementId), ...c })),
+      })),
+      sinMatch: mr.sinMatch.map(l),
+    },
+    evs,
+    ign,
+    new Map(Array.from(conf, ([movementId, ref]) => [l(movementId), ref]))
+  );
+};
 
 describe('construir las líneas de la sesión', () => {
   it('una línea que casa con un previsto cuadra, y trae el previsto para pintarlo', () => {
@@ -139,7 +183,7 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
     );
     const payload = payloadDeConfirmacion(lineas, decisionesVacias());
     expect(payload.reconciliacionesConfirmado).toEqual([
-      { importMovementId: 10, confirmadoMovementId: 7 },
+      { lineaId: L(10), confirmadoMovementId: 7 },
     ]);
     expect(payload.approvedMatches).toEqual([]);
   });
@@ -154,11 +198,11 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
     );
     expect(lineas[0].confirmado).toBeUndefined();
     const payload = payloadDeConfirmacion(lineas, decisionesVacias());
-    expect(payload.approvedMatches).toEqual([{ movementId: 10, treasuryEventId: 5 }]);
+    expect(payload.approvedMatches).toEqual([{ lineaId: L(10), treasuryEventId: 5 }]);
     expect(payload.reconciliacionesConfirmado).toEqual([]);
   });
 
-  it('un cuadre con confirmado NO es pendiente · su línea del import sobrevive', () => {
+  it('un cuadre con confirmado cuenta como resuelto · no es pendiente', () => {
     const lineas = construirLineas(
       [mov(10, 'CAJERO', -20)],
       sinMatches,
@@ -166,7 +210,7 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
       new Set(),
       new Map([[10, conf(7, 'Cajero', -20)]])
     );
-    expect(lineasPendientes(lineas, decisionesVacias())).toEqual([]);
+    expect(resumir(lineas, decisionesVacias()).resolver).toBe(0);
   });
 
   it('ignorar una línea que cuadraba con un confirmado gana · no la reconcilia', () => {
@@ -181,7 +225,7 @@ describe('cuadra con lo que ya tenías anotado (Confirmado · "las dos cosas")',
     d.ignorados.add(L(10));
     const payload = payloadDeConfirmacion(lineas, d);
     expect(payload.reconciliacionesConfirmado).toEqual([]);
-    expect(payload.ignoredMovementIds).toEqual([10]);
+    expect(payload.ignoredLineaIds).toEqual([L(10)]);
   });
 });
 
@@ -263,8 +307,8 @@ describe('las decisiones del usuario', () => {
     const d = decisionesVacias();
     d.asignados.set(L(10), 6); // el automático decía 5
     const payload = payloadDeConfirmacion(lineas(), d);
-    expect(payload.approvedMatches).toContainEqual({ movementId: 10, treasuryEventId: 6 });
-    expect(payload.approvedMatches).not.toContainEqual({ movementId: 10, treasuryEventId: 5 });
+    expect(payload.approvedMatches).toContainEqual({ lineaId: L(10), treasuryEventId: 6 });
+    expect(payload.approvedMatches).not.toContainEqual({ lineaId: L(10), treasuryEventId: 5 });
   });
 
   it('ignorar gana a todo · es la última palabra sobre esa línea', () => {
@@ -298,11 +342,11 @@ describe('lo que viaja al pulsar Guardar', () => {
   it('lo que queda A RESOLVER no viaja · por D4 no se materializa', () => {
     const payload = payloadDeConfirmacion(tres(), decisionesVacias());
     const tocados = [
-      ...payload.approvedMatches.map((m) => m.movementId),
-      ...payload.ignoredMovementIds,
+      ...payload.approvedMatches.map((m) => m.lineaId),
+      ...payload.ignoredLineaIds,
     ];
-    expect(tocados).not.toContain(11);
-    expect(tocados).not.toContain(12);
+    expect(tocados).not.toContain(L(11));
+    expect(tocados).not.toContain(L(12));
   });
 
   it('lo que cuadra se empareja y lo ignorado se marca', () => {
@@ -310,22 +354,19 @@ describe('lo que viaja al pulsar Guardar', () => {
     d.ignorados.add(L(12));
     const payload = payloadDeConfirmacion(tres(), d);
 
-    expect(payload.approvedMatches).toEqual([{ movementId: 10, treasuryEventId: 5 }]);
-    expect(payload.ignoredMovementIds).toEqual([12]);
+    expect(payload.approvedMatches).toEqual([{ lineaId: L(10), treasuryEventId: 5 }]);
+    expect(payload.ignoredLineaIds).toEqual([L(12)]);
   });
 
-  // Antes este test exigía lo contrario: que las sin resolver salieran listadas
-  // para BORRAR su `Movement` (D4). Se invierte a propósito · una línea del
-  // banco es dinero que se movió, y perderla es peor que no entenderla.
-  it('NINGUNA línea sale listada para borrar · ni las que quedan a resolver', () => {
-    expect(lineasPendientes(tres(), decisionesVacias())).toEqual([]);
-  });
-
-  it('lo ignorado y lo que cuadra NO son pendientes', () => {
-    const d = decisionesVacias();
-    d.ignorados.add(L(12));
-    d.asignados.set(L(11), 5);
-    expect(lineasPendientes(tres(), d)).toEqual([]);
+  // E1.5 · no hay lista de «pendientes» que borrar: lo que queda a resolver
+  // sigue siendo línea del extracto y cuenta en el saldo como tal. El payload
+  // no tiene por dónde mandar a borrar nada.
+  it('el payload no tiene ningún canal de borrado', () => {
+    expect(Object.keys(payloadDeConfirmacion(tres(), decisionesVacias())).sort()).toEqual([
+      'approvedMatches',
+      'ignoredLineaIds',
+      'reconciliacionesConfirmado',
+    ]);
   });
 
   it('no manda sugerencias · §4.7 no ofrece aceptarlas', () => {
@@ -341,7 +382,7 @@ describe('lo que viaja al pulsar Guardar', () => {
     const ls = tres();
     // Devuelve LÍNEAS y no hashes: `ignoreLine` recibe la identidad y calcula
     // el hash por dentro, para que solo exista una implementación del hash.
-    expect(lineasAIgnorar(ls, d).map((l) => l.movementId)).toEqual([12]);
+    expect(lineasAIgnorar(ls, d).map((l) => l.lineaId)).toEqual([L(12)]);
   });
 });
 
@@ -358,15 +399,13 @@ describe('la retirada de efectivo', () => {
       new Set()
     );
 
-  // Queda RESUELTA · y ninguna línea se desmaterializa ya, tampoco la que sigue
-  // sin resolver: guardar dejó de borrar movimientos del banco.
-  it('queda resuelta · y nada se borra al guardar', () => {
+  // Queda RESUELTA · y viaja por `lineaId`: el movimiento nace al convertirla.
+  it('queda resuelta · y viaja como línea para convertirse al guardar', () => {
     const d = decisionesVacias();
     d.aEfectivo.add(L(10));
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
-    expect(lineasPendientes(lineas(), d)).toEqual([]);
-    expect(movimientosAEfectivo(lineas(), d)).toEqual([10]);
+    expect(lineasAEfectivo(lineas(), d)).toEqual([L(10)]);
   });
 
   // Confirmarle además un previsto daría por pagado con el mismo dinero dos
@@ -391,7 +430,7 @@ describe('la retirada de efectivo', () => {
     d.ignorados.add(L(10));
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
-    expect(movimientosAEfectivo(lineas(), d)).toEqual([]);
+    expect(lineasAEfectivo(lineas(), d)).toEqual([]);
   });
 });
 
@@ -414,8 +453,7 @@ describe('el traspaso a otra cuenta al importar (P1)', () => {
     d.aTraspaso.set(L(10), 7); // traspaso a la cuenta 7
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('cuadra');
-    expect(lineasPendientes(lineas(), d)).toEqual([]);
-    expect(movimientosATraspaso(lineas(), d)).toEqual([{ movementId: 10, cuentaDestinoId: 7 }]);
+    expect(lineasATraspaso(lineas(), d)).toEqual([{ lineaId: L(10), cuentaDestinoId: 7 }]);
   });
 
   // Confirmarle además un previsto lo daría por pagado dos veces.
@@ -440,7 +478,7 @@ describe('el traspaso a otra cuenta al importar (P1)', () => {
     d.ignorados.add(L(10));
 
     expect(veredictoEfectivo(lineas()[0], d)).toBe('ignorada');
-    expect(movimientosATraspaso(lineas(), d)).toEqual([]);
+    expect(lineasATraspaso(lineas(), d)).toEqual([]);
   });
 });
 
@@ -466,10 +504,6 @@ describe('ninguna línea se aparta por su fecha', () => {
     const l = viejas();
     expect(l[0].veredicto).toBe('resolver');
     expect(l[1].veredicto).toBe('resolver');
-  });
-
-  it('y ninguno se manda a borrar al guardar', () => {
-    expect(lineasPendientes(viejas(), decisionesVacias())).toEqual([]);
   });
 
   it('el resumen no tiene dónde esconderlos · todos cuentan como a resolver', () => {
@@ -580,20 +614,20 @@ describe('E1.2 · lineaId manda en la sesión', () => {
     ]);
   });
 
-  it('E1.2b · sin fila persistida NO se inventa una identidad · revienta con un mensaje claro', () => {
-    expect(() =>
-      construirLineasReal([mov(10, 'COMISION', -3)], sinMatches, [], new Set())
-    ).toThrow(/lineasExtracto/);
-    // Una fila de otro lote o descartada (sin movimientos) tampoco vale.
-    expect(() =>
-      construirLineasReal([mov(10, 'COMISION', -3)], sinMatches, [], new Set(), new Map(), [
-        persistida(1, [99]),
-        persistida(2, []),
-      ])
-    ).toThrow(/lineasExtracto/);
+  it('E1.5 · una fila descartada (duplicada, sin fecha, sin importe) no entra en la sesión', () => {
+    const filas: LineaExtractoPersistida[] = [
+      filaDe(mov(10, 'COMISION', -3), { id: 501, movementIds: [] }),
+      { ...filaDe(mov(11, 'COMISION', -3), { id: 502, movementIds: [] }), descarte: 'duplicada' },
+      { ...filaDe(mov(12, 'SIN FECHA', -3), { id: 503, movementIds: [] }), fechaOperacion: '', descarte: 'sin_fecha' },
+    ];
+    const lineas = construirLineasReal(filas, sinMatches, [], new Set());
+    expect(lineas.map((l) => l.lineaId)).toEqual([501]);
+    // Sin movimiento todavía · nace al resolver.
+    expect(lineas[0].movementId).toBeUndefined();
+    expect(lineas[0].movementIds).toEqual([]);
   });
 
-  it('pago múltiple · una línea con varios movimientos → misma lineaId y movementIds completos', () => {
+  it('pago múltiple · una línea con varios movimientos → UNA línea con movementIds completos', () => {
     const lineas = construirLineas(
       [mov(20, 'TRANSF FIANZA+MES', 700), mov(21, 'TRANSF FIANZA+MES', 700)],
       sinMatches,
@@ -602,23 +636,9 @@ describe('E1.2 · lineaId manda en la sesión', () => {
       new Map(),
       [persistida(900, [20, 21])]
     );
-    expect(lineas.map((l) => l.lineaId)).toEqual([900, 900]);
-    expect(lineas.map((l) => l.movementIds)).toEqual([[20, 21], [20, 21]]);
-  });
-
-  it('lineaIdPorMovementId · el mapa es el inverso exacto de movementIds', () => {
-    const m = lineaIdPorMovementId([persistida(5, [1, 2]), persistida(6, [3]), persistida(7, [])]);
-    expect(Array.from(m.entries())).toEqual([
-      [1, 5],
-      [2, 5],
-      [3, 6],
-    ]);
-  });
-
-  it('movementIdsDe · la frontera · cae a [movementId] si la línea no trae la lista', () => {
-    expect(movementIdsDe({ movementId: 4 })).toEqual([4]);
-    expect(movementIdsDe({ movementId: 4, movementIds: [] })).toEqual([4]);
-    expect(movementIdsDe({ movementId: 4, movementIds: [4, 5] })).toEqual([4, 5]);
+    expect(lineas.map((l) => l.lineaId)).toEqual([900]);
+    expect(lineas[0].movementIds).toEqual([20, 21]);
+    expect(lineas[0].movementId).toBe(20);
   });
 
   it('las decisiones van por lineaId · y un movementId ya no decide nada', () => {
@@ -637,77 +657,27 @@ describe('E1.2 · lineaId manda en la sesión', () => {
     const porLinea = decisionesVacias();
     porLinea.ignorados.add(501);
     expect(veredictoEfectivo(lineas[0], porLinea)).toBe('ignorada');
-    // La frontera traduce a lo que `confirmDecisions` entiende: movementId.
+    // E1.5 · y Guardar también habla en lineaId: ya no hay frontera que traduzca.
     expect(payloadDeConfirmacion(lineas, porLinea)).toEqual({
       approvedMatches: [],
-      ignoredMovementIds: [10],
+      ignoredLineaIds: [501],
       reconciliacionesConfirmado: [],
     });
   });
 
-  it('la frontera soporta 1→N · una línea decidida entrega TODOS sus movimientos, sin repetir', () => {
+  it('una línea viaja UNA vez aunque la lista la traiga repetida', () => {
     const lineas = construirLineas(
-      [mov(20, 'TRANSF FIANZA+MES', 700), mov(21, 'TRANSF FIANZA+MES', 700)],
+      [mov(20, 'TRANSF FIANZA+MES', 700)],
       { ...sinMatches, matches: [{ movementId: 20, treasuryEventId: 5, score: 92, reasons: [] }] },
       [evt(5, 'Renta + fianza', 700)],
       new Set(),
       new Map(),
-      [persistida(900, [20, 21])]
+      [persistida(900, [20])]
     );
     const d = decisionesVacias();
     d.asignados.set(900, 5);
-    expect(payloadDeConfirmacion(lineas, d).approvedMatches).toEqual([
-      { movementId: 20, treasuryEventId: 5 },
-      { movementId: 21, treasuryEventId: 5 },
+    expect(payloadDeConfirmacion([...lineas, ...lineas], d).approvedMatches).toEqual([
+      { lineaId: 900, treasuryEventId: 5 },
     ]);
-    const e = decisionesVacias();
-    e.aEfectivo.add(900);
-    expect(movimientosAEfectivo(lineas, e)).toEqual([20, 21]);
-    const t = decisionesVacias();
-    t.aTraspaso.set(900, 7);
-    expect(movimientosATraspaso(lineas, t)).toEqual([
-      { movementId: 20, cuentaDestinoId: 7 },
-      { movementId: 21, cuentaDestinoId: 7 },
-    ]);
-    const i = decisionesVacias();
-    i.ignorados.add(900);
-    expect(payloadDeConfirmacion(lineas, i).ignoredMovementIds).toEqual([20, 21]);
-  });
-
-  // REGRESIÓN DURA · dada la misma sesión, el payload que llega a
-  // `confirmDecisions` es el mismo que antes de E1.2b. Se construye la misma
-  // sesión de dos formas: las decisiones «de antes» (por movementId, sobre
-  // líneas con lineaId = movementId, que es como se veía el mundo cuando ambas
-  // identidades coincidían) y las «de ahora» (por lineaId real), y el payload
-  // final coincide byte a byte.
-  it('regresión dura · mismo payload a confirmDecisions antes y después de E1.2b', () => {
-    const movs = [mov(10, 'A', -10), mov(11, 'B', -20), mov(12, 'C', -30), mov(13, 'CAJERO', -20)];
-    const mr = { ...sinMatches, matches: [{ movementId: 10, treasuryEventId: 5, score: 90, reasons: [] }] };
-    const evs = [evt(5, 'Previsto A', -10), evt(6, 'Previsto B', -20)];
-    const conf = new Map([[13, { id: 77, descripcion: 'Cajero', importe: -20, fecha: '2026-03-10' }]]);
-
-    // «Antes» · lineaId === movementId · decisiones escritas con los ids de movimiento.
-    const antes = construirLineasReal(movs, mr, evs, new Set(), conf, movs.map((m) => ({ id: m.id as number, movementIds: [m.id as number] })));
-    const dAntes = decisionesVacias();
-    dAntes.asignados.set(11, 6);
-    dAntes.ignorados.add(12);
-
-    // «Ahora» · lineaId distinto · decisiones escritas con los ids de línea.
-    const ahora = construirLineas(movs, mr, evs, new Set(), conf);
-    const dAhora = decisionesVacias();
-    dAhora.asignados.set(L(11), 6);
-    dAhora.ignorados.add(L(12));
-
-    const esperado = {
-      approvedMatches: [
-        { movementId: 10, treasuryEventId: 5 },
-        { movementId: 11, treasuryEventId: 6 },
-      ],
-      ignoredMovementIds: [12],
-      reconciliacionesConfirmado: [{ importMovementId: 13, confirmadoMovementId: 77 }],
-    };
-    expect(payloadDeConfirmacion(antes, dAntes)).toEqual(esperado);
-    expect(payloadDeConfirmacion(ahora, dAhora)).toEqual(esperado);
-    expect(resumir(antes, dAntes)).toEqual(resumir(ahora, dAhora));
   });
 });
