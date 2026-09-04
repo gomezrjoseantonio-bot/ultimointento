@@ -595,6 +595,16 @@ describe('accountBalanceService', () => {
       expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [sinId], movements: [cargo] })).toBeCloseTo(-98.44, 2);
     });
 
+    it('un vínculo antiguo con el id como texto ("7") también se reconoce', () => {
+      const cuenta = { ...anclada, openingBalance: 0, openingBalanceDate: '2026-08-01' };
+      const legado = { ...recibo, executedMovementId: '7' } as any;
+      expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [legado], movements: [cargo] })).toBeCloseTo(-98.44, 2);
+      // Y un id vacío no es un vínculo (no se cuela el 0 de `Number('')`).
+      const vacio = { ...recibo, executedMovementId: '' } as any;
+      const cero = { id: 0, accountId: 42, amount: -5, date: '2026-09-03' } as any;
+      expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [vacio], movements: [cargo, cero] })).toBeCloseTo(-103.44, 2);
+    });
+
     it('un previsto sin puntear sigue en su fecha prevista', () => {
       const previsto = { id: 702, accountId: 42, type: 'expense', amount: 40, predictedDate: '2026-09-04', status: 'predicted', actualDate: '2026-09-01' } as any;
       const cuenta = { ...anclada, openingBalance: 0, openingBalanceDate: '2026-08-01' };

@@ -107,8 +107,12 @@ function fechaDelEvento(event: TreasuryEvent): string | undefined {
  * cuanto el banco carga otro día.
  */
 function movimientoDelEvento(event: TreasuryEvent): number | undefined {
-  const id = event.executedMovementId ?? event.movementId;
-  return Number.isFinite(id) ? (id as number) : undefined;
+  // Datos antiguos pueden traer el id como texto ("7"); `Number(null)` y
+  // `Number('')` darían 0, que NO es un id: se descartan antes de convertir.
+  const crudo: unknown = event.executedMovementId ?? event.movementId;
+  if (crudo == null || crudo === '') return undefined;
+  const id = Number(crudo);
+  return Number.isFinite(id) ? id : undefined;
 }
 
 function buildEntryKey(accountId: number, date: string, signedAmount: number): string {
@@ -175,16 +179,15 @@ export function calculateAccountBalanceAtDate(params: {
   const isAfterOpening = (dateOnly: string): boolean =>
     !accountOpeningDate || dateOnly >= accountOpeningDate;
 
-  const priorAccountEvents = treasuryEvents.filter(e => (
-    e.accountId === account.id &&
+  const priorAccountEvents = treasuryEvents.filter(e => {
+    if (e.accountId !== account.id) return false;
     // Una PIEZA de tarjeta (`gasto_tarjeta`) no sale de ninguna cuenta: el dinero
     // sale en el recibo. Contarla aquí lo cobraría dos veces. Nace sin
     // `accountId` (ya no casaría), pero el guard explícito lo blinda.
-    e.sourceType !== 'gasto_tarjeta' &&
-    fechaDelEvento(e) &&
-    fechaDelEvento(e)! < cutoffDate &&
-    isAfterOpening(fechaDelEvento(e)!)
-  ));
+    if (e.sourceType === 'gasto_tarjeta') return false;
+    const fecha = fechaDelEvento(e);
+    return fecha != null && fecha < cutoffDate && isAfterOpening(fecha);
+  });
 
   const committedPriorEvents = priorAccountEvents.filter(isCommittedTreasuryEvent);
 
