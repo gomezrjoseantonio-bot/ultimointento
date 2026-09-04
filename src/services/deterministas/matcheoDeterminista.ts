@@ -17,6 +17,12 @@ import { ventasQueCuadran } from './ventasDeInmueble';
 import { rendimientosQueCuadran } from './rendimientosDeInversion';
 import { nominasQueSeReconocen } from './nominas';
 import { atribucionesDeclaradas } from './gastoDeclaradoPorInmueble';
+import type { LineaExtractoPersistida } from '../db/types-lineasExtracto';
+import {
+  movimientosDesdeLineas,
+  reconocidoPorLinea,
+  type LoQueSeReconocePorLinea,
+} from '../lineaComoMovimiento';
 
 export interface LoQueSeReconoce {
   /** movementId → el origen que lo explica. Estas líneas se cierran solas. */
@@ -80,4 +86,18 @@ export async function reconocerDeterministas(movimientos: Movement[]): Promise<L
   }
 
   return { origenes, atribuciones };
+}
+
+/**
+ * E1.4b · la misma entrada, por LÍNEA del extracto.
+ *
+ * Cada línea se convierte en el `Movement` que `insertMovements` habría creado
+ * (en memoria, sin escribir) y se cruza con los MISMOS libros. Los mapas
+ * hablan en `lineaId`. Las líneas descartadas no entran, igual que hoy no
+ * tienen movimiento. No la llama nadie todavía: activarla es E1.5.
+ */
+export async function reconocerDeterministasDeLineas(
+  lineas: LineaExtractoPersistida[]
+): Promise<LoQueSeReconocePorLinea> {
+  return reconocidoPorLinea(await reconocerDeterministas(movimientosDesdeLineas(lineas)));
 }

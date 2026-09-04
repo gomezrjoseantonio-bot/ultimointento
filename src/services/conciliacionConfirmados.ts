@@ -19,6 +19,8 @@
 
 import type { Movement } from './db';
 import { isTransferKey } from './categoryCatalog';
+import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
+import { movimientosDesdeLineas } from './lineaComoMovimiento';
 
 export interface MovimientoConfirmadoRef {
   id: number;
@@ -147,6 +149,40 @@ export function confirmadosPorLinea(
   const confirmados = movimientos.filter(
     (m) => m.accountId === accountId && m.id != null && !idsLote.has(m.id)
   );
+  return refsDeConfirmados(lineasImport, confirmados, opts);
+}
+
+/**
+ * E1.4b · la misma entrada, por LÍNEA del extracto.
+ *
+ * Cada línea se convierte en el `Movement` que `insertMovements` habría creado
+ * (en memoria, sin escribir) y se empareja con los MISMOS confirmados. El mapa
+ * habla en `lineaId`. Los movimientos que HOY nacieron del lote
+ * (`linea.movementIds`) se excluyen de los candidatos, igual que hoy se
+ * excluyen las propias líneas del lote —y se excluyen por su id de
+ * movimiento, no por el de línea, que son numeraciones distintas—. Las líneas
+ * descartadas no entran. No la llama nadie todavía: activarla es E1.5.
+ */
+export function confirmadosPorLineaExtracto(
+  lineas: LineaExtractoPersistida[],
+  movimientos: Movement[],
+  accountId: number,
+  opts?: EmparejarConfirmadosOpts
+): Map<number, MovimientoConfirmadoRef> {
+  const nacidosDelLote = new Set<number>();
+  for (const l of lineas) for (const id of l.movementIds) nacidosDelLote.add(id);
+  const confirmados = movimientos.filter(
+    (m) => m.accountId === accountId && m.id != null && !nacidosDelLote.has(m.id)
+  );
+  return refsDeConfirmados(movimientosDesdeLineas(lineas), confirmados, opts);
+}
+
+/** Empareja y busca los datos del confirmado · lo comparten las dos entradas. */
+function refsDeConfirmados(
+  lineasImport: Movement[],
+  confirmados: Movement[],
+  opts?: EmparejarConfirmadosOpts
+): Map<number, MovimientoConfirmadoRef> {
   const emparejados = emparejarConfirmados(lineasImport, confirmados, opts);
 
   const porId = new Map<number, Movement>();
