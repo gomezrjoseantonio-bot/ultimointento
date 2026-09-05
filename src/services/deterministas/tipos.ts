@@ -29,7 +29,7 @@
 // Lo mismo vale para lo que el usuario dio de alta como estructura: un
 // recurrente (su CUPS, su póliza, su día y su importe), el contrato de un
 // inquilino (su nombre, su renta, sus fechas) y sus propias cuentas (su IBAN,
-// su nombre). Todo eso existe para TODO el histórico; la previsión, solo para
+// su nombre). Todo eso existe para el histórico entero; la previsión, solo para
 // el mes en curso. Aquí se casa la línea contra la definición, y el
 // emparejador de previsiones (`movementMatchingService`) no se toca: esto es
 // un camino AÑADIDO para lo que él no puede ver, no una reescritura.
