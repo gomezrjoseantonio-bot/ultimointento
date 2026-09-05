@@ -8,7 +8,7 @@
 //   5. learning rule with appliedCount=0 ⇒ vía B at 50 + vía C heurística both included
 import { suggestForUnmatched } from '../movementSuggestionService';
 import { initDB, Movement, MovementLearningRule } from '../db';
-import { buildLearnKey } from '../movementLearningService';
+import { buildLearnKey, buildLearnKeyV1 } from '../movementLearningService';
 
 jest.mock('../db', () => ({
   initDB: jest.fn(),
@@ -21,6 +21,8 @@ jest.mock('../db', () => ({
 jest.mock('../movementLearningService', () => ({
   ...jest.requireActual('../movementLearningService'),
   buildLearnKey: jest.fn(),
+  // E2.1 · la clave v1 es el respaldo de lectura · también se controla aquí.
+  buildLearnKeyV1: jest.fn(),
 }));
 
 interface FakeStores {
@@ -67,6 +69,7 @@ const movement = (overrides: Partial<Movement>): Movement => ({
 describe('movementSuggestionService.suggestForUnmatched', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (buildLearnKeyV1 as jest.Mock).mockReturnValue('hash:v1-sin-regla');
   });
 
   it('1. compromisosRecurrentes vacío ⇒ vía A devuelve [] ⇒ sigue a B (que también vacía aquí ⇒ sólo vía C)', async () => {
@@ -289,5 +292,59 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     const heuristicSuggestion = suggestions.find(s => s.via === 'heuristica');
     expect(heuristicSuggestion).toBeDefined();
     expect(heuristicSuggestion!.confidence).toBe(60); // suministro pattern
+  });
+  // ── E2.1 · respaldo de lectura v1 ──────────────────────────────────────────
+  it('E2.1 · sin regla v2, la regla v1 de antes sigue aplicando · y su clave es la v1', async () => {
+    (buildLearnKey as jest.Mock).mockReturnValue('hash:v2-iberdrola-contrato');
+    (buildLearnKeyV1 as jest.Mock).mockReturnValue('hash:v1-iberdrola');
+    const stores: FakeStores = {
+      movements: [
+        movement({ id: 1, accountId: 42, amount: -108.44, description: 'RECIBO IBERDROLA CLIENTES SAU CONTRATO 123456789' }),
+      ],
+      movementLearningRules: [
+        {
+          id: 5,
+          learnKey: 'hash:v1-iberdrola',
+          counterpartyPattern: 'iberdrola',
+          descriptionPattern: 'recibo iberdrola clientes sau contrato',
+          amountSign: 'negative',
+          categoria: 'inmueble.suministros',
+          ambito: 'INMUEBLE',
+          inmuebleId: '4',
+          source: 'IMPLICIT',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-04-22T00:00:00.000Z',
+          appliedCount: 3,
+        } as MovementLearningRule,
+      ],
+      compromisosRecurrentes: [],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const suggestions = (await suggestForUnmatched([1])).get(1)!;
+    const viaB = suggestions.find((s) => s.via === 'learning_rule');
+    expect(viaB).toBeDefined();
+    expect(viaB!.metadata).toMatchObject({ learnKey: 'hash:v1-iberdrola', ruleId: 5, appliedCount: 3 });
+    expect(viaB!.action).toEqual(expect.objectContaining({ kind: 'create_treasury_event', inmuebleId: 4 }));
+  });
+
+  it('E2.1 · con regla v2 y regla v1 a la vez, manda la v2', async () => {
+    (buildLearnKey as jest.Mock).mockReturnValue('hash:v2-piso-7');
+    (buildLearnKeyV1 as jest.Mock).mockReturnValue('hash:v1-ambigua');
+    const regla = (id: number, learnKey: string, inmuebleId: string): MovementLearningRule => ({
+      id, learnKey, counterpartyPattern: 'iberdrola', descriptionPattern: 'recibo iberdrola', amountSign: 'negative',
+      categoria: 'inmueble.suministros', ambito: 'INMUEBLE', inmuebleId, source: 'IMPLICIT',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-04-22T00:00:00.000Z', appliedCount: 1,
+    } as MovementLearningRule);
+    const stores: FakeStores = {
+      movements: [movement({ id: 1, accountId: 42, amount: -63.1, description: 'RECIBO IBERDROLA CLIENTES SAU CONTRATO 987654321' })],
+      movementLearningRules: [regla(1, 'hash:v1-ambigua', '4'), regla(2, 'hash:v2-piso-7', '7')],
+      compromisosRecurrentes: [],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const viaB = (await suggestForUnmatched([1])).get(1)!.find((s) => s.via === 'learning_rule');
+    expect(viaB!.metadata).toMatchObject({ learnKey: 'hash:v2-piso-7', ruleId: 2 });
+    expect(viaB!.action).toEqual(expect.objectContaining({ inmuebleId: 7 }));
   });
 });
