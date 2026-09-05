@@ -95,6 +95,13 @@ const AutomatizacionesReglas: React.FC = () => {
                     <td className="py-2 pr-3 font-medium text-gray-900">{r.counterpartyPattern || '—'}</td>
                     <td className="py-2 pr-3 text-gray-700 max-w-[260px] truncate" title={r.descriptionPattern}>
                       {r.descriptionPattern || '—'}
+                      {/* E2.1 · el identificador que distingue esta regla de
+                          otra del mismo proveedor (nº de contrato, CUPS, NIF). */}
+                      {r.identificadores && r.identificadores.length > 0 ? (
+                        <span className="ml-1 text-xs text-gray-500" title={r.identificadores.join(' · ')}>
+                          · {r.identificadores.join(' · ')}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="py-2 pr-3 text-gray-600">
                       {r.amountSign === 'positive' ? 'Ingreso' : 'Gasto'}

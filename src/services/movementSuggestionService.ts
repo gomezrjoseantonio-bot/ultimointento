@@ -43,7 +43,7 @@ import {
   MovementLearningRule,
   TreasuryEvent,
 } from './db';
-import { buildLearnKey, nombreDeContraparte } from './movementLearningService';
+import { buildLearnKey, buildLearnKeyV1, nombreDeContraparte } from './movementLearningService';
 import { contradiceElSigno } from './sugerencias/signoDelMovimiento';
 import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
@@ -286,6 +286,9 @@ async function loadLearningRulesIndex(
   const seenKeys = new Set<string>();
   for (const movement of movements) {
     seenKeys.add(buildLearnKey(movement));
+    // E2.1 · la v1 es el respaldo de LECTURA de las reglas de antes: se carga
+    // también, y `suggestFromLearningRule` la prueba si la v2 no tiene regla.
+    seenKeys.add(buildLearnKeyV1(movement));
   }
 
   for (const key of seenKeys) {
@@ -313,13 +316,32 @@ async function loadLearningRulesIndex(
   return index;
 }
 
+/**
+ * La regla que aplica a este movimiento · por la clave v2 y, si no hay, por
+ * la v1 (E2.1 · respaldo de lectura). Un recibo con nº de contrato que aún no
+ * se ha confirmado desde E2.1 sigue encontrando la regla que aprendió antes;
+ * en cuanto se confirme una vez, nace su regla v2 y es la que manda.
+ */
+function reglaDelMovimiento(
+  movement: Movement,
+  rulesByKey: Map<string, MovementLearningRule>
+): { learnKey: string; rule: MovementLearningRule } | null {
+  const v2 = buildLearnKey(movement);
+  const porV2 = rulesByKey.get(v2);
+  if (porV2) return { learnKey: v2, rule: porV2 };
+  const v1 = buildLearnKeyV1(movement);
+  if (v1 === v2) return null;
+  const porV1 = rulesByKey.get(v1);
+  return porV1 ? { learnKey: v1, rule: porV1 } : null;
+}
+
 function suggestFromLearningRule(
   movement: Movement,
   rulesByKey: Map<string, MovementLearningRule>
 ): MovementSuggestion | null {
-  const learnKey = buildLearnKey(movement);
-  const rule = rulesByKey.get(learnKey);
-  if (!rule) return null;
+  const encontrada = reglaDelMovimiento(movement, rulesByKey);
+  if (!encontrada) return null;
+  const { learnKey, rule } = encontrada;
 
   const applied = rule.appliedCount ?? 0;
   let confidence: number;

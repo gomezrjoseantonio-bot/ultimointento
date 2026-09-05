@@ -437,6 +437,14 @@ export interface MovementLearningRule {
   aliasContraparte?: string;
   /** La otra mitad del alias · el nombre al que resultó pertenecer. */
   contraparteCanonica?: string;
+  /**
+   * E2.1 · los identificadores estables que traía el texto del banco cuando
+   * se aprendió («contrato:8078716546», «cups:ES00…», «nif:B67686782»). Son
+   * los que entran en la clave v2 y distinguen dos recibos del mismo
+   * proveedor de dos pisos distintos. Legibles, para la pantalla de reglas.
+   * Opcional · las reglas de antes de E2.1 no lo llevan.
+   */
+  identificadores?: string[];
   // T16-cleanup · B-TAREA8-MINIS sub-tarea 1: campo `history?: HistoryEntry[]`
   // eliminado del tipo. Sin escritor productivo (solo migración V64 histórica
   // que usa `Record<string, unknown>`) y sin reader. Los registros antiguos

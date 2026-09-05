@@ -8,7 +8,7 @@
  * generador de learnKey y la persistencia de movimientos.
  */
 
-import { learningService, buildLearnKey } from '../movementLearningService';
+import { learningService, buildLearnKey, buildLearnKeyV1 } from '../movementLearningService';
 import { initDB, Movement, MovementLearningRule } from '../db';
 
 // Test data generators
@@ -158,6 +158,11 @@ describe('Treasury Learning Engine', () => {
   // propiedades clave del v1 hash · estabilidad frente a tokens volátiles
   // (fechas/refs/importes) y separación por contraparte/signo.
   describe('buildLearnKey', () => {
+    // E2.1 · este test sigue siendo verdad y sigue verde: «ENE2024» y «REF123456»
+    // son ruido VOLÁTIL (una fecha y un nº de referencia que cambian cada mes) y
+    // deben seguir dando la misma clave. Lo que E2.1 cambia es lo de abajo: un
+    // IDENTIFICADOR ESTABLE (nº de contrato, CUPS, NIF) ya no se borra, y con él
+    // dos recibos del mismo proveedor de dos pisos son dos reglas.
     test('genera la misma clave para dos movimientos del mismo proveedor con tokens volátiles distintos', () => {
       const m1 = createTestMovement({
         description: 'ENDESA ESPAÑA SA RECIBO LUZ ENE2024 REF123456',
@@ -186,6 +191,61 @@ describe('Treasury Learning Engine', () => {
       }));
 
       expect(endesa).not.toBe(iberdrola);
+    });
+
+    // ── E2.1 · el identificador entra en la clave ──────────────────────────
+    test('E2.1 · mismo texto, distinto nº de contrato ⇒ claves DISTINTAS', () => {
+      const pisoA = buildLearnKey(createTestMovement({
+        description: 'RECIBO IBERDROLA CLIENTES SAU CONTRATO 123456789 08/2026',
+        counterparty: 'IBERDROLA CLIENTES SAU',
+        amount: -108.44,
+      }));
+      const pisoB = buildLearnKey(createTestMovement({
+        description: 'RECIBO IBERDROLA CLIENTES SAU CONTRATO 987654321 08/2026',
+        counterparty: 'IBERDROLA CLIENTES SAU',
+        amount: -63.1,
+      }));
+
+      expect(pisoA).not.toBe(pisoB);
+    });
+
+    test('E2.1 · el mismo contrato en dos meses ⇒ la MISMA clave (la fecha sigue siendo volátil)', () => {
+      const julio = buildLearnKey(createTestMovement({
+        description: 'PRESTAMOS ADEUDO CUOTA N.8078716546 31/07/25',
+        counterparty: '',
+        amount: -674.02,
+      }));
+      const agosto = buildLearnKey(createTestMovement({
+        description: 'PRESTAMOS ADEUDO CUOTA N.8078716546 31/08/25',
+        counterparty: '',
+        amount: -674.02,
+      }));
+
+      expect(julio).toBe(agosto);
+    });
+
+    test('E2.1 · el identificador que viaja en `reference` (BBVA) también entra en la clave', () => {
+      const base = { description: 'Cargo por amortizacion de prestamo/credito', counterparty: '', amount: -285.4 };
+      const prestamo1 = buildLearnKey(createTestMovement({ ...base, reference: '0182-5322-27-0830842450' }));
+      const prestamo2 = buildLearnKey(createTestMovement({ ...base, reference: '0182-5322-27-0830842451' }));
+
+      expect(prestamo1).not.toBe(prestamo2);
+    });
+
+    test('E2.1 · sin identificador la clave v2 ES la v1 · las reglas de antes siguen encontrándose', () => {
+      const m = createTestMovement({
+        description: 'ENDESA ESPAÑA SA RECIBO LUZ ENE2024 REF123456',
+        counterparty: 'ENDESA ESPAÑA SA',
+      });
+      expect(buildLearnKey(m)).toBe(buildLearnKeyV1(m));
+    });
+
+    test('E2.1 · con identificador la v2 y la v1 difieren · la v1 queda como respaldo de lectura', () => {
+      const m = createTestMovement({
+        description: 'RECIBO IBERDROLA CLIENTES SAU CONTRATO 123456789',
+        counterparty: 'IBERDROLA CLIENTES SAU',
+      });
+      expect(buildLearnKey(m)).not.toBe(buildLearnKeyV1(m));
     });
 
     test('genera claves distintas para signos opuestos del mismo proveedor', () => {
@@ -320,6 +380,79 @@ describe('Treasury Learning Engine', () => {
   // entradas a `history[]` ni en creación ni en upsert. El campo permanece
   // declarado como @deprecated en el tipo y los registros viejos lo
   // conservan dormido (no se borra hasta el próximo bump DB).
+  // ── E2.1 · el bug arreglado, de punta a punta ─────────────────────────────
+  describe('E2.1 · dos recibos del mismo proveedor de dos pisos', () => {
+    test('mismo texto, distinto nº de contrato ⇒ DOS reglas, cada una con su piso · la segunda NO pisa a la primera', async () => {
+      const recibo = (contrato: string, importe: number) =>
+        createTestMovement({
+          description: `RECIBO IBERDROLA CLIENTES SAU CONTRATO ${contrato} 08/2026`,
+          counterparty: 'IBERDROLA CLIENTES SAU',
+          amount: importe,
+        });
+      const pisoA = recibo('123456789', -108.44);
+      const pisoB = recibo('987654321', -63.1);
+
+      const reglaA = await learningService.createOrUpdateRule({
+        learnKey: buildLearnKey(pisoA),
+        categoria: 'inmueble.suministros',
+        ambito: 'INMUEBLE',
+        inmuebleId: '4',
+        movement: pisoA,
+      });
+      const reglaB = await learningService.createOrUpdateRule({
+        learnKey: buildLearnKey(pisoB),
+        categoria: 'inmueble.suministros',
+        ambito: 'INMUEBLE',
+        inmuebleId: '7',
+        movement: pisoB,
+      });
+
+      expect(reglaA.id).not.toBe(reglaB.id);
+      expect(reglaA.learnKey).not.toBe(reglaB.learnKey);
+      expect(reglaA.identificadores).toEqual(['contrato:123456789']);
+      expect(reglaB.identificadores).toEqual(['contrato:987654321']);
+
+      // Releídas de la base · la primera conserva su piso.
+      const guardadas = (await db.getAll('movementLearningRules')) as MovementLearningRule[];
+      const porId = new Map(guardadas.map((r) => [r.id, r]));
+      expect(porId.get(reglaA.id!)?.inmuebleId).toBe('4');
+      expect(porId.get(reglaB.id!)?.inmuebleId).toBe('7');
+      expect(guardadas).toHaveLength(2);
+    });
+
+    test('el mismo contrato confirmado dos veces ⇒ UNA regla, appliedCount 2', async () => {
+      const julio = createTestMovement({
+        description: 'PRESTAMOS ADEUDO CUOTA N.8078716546 31/07/25',
+        counterparty: '',
+        amount: -674.02,
+      });
+      const agosto = createTestMovement({
+        description: 'PRESTAMOS ADEUDO CUOTA N.8078716546 31/08/25',
+        counterparty: '',
+        amount: -674.02,
+      });
+
+      const primera = await learningService.createOrUpdateRule({
+        learnKey: buildLearnKey(julio), categoria: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: '2', movement: julio,
+      });
+      const segunda = await learningService.createOrUpdateRule({
+        learnKey: buildLearnKey(agosto), categoria: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: '2', movement: agosto,
+      });
+
+      expect(segunda.id).toBe(primera.id);
+      expect(segunda.appliedCount).toBe(2);
+      expect(segunda.identificadores).toEqual(['contrato:8078716546']);
+    });
+
+    test('sin identificador la regla no lleva `identificadores`', async () => {
+      const m = createTestMovement({ description: 'NETFLIX.COM', counterparty: 'NETFLIX' });
+      const regla = await learningService.createOrUpdateRule({
+        learnKey: buildLearnKey(m), categoria: 'ocio', ambito: 'PERSONAL', movement: m,
+      });
+      expect(regla.identificadores).toBeUndefined();
+    });
+  });
+
   describe('T16-cleanup · createOrUpdateRule no escribe history[]', () => {
     test('creación · history queda undefined en el objeto persistido', async () => {
       const rule = await learningService.createOrUpdateRule({

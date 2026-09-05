@@ -1,6 +1,7 @@
 import { initDB, Movement, MovementLearningRule } from './db';
 import { contraparteDeBizum } from './bizum';
 import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
+import { claveDeIdentificador, identificadoresDeMovimiento } from './identificadoresDelConcepto';
 
 /**
  * V1.1 Treasury · Movement Learning Service
@@ -96,13 +97,10 @@ function extractNGrams(text: string, maxGrams: number = 3): string[] {
 }
 
 /**
- * Build robust learn key per problem statement v1 format
- * Structure: v1|signo|ngramA|ngramB|ngramC
- *
- * Exported for movementSuggestionService: the suggestion engine looks up rules
- * by computing the same learnKey from a just-imported movement.
+ * Los n-grams del movimiento · lo que comparten todos los recibos de un mismo
+ * texto, una vez quitado lo volátil. Es la parte común de las claves v1 y v2.
  */
-export function buildLearnKey(movement: Movement): string {
+function ngramsDelMovimiento(movement: Movement): string[] {
   const contraparte = normalizeText(movement.counterparty || '');
   const descripcion = normalizeText(movement.description || '');
 
@@ -114,16 +112,58 @@ export function buildLearnKey(movement: Movement): string {
   const combinedText = `${cleanContraparte} ${cleanDescripcion}`.trim();
 
   // Extract top 3 n-grams
-  const ngrams = extractNGrams(combinedText, 3);
+  return extractNGrams(combinedText, 3);
+}
 
-  // Determine amount sign
-  const signo = movement.amount >= 0 ? 'positive' : 'negative';
+function signoDe(movement: Movement): 'positive' | 'negative' {
+  return movement.amount >= 0 ? 'positive' : 'negative';
+}
 
-  // Build key: v1|signo|ngramA|ngramB|ngramC
-  const keyParts = ['v1', signo, ...ngrams];
-  const keyString = keyParts.join('|');
+/**
+ * La clave v1 · `v1|signo|ngramA|ngramB|ngramC`, hasheada.
+ *
+ * Es la que tienen las reglas aprendidas antes de E2.1. Se conserva SOLO para
+ * leerlas (`movementSuggestionService` la prueba cuando la v2 no encuentra
+ * regla); no se escribe ninguna regla nueva con ella. No se migran las viejas:
+ * son de usar y tirar, y la primera confirmación con identificador ya nace v2.
+ */
+export function buildLearnKeyV1(movement: Movement): string {
+  const keyParts = ['v1', signoDe(movement), ...ngramsDelMovimiento(movement)];
+  return simpleHash(keyParts.join('|'));
+}
 
-  return simpleHash(keyString);
+/**
+ * La clave de aprendizaje · v2 (E2.1).
+ *
+ * `v2|signo|ngramA|ngramB|ngramC|id=tipo:valor|…` cuando el concepto trae un
+ * identificador estable (CUPS, nº de contrato, NIF, IBAN, tarjeta · ver
+ * `identificadoresDelConcepto`). Así dos recibos de Iberdrola de dos pisos
+ * distintos —mismo texto, distinto nº de contrato— son DOS reglas, cada una
+ * con su piso, en vez de una que la segunda confirmación pisaba.
+ *
+ * Sin identificador la clave es EXACTAMENTE la v1: el hash no cambia para
+ * nada que no lleve identificador, y las reglas viejas de esos textos siguen
+ * aplicándose sin fallback. Lo volátil (nº de recibo, referencia de compra,
+ * fecha embebida) sigue fuera, como siempre.
+ *
+ * Exported for movementSuggestionService: the suggestion engine looks up rules
+ * by computing the same learnKey from a just-imported movement.
+ */
+export function buildLearnKey(movement: Movement): string {
+  const ids = identificadoresDeMovimiento(movement);
+  if (ids.length === 0) return buildLearnKeyV1(movement);
+  const keyParts = [
+    'v2',
+    signoDe(movement),
+    ...ngramsDelMovimiento(movement),
+    ...ids.map((id) => `id=${claveDeIdentificador(id)}`),
+  ];
+  return simpleHash(keyParts.join('|'));
+}
+
+/** Los identificadores del movimiento, como se guardan en la regla · «tipo:valor». */
+export function identificadoresDeRegla(movement: Movement): string[] {
+  return identificadoresDeMovimiento(movement).map(claveDeIdentificador);
 }
 
 /**
@@ -256,6 +296,9 @@ export async function createOrUpdateRule(params: {
     const derivedAmountSign: 'positive' | 'negative' | undefined = movement
       ? (movement.amount >= 0 ? 'positive' : 'negative')
       : undefined;
+    // E2.1 · lo que identifica el contrato dentro del texto del banco. Se
+    // guarda legible («contrato:8078716546») para la pantalla de reglas.
+    const derivedIdentificadores = movement ? identificadoresDeRegla(movement) : [];
 
     // Check if rule already exists
     const existingRules = await db.getAllFromIndex('movementLearningRules', 'learnKey', learnKey);
@@ -279,6 +322,9 @@ export async function createOrUpdateRule(params: {
       }
       if (derivedAmountSign !== undefined && wasOrchestratorPlaceholder) {
         rule.amountSign = derivedAmountSign;
+      }
+      if (derivedIdentificadores.length > 0) {
+        rule.identificadores = derivedIdentificadores;
       }
       // B1 · this call counts as one application
       rule.appliedCount = (rule.appliedCount ?? 0) + 1;
@@ -311,6 +357,7 @@ export async function createOrUpdateRule(params: {
         lastAppliedAt: now,
         aliasContraparte: alias?.banco,
         contraparteCanonica: alias?.canonica,
+        ...(derivedIdentificadores.length > 0 ? { identificadores: derivedIdentificadores } : {}),
       };
 
       const ruleId = await db.add('movementLearningRules', newRule);
@@ -347,8 +394,14 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
     });
 
     const processedMovements = movements.map(movement => {
-      const learnKey = generateLearnKey(movement);
-      const rule = rulesMap.get(learnKey);
+      // E2.1 · primero la clave v2; si no hay regla, la v1 (reglas de antes).
+      let learnKey = generateLearnKey(movement);
+      let rule = rulesMap.get(learnKey);
+      if (!rule) {
+        const v1 = buildLearnKeyV1(movement);
+        rule = rulesMap.get(v1);
+        if (rule) learnKey = v1;
+      }
 
       if (rule) {
         // Apply learned classification
