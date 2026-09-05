@@ -52,11 +52,8 @@ import { convertirLineaEnTraspaso } from '../../../services/traspasoDesdeMovimie
 import { aplicarApertura, type PropuestaDeApertura } from '../../../services/aperturaDerivada';
 import PanelConciliar from './conciliar/PanelConciliar';
 import ZonaSoltar from './conciliar/ZonaSoltar';
-import {
-  propuestaDeLinea,
-  esPersonalReconocido,
-  type Propuesta,
-} from './conciliar/propuestaDeLinea';
+import { esPersonalReconocido, propuestasDeLineas } from './conciliar/propuestaDeLinea';
+import { autoPorReglaDe, lineasResueltasPorRegla, reglasCorregidas } from './resueltasPorRegla';
 import { loQueYaReconoce } from './conciliar/loQueYaReconoce';
 import { listRules } from '../../../services/movementLearningService';
 import type { MovementLearningRule } from '../../../services/db/types-movimientos';
@@ -173,29 +170,16 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // guarda el resultado en `OrchestratorResult.suggestions`. Hasta esta pantalla
   // ese mapa moría ahí: ningún componente lo abría. Aquí se convierte en lo que
   // dice cada tarjeta.
-  const propuestas = useMemo(() => {
-    const m = new Map<number, Propuesta>();
-    const sugs = resultado?.suggestions;
-    const atribs = resultado?.reconocido?.atribuciones;
-    if (!sugs && !atribs) return m;
-    for (const l of lineas) {
-      const a = atribs?.get(l.lineaId);
-      m.set(
-        l.lineaId,
-        propuestaDeLinea(
-          sugs?.get(l.lineaId) ?? [],
-          a
-            ? {
-                alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias,
-                concepto: a.concepto,
-                ejercicio: a.ejercicio,
-              }
-            : null,
-        ),
-      );
-    }
-    return m;
-  }, [resultado, lineas, inmuebles]);
+  const propuestas = useMemo(
+    () => propuestasDeLineas(lineas, resultado?.suggestions, resultado?.reconocido?.atribuciones, inmuebles),
+    [resultado, lineas, inmuebles],
+  );
+
+  // E2.2 · lo que una regla aprendida con confianza resuelve SOLA · va al montón
+  // «resueltas» y al Guardar nace su movimiento (`resueltasPorRegla`). «No es
+  // esto» lo devuelve a «te necesitan» y penaliza la regla.
+  const autoPorRegla = useMemo(() => autoPorReglaDe(resultado?.suggestions), [resultado]);
+  const autoResueltas = useMemo(() => new Set(autoPorRegla.keys()), [autoPorRegla]);
 
   // Quién va al montón «personal» · SOLO lo que el usuario enseñó alguna vez
   // (regla aprendida) o lo que marca un recurrente suyo. La heurística no entra:
@@ -219,8 +203,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   );
 
   const elCuadre = useMemo(
-    () => cuadre(lineas, decisiones, personales, reconocidas),
-    [lineas, decisiones, personales, reconocidas],
+    () => cuadre(lineas, decisiones, personales, reconocidas, autoResueltas),
+    [lineas, decisiones, personales, reconocidas, autoResueltas],
   );
 
   const aprendido = useMemo(
@@ -410,6 +394,10 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           // dedujo del cuadro.
           return linea != null && veredictoEfectivo(linea, decisiones) === 'resolver';
         }),
+        // E2.2 · lo que una regla con confianza resuelve sola, y las reglas que
+        // el usuario desmintió con «No es esto».
+        resueltasPorRegla: lineasResueltasPorRegla(lineas, decisiones, autoPorRegla, reconocidas),
+        reglasCorregidas: reglasCorregidas(lineas, decisiones, autoPorRegla),
       });
 
       // El ignorado se persiste por hash de línea (D4 · vive en el fichero).
@@ -464,7 +452,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setError(err instanceof Error ? err.message : 'No se pudo guardar el extracto.');
       setPaso('resolver');
     }
-  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, aplicarLaApertura, apertura, onGuardado, reiniciar, onCerrar]);
+  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, aplicarLaApertura, apertura, onGuardado, reiniciar, onCerrar, autoPorRegla, reconocidas]);
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
@@ -548,7 +536,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // Los cuatro montones del mockup. `bucketDeLinea` es total, así que esto no
   // puede dejar una línea fuera: la suma de los cuatro es siempre `lineas`.
   const enBucket = (b: Bucket) =>
-    lineas.filter((l) => bucketDeLinea(l, decisiones, personales, reconocidas) === b);
+    lineas.filter((l) => bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas) === b);
   const necesitan = enBucket('te_necesitan');
   const resueltas = enBucket('resueltas');
   const personalesLineas = enBucket('personal');

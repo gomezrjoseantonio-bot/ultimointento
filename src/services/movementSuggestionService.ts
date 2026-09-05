@@ -45,6 +45,7 @@ import {
 } from './db';
 import { buildLearnKey, buildLearnKeyV1, nombreDeContraparte } from './movementLearningService';
 import { contradiceElSigno } from './sugerencias/signoDelMovimiento';
+import { puedeResolverSola } from './reglaResuelveSola';
 import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
@@ -64,6 +65,8 @@ export type SuggestionAction =
     }
   | { kind: 'assign_to_contract'; contractId?: number }
   | { kind: 'mark_personal_expense'; categoryKey: string }
+  /** E2.2 · una regla aprendida de un traspaso · la línea es la salida hacia `cuentaDestinoId`. */
+  | { kind: 'transfer'; cuentaDestinoId: number }
   | { kind: 'ignore' };
 
 export interface MovementSuggestion {
@@ -353,7 +356,9 @@ function suggestFromLearningRule(
   }
 
   const action: SuggestionAction =
-    rule.ambito === 'PERSONAL'
+    rule.resolucion === 'traspaso' && rule.cuentaDestinoId != null
+      ? { kind: 'transfer', cuentaDestinoId: rule.cuentaDestinoId }
+      : rule.ambito === 'PERSONAL'
       ? { kind: 'mark_personal_expense', categoryKey: rule.categoria }
       : {
           kind: 'create_treasury_event',
@@ -375,7 +380,10 @@ function suggestFromLearningRule(
         ? `Regla aprendida (${applied} aplicaciones previas) → ${rule.categoria}`
         : `Regla aprendida sin aplicaciones previas → ${rule.categoria}`,
     action,
-    metadata: { learnKey, ruleId: rule.id, appliedCount: applied },
+    // E2.2 · `resuelveSola` · la regla se ha ganado la confianza y puede
+    // ejecutarse sin preguntar. La pantalla lo lee de aquí y no de la regla:
+    // el umbral vive en `reglaResuelveSola` y nadie más lo conoce.
+    metadata: { learnKey, ruleId: rule.id, appliedCount: applied, resuelveSola: puedeResolverSola(rule) },
   };
 }
 

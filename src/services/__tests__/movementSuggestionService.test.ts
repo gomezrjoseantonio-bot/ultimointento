@@ -347,4 +347,63 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     expect(viaB!.metadata).toMatchObject({ learnKey: 'hash:v2-piso-7', ruleId: 2 });
     expect(viaB!.action).toEqual(expect.objectContaining({ inmuebleId: 7 }));
   });
+
+  // ── E2.2 · la regla lleva si resuelve sola, y una regla de traspaso propone traspaso ──
+  it('E2.2 · la sugerencia de vía B dice si la regla RESUELVE sola (umbral) · y una regla de traspaso propone `transfer`', async () => {
+    (buildLearnKey as jest.Mock).mockReturnValue('hash:cajero');
+    const stores: FakeStores = {
+      movements: [movement({ id: 1, accountId: 42, amount: -200, description: 'RETIRADA CAJERO SERVIRED' })],
+      movementLearningRules: [
+        {
+          id: 3,
+          learnKey: 'hash:cajero',
+          counterpartyPattern: '',
+          descriptionPattern: 'retirada cajero servired',
+          amountSign: 'negative',
+          categoria: 'traspaso_salida',
+          ambito: 'PERSONAL',
+          source: 'IMPLICIT',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-04-22T00:00:00.000Z',
+          appliedCount: 3,
+          resolucion: 'traspaso',
+          cuentaDestinoId: 7,
+        } as MovementLearningRule,
+      ],
+      compromisosRecurrentes: [],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const viaB = (await suggestForUnmatched([1])).get(1)!.find((s) => s.via === 'learning_rule')!;
+    expect(viaB.action).toEqual({ kind: 'transfer', cuentaDestinoId: 7 });
+    expect(viaB.metadata).toMatchObject({ ruleId: 3, appliedCount: 3, resuelveSola: true });
+  });
+
+  it('E2.2 · con menos aplicaciones que el umbral, la regla PROPONE (resuelveSola=false)', async () => {
+    (buildLearnKey as jest.Mock).mockReturnValue('hash:iberdrola');
+    const stores: FakeStores = {
+      movements: [movement({ id: 1, accountId: 42, amount: -108.44, description: 'RECIBO IBERDROLA CLIENTES SAU' })],
+      movementLearningRules: [
+        {
+          id: 4,
+          learnKey: 'hash:iberdrola',
+          counterpartyPattern: 'iberdrola',
+          descriptionPattern: 'recibo iberdrola',
+          amountSign: 'negative',
+          categoria: 'suministros_inmueble',
+          ambito: 'INMUEBLE',
+          inmuebleId: '4',
+          source: 'IMPLICIT',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-04-22T00:00:00.000Z',
+          appliedCount: 2,
+        } as MovementLearningRule,
+      ],
+      compromisosRecurrentes: [],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const viaB = (await suggestForUnmatched([1])).get(1)!.find((s) => s.via === 'learning_rule')!;
+    expect(viaB.metadata).toMatchObject({ resuelveSola: false });
+  });
 });

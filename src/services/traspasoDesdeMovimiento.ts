@@ -20,6 +20,7 @@ import { initDB } from './db';
 import type { Movement } from './db';
 import { TRANSFER_KEYS } from './categoryCatalog';
 import { materializarLinea, type BaseParaMaterializar } from './materializarLinea';
+import { feedLearningRule } from './aplicarSugerencia';
 
 export class MovimientoNoEncontradoError extends Error {
   constructor() {
@@ -135,6 +136,17 @@ export async function convertirEnTraspaso(
     transferMetadata: { targetAccountId: cuentaDestinoId, pairMovementId: movementIdDestino },
     updatedAt: ahora,
   });
+
+  // E2.2 · marcar traspaso ENSEÑA · «este texto del banco = traspaso a mi
+  // cuenta X» (efectivo incluido). Se aprende del movimiento ORIGINAL, con el
+  // texto que traerá el próximo extracto. Best-effort: un fallo aquí no puede
+  // deshacer un traspaso que ya está escrito.
+  await feedLearningRule(
+    movimiento,
+    { categoria: TRANSFER_KEYS.SALIDA, ambito: 'PERSONAL' },
+    undefined,
+    { tipo: 'traspaso', cuentaDestinoId }
+  );
 
   return { movementId, movementIdDestino };
 }

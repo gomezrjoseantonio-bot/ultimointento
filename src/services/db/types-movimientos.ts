@@ -445,6 +445,21 @@ export interface MovementLearningRule {
    * Opcional · las reglas de antes de E2.1 no lo llevan.
    */
   identificadores?: string[];
+  /**
+   * E2.2 · qué hace la regla al aplicarse. `clasificar` (o ausente · las de
+   * antes) pone categoría/ámbito/piso; `traspaso` convierte la línea en la pata
+   * de salida de un traspaso a `cuentaDestinoId` (efectivo incluido: la cuenta
+   * de efectivo es una cuenta más).
+   */
+  resolucion?: 'clasificar' | 'traspaso';
+  cuentaDestinoId?: number;
+  /**
+   * E2.2 · cuántas veces el usuario deshizo o cambió lo que la regla decía.
+   * Cada corrección devuelve `appliedCount` al principio: la regla vuelve a
+   * PROPONER hasta ganarse otra vez la confianza (`reglaResuelveSola`).
+   */
+  correcciones?: number;
+  ultimaCorreccionAt?: string;
   // T16-cleanup · B-TAREA8-MINIS sub-tarea 1: campo `history?: HistoryEntry[]`
   // eliminado del tipo. Sin escritor productivo (solo migración V64 histórica
   // que usa `Record<string, unknown>`) y sin reader. Los registros antiguos

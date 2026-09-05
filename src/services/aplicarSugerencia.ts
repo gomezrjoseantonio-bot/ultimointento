@@ -40,10 +40,33 @@ export function deriveCategoryFromEvent(event: TreasuryEvent): DerivedCategory |
   };
 }
 
+/**
+ * E2.2 · lo mismo, leído del MOVIMIENTO ya clasificado · vale para lo que
+ * cierra el reconocedor determinista y para lo que clasifica la ficha. Sin
+ * categoría no hay nada que aprender (`null`).
+ */
+export function deriveCategoryFromMovement(m: Movement): DerivedCategory | null {
+  const categoria = m.categoryKey;
+  if (!categoria) return null;
+  const inmuebleId = m.inmuebleId != null && m.inmuebleId !== '' ? String(m.inmuebleId) : undefined;
+  return {
+    categoria,
+    ambito: m.ambito ?? (inmuebleId ? 'INMUEBLE' : 'PERSONAL'),
+    inmuebleId,
+  };
+}
+
+/** E2.2 · la regla no clasifica: convierte la línea en traspaso a esta cuenta. */
+export interface ResolucionTraspaso {
+  tipo: 'traspaso';
+  cuentaDestinoId: number;
+}
+
 export async function feedLearningRule(
   movement: Movement,
   derived: DerivedCategory | null,
-  contraparteConfirmada?: string
+  contraparteConfirmada?: string,
+  resolucion?: ResolucionTraspaso
 ): Promise<void> {
   if (!derived) return;
   try {
@@ -58,6 +81,7 @@ export async function feedLearningRule(
       inmuebleId: derived.inmuebleId,
       movement,
       contraparteConfirmada,
+      ...(resolucion ? { resolucion: 'traspaso' as const, cuentaDestinoId: resolucion.cuentaDestinoId } : {}),
     });
   } catch (err) {
     // Learning is opportunistic — do not block confirmation if it fails.

@@ -279,10 +279,15 @@ export async function createOrUpdateRule(params: {
    * sale el alias, si es que hay algo que aprender.
    */
   contraparteConfirmada?: string;
+  /** E2.2 · qué hace la regla · ausente = clasificar. */
+  resolucion?: 'clasificar' | 'traspaso';
+  cuentaDestinoId?: number;
 }): Promise<MovementLearningRule> {
   try {
     const db = await initDB();
     const { learnKey, categoria, ambito, inmuebleId, movement, contraparteConfirmada } = params;
+    const resolucion = params.resolucion ?? 'clasificar';
+    const cuentaDestinoId = resolucion === 'traspaso' ? params.cuentaDestinoId : undefined;
     const now = new Date().toISOString();
 
     const alias = movement ? aliasAprendible(movement, contraparteConfirmada) : undefined;
@@ -310,9 +315,24 @@ export async function createOrUpdateRule(params: {
       // checks the rule's PRE-existing state, not what we are about to write.
       const wasOrchestratorPlaceholder =
         !rule.counterpartyPattern && !rule.descriptionPattern;
+      // E2.2 · ¿el usuario cambia de opinión? Otra categoría, otro ámbito, otro
+      // piso u otra resolución que la que la regla tenía es una CORRECCIÓN: la
+      // regla no acumula confianza con lo nuevo, vuelve a empezar. Un cambio
+      // así es exactamente el bug de las dos Iberdrola pisándose: ahora, con
+      // la llave de E2.1, dos contratos son dos reglas y esto solo salta cuando
+      // de verdad se reclasifica el mismo concepto.
+      const cambiaDeOpinion = esCambioDeOpinion(rule, {
+        categoria,
+        ambito,
+        inmuebleId,
+        resolucion,
+        cuentaDestinoId,
+      });
       rule.categoria = categoria;
       rule.ambito = ambito;
       rule.inmuebleId = inmuebleId;
+      rule.resolucion = resolucion;
+      rule.cuentaDestinoId = cuentaDestinoId;
       // B2 · backfill empty patterns when caller now provides a Movement
       if (derivedCounterparty !== undefined && !rule.counterpartyPattern) {
         rule.counterpartyPattern = derivedCounterparty;
@@ -326,8 +346,16 @@ export async function createOrUpdateRule(params: {
       if (derivedIdentificadores.length > 0) {
         rule.identificadores = derivedIdentificadores;
       }
-      // B1 · this call counts as one application
-      rule.appliedCount = (rule.appliedCount ?? 0) + 1;
+      // B1 · this call counts as one application · E2.2: salvo que sea una
+      // corrección, que la devuelve al principio (esta es su primera aplicación
+      // con la opinión nueva).
+      if (cambiaDeOpinion) {
+        rule.appliedCount = 1;
+        rule.correcciones = (rule.correcciones ?? 0) + 1;
+        rule.ultimaCorreccionAt = now;
+      } else {
+        rule.appliedCount = (rule.appliedCount ?? 0) + 1;
+      }
       rule.lastAppliedAt = now;
       rule.updatedAt = now;
       // El alias se refresca si esta vez SÍ hay algo que enseñar · una
@@ -358,6 +386,8 @@ export async function createOrUpdateRule(params: {
         aliasContraparte: alias?.banco,
         contraparteCanonica: alias?.canonica,
         ...(derivedIdentificadores.length > 0 ? { identificadores: derivedIdentificadores } : {}),
+        resolucion,
+        ...(cuentaDestinoId != null ? { cuentaDestinoId } : {}),
       };
 
       const ruleId = await db.add('movementLearningRules', newRule);
@@ -370,6 +400,51 @@ export async function createOrUpdateRule(params: {
     console.error('❌ Error creating/updating learning rule:', error);
     throw error;
   }
+}
+
+/** E2.2 · ¿lo que se va a escribir contradice lo que la regla ya decía? */
+function esCambioDeOpinion(
+  rule: MovementLearningRule,
+  nuevo: {
+    categoria: string;
+    ambito: 'PERSONAL' | 'INMUEBLE';
+    inmuebleId?: string;
+    resolucion: 'clasificar' | 'traspaso';
+    cuentaDestinoId?: number;
+  }
+): boolean {
+  const mismoPiso = (rule.inmuebleId ?? '') === (nuevo.inmuebleId ?? '');
+  const mismaResolucion = (rule.resolucion ?? 'clasificar') === nuevo.resolucion;
+  const mismaCuenta = (rule.cuentaDestinoId ?? null) === (nuevo.cuentaDestinoId ?? null);
+  return !(
+    rule.categoria === nuevo.categoria &&
+    rule.ambito === nuevo.ambito &&
+    mismoPiso &&
+    mismaResolucion &&
+    mismaCuenta
+  );
+}
+
+/**
+ * E2.2 · el usuario ha deshecho lo que esta regla hizo sola («No es esto» sobre
+ * una línea resuelta por ella). La regla pierde la confianza entera: vuelve a
+ * proponer desde cero y se anota la corrección. No se borra: lo que aprendió
+ * sigue siendo una propuesta razonable, solo que ya no se aplica a ciegas.
+ */
+export async function penalizarRegla(ruleId: number): Promise<MovementLearningRule | undefined> {
+  const db = await initDB();
+  const rule = (await db.get('movementLearningRules', ruleId)) as MovementLearningRule | undefined;
+  if (!rule) return undefined;
+  const now = new Date().toISOString();
+  const corregida: MovementLearningRule = {
+    ...rule,
+    appliedCount: 0,
+    correcciones: (rule.correcciones ?? 0) + 1,
+    ultimaCorreccionAt: now,
+    updatedAt: now,
+  };
+  await db.put('movementLearningRules', corregida);
+  return corregida;
 }
 
 /**

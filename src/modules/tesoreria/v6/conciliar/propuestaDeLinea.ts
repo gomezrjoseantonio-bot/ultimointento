@@ -116,6 +116,8 @@ function titularDe(action: SuggestionAction): string {
       }
       return etiqueta ? `Parece ${etiqueta.toLowerCase()} de un piso` : 'Parece un gasto de un piso';
     }
+    case 'transfer':
+      return 'Parece un traspaso a otra cuenta tuya';
     case 'ignore':
     default:
       return 'No sé qué es · dímelo tú una vez';
@@ -176,4 +178,32 @@ export function propuestaDeLinea(
     // La heurística no escribe regla · prometer que se recuerda sería mentir.
     seRecuerda: s.via !== 'heuristica' && s.action.kind !== 'ignore',
   };
+}
+
+/**
+ * Las propuestas de TODAS las líneas de la sesión · lo que el drawer pinta en
+ * cada tarjeta. Sacado del componente para que la regla de qué se dice viva
+ * junto a cómo se dice, y para que se pueda probar sin React.
+ */
+export function propuestasDeLineas(
+  lineas: ReadonlyArray<{ lineaId: number }>,
+  sugerencias: ReadonlyMap<number, SugerenciaLegible[]> | undefined,
+  atribuciones: ReadonlyMap<number, { inmuebleId: number; concepto: string; ejercicio: number }> | undefined,
+  inmuebles: ReadonlyArray<{ id: number; alias: string }>,
+): Map<number, Propuesta> {
+  const m = new Map<number, Propuesta>();
+  if (!sugerencias && !atribuciones) return m;
+  for (const l of lineas) {
+    const a = atribuciones?.get(l.lineaId);
+    m.set(
+      l.lineaId,
+      propuestaDeLinea(
+        sugerencias?.get(l.lineaId) ?? [],
+        a
+          ? { alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias, concepto: a.concepto, ejercicio: a.ejercicio }
+          : null,
+      ),
+    );
+  }
+  return m;
 }
