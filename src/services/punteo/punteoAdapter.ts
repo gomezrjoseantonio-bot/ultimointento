@@ -496,7 +496,7 @@ function piezasDeMovimiento(
   // la fila grita la forma de pago y esconde a la persona, que es lo único que
   // permite reconocer el cobro. Sin nombre leído se deja el texto tal cual, que
   // algo dice. El subtítulo enseña tu clasificación si la hay; si no, "Bizum".
-  if (m.paymentMethod === 'Bizum') {
+  if (m.paymentMethod === 'bizum') {
     const quien = m.counterparty ? normalizarNombre(m.counterparty) : (m.description ?? 'Bizum');
     return { concepto: quien, detalle: clasificacion ?? 'Bizum' };
   }

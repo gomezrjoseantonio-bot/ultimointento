@@ -34,7 +34,7 @@ import { cuentasQuePuedenPagar } from '../../../services/cuentasPorMetodoPago';
  * pregunta después: con tarjeta no se elige cuenta —la pone la tarjeta—, y en
  * efectivo o Bizum la cuenta la decide el método, no el usuario.
  */
-type MetodoDePago = 'cuenta' | 'efectivo' | 'bizum' | 'tarjeta_credito' | 'tarjeta_debito';
+type MedioEnFicha = 'cuenta' | 'efectivo' | 'bizum' | 'tarjeta_credito' | 'tarjeta_debito';
 
 // Default ESTABLE · un `= []` inline crea un array nuevo por render y, al estar en
 // las deps del efecto de apertura, lo re-dispararía borrando lo tecleado.
@@ -184,7 +184,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   const [ingresoKey, setIngresoKey] = useState<string>(INGRESO_KEY_DEFECTO);
   const [inmuebleId, setInmuebleId] = useState<number | null>(null);
   const [tarjetaId, setTarjetaId] = useState<number | null>(null);
-  const [metodo, setMetodo] = useState<MetodoDePago>('cuenta');
+  const [metodo, setMetodo] = useState<MedioEnFicha>('cuenta');
   const [cuentaDestinoId, setCuentaDestinoId] = useState<number | null>(null);
   const [derrama, setDerrama] = useState<NaturalezaDerrama | null>(null);
   const [tocado, setTocado] = useState(false);
@@ -242,7 +242,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
   const metodosDisponibles = useMemo(() => {
     // «Cuenta bancaria» siempre; el resto solo si HAY con qué: sin tarjeta de
     // débito dada de alta no se ofrece «Tarjeta de débito», etc.
-    const out: Array<{ id: MetodoDePago; label: string }> = [
+    const out: Array<{ id: MedioEnFicha; label: string }> = [
       { id: 'cuenta', label: 'Cuenta bancaria' },
     ];
     if (ctaEfectivoPago) out.push({ id: 'efectivo', label: 'Efectivo' });
@@ -254,7 +254,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
 
   // Al elegir método se recoloca la cuenta/tarjeta que toca, para que lo que se
   // guarda case con lo que se ve (nada de una cuenta pegada de un método viejo).
-  const cambiarMetodo = (m: MetodoDePago) => {
+  const cambiarMetodo = (m: MedioEnFicha) => {
     setMetodo(m);
     if (m === 'tarjeta_credito') {
       setTarjetaId(tarjetasCredito[0]?.id ?? null);
@@ -543,7 +543,7 @@ const FichaMovimiento: React.FC<FichaMovimientoProps> = ({
                 id="fm-metodo"
                 className={styles.select}
                 value={metodo}
-                onChange={(e) => cambiarMetodo(e.target.value as MetodoDePago)}
+                onChange={(e) => cambiarMetodo(e.target.value as MedioEnFicha)}
               >
                 {metodosDisponibles.map((m) => (
                   <option key={m.id} value={m.id}>{m.label}</option>

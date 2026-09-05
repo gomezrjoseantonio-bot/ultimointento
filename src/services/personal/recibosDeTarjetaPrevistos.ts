@@ -26,7 +26,6 @@ import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import { listarTarjetas } from '../tarjetasService';
 import { initDB } from '../db';
 import { esPrevisionIntocable } from './previsionesIdempotencia';
-import { metodoDeMovimiento } from '../metodoDePago';
 
 /**
  * ¿Este gasto se paga con una tarjeta que ACUMULA?
@@ -331,7 +330,7 @@ export function eventoDeRecibo(
     generadoPor: 'treasurySyncService',
     // El dinero sale de donde la tarjeta está domiciliada, no de la tarjeta.
     accountId: recibo.cuentaLiquidacionId,
-    paymentMethod: metodoDeMovimiento('tarjeta'),
+    paymentMethod: 'tarjeta',
     status: 'predicted',
     ambito: 'PERSONAL',
     categoryLabel: `Recibo tarjeta ${alias}`,

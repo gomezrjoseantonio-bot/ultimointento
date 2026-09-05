@@ -27,7 +27,7 @@ export const createTreasuryEventFromDocument = async (document: Document): Promi
     description: `${document.metadata.proveedor || 'Factura'} - ${financialData.invoiceNumber || document.filename}`,
     sourceType: 'document',
     sourceId: document.id!,
-    paymentMethod: financialData.paymentMethod || 'Domiciliado',
+    paymentMethod: financialData.paymentMethod || 'domiciliacion',
     iban: financialData.iban,
     status: 'predicted',
     createdAt: new Date().toISOString(),

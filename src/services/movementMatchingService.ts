@@ -362,7 +362,7 @@ function puntosDeContraparte(
  */
 function puntosDeBizum(movement: Movement, event: TreasuryEvent, reasons: string[]): number {
   const textoBanco = `${movement.counterparty ?? ''} ${movement.description ?? ''}`.trim();
-  const esBizum = movement.paymentMethod === 'Bizum' || pareceBizum(textoBanco);
+  const esBizum = movement.paymentMethod === 'bizum' || pareceBizum(textoBanco);
   if (!esBizum) return 0;
 
   const quienCobra = event.counterparty ?? event.providerName ?? '';

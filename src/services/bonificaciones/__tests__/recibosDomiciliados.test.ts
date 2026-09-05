@@ -17,7 +17,7 @@ const recibo = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
     sourceType: 'gasto_recurrente',
     sourceId: 11,
     accountId: 3,
-    paymentMethod: 'Domiciliado',
+    paymentMethod: 'domiciliacion',
     status: 'executed',
     ...over,
   }) as TreasuryEvent;
@@ -74,7 +74,7 @@ describe('qué NO es un recibo domiciliado', () => {
   // El banco bonifica por lo que le pasa a él por domiciliación · una
   // transferencia que haces tú no la ve como recibo.
   it('lo pagado por otro medio no cuenta', () => {
-    expect(recibosDomiciliados([recibo({ paymentMethod: 'Transferencia' })])).toEqual([]);
+    expect(recibosDomiciliados([recibo({ paymentMethod: 'transferencia' })])).toEqual([]);
     expect(recibosDomiciliados([recibo({ paymentMethod: undefined })])).toEqual([]);
   });
 

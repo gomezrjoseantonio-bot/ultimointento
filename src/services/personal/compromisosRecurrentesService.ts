@@ -23,7 +23,6 @@ import {
   borrarEventosFuturosCompromiso,
   persistirPrevisionesCompromiso,
 } from './previsionesDelCompromiso';
-import { metodoDeMovimiento } from '../metodoDePago';
 import { cuentaDelCargo } from '../cuentasPorMetodoPago';
 import { listarTarjetas } from '../tarjetasService';
 import {
@@ -641,7 +640,7 @@ export function generarEventosDesdeCompromiso(
       generadoPor: 'treasurySyncService',
       // La cuenta la decide el método · §2 y §3.2 · no una copia vieja.
       accountId: cuentaDelGasto,
-      paymentMethod: metodoDeMovimiento(compromiso.metodoPago),
+      paymentMethod: compromiso.metodoPago,
       status: 'predicted',
       // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
       // agrupar el gasto real por necesidades/deseos/ahorro.

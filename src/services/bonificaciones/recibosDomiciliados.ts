@@ -18,8 +18,8 @@
 // ============================================================================
 
 import type { TreasuryEvent } from '../db';
+import type { MetodoPago } from '../catalogo/catalogoUnico';
 import { yaSeCobro } from '../gastoPorTarjeta';
-import { metodoDeMovimiento } from '../metodoDePago';
 
 /** Los recibos domiciliados en UNA cuenta y UN mes. */
 export interface RecibosDeUnMes {
@@ -39,7 +39,7 @@ export interface RecibosDeUnMes {
 }
 
 /** Lo que el banco reconoce como domiciliación · una sola traducción (§5). */
-const DOMICILIADO = metodoDeMovimiento('domiciliacion');
+const DOMICILIADO: MetodoPago = 'domiciliacion';
 
 /**
  * Qué recibo es este · lo que permite contar «distintos».

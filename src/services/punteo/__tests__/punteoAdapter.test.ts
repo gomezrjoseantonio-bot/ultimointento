@@ -312,7 +312,7 @@ describe('un Bizum dice QUIÉN, no cómo', () => {
         date: '2026-08-01',
         amount: 395,
         description: 'BIZUM DE ADNAN PARWEZ',
-        paymentMethod: 'Bizum',
+        paymentMethod: 'bizum',
         counterparty: 'ADNAN PARWEZ',
         status: 'pendiente',
         unifiedStatus: 'no_planificado',

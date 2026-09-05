@@ -120,7 +120,7 @@ const DEVOLUCION = mov({ id: 18, date: '2026-08-29', amount: 50, description: 'D
 const LOTE: Movement[] = [
   mov({ id: 1, date: '2026-08-01', amount: -454.66, description: 'RECIBO PRESTAMO UNICAJA 0123 CUOTA 07/2026' }),
   mov({ id: 2, date: '2026-08-06', amount: 380, description: 'TRANSFERENCIA ALQUILER AGOSTO HAB 2' }),
-  mov({ id: 3, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }),
+  mov({ id: 3, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }),
   mov({ id: 4, date: '2026-08-12', amount: -108.44, description: 'RECIBO IBERDROLA CLIENTES SAU' }),
   mov({ id: 5, date: '2026-09-03', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
   mov({ id: 6, date: '2026-08-20', amount: -150, description: 'ADEUDO COMUNIDAD PROPIETARIOS TENDERINA 12' }),
@@ -131,7 +131,7 @@ const LOTE: Movement[] = [
   mov({ id: 11, date: '2026-08-18', amount: -23.9, description: 'AMAZON EU SARL COMPRA' }),
   mov({ id: 12, date: '2026-08-14', amount: -30, description: 'PAGO EN REVOLUT' }),
   mov({ id: 13, date: '2026-08-03', amount: -321.5, description: 'RECIBO IBI AYTO OVIEDO' }),
-  mov({ id: 14, date: '2026-08-09', amount: -70.48, description: 'COMPRA BIZUM IRYO', paymentMethod: 'Bizum' }),
+  mov({ id: 14, date: '2026-08-09', amount: -70.48, description: 'COMPRA BIZUM IRYO', paymentMethod: 'bizum' }),
   mov({ id: 15, date: '2026-08-22', amount: 200, description: 'TRANSFERENCIA RECIBIDA' }),
   NETFLIX,
   mov({ id: 17, date: '2026-08-15', amount: -56, description: 'RECIBO NATURGY IBERIA SA' }),
@@ -235,7 +235,7 @@ describe('movementDesdeLinea · el mismo movimiento que insertMovements, en memo
       amount: 380,
       description: 'BIZUM DE LAURA SANCHEZ',
       counterparty: 'LAURA SANCHEZ',
-      paymentMethod: 'Bizum',
+      paymentMethod: 'bizum',
       reference: 'REF-3',
       balance: 1200.5,
       currency: 'EUR',
@@ -301,7 +301,7 @@ describe('EQUIVALENCIA · el lote de agosto por movimiento y por línea', () => 
 
   it('el multiMatch y el alias aprendido también salen iguales · cada caso por separado, como en E1.4a', async () => {
     const sinNombre = mov({ id: 30, date: '2026-08-05', amount: 380, description: 'TRANSFERENCIA RECIBIDA' });
-    const conAlias = mov({ id: 31, date: '2026-08-05', amount: 380, description: 'BIZUM DE MPARWEZ', counterparty: 'MPARWEZ', paymentMethod: 'Bizum' });
+    const conAlias = mov({ id: 31, date: '2026-08-05', amount: 380, description: 'BIZUM DE MPARWEZ', counterparty: 'MPARWEZ', paymentMethod: 'bizum' });
 
     for (const extra of [sinNombre, conAlias]) {
       conMovimientos();
@@ -395,7 +395,7 @@ describe('EQUIVALENCIA · conciliación con confirmados · el lote de septiembre
   const LOTE_SEPT: Movement[] = [
     mov({ id: 31, importBatch: 'lote-sept', date: '2026-09-03', valueDate: '2026-09-04', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
     mov({ id: 32, importBatch: 'lote-sept', date: '2026-09-03', valueDate: '2026-09-04', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
-    mov({ id: 33, importBatch: 'lote-sept', date: '2026-09-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }),
+    mov({ id: 33, importBatch: 'lote-sept', date: '2026-09-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }),
     mov({ id: 34, importBatch: 'lote-sept', date: '2026-09-06', amount: -12.99, description: 'NETFLIX.COM' }),
   ];
   const CONFIRMADOS: Movement[] = [

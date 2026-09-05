@@ -142,7 +142,7 @@ const LOTE: Movement[] = [
   // 2 · renta por transferencia · previsto 102 (Adnan) · un día tarde, con «ALQUILER».
   mov({ id: 2, date: '2026-08-06', amount: 380, description: 'TRANSFERENCIA ALQUILER AGOSTO HAB 2' }),
   // 3 · renta por Bizum · previsto 103 (Laura) · el nombre del banco no es el del contrato.
-  mov({ id: 3, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }),
+  mov({ id: 3, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }),
   // 4 · luz VARIABLE · previsto 104 de 45 € · llega por 108,44.
   mov({ id: 4, date: '2026-08-12', amount: -108.44, description: 'RECIBO IBERDROLA CLIENTES SAU' }),
   // 5 · agua · previsto 105 de 82 € el 27-8 · llega 87,40 el 3-9 (7 días).
@@ -163,7 +163,7 @@ const LOTE: Movement[] = [
   // 13 · IBI · heurística IBI · y el determinista lo ATRIBUYE al piso que lo declaró.
   mov({ id: 13, date: '2026-08-03', amount: -321.5, description: 'RECIBO IBI AYTO OVIEDO' }),
   // 14 · Bizum que SALE.
-  mov({ id: 14, date: '2026-08-09', amount: -70.48, description: 'COMPRA BIZUM IRYO', paymentMethod: 'Bizum' }),
+  mov({ id: 14, date: '2026-08-09', amount: -70.48, description: 'COMPRA BIZUM IRYO', paymentMethod: 'bizum' }),
   // 15 · transferencia recibida sin dueño.
   mov({ id: 15, date: '2026-08-22', amount: 200, description: 'TRANSFERENCIA RECIBIDA' }),
   // 16 · con REGLA APRENDIDA (5 aplicaciones) · vía B cortocircuita.
@@ -339,7 +339,7 @@ describe('matchBatch · el lote de agosto', () => {
   });
 
   it('un alias APRENDIDO casa lo que el nombre no deja adivinar', async () => {
-    stores.movements.push(mov({ id: 31, date: '2026-08-05', amount: 380, description: 'BIZUM DE MPARWEZ', counterparty: 'MPARWEZ', paymentMethod: 'Bizum' }));
+    stores.movements.push(mov({ id: 31, date: '2026-08-05', amount: 380, description: 'BIZUM DE MPARWEZ', counterparty: 'MPARWEZ', paymentMethod: 'bizum' }));
     const sinAlias = await matchBatch([31]);
     // Sin alias: 75 contra los dos previstos de 380 · multiMatch.
     expect(sinAlias.multiMatches.map((m) => m.candidates.map((c) => c.score))).toEqual([[75, 75]]);
@@ -401,7 +401,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
   });
 
   it('un Bizum recibido con contrato vivo a su nombre · propone asignarlo a ESE contrato', async () => {
-    stores.movements.push(mov({ id: 32, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }));
+    stores.movements.push(mov({ id: 32, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }));
     const r = await suggestForUnmatched([32]);
     expect(r.get(32)).toEqual([
       { movementId: 32, via: 'heuristica', confidence: 60, description: 'Bizum o transferencia recibida · proponer asignarlo a la renta de Laura Sánchez Ruiz', action: { kind: 'assign_to_contract', contractId: 21 } },
@@ -410,7 +410,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
 
   it('un Bizum recibido que solo trae el nombre de pila · no se elige contrato · pregunta abierta', async () => {
     stores.contracts.push({ id: 24, inmuebleId: 5, estadoContrato: 'activo', inquilino: { nombre: 'Laura', apellidos: 'Pérez Vega' } });
-    stores.movements.push(mov({ id: 33, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA', counterparty: 'LAURA', paymentMethod: 'Bizum' }));
+    stores.movements.push(mov({ id: 33, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA', counterparty: 'LAURA', paymentMethod: 'bizum' }));
     const r = await suggestForUnmatched([33]);
     expect(r.get(33)![0].action).toEqual({ kind: 'ignore' });
     expect(r.get(33)![0].confidence).toBe(30);
@@ -530,7 +530,7 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
     mov({ id: 31, importBatch: 'lote-sept', date: '2026-09-03', valueDate: '2026-09-04', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
     // Duplicado intra-lote del anterior · solo UNO puede fundirse con el confirmado.
     mov({ id: 32, importBatch: 'lote-sept', date: '2026-09-03', valueDate: '2026-09-04', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
-    mov({ id: 33, importBatch: 'lote-sept', date: '2026-09-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }),
+    mov({ id: 33, importBatch: 'lote-sept', date: '2026-09-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }),
     mov({ id: 34, importBatch: 'lote-sept', date: '2026-09-06', amount: -12.99, description: 'NETFLIX.COM' }),
   ];
 

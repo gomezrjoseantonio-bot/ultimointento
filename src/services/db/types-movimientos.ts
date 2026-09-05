@@ -4,6 +4,8 @@
 
 import type { ArrastresEjercicio, DeclaracionInmueble, DeclaracionIRPF, OrigenDeclaracion } from '../../types/fiscal';
 import type { BolsaPresupuesto } from '../../types/compromisosRecurrentes';
+// Eje 3 del catálogo único (E2.4.1) · cómo se pagó o se cobró, NO qué se pagó.
+import type { MetodoPago } from '../catalogo/catalogoUnico';
 
 export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
 export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New field for treasury_transactions
@@ -27,15 +29,6 @@ export type UnifiedMovementStatus =
 
 // ATLAS HORIZON: Movement source types
 export type MovementSource = 'import' | 'manual' | 'inbox';
-
-/**
- * Cómo se pagó o se cobró · NO qué se pagó.
- *
- * "Bizum" entra aquí y no como un tipo de movimiento aparte: es una forma de
- * pago, igual que una domiciliación o un TPV. Lo que se cobró sigue siendo una
- * renta, una cuota o lo que sea.
- */
-export type MetodoDePago = 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo' | 'Bizum';
 
 export interface Movement {
   id?: number;
@@ -73,7 +66,7 @@ export interface Movement {
   providerNif?: string;
   invoiceNumber?: string;
   /** Cómo se cobró o se pagó · lo rellena el importador cuando lo reconoce. */
-  paymentMethod?: MetodoDePago;
+  paymentMethod?: MetodoPago;
   reference?: string;
   status: MovementStatus;
 
@@ -307,7 +300,7 @@ export interface TreasuryEvent {
   conciliadoExtracto?: boolean;
   // Account information
   accountId?: number;
-  paymentMethod?: MetodoDePago;
+  paymentMethod?: MetodoPago;
   iban?: string;
   // Status
   status: 'predicted' | 'confirmed' | 'executed';

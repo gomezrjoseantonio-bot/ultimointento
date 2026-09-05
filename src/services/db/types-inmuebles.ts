@@ -5,6 +5,7 @@
 import type { AEATFiscalType, AEATBox } from './types-contratos';
 import type { SubtipoAlquiler } from './types-alquiler';
 import type { TipoActivo } from '../../types/tipoActivo';
+import type { MetodoPago } from '../catalogo/catalogoUnico';
 
 
 export interface Property {
@@ -758,7 +759,7 @@ export interface Document {
       };
       serviceAddress?: string;
       cups?: string;
-      paymentMethod?: 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo';
+      paymentMethod?: MetodoPago;
       iban?: string;
       predictedPaymentDate?: string;
       isMejora?: boolean;

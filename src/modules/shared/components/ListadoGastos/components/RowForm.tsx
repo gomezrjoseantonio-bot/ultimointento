@@ -13,7 +13,6 @@ import type {
   ImporteEvento,
   PatronRecurrente,
   PatronVariacion,
-  MetodoPagoCompromiso,
   FamiliaFiscal,
   RepartoInmueble,
 } from '../../../../../types/compromisosRecurrentes';
@@ -28,7 +27,7 @@ import {
   tarjetasQuePuedenPagar,
 } from '../../../../../services/cuentasPorMetodoPago';
 import { listarTarjetas } from '../../../../../services/tarjetasService';
-import { nombreDelMetodo } from '../../../../../services/metodoDePago';
+import { METODOS_PAGO, labelMetodo, type MetodoPago } from '../../../../../services/catalogo/catalogoUnico';
 import type { Tarjeta } from '../../../../../types/tarjetas';
 import RejillaMeses from './RejillaMeses';
 import { patronToMeses, mesesToPatron, diaDePatron } from '../utils/rejillaMeses';
@@ -86,16 +85,10 @@ type SubeCadaAnio = 'no' | 'ipc' | 'contrato';
 // Opciones que ofrece la excepción de la derrama (§3 · conservación vs mejora).
 const DERRAMA_OPCIONES: FamiliaFiscal[] = ['reparaciones_conservacion', 'mejora'];
 
-// Los rótulos NO se escriben aquí · §2 · `nombreDelMetodo` es el único sitio
-// donde un método de pago tiene nombre, para que no haya dos formas de llamar
-// a lo mismo en dos pantallas.
-const MEDIOS: MetodoPagoCompromiso[] = [
-  'domiciliacion',
-  'transferencia',
-  'tarjeta',
-  'efectivo',
-  'bizum',
-];
+// Los medios y sus rótulos salen del catálogo único (eje 3) · `labelMetodo` es
+// el único sitio donde un método de pago tiene nombre, para que no haya dos
+// formas de llamar a lo mismo en dos pantallas.
+const MEDIOS: readonly MetodoPago[] = METODOS_PAGO;
 
 /** Cómo se llama una cuenta en pantalla · §2.2 · nunca un id suelto. */
 const nombreDeCuenta = (a?: Account): string =>
@@ -176,7 +169,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   const [cups, setCups] = useState(c.cups ?? '');
   const [numeroContrato, setNumeroContrato] = useState(c.numeroContrato ?? '');
   const [familiaManual, setFamiliaManual] = useState<FamiliaFiscal | ''>(c.familiaFiscalManual ?? '');
-  const [medio, setMedio] = useState<MetodoPagoCompromiso>(c.metodoPago);
+  const [medio, setMedio] = useState<MetodoPago>(c.metodoPago);
   const [cuentaCargo, setCuentaCargo] = useState<number>(c.cuentaCargo);
   // §3 · «Tarjeta» no dice de dónde sale el dinero, dice con QUÉ se paga. Sin
   // esta lista el medio se ofrecía a secas y la cuenta se elegía a mano, así
@@ -567,7 +560,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
             style={inp}
             value={medio}
             onChange={(e) => {
-              const nuevo = e.target.value as MetodoPagoCompromiso;
+              const nuevo = e.target.value as MetodoPago;
               setMedio(nuevo);
               if (nuevo === 'tarjeta') {
                 // Con tarjeta la cuenta NO se recoloca por el método: la decide
@@ -595,7 +588,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
                 ? sePuedePagarConTarjeta(tarjetas)
                 : cuentasQuePuedenPagar(m, accounts).length > 0
             ).map((m) => (
-              <option key={m} value={m}>{nombreDelMetodo(m)}</option>
+              <option key={m} value={m}>{labelMetodo(m)}</option>
             ))}
           </select>
         </Field>
