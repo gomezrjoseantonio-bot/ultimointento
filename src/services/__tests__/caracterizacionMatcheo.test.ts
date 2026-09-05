@@ -392,7 +392,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       // 16 · regla aprendida con 5 aplicaciones · 70 + round(log10(6)·5) = 74 · cortocircuita.
       [16, [{ movementId: 16, via: 'learning_rule', confidence: 74, description: 'Regla aprendida (5 aplicaciones previas) → ocio', action: { kind: 'mark_personal_expense', categoryKey: 'ocio' }, metadata: { learnKey: buildLearnKey(NETFLIX), ruleId: 1, appliedCount: 5, resuelveSola: true } }]],
       // 17 · compromiso activo · 70 + 10 (céntimo exacto) + 10 (proveedor en el texto) · cortocircuita.
-      [17, [{ movementId: 17, via: 'compromiso_recurrente', confidence: 90, description: 'Coincide con compromiso "Gas Tenderina" (Naturgy)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', inmuebleId: 4, categoryKey: 'suministros', sourceType: 'gasto_recurrente', sourceId: 3 }, metadata: { compromisoId: 3 } }]],
+      [17, [{ movementId: 17, via: 'compromiso_recurrente', confidence: 90, description: 'Coincide con compromiso "Gas Tenderina" (Naturgy)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', inmuebleId: 4, categoryKey: 'suministros', sourceType: 'gasto_recurrente', sourceId: 3 }, metadata: { compromisoId: 3, razones: ['texto', 'importe_exacto'] } }]],
       // 18 · la regla PERSONAL (gasto) sobre un ABONO la tira el signo · y Amazon en positivo tampoco es compra.
       [18, [noSeQueEs(18)]],
       // 19 · HOY: «TRANSFERENCIA VENTA» no es «TRANSFERENCIA RECIBIDA» · sin heurística.
