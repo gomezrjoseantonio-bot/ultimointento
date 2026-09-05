@@ -276,20 +276,22 @@ export function reconocerRecurrente(
   if (candidatos.length === 0) return null;
 
   // El NIF solo es concluyente si señala a UN compromiso · una aseguradora
-  // cubre varios pisos. Si varios casan solo por NIF, se les quita la
-  // identidad y compiten por texto/calendario como los demás.
+  // cubre varios pisos. Si varios casan solo por NIF, se les vuelve a juzgar
+  // SIN ese identificador: pasan a competir como candidatos por texto, con
+  // todo lo que eso exige (texto, importe que no contradiga, misma cuenta) y
+  // con la confianza calculada por ese camino, no la de identidad rebajada.
   const porNif = candidatos.filter((j) => j.porIdentidad === 'nif');
   if (porNif.length > 1) {
+    const sinNif = ids.filter((id) => id.tipo !== 'nif');
     for (const j of porNif) {
-      if (!j.porTexto) {
-        j.confianza = 0;
+      const i = candidatos.indexOf(j);
+      const rejuzgado = juzgar(m, j.compromiso, sinNif, fecha);
+      if (!rejuzgado || (!rejuzgado.porIdentidad && j.compromiso.cuentaCargo !== m.accountId)) {
+        candidatos.splice(i, 1);
         continue;
       }
-      j.porIdentidad = undefined;
-      // Pasa a puntuar como un candidato por texto · con su extra si casó el
-      // concepto bancario, que es lo que separa gas de luz del mismo acreedor.
-      j.confianza = Math.max(0, j.confianza - 10 + (j.razones.includes('concepto_bancario') ? 5 : 0));
-      j.razones = j.razones.map((r) => (r === 'identidad:nif' ? 'nif_ambiguo' : r));
+      rejuzgado.razones.push('nif_ambiguo');
+      candidatos[i] = rejuzgado;
     }
   }
 

@@ -142,6 +142,37 @@ describe('E2.3 · Sabadell · el nº de factura es ruido, el NIF identifica', ()
     expect(r?.compromiso.id).toBe(11);
     expect(r?.porIdentidad).toBeUndefined();
     expect(r?.razones).toContain('nif_ambiguo');
+    // Y la confianza es la de un candidato POR TEXTO (80 + 5 concepto + 5 calendario ·
+    // el día 12 del patrón mensual), no la de identidad rebajada.
+    expect(r?.confianza).toBe(90);
+  });
+
+  it('con NIF ambiguo vuelven a mandar los filtros de «sin identidad» · otra cuenta o un fijo que no cuadra quedan fuera', () => {
+    const luz = compromiso({
+      id: 12,
+      inmuebleId: 7,
+      alias: 'Luz Uría',
+      proveedor: { nombre: 'Iberdrola', nif: 'A95554630' },
+      conceptoBancario: 'IBERDROLA LUZ',
+      importe: { modo: 'variable', importeMedio: 80 },
+    });
+    // El gas está domiciliado en OTRA cuenta · sin identidad concluyente ya no vale.
+    const gasOtraCuenta = compromiso({ ...gas, cuentaCargo: 99 });
+    const r1 = reconocerRecurrente(
+      mov({ amount: -38.2, description: 'ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 105', reference: 'A95554630001' }),
+      [gasOtraCuenta, luz]
+    );
+    // Queda solo la luz, por texto de proveedor (la palabra LUZ no está) · gana sin rival.
+    expect(r1?.compromiso.id).toBe(12);
+    expect(r1?.razones).toContain('nif_ambiguo');
+
+    // El gas es FIJO de 45 y llegan 38,20 · sin identidad concluyente el importe descarta.
+    const gasFijo = compromiso({ ...gas, importe: { modo: 'fijo', importe: 45 } });
+    const r2 = reconocerRecurrente(
+      mov({ amount: -38.2, description: 'ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 105', reference: 'A95554630001' }),
+      [gasFijo, luz]
+    );
+    expect(r2?.compromiso.id).toBe(12);
   });
 });
 
