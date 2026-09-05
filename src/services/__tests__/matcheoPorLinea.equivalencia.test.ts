@@ -353,7 +353,8 @@ describe('EQUIVALENCIA · el lote de agosto por movimiento y por línea', () => 
   it('reconocerDeterministas ≡ reconocerDeterministasDeLineas · orígenes y atribuciones', async () => {
     conMovimientos();
     const porMovimiento = await reconocerDeterministas(LOTE);
-    expect(porMovimiento.origenes.size).toBe(4);
+    // E2.4 · cuatro cuadros + el recurrente de Naturgy contra su definición.
+    expect(porMovimiento.origenes.size).toBe(5);
 
     sinMovimientos();
     const r = await reconocerDeterministasDeLineas(LINEAS);

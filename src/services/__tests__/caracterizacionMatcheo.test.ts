@@ -451,7 +451,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
 describe('reconocerDeterministas · el lote de agosto contra los libros del usuario', () => {
   beforeEach(sembrarLoteDeAgosto);
 
-  it('la salida COMPLETA · cuatro orígenes y una atribución', async () => {
+  it('la salida COMPLETA · cinco orígenes y una atribución', async () => {
     const r = await reconocerDeterministas(LOTE);
 
     expect(Array.from(r.origenes.entries())).toEqual([
@@ -459,8 +459,12 @@ describe('reconocerDeterministas · el lote de agosto contra los libros del usua
       [19, { movementId: 19, fuente: 'venta', origenId: '7', piezaId: 'cobro', titulo: 'Cobro de la venta', como: 'fecha_importe', inmuebleId: 5 }],
       [10, { movementId: 10, fuente: 'inversion', origenId: 'i1', piezaId: '5', titulo: 'Rendimiento · SmartFlip', como: 'fecha_importe', desglose: { tipo: 'rendimiento', bruto: 750, retencion: 142.5, neto: 607.5 } }],
       [9, { movementId: 9, fuente: 'nomina', origenId: '1', titulo: 'Nómina · Orange', como: 'concepto_cuenta_dia' }],
+      // E2.4 · el recibo de Naturgy (17) casa contra la DEFINICIÓN del recurrente
+      // «Gas Tenderina» (texto + 56 € exactos de un fijo) SIN previsión. Hasta
+      // E2.4 solo se proponía (vía A); ahora también se reconoce.
+      [17, { movementId: 17, fuente: 'recurrente', origenId: '3', titulo: 'Gas Tenderina · Naturgy', como: 'definicion', categoryKey: 'suministros', inmuebleId: 4 }],
     ]);
-    // El orden del mapa es el de las fuentes: préstamo → venta → inversión → nómina.
+    // El orden del mapa es el de las fuentes: préstamo → venta → inversión → nómina → recurrente.
 
     expect(Array.from(r.atribuciones.entries())).toEqual([
       // 13 · IBI · solo Tenderina lo declaró.
@@ -483,7 +487,7 @@ describe('reconocerDeterministas · el lote de agosto contra los libros del usua
 
     try {
       const r = await reconocerDeterministas(LOTE);
-      expect(Array.from(r.origenes.keys())).toEqual([19, 10, 9]);
+      expect(Array.from(r.origenes.keys())).toEqual([19, 10, 9, 17]);
       // Sin el origen de préstamo, la línea 1 SÍ recibe atribución por «PRESTAMO»
       // · y las atribuciones salen en el orden de las líneas, no de las fuentes.
       expect(Array.from(r.atribuciones.entries())).toEqual([

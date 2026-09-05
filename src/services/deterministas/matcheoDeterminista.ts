@@ -1,8 +1,15 @@
 // El punto de entrada · lee los libros del usuario y devuelve lo que reconoce.
 //
-// Cinco fuentes, una pasada por store. Se lee todo de golpe y se cruza en
+// Ocho fuentes, una pasada por store. Se lee todo de golpe y se cruza en
 // memoria en vez de consultar por línea: un extracto trae ciento y pico
-// movimientos y cinco `getAll` cuestan mucho menos que quinientas consultas.
+// movimientos y unos pocos `getAll` cuestan mucho menos que quinientas consultas.
+//
+// E2.4 · a los cuatro cuadros (préstamo, venta, inversión, nómina) se suman
+// tres DEFINICIONES: los recurrentes (`compromisosRecurrentes`), los contratos
+// de alquiler (`contracts`) y las cuentas del propio titular (`accounts` +
+// `personalData`). Ninguna depende de que exista una previsión, así que sirven
+// para todo el histórico del extracto. El emparejador de previsiones no se
+// toca: esto corre sobre lo que él dejó sin casar (`analizarLineas`).
 //
 // Ninguna fuente escribe nada aquí. Reconocer es una lectura; lo que se guarda
 // se guarda al pulsar Guardar, y lo hace `confirmDecisions`.
@@ -10,12 +17,17 @@
 import { initDB } from '../db';
 import type { Movement } from '../db';
 import type { Property, PropertySale } from '../db/types';
+import type { Account, Contract } from '../db/types-contratos';
 import type { Prestamo } from '../../types/prestamos';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import type { OrigenDeterminista, AtribucionDeterminista } from './tipos';
 import { cuotasQueCuadran } from './cuotasDePrestamo';
 import { ventasQueCuadran } from './ventasDeInmueble';
 import { rendimientosQueCuadran } from './rendimientosDeInversion';
 import { nominasQueSeReconocen } from './nominas';
+import { recurrentesQueCuadran } from './recurrentes';
+import { rentasQueCuadran } from './rentas';
+import { nombresDelTitular, pareceTraspasoPropio, traspasosPropios, type QuienEsElTitular } from './traspasosPropios';
 import { atribucionesDeclaradas } from './gastoDeclaradoPorInmueble';
 import type { LineaExtractoPersistida } from '../db/types-lineasExtracto';
 import {
@@ -55,24 +67,42 @@ export async function reconocerDeterministas(movimientos: Movement[]): Promise<L
     }
   };
 
-  const [prestamos, ventas, inversiones, ingresos, ejercicios, inmuebles] = await Promise.all([
-    leer<Prestamo>('prestamos'),
-    leer<PropertySale>('property_sales'),
-    leer<never>('inversiones'),
-    leer<never>('ingresos'),
-    leer<never>('ejerciciosFiscalesCoord'),
-    leer<Property>('properties'),
-  ]);
+  const [prestamos, ventas, inversiones, ingresos, ejercicios, inmuebles, compromisos, contratos, cuentas, personas] =
+    await Promise.all([
+      leer<Prestamo>('prestamos'),
+      leer<PropertySale>('property_sales'),
+      leer<never>('inversiones'),
+      leer<never>('ingresos'),
+      leer<never>('ejerciciosFiscalesCoord'),
+      leer<Property>('properties'),
+      leer<CompromisoRecurrente>('compromisosRecurrentes'),
+      leer<Contract>('contracts'),
+      leer<Account>('accounts'),
+      leer<QuienEsElTitular>('personalData'),
+    ]);
+
+  // Los traspasos propios buscan su espejo en `movements`, que es el store
+  // grande. Solo se lee si alguna línea parece un traspaso propio.
+  const nombres = nombresDelTitular(personas, cuentas);
+  const otrosMovimientos = movimientos.some((m) => pareceTraspasoPropio(m, cuentas, nombres))
+    ? await leer<Movement>('movements')
+    : [];
 
   const origenes = new Map<number, OrigenDeterminista>();
-  // El orden importa poco porque las fuentes no se solapan (una cuota de
+  // El orden importa poco porque las fuentes casi no se solapan (una cuota de
   // préstamo no es una nómina), pero se fija igualmente: el primero que
   // reconoce una línea se la queda, y así el resultado no depende del azar.
+  // Los cuadros (igualdad exacta) van antes que las definiciones; entre estas,
+  // el traspaso propio primero: que el otro lado sea el propio titular pesa
+  // más que cualquier parecido de texto con un proveedor o un inquilino.
   for (const o of [
     ...cuotasQueCuadran(movimientos, prestamos),
     ...ventasQueCuadran(movimientos, ventas),
     ...rendimientosQueCuadran(movimientos, inversiones),
     ...nominasQueSeReconocen(movimientos, ingresos),
+    ...traspasosPropios(movimientos, cuentas, nombres, otrosMovimientos),
+    ...recurrentesQueCuadran(movimientos, compromisos.filter((c) => c.estado === 'activo')),
+    ...rentasQueCuadran(movimientos, contratos),
   ]) {
     if (!origenes.has(o.movementId)) origenes.set(o.movementId, o);
   }
