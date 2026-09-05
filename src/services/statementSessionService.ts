@@ -39,13 +39,6 @@ export async function consolidarSesion(importBatchId: string): Promise<void> {
   });
 }
 
-/** ¿Esta sesión ya se guardó? Para no ofrecer resolver algo ya cerrado. */
-export async function estaConsolidada(importBatchId: string): Promise<boolean> {
-  const db = await initDB();
-  const batch = (await db.get('importBatches', importBatchId)) as ImportBatch | undefined;
-  return Boolean(batch?.consolidadoAt);
-}
-
 /**
  * §4.7 · "el fichero se archiva en el Archivo, vinculado a cuenta y periodo".
  *

@@ -553,7 +553,7 @@ export interface RentaMensual {
 - **Archivo**: `src/services/db.ts:2217`
 - **Condición**: siempre (H8)
 - **keyPath**: `id` · autoIncrement: true
-- **Índices**: `accountId`, `date`, `status`, `importBatch`, `duplicate-key` → `['accountId','date','amount','description']`
+- **Índices**: `accountId`, `date`, `status`, `importBatch` · (`duplicate-key` → `['accountId','date','amount','description']` retirado en V92 · E1.6: nunca tuvo lector)
 - **Interface** (`db.ts:942`): `Movement` — id, accountId, date, amount, description, category, status, importBatch, reconciled, matchedEventId, etc. (extensa, ~100 campos)
 - **Veredicto**: ✅ ACTIVO (uso intensivo)
 - **Lecturas**: `pages/GestionInmuebles/tabs/LineasAnualesTab.tsx:130,953`, `services/bankStatementImportService.ts:205`, `services/enhancedDeduplicationService.ts:100,268,322`

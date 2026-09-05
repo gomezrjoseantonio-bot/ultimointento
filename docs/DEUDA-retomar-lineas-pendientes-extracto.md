@@ -1,5 +1,8 @@
 # Deuda · retomar las líneas pendientes de un extracto (§4.7 · D4)
 
+> **RESUELTA (E1.3 · E1.5 · E1.6, sep 2026).** Retomar una sesión a medias existe desde E1.3 (`lotesAMedias` · `reabrirLote`) y se apoya en las líneas persistidas de `lineasExtracto` con su decisión, no en `ImportBatch.lineasPendientes`. Tras el corte (E1.5) consolidar no borra nada, y el campo `lineasPendientes` se retiró del tipo en E1.6 sin que nadie lo escribiera ni leyera. Lo que sigue es el texto original, como registro.
+
+
 **Abierta en:** Tesorería V6 §4.7 · drawer de extracto
 **Dónde vive el dato:** `ImportBatch.lineasPendientes`
 

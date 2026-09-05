@@ -289,13 +289,12 @@ export function veredictoEfectivo(
   if (decisiones.ignorados.has(linea.lineaId)) return 'ignorada';
   if (decisiones.asignados.has(linea.lineaId)) return 'cuadra';
   if (decisiones.creados.has(linea.lineaId)) return 'cuadra';
-  // Resuelta: el cargo se queda, convertido en traspaso a la cuenta de
-  // efectivo. Por eso NO cuenta como pendiente y su movimiento sobrevive a
-  // `consolidarSesion`, que es lo contrario de lo que pasa con lo sin resolver.
+  // Resuelta: al guardar nace su movimiento como pata de salida de un traspaso
+  // a la cuenta de efectivo (E1.5 · `convertirLineaEnTraspaso`). Por eso NO
+  // cuenta como pendiente.
   if (decisiones.aEfectivo.has(linea.lineaId)) return 'cuadra';
-  // Marcada como traspaso a otra cuenta · igual que efectivo: el cargo se queda
-  // (convertido en la pata de salida), no cuenta como pendiente y sobrevive a
-  // `consolidarSesion`.
+  // Marcada como traspaso a otra cuenta · igual que efectivo: nace la pata de
+  // salida al guardar y no cuenta como pendiente.
   if (decisiones.aTraspaso.has(linea.lineaId)) return 'cuadra';
 
   // Recuperar una ignorada de una importación anterior, o un mes anterior

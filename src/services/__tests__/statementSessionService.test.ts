@@ -7,7 +7,7 @@
 // Lo que queda por proteger es la marca de guardado, que es lo que decide si
 // un lote se ofrece retomar.
 
-import { consolidarSesion, estaConsolidada } from '../statementSessionService';
+import { consolidarSesion } from '../statementSessionService';
 import { initDB } from '../db';
 import type { ImportBatch } from '../db/types-fiscal';
 
@@ -41,10 +41,9 @@ beforeEach(() => {
 
 describe('consolidar', () => {
   it('marca la sesión · deja de estar a medias', async () => {
-    expect(await estaConsolidada('borrador')).toBe(false);
+    expect(batches.find((b) => b.id === 'borrador')?.consolidadoAt).toBeUndefined();
     await consolidarSesion('borrador');
 
-    expect(await estaConsolidada('borrador')).toBe(true);
     expect(batches.find((b) => b.id === 'borrador')?.consolidadoAt).toMatch(/^\d{4}-/);
   });
 

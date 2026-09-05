@@ -5,12 +5,13 @@
 // Toda línea del banco cae en EXACTAMENTE uno de cuatro sitios. No hay un
 // quinto, y no hay limbo: `bucketDeLinea` es total.
 //
-// Lo que esto retira: los destinos «mes cerrado» y «mes anterior». No eran una
-// clasificación, eran una papelera — `lineasPendientes` los mandaba con las sin
-// resolver a `consolidarSesion`, que BORRA su `Movement`. Ochenta y ocho
+// Lo que esto retiró (FASE 1): los destinos «mes cerrado» y «mes anterior». No
+// eran una clasificación, eran una papelera — se mandaban con las sin resolver
+// a `consolidarSesion`, que entonces BORRABA su `Movement`. Ochenta y ocho
 // movimientos reales del banco desaparecían al pulsar Guardar, apoyándose en un
-// cierre de mes que nadie puede haber hecho: `cerrarMes` no tiene un solo
-// llamante en toda la app.
+// cierre de mes que nadie puede haber hecho. Tras E1.5 nada de eso existe:
+// importar no crea movimientos, consolidar solo estampa la marca de guardado y
+// lo sin resolver sigue siendo línea del extracto.
 //
 // ── Dos cuadres distintos, y no se mezclan ──────────────────────────────────
 //
