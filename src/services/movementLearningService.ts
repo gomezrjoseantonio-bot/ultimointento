@@ -100,19 +100,42 @@ function extractNGrams(text: string, maxGrams: number = 3): string[] {
  * Los n-grams del movimiento · lo que comparten todos los recibos de un mismo
  * texto, una vez quitado lo volátil. Es la parte común de las claves v1 y v2.
  */
-function ngramsDelMovimiento(movement: Movement): string[] {
+function ngramsDelMovimiento(movement: Movement, conIdentificador = false): string[] {
   const contraparte = normalizeText(movement.counterparty || '');
   const descripcion = normalizeText(movement.description || '');
 
   // Remove volatile tokens
-  const cleanContraparte = removeVolatileTokens(contraparte);
-  const cleanDescripcion = removeVolatileTokens(descripcion);
+  let cleanContraparte = removeVolatileTokens(contraparte);
+  let cleanDescripcion = removeVolatileTokens(descripcion);
+  // E2.3 · CON un identificador estable, los números cortos sueltos del texto
+  // son ruido: Sabadell escribe el nº de factura en el concepto («IBERDROLA
+  // GAS 104», «… 105») y cambiaba la clave cada mes aunque el NIF del acreedor
+  // fuese el mismo. SIN identificador no se tocan: «CALLE URIA 5» y «CALLE
+  // URIA 7» son dos comunidades distintas y el número es lo único que las
+  // separa.
+  if (conIdentificador) {
+    cleanContraparte = sinNumerosCortos(cleanContraparte);
+    cleanDescripcion = sinNumerosCortos(cleanDescripcion);
+  }
 
   // Combine both texts for n-gram extraction
   const combinedText = `${cleanContraparte} ${cleanDescripcion}`.trim();
 
   // Extract top 3 n-grams
-  return extractNGrams(combinedText, 3);
+  const ngrams = extractNGrams(combinedText, 3);
+  // E2.3 · con identificador, si tras quitar lo volátil queda UNA sola palabra
+  // («gas», «luz») no hay n-gram posible y la clave se quedaría solo con el
+  // identificador: gas y luz del mismo acreedor (mismo NIF) serían una regla.
+  // La palabra suelta entra entonces como token. Solo en la v2 con
+  // identificador: la v1 no se toca.
+  if (conIdentificador && ngrams.length === 0) {
+    return combinedText.split(/\s+/).filter((w) => w.length > 2).slice(0, 3);
+  }
+  return ngrams;
+}
+
+function sinNumerosCortos(text: string): string {
+  return text.replace(/\b\d{1,3}\b/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function signoDe(movement: Movement): 'positive' | 'negative' {
@@ -155,7 +178,7 @@ export function buildLearnKey(movement: Movement): string {
   const keyParts = [
     'v2',
     signoDe(movement),
-    ...ngramsDelMovimiento(movement),
+    ...ngramsDelMovimiento(movement, true),
     ...ids.map((id) => `id=${claveDeIdentificador(id)}`),
   ];
   return simpleHash(keyParts.join('|'));

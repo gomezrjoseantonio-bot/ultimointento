@@ -9,11 +9,12 @@
 // evaluated. The exception is vía B with appliedCount=0 (confidence 50): it is
 // emitted but does NOT short-circuit, so vía C also runs.
 //
-// Vía A — `compromisosRecurrentes`. Active commitments matched by ámbito +
-// account + importe ± tolerance. Confidence 70-90 depending on match strength.
-// Today the store is empty (T9 will populate it), so vía A returns [] in
-// practice and the engine falls through to vía B. The shell is in place for
-// when T9 lands.
+// Vía A — `compromisosRecurrentes`. E2.3 · el juicio vive en
+// `recurrentes/reconocerRecurrente`: identidad (CUPS / nº contrato / NIF de la
+// llave de E2.1) > texto (`conceptoBancario` o proveedor), importe según el
+// modo (fijo exacto · variable por rango), calendario del patrón como
+// desempate, y `reparto[]` al atribuir. Confianza 75-95; con dos candidatos
+// pegados no elige. Solo gasto: el compromiso modela salidas.
 //
 // Vía B — `movementLearningRules`. Compute learnKey via
 // movementLearningService.buildLearnKey, look up by exact key. If a rule
@@ -46,6 +47,7 @@ import {
 import { buildLearnKey, buildLearnKeyV1, nombreDeContraparte } from './movementLearningService';
 import { contradiceElSigno } from './sugerencias/signoDelMovimiento';
 import { puedeResolverSola } from './reglaResuelveSola';
+import { reconocerRecurrente } from './recurrentes/reconocerRecurrente';
 import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
@@ -79,7 +81,6 @@ export interface MovementSuggestion {
 }
 
 const SHORT_CIRCUIT_CONFIDENCE = 60;
-const COMPROMISO_AMOUNT_TOLERANCE_PERCENT = 5;
 
 export async function suggestForUnmatched(
   movementIds: number[]
@@ -206,77 +207,39 @@ function suggestFromCompromiso(
   movement: Movement,
   compromisos: CompromisoRecurrente[]
 ): MovementSuggestion | null {
-  if (compromisos.length === 0) return null;
-
-  type Candidate = { compromiso: CompromisoRecurrente; confidence: number };
-  let best: Candidate | null = null;
-
-  // CompromisoRecurrente models gasto-only commitments: every CategoriaGastoCompromiso
-  // is an outflow and `importe` is stored positive. Therefore vía A only proposes
-  // matches for outflow movements (amount < 0); positive movements are skipped here.
-  if (movement.amount >= 0) return null;
-
-  for (const compromiso of compromisos) {
-    if (compromiso.cuentaCargo !== movement.accountId) continue;
-
-    const expected = expectedImporte(compromiso);
-    if (expected == null) continue;
-    const movAbs = Math.abs(movement.amount);
-    if (Math.abs(movAbs - expected) / Math.max(expected, 0.01) > COMPROMISO_AMOUNT_TOLERANCE_PERCENT / 100) continue;
-
-    // Confidence: 70 base, +10 if importe céntimo exacto, +10 if proveedor token
-    // appears in the movement description.
-    let confidence = 70;
-    if (Math.abs(movAbs - expected) < 0.005) confidence += 10;
-    const description = (movement.description ?? '').toLowerCase();
-    const proveedor = (compromiso.proveedor?.nombre ?? '').toLowerCase().trim();
-    if (proveedor.length >= 3 && description.includes(proveedor)) confidence += 10;
-
-    if (!best || confidence > best.confidence) {
-      best = { compromiso, confidence };
-    }
-  }
-
-  if (!best) return null;
-
-  const ambito = best.compromiso.ambito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL';
+  const r = reconocerRecurrente(movement, compromisos);
+  if (!r) return null;
+  const c = r.compromiso;
+  const ambito = c.ambito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL';
+  const porQue =
+    r.porIdentidad === 'cups'
+      ? ' · por CUPS'
+      : r.porIdentidad === 'numeroContrato'
+      ? ' · por nº de contrato'
+      : r.porIdentidad === 'nif'
+      ? ' · por NIF'
+      : '';
   return {
     movementId: movement.id!,
     via: 'compromiso_recurrente',
-    confidence: best.confidence,
-    description: `Coincide con compromiso "${best.compromiso.alias}" (${best.compromiso.proveedor?.nombre ?? 'proveedor sin nombre'})`,
+    confidence: r.confianza,
+    description: `Coincide con compromiso "${c.alias}" (${c.proveedor?.nombre ?? 'proveedor sin nombre'})${porQue}`,
     action: {
       kind: 'create_treasury_event',
       type: 'expense',
       ambito,
-      inmuebleId: best.compromiso.inmuebleId,
-      categoryKey: best.compromiso.categoria,
+      inmuebleId: r.inmuebleId,
+      categoryKey: c.categoria,
       sourceType: 'gasto_recurrente',
-      sourceId: best.compromiso.id,
+      sourceId: c.id,
     },
-    metadata: { compromisoId: best.compromiso.id },
+    metadata: {
+      compromisoId: c.id,
+      razones: r.razones,
+      ...(r.porIdentidad ? { porIdentidad: r.porIdentidad } : {}),
+      ...(r.reparto ? { reparto: r.reparto } : {}),
+    },
   };
-}
-
-function expectedImporte(compromiso: CompromisoRecurrente): number | null {
-  const imp = compromiso.importe;
-  switch (imp.modo) {
-    case 'fijo':
-      return imp.importe;
-    case 'variable':
-      return imp.importeMedio;
-    case 'diferenciadoPorMes':
-      // Use mean of the 12 months as a rough match anchor.
-      if (!imp.importesPorMes || imp.importesPorMes.length === 0) return null;
-      return imp.importesPorMes.reduce((s, v) => s + v, 0) / imp.importesPorMes.length;
-    case 'porPago': {
-      const values = Object.values(imp.importesPorPago ?? {});
-      if (values.length === 0) return null;
-      return values.reduce((s, v) => s + v, 0) / values.length;
-    }
-    default:
-      return null;
-  }
 }
 
 // ─── Vía B · learning rules ─────────────────────────────────────────────────

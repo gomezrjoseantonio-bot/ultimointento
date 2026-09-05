@@ -248,6 +248,52 @@ describe('Treasury Learning Engine', () => {
       expect(buildLearnKey(m)).not.toBe(buildLearnKeyV1(m));
     });
 
+    // ── E2.3 · el nº de factura de Sabadell y la clave ─────────────────────
+    //
+    // HALLAZGO (preexistente · v1 · NO se toca en E2.3): `removeVolatileTokens`
+    // quita toda palabra de 8+ caracteres (`\b[a-z0-9]{8,}\b`), LETRAS incluidas.
+    // «ELECTRICIDAD», «IBERDROLA» y «COMERCIALIZACION» desaparecen del patrón y
+    // la clave de Sabadell se queda con «gas 105»: cambia cada mes. Y en
+    // general, la clave v1 se construye SIN los nombres largos de proveedor
+    // (COMUNIDAD, PROPIETARIOS, TRANSFERENCIA…), que es justo lo que identifica.
+    // Arreglarlo cambia la v1 de todas las reglas · otra tarea.
+    test('HALLAZGO · sin identificador, el nº de factura SÍ cambia la clave (la v1 tira las palabras largas)', () => {
+      const sinRef = (factura: string) =>
+        createTestMovement({ description: `ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS ${factura}`, counterparty: '', amount: -38.2 });
+      expect(buildLearnKeyV1(sinRef('104'))).not.toBe(buildLearnKeyV1(sinRef('105')));
+    });
+
+    test('E2.3 · CON identificador (el NIF de Referencia 1) el nº de factura ya NO cambia la clave · Sabadell resuelto', () => {
+      const recibo = (factura: string) =>
+        createTestMovement({ description: `ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS ${factura}`, counterparty: '', reference: 'A95554630001', amount: -38.2 });
+      expect(buildLearnKey(recibo('104'))).toBe(buildLearnKey(recibo('105')));
+      // Y sigue distinguiendo gas de luz del mismo acreedor.
+      const luz = createTestMovement({ description: 'ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA LUZ 88', counterparty: '', reference: 'A95554630001', amount: -80 });
+      expect(buildLearnKey(luz)).not.toBe(buildLearnKey(recibo('104')));
+    });
+
+    test('E2.3 · CON identificador, un nº de factura al PRINCIPIO del texto tampoco cambia la clave', () => {
+      const recibo = (factura: string) =>
+        createTestMovement({ description: `IBERDROLA GAS ${factura} ELECTRICIDAD COMERCIALIZACION`, counterparty: '', reference: 'A95554630001', amount: -38.2 });
+      expect(buildLearnKey(recibo('104'))).toBe(buildLearnKey(recibo('105')));
+    });
+
+    test('E2.3 · SIN identificador los números de tres cifras del principio siguen distinguiendo · dos portales son dos comunidades', () => {
+      const p105 = buildLearnKey(createTestMovement({ description: 'PORTAL 105 CDAD PROP CALLE URIA', counterparty: '', amount: -72.5 }));
+      const p107 = buildLearnKey(createTestMovement({ description: 'PORTAL 107 CDAD PROP CALLE URIA', counterparty: '', amount: -72.5 }));
+      expect(p105).not.toBe(p107);
+    });
+
+    // HALLAZGO (preexistente · v1 · NO se toca en E2.3): `extractNGrams` descarta
+    // las palabras de 1-2 caracteres, así que «CALLE URIA 5» y «CALLE URIA 7»
+    // YA daban la misma clave antes de E2.1. Queda consagrado aquí para que se
+    // vea; arreglarlo cambia la v1 de todas las reglas y es otra tarea.
+    test('HALLAZGO · sin identificador, un número de UNA cifra no distingue (v1 · preexistente)', () => {
+      const uria5 = buildLearnKey(createTestMovement({ description: 'RECIBO CDAD PROP CALLE URIA 5', counterparty: '', amount: -72.5 }));
+      const uria7 = buildLearnKey(createTestMovement({ description: 'RECIBO CDAD PROP CALLE URIA 7', counterparty: '', amount: -72.5 }));
+      expect(uria5).toBe(uria7);
+    });
+
     test('genera claves distintas para signos opuestos del mismo proveedor', () => {
       const gasto = buildLearnKey(createTestMovement({
         description: 'EMPRESA ABC SL TRANSFERENCIA',
