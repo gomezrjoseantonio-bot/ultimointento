@@ -26,7 +26,7 @@ const movimiento = (): Movement =>
     type: 'Gasto',
     origin: 'CSV',
     movementState: 'Confirmado',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     statusConciliacion: 'sin_match',
     createdAt: '',
     updatedAt: '',
@@ -73,7 +73,7 @@ describe('el movimiento cerrado', () => {
     const cerrado = movimientoCerrado(movimiento(), origenPrestamo(), AHORA);
     expect(cerrado.unifiedStatus).toBe('conciliado');
     expect(cerrado.inmuebleId).toBe('4');
-    expect(cerrado.ambito).toBe('INMUEBLE');
+    expect(cerrado.ambito).toBe('inmueble');
   });
 
   it('se distingue de lo que cerró el usuario a mano', () => {
@@ -86,7 +86,7 @@ describe('el movimiento cerrado', () => {
     const sinPiso = { ...origenPrestamo(), inmuebleId: undefined };
     const cerrado = movimientoCerrado(movimiento(), sinPiso, AHORA);
     expect(cerrado.inmuebleId).toBeUndefined();
-    expect(cerrado.ambito).toBe('PERSONAL');
+    expect(cerrado.ambito).toBe('personal');
   });
 });
 

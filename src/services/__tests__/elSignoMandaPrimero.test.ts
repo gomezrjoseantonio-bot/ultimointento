@@ -303,7 +303,7 @@ describe('el signo manda primero · vía B (reglas aprendidas)', () => {
       descriptionPattern: 'abono nomina orange',
       amountSign: 'negative',
       categoria: 'suministros',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       source: 'IMPLICIT',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

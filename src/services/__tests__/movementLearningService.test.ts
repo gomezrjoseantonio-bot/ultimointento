@@ -24,7 +24,7 @@ const createTestMovement = (overrides: Partial<Movement> = {}): Movement => ({
   type: 'Gasto' as const,
   origin: 'CSV' as const,
   movementState: 'Conciliado' as const,
-  ambito: 'PERSONAL' as const,
+  ambito: 'personal' as const,
   statusConciliacion: 'sin_match' as const,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -134,7 +134,7 @@ describe('Treasury Learning Engine', () => {
       const sinMatchCount = allMovements.filter(m => m.statusConciliacion === 'sin_match').length;
       expect(sinMatchCount).toBe(10);
 
-      const personalCount = allMovements.filter(m => m.ambito === 'PERSONAL').length;
+      const personalCount = allMovements.filter(m => m.ambito === 'personal').length;
       expect(personalCount).toBe(10);
     });
   });
@@ -144,11 +144,11 @@ describe('Treasury Learning Engine', () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 'test-key-123',
         categoria: 'TRANSPORTE',
-        ambito: 'PERSONAL'
+        ambito: 'personal'
       });
 
       expect(rule.categoria).toBe('TRANSPORTE');
-      expect(rule.ambito).toBe('PERSONAL');
+      expect(rule.ambito).toBe('personal');
       expect(rule.source).toBe('IMPLICIT');
     });
   });
@@ -319,7 +319,7 @@ describe('Treasury Learning Engine', () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-b1-new',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
 
       expect(rule.appliedCount).toBe(1);
@@ -330,17 +330,17 @@ describe('Treasury Learning Engine', () => {
       await learningService.createOrUpdateRule({
         learnKey: 't16-b1-existing',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
       const second = await learningService.createOrUpdateRule({
         learnKey: 't16-b1-existing',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
       const third = await learningService.createOrUpdateRule({
         learnKey: 't16-b1-existing',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
 
       expect(second.appliedCount).toBe(2);
@@ -373,7 +373,7 @@ describe('Treasury Learning Engine', () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-b2-with-movement',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
         movement,
       });
 
@@ -387,7 +387,7 @@ describe('Treasury Learning Engine', () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-b2-no-movement',
         categoria: 'TRANSPORTE',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
 
       expect(rule.counterpartyPattern).toBe('');
@@ -400,7 +400,7 @@ describe('Treasury Learning Engine', () => {
       await learningService.createOrUpdateRule({
         learnKey: 't16-b2-backfill',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
       const movement = createTestMovement({
         id: 9002,
@@ -412,7 +412,7 @@ describe('Treasury Learning Engine', () => {
       const updated = await learningService.createOrUpdateRule({
         learnKey: 't16-b2-backfill',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
         movement,
       });
 
@@ -441,14 +441,14 @@ describe('Treasury Learning Engine', () => {
       const reglaA = await learningService.createOrUpdateRule({
         learnKey: buildLearnKey(pisoA),
         categoria: 'inmueble.suministros',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         inmuebleId: '4',
         movement: pisoA,
       });
       const reglaB = await learningService.createOrUpdateRule({
         learnKey: buildLearnKey(pisoB),
         categoria: 'inmueble.suministros',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         inmuebleId: '7',
         movement: pisoB,
       });
@@ -479,10 +479,10 @@ describe('Treasury Learning Engine', () => {
       });
 
       const primera = await learningService.createOrUpdateRule({
-        learnKey: buildLearnKey(julio), categoria: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: '2', movement: julio,
+        learnKey: buildLearnKey(julio), categoria: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: '2', movement: julio,
       });
       const segunda = await learningService.createOrUpdateRule({
-        learnKey: buildLearnKey(agosto), categoria: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: '2', movement: agosto,
+        learnKey: buildLearnKey(agosto), categoria: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: '2', movement: agosto,
       });
 
       expect(segunda.id).toBe(primera.id);
@@ -493,7 +493,7 @@ describe('Treasury Learning Engine', () => {
     test('sin identificador la regla no lleva `identificadores`', async () => {
       const m = createTestMovement({ description: 'NETFLIX.COM', counterparty: 'NETFLIX' });
       const regla = await learningService.createOrUpdateRule({
-        learnKey: buildLearnKey(m), categoria: 'ocio', ambito: 'PERSONAL', movement: m,
+        learnKey: buildLearnKey(m), categoria: 'ocio', ambito: 'personal', movement: m,
       });
       expect(regla.identificadores).toBeUndefined();
     });
@@ -504,7 +504,7 @@ describe('Treasury Learning Engine', () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-cleanup-no-history-new',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
 
       expect(rule.history).toBeUndefined();
@@ -522,12 +522,12 @@ describe('Treasury Learning Engine', () => {
       await learningService.createOrUpdateRule({
         learnKey: 't16-cleanup-no-history-upsert',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
       const updated = await learningService.createOrUpdateRule({
         learnKey: 't16-cleanup-no-history-upsert',
         categoria: 'SUMINISTROS',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
       });
 
       expect(updated.history).toBeUndefined();

@@ -23,13 +23,13 @@ describe('estaMudo', () => {
 
 describe('parcheDeClasificacion', () => {
   it('hereda categoría, subtipo, concepto, ámbito e inmueble de la previsión', () => {
-    const m = mov({ ambito: 'PERSONAL', inmuebleId: undefined });
-    const ev = evt({ categoryKey: 'suministro_inmueble', subtypeKey: 'gas', conceptoId: 'gas', ambito: 'INMUEBLE', inmuebleId: 7 });
+    const m = mov({ ambito: 'personal', inmuebleId: undefined });
+    const ev = evt({ categoryKey: 'suministro_inmueble', subtypeKey: 'gas', conceptoId: 'gas', ambito: 'inmueble', inmuebleId: 7 });
     expect(parcheDeClasificacion(m, ev)).toEqual({
       categoryKey: 'suministro_inmueble',
       subtypeKey: 'gas',
       conceptoId: 'gas',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: '7',
     });
   });
@@ -41,8 +41,8 @@ describe('parcheDeClasificacion', () => {
   });
 
   it('si la previsión no clasifica, no hereda ámbito ni inmueble', () => {
-    const m = mov({ ambito: 'PERSONAL' });
-    const ev = evt({ ambito: 'INMUEBLE', inmuebleId: 7 });
+    const m = mov({ ambito: 'personal' });
+    const ev = evt({ ambito: 'inmueble', inmuebleId: 7 });
     expect(parcheDeClasificacion(m, ev)).toEqual({});
   });
 });
@@ -63,7 +63,7 @@ describe('backfillClasificacionConciliados', () => {
   it('rellena por reference treasury_event:<id>', async () => {
     const store = setup(
       [mov({ id: 1, reference: 'treasury_event:100' })],
-      [evt({ id: 100, categoryKey: 'servicio_inmueble', conceptoId: 'limpieza', ambito: 'INMUEBLE', inmuebleId: 3 })]
+      [evt({ id: 100, categoryKey: 'servicio_inmueble', conceptoId: 'limpieza', ambito: 'inmueble', inmuebleId: 3 })]
     );
     const r = await backfillClasificacionConciliados();
     expect(r.rellenados).toBe(1);

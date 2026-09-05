@@ -460,7 +460,7 @@ export async function generateMonthlyForecasts(
         inmuebleId: idDeInmueble(com.inmuebleId),
         proveedor: padre?.inquilino?.nombre || undefined,
         tipoFamilia: 'gestion',
-        ambito: 'INMUEBLE' as const,
+        ambito: 'inmueble' as const,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,

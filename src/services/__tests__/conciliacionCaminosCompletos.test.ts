@@ -70,7 +70,7 @@ function sembrar(): void {
         sourceId: 42,
         año: 2026,
         mes: 8,
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         inmuebleId: 1,
         categoryKey: 'suministro_inmueble',
         accountId: 9,
@@ -230,7 +230,7 @@ describe('B2 · D1 · el confirmado se conserva con el aval del banco', () => {
       source: 'manual',
       reference: 'treasury_event:7',
       categoryKey: 'suministro_inmueble',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: '1',
     });
     Object.assign(stores.treasuryEvents[0], {

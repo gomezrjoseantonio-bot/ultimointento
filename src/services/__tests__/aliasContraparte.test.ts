@@ -31,7 +31,7 @@ const aprender = (movement: Movement, contraparteConfirmada?: string, learnKey =
   createOrUpdateRule({
     learnKey,
     categoria: 'Alquiler',
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     movement,
     contraparteConfirmada,
   });
@@ -124,7 +124,7 @@ describe('alias de contraparte', () => {
       descriptionPattern: '',
       amountSign: 'positive',
       categoria: 'Alquiler',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       source: 'IMPLICIT',
       createdAt: '2026-03-03',
       updatedAt: '2026-03-03',

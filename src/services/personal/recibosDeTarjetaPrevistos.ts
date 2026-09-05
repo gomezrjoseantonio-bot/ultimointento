@@ -109,7 +109,7 @@ export function eventoDePieza(
     generadoPor: 'treasurySyncService',
     // SIN accountId a propósito · la pieza no sale de ninguna cuenta hasta el recibo.
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     createdAt: ahora,
     updatedAt: ahora,
   } as Omit<TreasuryEvent, 'id'>;
@@ -332,7 +332,7 @@ export function eventoDeRecibo(
     accountId: recibo.cuentaLiquidacionId,
     paymentMethod: 'tarjeta',
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     categoryLabel: `Recibo tarjeta ${alias}`,
     counterparty: alias,
     createdAt: ahora,

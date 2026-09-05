@@ -41,7 +41,7 @@ export function rutaDelGastoRecurrente(ev: OrigenDePrevision): string | null {
   // El ámbito lo decide el inmueble, no la etiqueta: un evento antiguo puede no
   // traer `ambito`, pero si trae inmueble su gasto está en la ficha del
   // inmueble igual.
-  if (ev.ambito === 'INMUEBLE' || inmuebleId != null) {
+  if (ev.ambito === 'inmueble' || inmuebleId != null) {
     if (inmuebleId == null) return null;
     return `/inmuebles/${inmuebleId}?tab=gastos&gasto=${ev.sourceId}`;
   }

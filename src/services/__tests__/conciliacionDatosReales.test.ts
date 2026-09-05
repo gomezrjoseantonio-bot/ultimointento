@@ -29,7 +29,7 @@ const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
     sourceId: 42,
     año: 2026,
     mes: 3,
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     inmuebleId: 1,
     description: 'Agua Tenderina',
     status: 'executed',

@@ -73,7 +73,7 @@ const cobroDesdeExtracto = (contratoId: number): Omit<TreasuryEvent, 'id'> =>
     sourceType: 'contract',
     sourceId: contratoId,
     accountId: 1,
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     status: 'executed',
     executedMovementId: 999,
     actualDate: `${PREFIJO}-01`,

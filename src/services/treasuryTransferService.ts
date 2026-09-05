@@ -59,7 +59,7 @@ export async function createTransfer(
     sourceType: 'manual',
     accountId: params.originAccountId,
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     categoryKey: TRANSFER_KEYS.SALIDA,
     categoryLabel: 'Traspaso · salida',
     transferMetadata: { targetAccountId: params.targetAccountId },
@@ -77,7 +77,7 @@ export async function createTransfer(
     sourceType: 'manual',
     accountId: params.targetAccountId,
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     categoryKey: TRANSFER_KEYS.ENTRADA,
     categoryLabel: 'Traspaso · entrada',
     transferMetadata: {

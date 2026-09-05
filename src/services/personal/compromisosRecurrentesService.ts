@@ -645,7 +645,7 @@ export function generarEventosDesdeCompromiso(
       // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
       // agrupar el gasto real por necesidades/deseos/ahorro.
       bolsaPresupuesto: compromiso.bolsaPresupuesto,
-      ambito: compromiso.ambito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL',
+      ambito: compromiso.ambito,
       inmuebleId: compromiso.ambito === 'inmueble' ? compromiso.inmuebleId : undefined,
       categoryLabel: compromiso.alias,
       categoryKey: compromiso.categoria,

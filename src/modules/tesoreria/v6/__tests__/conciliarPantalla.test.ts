@@ -44,7 +44,7 @@ const regla = (over: Partial<MovementLearningRule> = {}): MovementLearningRule =
   descriptionPattern: '',
   amountSign: 'positive',
   categoria: 'comunidad_inmueble',
-  ambito: 'INMUEBLE',
+  ambito: 'inmueble',
   source: 'IMPLICIT',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -64,7 +64,7 @@ describe('sin jerga · el usuario nunca lee el nombre interno de un campo', () =
   it('ninguna frase de la tarjeta lleva casilla de la AEAT ni clave con guion bajo', () => {
     const casos: MovementSuggestion[][] = [
       [sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', categoryKey: 'comunidad_inmueble' } })],
-      [sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', categoryKey: 'comunidad_inmueble', sourceType: 'gasto' } })],
+      [sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'comunidad_inmueble', sourceType: 'gasto' } })],
       [sug({ via: 'heuristica', confidence: 60, action: { kind: 'assign_to_contract' } })],
       [],
     ];
@@ -99,7 +99,7 @@ describe('la tarjeta no promete lo que no cumple', () => {
   it('el recurrente pide confirmación, no propone a ciegas', () => {
     expect(
       propuestaDeLinea([
-        sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', categoryKey: 'comunidad_inmueble', sourceType: 'gasto' } }),
+        sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'comunidad_inmueble', sourceType: 'gasto' } }),
       ]).tono,
     ).toBe('confirma');
   });

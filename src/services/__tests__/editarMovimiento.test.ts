@@ -32,7 +32,7 @@ const anotado = (over: Partial<Movement> = {}): Movement =>
     unifiedStatus: 'no_planificado',
     status: 'pendiente',
     category: { tipo: 'Gastos' },
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     statusConciliacion: 'sin_match',
     categoryKey: 'suministro_inmueble',
     subtypeKey: 'gas',
@@ -105,7 +105,7 @@ describe('corregir lo anotado', () => {
     const m = await leer(id);
     expect(m?.subtypeKey).toBeUndefined();
     expect(m?.inmuebleId).toBeUndefined();
-    expect(m?.ambito).toBe('PERSONAL');
+    expect(m?.ambito).toBe('personal');
   });
 
   it('un ingreso deja de ser un gasto entero', async () => {

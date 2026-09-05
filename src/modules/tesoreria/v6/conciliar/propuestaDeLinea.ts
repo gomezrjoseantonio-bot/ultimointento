@@ -111,7 +111,7 @@ function titularDe(action: SuggestionAction): string {
     }
     case 'create_treasury_event': {
       const etiqueta = etiquetaDeCategoria(action.categoryKey);
-      if (action.ambito === 'PERSONAL') {
+      if (action.ambito === 'personal') {
         return etiqueta ? `Parece ${etiqueta.toLowerCase()}, tuyo` : 'Parece un gasto tuyo, no de un piso';
       }
       return etiqueta ? `Parece ${etiqueta.toLowerCase()} de un piso` : 'Parece un gasto de un piso';

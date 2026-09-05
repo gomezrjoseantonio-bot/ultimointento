@@ -143,7 +143,7 @@ export async function convertirEnTraspaso(
   // deshacer un traspaso que ya está escrito.
   await feedLearningRule(
     movimiento,
-    { categoria: TRANSFER_KEYS.SALIDA, ambito: 'PERSONAL' },
+    { categoria: TRANSFER_KEYS.SALIDA, ambito: 'personal' },
     undefined,
     { tipo: 'traspaso', cuentaDestinoId }
   );

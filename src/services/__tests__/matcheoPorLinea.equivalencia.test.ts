@@ -141,7 +141,7 @@ const LOTE: Movement[] = [
 const LINEAS: LineaExtractoPersistida[] = LOTE.map((m) => lineaDe(m));
 
 const PREVISTOS: TreasuryEvent[] = [
-  previsto({ id: 101, type: 'expense', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: 4 }),
+  previsto({ id: 101, type: 'expense', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
   previsto({ id: 102, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
   previsto({ id: 103, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
   previsto({ id: 104, type: 'expense', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
@@ -156,9 +156,9 @@ function libros(): Stores {
   return {
     treasuryEvents: [...PREVISTOS],
     movementLearningRules: [
-      { id: 1, learnKey: buildLearnKey(NETFLIX), categoria: 'ocio', ambito: 'PERSONAL', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 2, learnKey: buildLearnKey(DEVOLUCION), categoria: 'tecnologia', ambito: 'PERSONAL', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 9, learnKey: 'x', categoria: 'alquiler', ambito: 'INMUEBLE', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' },
+      { id: 1, learnKey: buildLearnKey(NETFLIX), categoria: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 2, learnKey: buildLearnKey(DEVOLUCION), categoria: 'tecnologia', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 9, learnKey: 'x', categoria: 'alquiler', ambito: 'inmueble', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' },
     ],
     compromisosRecurrentes: [
       { id: 3, alias: 'Gas Tenderina', ambito: 'inmueble', inmuebleId: 4, cuentaCargo: CUENTA, estado: 'activo', importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, categoria: 'suministros' },
@@ -249,7 +249,7 @@ describe('movementDesdeLinea · el mismo movimiento que insertMovements, en memo
       category: { tipo: 'Ingresos' },
       tags: [],
       isAutoTagged: false,
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       statusConciliacion: 'sin_match',
       importBatch: 'lote-agosto',
       createdAt: '2026-09-01T00:00:00.000Z',

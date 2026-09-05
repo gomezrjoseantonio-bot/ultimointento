@@ -497,7 +497,7 @@ class CuentasService {
           type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
           origin: 'Manual' as const,
           movementState: 'Confirmado',
-          ambito: 'PERSONAL' as const,
+          ambito: 'personal' as const,
           statusConciliacion: 'sin_match' as const,
           currency: 'EUR',
           saldo: openingBalance,

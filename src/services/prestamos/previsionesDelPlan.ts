@@ -118,7 +118,7 @@ export async function sincronizarPrevisionesDelPlan(
       accountId: d.cuentaId,
       prestamoId: prestamo.id,
       status,
-      ambito: inmueble ? 'INMUEBLE' : 'PERSONAL',
+      ambito: inmueble ? 'inmueble' : 'personal',
       inmuebleId: inmueble != null ? Number(inmueble) : undefined,
       createdAt: ahora,
       updatedAt: ahora,

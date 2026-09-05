@@ -34,7 +34,7 @@ describe('UI Contraparte Integration Tests', () => {
       type: 'Ingreso' as const,
       origin: 'Manual' as const,
       movementState: 'Confirmado' as const,
-      ambito: 'PERSONAL' as const,
+      ambito: 'personal' as const,
       statusConciliacion: 'sin_match' as const,
       createdAt: '2024-01-15T10:00:00.000Z',
       updatedAt: '2024-01-15T10:00:00.000Z'

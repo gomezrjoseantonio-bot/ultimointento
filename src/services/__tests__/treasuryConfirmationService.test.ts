@@ -232,7 +232,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
           counterparty: 'A11111111',
@@ -262,7 +262,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Mejora inmueble',
           description: 'Cambio ventanas',
@@ -283,7 +283,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Mobiliario inmueble',
           description: 'Lavadora nueva',
@@ -304,7 +304,7 @@ describe('treasuryConfirmationService · PR3', () => {
 
       const comunidadId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Comunidad',
           amount: 90,
@@ -312,7 +312,7 @@ describe('treasuryConfirmationService · PR3', () => {
       );
       const seguroId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Seguro inmueble',
           amount: 320,
@@ -334,7 +334,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'PERSONAL',
+          ambito: 'personal',
           categoryLabel: 'Reparación inmueble',
         }) as any),
       );
@@ -355,7 +355,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
           amount: 150,
@@ -386,7 +386,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
         }) as any),
@@ -448,7 +448,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
           amount: 150,
@@ -479,7 +479,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
           amount: 80,
@@ -509,7 +509,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
           amount: 35,
@@ -555,7 +555,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
           counterparty: 'Viejo',
@@ -586,7 +586,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
           categoryLabel: 'Reparación inmueble',
         }) as any),
@@ -619,7 +619,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          ambito: 'PERSONAL',
+          ambito: 'personal',
           amount: 100,
         }) as any),
       );

@@ -38,7 +38,7 @@ const mov = (over: Partial<Movement> & { id: number }): Movement =>
     type: 'Gasto',
     origin: 'CSV',
     movementState: 'Confirmado',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     statusConciliacion: 'sin_match',
     createdAt: '',
     updatedAt: '',

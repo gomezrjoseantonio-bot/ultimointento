@@ -327,7 +327,7 @@ async function reforzarLearning(sug: Sugerencia, override?: AmbitoRecurrente): P
     await createOrUpdateRule({
       learnKey: mov ? buildLearnKey(mov) : `onboarding:${cand.conceptoNormalizado}`,
       categoria: cand.propuesta.categoria || 'otros',
-      ambito: ambitoEfectivo === 'inmueble' ? 'INMUEBLE' : 'PERSONAL',
+      ambito: ambitoEfectivo,
       inmuebleId: inmuebleIdEfectivo != null ? String(inmuebleIdEfectivo) : undefined,
       movement: mov,
     });

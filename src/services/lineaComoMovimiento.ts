@@ -93,7 +93,7 @@ export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Mo
     category: { tipo: amount >= 0 ? 'Ingresos' : 'Gastos' },
     tags: [],
     isAutoTagged: false,
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     statusConciliacion: 'sin_match',
     importBatch: linea.importBatchId,
     createdAt: linea.createdAt,

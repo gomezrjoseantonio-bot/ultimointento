@@ -189,7 +189,7 @@ describe('crea la fila fiscal del gasto descubierto', () => {
     const db = await initDB();
     const m = (await db.get('movements', movementId)) as Movement;
     expect(m.inmuebleId).toBe(String(INMUEBLE));
-    expect(m.ambito).toBe('INMUEBLE');
+    expect(m.ambito).toBe('inmueble');
     expect(m.categoryKey).toBe('inmueble.reparacion_conservacion');
   });
 });

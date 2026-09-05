@@ -293,7 +293,7 @@ export async function cargarAliasContraparte(): Promise<Map<string, Set<string>>
 export async function createOrUpdateRule(params: {
   learnKey: string;
   categoria: string;
-  ambito: 'PERSONAL' | 'INMUEBLE';
+  ambito: 'personal' | 'inmueble';
   inmuebleId?: string;
   movement?: Movement;
   /**
@@ -430,7 +430,7 @@ function esCambioDeOpinion(
   rule: MovementLearningRule,
   nuevo: {
     categoria: string;
-    ambito: 'PERSONAL' | 'INMUEBLE';
+    ambito: 'personal' | 'inmueble';
     inmuebleId?: string;
     resolucion: 'clasificar' | 'traspaso';
     cuentaDestinoId?: number;
@@ -517,7 +517,7 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
       // No rule found, keep as sin_match with default ambito
       return {
         ...movement,
-        ambito: 'PERSONAL' as const,
+        ambito: 'personal' as const,
         statusConciliacion: 'sin_match' as const,
         updatedAt: new Date().toISOString()
       };
@@ -552,7 +552,7 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
     console.error('❌ Error applying learning rules to new movements:', error);
     return movements.map(movement => ({
       ...movement,
-      ambito: 'PERSONAL' as const,
+      ambito: 'personal' as const,
       statusConciliacion: 'sin_match' as const,
       updatedAt: new Date().toISOString()
     }));

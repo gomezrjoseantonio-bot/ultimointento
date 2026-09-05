@@ -68,7 +68,7 @@ describe('cuentasService.create() - opening balance movement', () => {
         isOpeningBalance: true,
         status: 'conciliado',
         origin: 'Manual',
-        ambito: 'PERSONAL',
+        ambito: 'personal',
         statusConciliacion: 'sin_match',
       })
     );

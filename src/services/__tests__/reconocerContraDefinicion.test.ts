@@ -133,7 +133,7 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
       amount: -24.9,
       categoryKey: 'comunidad_inmueble',
       inmuebleId: '4',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       unifiedStatus: 'conciliado',
       statusConciliacion: 'match_automatico',
       descripcionPrevision: 'Comunidad Tenderina · Comunidad Propietarios Tenderina',
@@ -149,7 +149,7 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
     // Y enseña · E2.2: la próxima línea igual llega con esto aprendido.
     const reglas = await todos<MovementLearningRule>('movementLearningRules');
     expect(reglas).toHaveLength(1);
-    expect(reglas[0]).toMatchObject({ categoria: 'comunidad_inmueble', ambito: 'INMUEBLE', inmuebleId: '4' });
+    expect(reglas[0]).toMatchObject({ categoria: 'comunidad_inmueble', ambito: 'inmueble', inmuebleId: '4' });
   });
 
   it('es IDEMPOTENTE · guardar dos veces no duplica el movimiento ni la fila fiscal', async () => {
@@ -217,7 +217,7 @@ describe('E2.4 · renta · el cobro del contrato queda registrado, sin fabricar 
 
     const movs = await todos<Movement>('movements');
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ amount: 650, categoryKey: 'alquiler', ambito: 'INMUEBLE', inmuebleId: '4', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Renta · Miguel Lorenzo Cabanelas' });
+    expect(movs[0]).toMatchObject({ amount: 650, categoryKey: 'alquiler', ambito: 'inmueble', inmuebleId: '4', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Renta · Miguel Lorenzo Cabanelas' });
     const eventos = await todos<TreasuryEvent>('treasuryEvents');
     expect(eventos).toHaveLength(1);
     expect(eventos[0]).toMatchObject({
@@ -305,7 +305,7 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
 
   it('la otra pata YA está importada en Bankinter · se emparejan y no nace nada', async () => {
     await sembrar('movements', [
-      { id: 501, accountId: BANKINTER, date: '2025-03-03', valueDate: '2025-03-03', amount: 1500, description: 'Transferencia De Gomez Ramirez Jose Antonio', unifiedStatus: 'no_planificado', source: 'import', type: 'Ingreso', origin: 'CSV', movementState: 'Confirmado', state: 'pending', status: 'pendiente', category: { tipo: 'Ingresos' }, ambito: 'PERSONAL', statusConciliacion: 'sin_match', createdAt: AHORA, updatedAt: AHORA },
+      { id: 501, accountId: BANKINTER, date: '2025-03-03', valueDate: '2025-03-03', amount: 1500, description: 'Transferencia De Gomez Ramirez Jose Antonio', unifiedStatus: 'no_planificado', source: 'import', type: 'Ingreso', origin: 'CSV', movementState: 'Confirmado', state: 'pending', status: 'pendiente', category: { tipo: 'Ingresos' }, ambito: 'personal', statusConciliacion: 'sin_match', createdAt: AHORA, updatedAt: AHORA },
     ]);
     const id = await nuevaLinea({ importe: -1500, conceptoLiteral: 'Transferencia A Favor De Gomez Ramirez Jose Antonio' });
     await reconocerYGuardar([id]);

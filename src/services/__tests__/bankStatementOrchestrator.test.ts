@@ -294,7 +294,7 @@ beforeEach(() => {
           action: {
             kind: 'create_treasury_event',
             type: 'expense',
-            ambito: 'INMUEBLE',
+            ambito: 'inmueble',
             categoryKey: 'inmueble.suministros',
             sourceType: 'gasto',
           },
@@ -412,8 +412,8 @@ describe('bankStatementOrchestrator', () => {
     );
     nextLineaId = 5;
     stores.treasuryEvents.push(
-      { id: 1000, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta 1', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'INMUEBLE', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
-      { id: 1001, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta 2', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'INMUEBLE', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1000, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta 1', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1001, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta 2', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
     );
     const saldoAntes = saldo42();
     expect(redondea(saldoAntes)).toBe(redondea(380 + 380 - 45.23 - 32.99));
@@ -460,7 +460,7 @@ describe('bankStatementOrchestrator', () => {
     expect(m1.unifiedStatus).toBe('conciliado');
     expect(m2.unifiedStatus).toBe('conciliado');
     expect(m1.categoryKey).toBe('inmueble.alquiler');
-    expect(m1.ambito).toBe('INMUEBLE');
+    expect(m1.ambito).toBe('inmueble');
 
     // El saldo no se mueve al resolver: el dinero ya estaba en el banco.
     expect(redondea(saldo42())).toBe(redondea(saldoAntes));
@@ -486,7 +486,7 @@ describe('bankStatementOrchestrator', () => {
       unifiedStatus: 'no_planificado',
       movementState: 'Confirmado',
       statusConciliacion: 'sin_match',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       categoryKey: 'personal.efectivo',
       updatedAt: '',
       createdAt: '',
@@ -513,7 +513,7 @@ describe('bankStatementOrchestrator', () => {
       movementState: 'Conciliado',
       statusConciliacion: 'match_automatico',
       categoryKey: 'personal.efectivo',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       // Lo suyo se queda · lo del banco lo aporta el banco.
       description: 'Sacar del cajero',
       source: 'manual',

@@ -19,7 +19,7 @@ const baseMovement = (overrides: Record<string, any> = {}) => ({
   type: 'Ingreso' as const,
   origin: 'Manual' as const,
   movementState: 'Conciliado' as const,
-  ambito: 'PERSONAL' as const,
+  ambito: 'personal' as const,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,

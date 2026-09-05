@@ -248,7 +248,7 @@ describe('dashboardService financial metrics', () => {
         }
       ],
       prestamos: [
-        { ambito: 'INMUEBLE', cuotaMensual: 300, activo: true }
+        { ambito: 'inmueble', cuotaMensual: 300, activo: true }
       ],
       properties: [
         { id: 1, estado: 'activo' }

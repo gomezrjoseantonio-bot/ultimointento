@@ -251,7 +251,7 @@ export async function cerrarLineaDeGastoDelEvento(
   // antes de buscar y no después: el `origenId` de un recurrente se construye
   // igual en los dos ámbitos, y sin esta guarda un evento personal podría
   // llegar a mirar —y en el peor caso pisar— la línea de un inmueble.
-  if (evento.ambito !== 'INMUEBLE') return false;
+  if (evento.ambito !== 'inmueble') return false;
 
   const linea = await buscarLineaDelEvento<GastoInmueble>(storeDesdeDb(db, 'gastosInmueble'), evento);
   if (!linea) return false;
