@@ -34,6 +34,7 @@ import { createTransfer } from './treasuryTransferService';
 import type { GastoInmueble, MejoraInmueble } from './db/types-inmuebles';
 import { aceptaCierre, camposDeCierre } from './cierreLineaInmueble';
 import { resolveCasillaAEAT, resolveGastoCategoria } from './treasuryConfirmationService';
+import { deriveCategoryFromMovement, feedLearningRule } from './aplicarSugerencia';
 
 export interface AltaMovimiento {
   tipo: 'gasto' | 'ingreso' | 'transferencia';
@@ -481,7 +482,7 @@ export async function gastoDesdeMovimiento(params: {
   // El movimiento se clasifica siempre · eso ya lo decidió el usuario, y vale
   // aunque la fila fiscal no llegue a escribirse.
   if (movimiento) {
-    await db.put('movements', {
+    const clasificado = {
       ...movimiento,
       description: params.concepto || movimiento.description,
       ...(params.categoryKey !== undefined
@@ -498,7 +499,23 @@ export async function gastoDesdeMovimiento(params: {
           : { inmuebleId: String(params.inmuebleId), ambito: 'INMUEBLE' as const }
         : {}),
       updatedAt: ahora,
-    } as Movement);
+    } as Movement;
+    await db.put('movements', clasificado);
+    // E2.2 · clasificar por ficha ENSEÑA · la próxima línea igual llega con
+    // esto propuesto, y a la tercera vez se resuelve sola (`reglaResuelveSola`).
+    // Se aprende del texto ORIGINAL del banco, no del concepto que el usuario
+    // escribió en la ficha: la regla tiene que casar con lo que traerá el
+    // próximo extracto. Si lo que hace es reclasificar un movimiento que una
+    // regla ya había resuelto, `createOrUpdateRule` lo cuenta como corrección.
+    if (params.categoryKey) {
+      await feedLearningRule(
+        { ...clasificado, description: movimiento.description, counterparty: movimiento.counterparty },
+        deriveCategoryFromMovement({
+          ...clasificado,
+          ...(params.inmuebleId == null ? { inmuebleId: undefined, ambito: 'PERSONAL' as const } : {}),
+        })
+      );
+    }
   }
 
   if (params.inmuebleId == null) return { resultado: 'sin_inmueble' };

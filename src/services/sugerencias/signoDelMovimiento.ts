@@ -60,6 +60,9 @@ export function direccionDeLaAccion(action: SuggestionAction): DireccionDelDiner
       return 'entra';
     case 'mark_personal_expense':
       return 'sale';
+    // E2.2 · un traspaso aprendido es la SALIDA hacia otra cuenta propia.
+    case 'transfer':
+      return 'sale';
     case 'create_treasury_event':
       if (action.type === 'income') return 'entra';
       if (action.type === 'expense') return 'sale';

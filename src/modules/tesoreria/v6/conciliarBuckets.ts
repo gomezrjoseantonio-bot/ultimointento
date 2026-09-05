@@ -56,6 +56,8 @@ export function bucketDeLinea(
   personales?: ReadonlySet<number>,
   /** Por `lineaId` (E1.5) · viene del reconocedor por línea. */
   reconocidas?: ReadonlySet<number>,
+  /** E2.2 · por `lineaId` · una regla aprendida con confianza la resuelve sola. */
+  autoResueltas?: ReadonlySet<number>,
 ): Bucket {
   const veredicto = veredictoEfectivo(linea, decisiones);
 
@@ -81,6 +83,12 @@ export function bucketDeLinea(
       // escribió él. Va antes que `personal` porque saber QUÉ es una línea
       // pesa más que saber de quién es.
       if (reconocidas?.has(linea.lineaId)) return 'resueltas';
+      // E2.2 · una regla aprendida que ya se ha ganado la confianza
+      // (`reglaResuelveSola`) la resuelve sola al Guardar. Va detrás del
+      // reconocedor (una igualdad exacta pesa más que una regla) y delante de
+      // «personal» (resolver pesa más que solo saber de quién es). El «No es
+      // esto» de arriba la devuelve a «te necesitan» y penaliza la regla.
+      if (autoResueltas?.has(linea.lineaId)) return 'resueltas';
       // El montón «personal» va DESPUÉS de los dos anteriores a propósito. Que
       // una línea sea tuya y no de un piso no la desconcilia ni la designora:
       // «resueltas» e «ignorados» son actos —uno del emparejador, otro del
@@ -116,6 +124,7 @@ export function cuadre(
   decisiones: DecisionesSesion,
   personales?: ReadonlySet<number>,
   reconocidas?: ReadonlySet<number>,
+  autoResueltas?: ReadonlySet<number>,
 ): Cuadre {
   const porBucket: Record<Bucket, number> = {
     resueltas: 0,
@@ -126,7 +135,7 @@ export function cuadre(
   const huerfanas: number[] = [];
 
   for (const l of lineas) {
-    const b = bucketDeLinea(l, decisiones, personales, reconocidas);
+    const b = bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas);
     if (b in porBucket) porBucket[b] += 1;
     else huerfanas.push(l.lineaId);
   }
