@@ -47,7 +47,8 @@ const EXPECTED_STORES: Record<string, string[]> = {
   movementLearningRules: ['ambito', 'appliedCount', 'categoria', 'createdAt', 'learnKey'],
   // V87 · VOCABULARIO §3 · la tarjeta deja de ser una cuenta.
   tarjetas: ['activa', 'cuentaLiquidacionId', 'origen'],
-  movements: ['accountId', 'date', 'duplicate-key', 'importBatch', 'status'],
+  // V92 · E1.6 · `duplicate-key` retirado (nunca tuvo lector).
+  movements: ['accountId', 'date', 'importBatch', 'status'],
   mueblesInmueble: ['ejercicio', 'inmueble-ejercicio', 'inmuebleId', 'movimientoId', 'treasuryEventId'],
   objetivos: ['estado', 'fondoId', 'prestamoId', 'tipo'],
   objetivosVitales: ['fechaEstimada', 'planFinancieroAsociado', 'tipo'],

@@ -229,8 +229,18 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           movementsStore.createIndex('date', 'date', { unique: false });
           movementsStore.createIndex('status', 'status', { unique: false });
           movementsStore.createIndex('importBatch', 'importBatch', { unique: false });
-          // Duplicate detection index
-          movementsStore.createIndex('duplicate-key', ['accountId', 'date', 'amount', 'description'], { unique: false });
+          // El índice `duplicate-key` (accountId·date·amount·description) se
+          // creaba aquí desde H8 y nadie lo leyó nunca: la deduplicación del
+          // import va por `hashMovement` en memoria. Retirado en V92 (E1.6).
+        } else if (oldVersion < 92) {
+          // V92 (E1.6 · limpieza tras el corte): se retira el índice
+          // `duplicate-key` de las bases que ya lo tenían. Cero lectores en
+          // src/ (grep en el PR); solo lo conocía el test de estructura. El
+          // nombre ya no existe en el esquema tipado, de ahí el `as never`.
+          const movementsStore = transaction.objectStore('movements');
+          if (movementsStore.indexNames.contains('duplicate-key' as never)) {
+            movementsStore.deleteIndex('duplicate-key' as never);
+          }
         }
 
         // H8: Import Batches store
