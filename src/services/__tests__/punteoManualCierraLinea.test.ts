@@ -63,7 +63,7 @@ const previsionDelRecurrente = (): Omit<TreasuryEvent, 'id'> =>
     sourceId: COMPROMISO_ID,
     año: EJERCICIO,
     mes: MES,
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     inmuebleId: INMUEBLE_ID,
     categoryLabel: 'Comunidad',
     accountId: ACCOUNT_ID,

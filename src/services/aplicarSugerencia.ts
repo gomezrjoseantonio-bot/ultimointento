@@ -26,7 +26,7 @@ import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
  */
 export interface DerivedCategory {
   categoria: string;
-  ambito: 'PERSONAL' | 'INMUEBLE';
+  ambito: 'personal' | 'inmueble';
   inmuebleId?: string;
 }
 
@@ -35,7 +35,7 @@ export function deriveCategoryFromEvent(event: TreasuryEvent): DerivedCategory |
   if (!categoria) return null;
   return {
     categoria,
-    ambito: event.ambito ?? 'PERSONAL',
+    ambito: event.ambito ?? 'personal',
     inmuebleId: event.inmuebleId != null ? String(event.inmuebleId) : undefined,
   };
 }
@@ -51,7 +51,7 @@ export function deriveCategoryFromMovement(m: Movement): DerivedCategory | null 
   const inmuebleId = m.inmuebleId != null && m.inmuebleId !== '' ? String(m.inmuebleId) : undefined;
   return {
     categoria,
-    ambito: m.ambito ?? (inmuebleId ? 'INMUEBLE' : 'PERSONAL'),
+    ambito: m.ambito ?? (inmuebleId ? 'inmueble' : 'personal'),
     inmuebleId,
   };
 }

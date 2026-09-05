@@ -99,7 +99,7 @@ describe('el gasto se clasifica con el catálogo unificado', () => {
     const payload = mockDbAdd.mock.calls[0][1] as any;
     expect(payload.categoryKey).toBe('suministro_inmueble');
     expect(payload.subtypeKey).toBe('luz');
-    expect(payload.ambito).toBe('INMUEBLE');
+    expect(payload.ambito).toBe('inmueble');
     expect(payload.inmuebleId).toBe(7);
   });
 });

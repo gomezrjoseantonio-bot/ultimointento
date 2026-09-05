@@ -13,7 +13,7 @@ const MAR = 2; // índice 0-based de marzo
 
 const ev = (o: Record<string, unknown>) =>
   ({
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     status: 'executed',
     año: 2026,
     createdAt: now,
@@ -42,7 +42,7 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
     }));
     // Gasto de inmueble (ámbito INMUEBLE manda sobre la bolsa · decisión 3).
     await db.add('treasuryEvents', ev({
-      type: 'expense', ambito: 'INMUEBLE', mes: 3, amount: 312, description: 'Comunidad',
+      type: 'expense', ambito: 'inmueble', mes: 3, amount: 312, description: 'Comunidad',
     }));
     // Gasto personal · bolsa necesidades → Hogar y familia.
     await db.add('treasuryEvents', ev({
@@ -81,7 +81,7 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
   it('una cuota con prestamoId va SOLO a Deuda (regla 2)', async () => {
     const db = await initDB();
     await db.add('treasuryEvents', ev({
-      type: 'expense', ambito: 'INMUEBLE', prestamoId: '7', mes: 3, amount: 620,
+      type: 'expense', ambito: 'inmueble', prestamoId: '7', mes: 3, amount: 620,
       bolsaPresupuesto: 'inmueble', description: 'Cuota hipoteca',
     }));
     const real = await buildReal(2026);

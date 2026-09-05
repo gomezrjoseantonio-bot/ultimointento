@@ -84,7 +84,7 @@ describe('T9.2 · vía A activada end-to-end', () => {
       origin: 'CSV',
       movementState: 'Confirmado',
       category: { tipo: 'suministros' },
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       statusConciliacion: 'sin_match',
       createdAt: '2026-04-22T00:00:00.000Z',
       updatedAt: '2026-04-22T00:00:00.000Z',
@@ -102,7 +102,7 @@ describe('T9.2 · vía A activada end-to-end', () => {
     expect(viaA!.action.kind).toBe('create_treasury_event');
     if (viaA!.action.kind === 'create_treasury_event') {
       expect(viaA!.action.sourceType).toBe('gasto_recurrente');
-      expect(viaA!.action.ambito).toBe('PERSONAL');
+      expect(viaA!.action.ambito).toBe('personal');
     }
   });
 });

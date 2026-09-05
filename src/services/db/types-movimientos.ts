@@ -4,6 +4,8 @@
 
 import type { ArrastresEjercicio, DeclaracionInmueble, DeclaracionIRPF, OrigenDeclaracion } from '../../types/fiscal';
 import type { BolsaPresupuesto } from '../../types/compromisosRecurrentes';
+// Eje 3 del catálogo único (E2.4.1) · cómo se pagó o se cobró, NO qué se pagó.
+import type { Ambito, MetodoPago } from '../catalogo/catalogoUnico';
 
 export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
 export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New field for treasury_transactions
@@ -27,15 +29,6 @@ export type UnifiedMovementStatus =
 
 // ATLAS HORIZON: Movement source types
 export type MovementSource = 'import' | 'manual' | 'inbox';
-
-/**
- * Cómo se pagó o se cobró · NO qué se pagó.
- *
- * "Bizum" entra aquí y no como un tipo de movimiento aparte: es una forma de
- * pago, igual que una domiciliación o un TPV. Lo que se cobró sigue siendo una
- * renta, una cuota o lo que sea.
- */
-export type MetodoDePago = 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo' | 'Bizum';
 
 export interface Movement {
   id?: number;
@@ -73,7 +66,7 @@ export interface Movement {
   providerNif?: string;
   invoiceNumber?: string;
   /** Cómo se cobró o se pagó · lo rellena el importador cuando lo reconoce. */
-  paymentMethod?: MetodoDePago;
+  paymentMethod?: MetodoPago;
   reference?: string;
   status: MovementStatus;
 
@@ -92,10 +85,10 @@ export interface Movement {
     subtipo?: string;       // e.g., "Luz"
   };
   
-  // Transfer detection
-  is_transfer?: boolean;
-  transfer_group_id?: string; // groups the two transfer legs
-  
+  // `is_transfer` / `transfer_group_id` (H8): RETIRADOS en E2.4.1 · sin escritor
+  // en src/ y un único lector que ya miraba `transferMetadata`. La neutralidad
+  // de un traspaso la dirá la naturaleza `movimiento_interno` del catálogo único.
+
   // Invoice/OCR linking
   invoice_id?: string;      // link to OCR invoice if matched
   
@@ -138,8 +131,8 @@ export interface Movement {
   
   // V1.1: Treasury extension fields for auto-reclassification and learning
   categoria?: string; // Category assigned automatically or manually
-  ambito: 'PERSONAL' | 'INMUEBLE'; // Scope for reconciliation (default PERSONAL)
-  inmuebleId?: string; // Required if ambito='INMUEBLE'
+  ambito: Ambito; // Eje 4 del catálogo único · minúsculas (default 'personal')
+  inmuebleId?: string; // Required if ambito='inmueble'
   /** Denormalized alias del inmueble vinculado (para display sin join). */
   inmuebleAlias?: string;
   /**
@@ -307,7 +300,7 @@ export interface TreasuryEvent {
   conciliadoExtracto?: boolean;
   // Account information
   accountId?: number;
-  paymentMethod?: MetodoDePago;
+  paymentMethod?: MetodoPago;
   iban?: string;
   // Status
   status: 'predicted' | 'confirmed' | 'executed';
@@ -334,8 +327,8 @@ export interface TreasuryEvent {
   // Loan installment reference (for hipoteca / prestamo events)
   prestamoId?: string;
   numeroCuota?: number;
-  // PR3: unified treasury architecture — ámbito + categoría
-  ambito?: 'PERSONAL' | 'INMUEBLE';
+  // PR3: unified treasury architecture — ámbito + categoría · eje 4 del catálogo único
+  ambito?: Ambito;
   /**
    * Quién cobra · §6.3.
    *
@@ -412,7 +405,7 @@ export interface MovementLearningRule {
   descriptionPattern: string; // Description pattern 
   amountSign: 'positive' | 'negative'; // Income or expense
   categoria: string;
-  ambito: 'PERSONAL' | 'INMUEBLE';
+  ambito: Ambito;
   inmuebleId?: string;
   source: 'IMPLICIT'; // Reserved for future 'EXPLICIT'
   createdAt: string;

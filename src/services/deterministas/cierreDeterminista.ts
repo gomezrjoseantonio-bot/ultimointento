@@ -34,7 +34,7 @@ export interface BaseParaCierre {
 export function movimientoCerrado(m: Movement, o: OrigenDeterminista, ahora: string): Movement {
   return {
     ...m,
-    ...(o.inmuebleId != null ? { inmuebleId: String(o.inmuebleId), ambito: 'INMUEBLE' as const } : {}),
+    ...(o.inmuebleId != null ? { inmuebleId: String(o.inmuebleId), ambito: 'inmueble' as const } : {}),
     ...(o.categoryKey != null ? { categoryKey: o.categoryKey } : {}),
     // El nombre legible convive con el churro del banco, no lo sustituye.
     descripcionPrevision: o.titulo,

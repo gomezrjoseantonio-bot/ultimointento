@@ -951,7 +951,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       sourceId: saleId,
       accountId: settlementAccountId,
       status: 'predicted' as const,
-      ambito: 'INMUEBLE' as const,
+      ambito: 'inmueble' as const,
       inmuebleId: input.propertyId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

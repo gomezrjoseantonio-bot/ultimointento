@@ -172,7 +172,7 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
     category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
     tags: [],
     isAutoTagged: false,
-    ambito: v.inmuebleId != null ? 'INMUEBLE' : 'PERSONAL',
+    ambito: v.inmuebleId != null ? 'inmueble' : 'personal',
     statusConciliacion: 'sin_match',
     ...(v.categoryKey ? { categoryKey: v.categoryKey } : {}),
     ...(v.subtypeKey ? { subtypeKey: v.subtypeKey } : {}),
@@ -251,7 +251,7 @@ export async function mejoraDesdeMovimiento(params: {
       categoryKey: undefined,
       subtypeKey: undefined,
       inmuebleId: String(params.inmuebleId),
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       updatedAt: ahora,
     } as Movement);
   }
@@ -369,7 +369,7 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     // negativo como cualquier cargo— y ya no había forma de volver.
     type: v.tipo === 'transferencia' ? 'Transferencia' : importe >= 0 ? 'Ingreso' : 'Gasto',
     category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
-    ambito: v.inmuebleId != null ? 'INMUEBLE' : 'PERSONAL',
+    ambito: v.inmuebleId != null ? 'inmueble' : 'personal',
     categoryKey: v.categoryKey ?? undefined,
     subtypeKey: v.subtypeKey ?? undefined,
     conceptoId: v.conceptoId ?? undefined,
@@ -496,7 +496,7 @@ export async function gastoDesdeMovimiento(params: {
       ...(params.inmuebleId !== undefined
         ? params.inmuebleId == null
           ? { inmuebleId: undefined }
-          : { inmuebleId: String(params.inmuebleId), ambito: 'INMUEBLE' as const }
+          : { inmuebleId: String(params.inmuebleId), ambito: 'inmueble' as const }
         : {}),
       updatedAt: ahora,
     } as Movement;
@@ -512,7 +512,7 @@ export async function gastoDesdeMovimiento(params: {
         { ...clasificado, description: movimiento.description, counterparty: movimiento.counterparty },
         deriveCategoryFromMovement({
           ...clasificado,
-          ...(params.inmuebleId == null ? { inmuebleId: undefined, ambito: 'PERSONAL' as const } : {}),
+          ...(params.inmuebleId == null ? { inmuebleId: undefined, ambito: 'personal' as const } : {}),
         })
       );
     }

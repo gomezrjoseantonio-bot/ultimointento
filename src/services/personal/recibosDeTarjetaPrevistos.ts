@@ -26,7 +26,6 @@ import { toISODateLocal } from '../../utils/recurrenceDateUtils';
 import { listarTarjetas } from '../tarjetasService';
 import { initDB } from '../db';
 import { esPrevisionIntocable } from './previsionesIdempotencia';
-import { metodoDeMovimiento } from '../metodoDePago';
 
 /**
  * ¿Este gasto se paga con una tarjeta que ACUMULA?
@@ -110,7 +109,7 @@ export function eventoDePieza(
     generadoPor: 'treasurySyncService',
     // SIN accountId a propósito · la pieza no sale de ninguna cuenta hasta el recibo.
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     createdAt: ahora,
     updatedAt: ahora,
   } as Omit<TreasuryEvent, 'id'>;
@@ -331,9 +330,9 @@ export function eventoDeRecibo(
     generadoPor: 'treasurySyncService',
     // El dinero sale de donde la tarjeta está domiciliada, no de la tarjeta.
     accountId: recibo.cuentaLiquidacionId,
-    paymentMethod: metodoDeMovimiento('tarjeta'),
+    paymentMethod: 'tarjeta',
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     categoryLabel: `Recibo tarjeta ${alias}`,
     counterparty: alias,
     createdAt: ahora,

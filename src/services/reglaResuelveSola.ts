@@ -47,6 +47,6 @@ export function tieneConfianza(rule: Pick<MovementLearningRule, 'appliedCount'>)
 export function puedeResolverSola(rule: ReglaMinima): boolean {
   if (!tieneConfianza(rule)) return false;
   if (rule.resolucion === 'traspaso') return rule.cuentaDestinoId != null;
-  if (rule.ambito === 'INMUEBLE') return !!resolveCasillaAEAT(rule.categoria);
+  if (rule.ambito === 'inmueble') return !!resolveCasillaAEAT(rule.categoria);
   return !!rule.categoria;
 }

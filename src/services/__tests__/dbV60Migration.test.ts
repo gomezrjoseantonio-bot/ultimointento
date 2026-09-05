@@ -351,7 +351,7 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
         descriptionPattern: 'LUZ',
         amountSign: 'negative',
         categoria: 'suministro',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         source: 'IMPLICIT',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

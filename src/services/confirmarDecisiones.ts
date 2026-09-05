@@ -272,7 +272,7 @@ async function resolverPorRegla(
     await convertirLineaEnTraspaso(lineaId, rule.cuentaDestinoId);
   } else {
     const inmuebleId =
-      rule.ambito === 'INMUEBLE' && rule.inmuebleId ? Number(rule.inmuebleId) : null;
+      rule.ambito === 'inmueble' && rule.inmuebleId ? Number(rule.inmuebleId) : null;
     const origenIdRecurrente = await origenIdRecurrenteDelGasto(inmuebleId, rule.categoria, linea.fechaOperacion);
     const r = await gastoDesdeMovimiento({
       lineaId,

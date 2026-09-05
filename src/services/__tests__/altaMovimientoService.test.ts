@@ -110,7 +110,7 @@ describe('una mejora NO se guarda como gasto', () => {
 describe('la mejora que viene de un extracto', () => {
   beforeEach(() => {
     movements = [
-      { id: 5, description: 'TRANSFERENCIA COMUNIDAD', amount: -300, categoryKey: 'comunidad_inmueble', subtypeKey: 'x', ambito: 'PERSONAL' },
+      { id: 5, description: 'TRANSFERENCIA COMUNIDAD', amount: -300, categoryKey: 'comunidad_inmueble', subtypeKey: 'x', ambito: 'personal' },
     ];
     (initDB as jest.Mock).mockResolvedValue({
       get: async (_s: string, id: number) => movements.find((m) => m.id === id),
@@ -150,7 +150,7 @@ describe('la mejora que viene de un extracto', () => {
 
     expect(movements[0].categoryKey).toBeUndefined();
     expect(movements[0].subtypeKey).toBeUndefined();
-    expect(movements[0].ambito).toBe('INMUEBLE');
+    expect(movements[0].ambito).toBe('inmueble');
   });
 
   it('la mejora queda enlazada al apunte que la pagó', async () => {
@@ -200,14 +200,14 @@ describe('el alta normal', () => {
       categoryKey: 'suministro_inmueble',
       subtypeKey: 'luz',
       inmuebleId: '7',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
     });
   });
 
   it('sin inmueble es personal, y no deja campos vacíos colgando', async () => {
     await altaMovimiento(base);
 
-    expect(movements[0].ambito).toBe('PERSONAL');
+    expect(movements[0].ambito).toBe('personal');
     expect(movements[0]).not.toHaveProperty('inmuebleId');
     expect(movements[0]).not.toHaveProperty('categoryKey');
   });

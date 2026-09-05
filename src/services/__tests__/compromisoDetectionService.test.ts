@@ -74,7 +74,7 @@ function mkMovement(
     origin: 'CSV',
     movementState: 'Confirmado',
     category: { tipo: 'otros' },
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     statusConciliacion: 'sin_match',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

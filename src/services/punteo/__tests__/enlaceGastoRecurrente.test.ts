@@ -16,11 +16,11 @@ const ev = (over: Partial<TreasuryEvent>): TreasuryEvent =>
 
 describe('rutaDelGastoRecurrente', () => {
   it('un gasto personal abre su fila en el listado de gastos', () => {
-    expect(rutaDelGastoRecurrente(ev({ ambito: 'PERSONAL' }))).toBe('/personal/gastos?gasto=42');
+    expect(rutaDelGastoRecurrente(ev({ ambito: 'personal' }))).toBe('/personal/gastos?gasto=42');
   });
 
   it('el de un inmueble abre la ficha del inmueble, que es donde vive', () => {
-    expect(rutaDelGastoRecurrente(ev({ ambito: 'INMUEBLE', inmuebleId: 3 })))
+    expect(rutaDelGastoRecurrente(ev({ ambito: 'inmueble', inmuebleId: 3 })))
       .toBe('/inmuebles/3?tab=gastos&gasto=42');
   });
 

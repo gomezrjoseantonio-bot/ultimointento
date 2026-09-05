@@ -11,6 +11,8 @@
 // (regla de oro #1).
 // ============================================================================
 
+import type { MetodoPago } from '../services/catalogo/catalogoUnico';
+
 // ─── Patrones de calendario (sección 2.1) ──────────────────────────────────
 
 export type PatronRecurrente =
@@ -148,14 +150,9 @@ export type BolsaPresupuesto =
   | 'inmueble'; // ambito='inmueble' no entra en 50/30/20 personal
 
 export type ResponsableCompromiso = 'titular' | 'pareja' | 'hogarCompartido';
-// `bizum` añadido (sección 2.8). NO existe "lo paga otra persona": si no mueve
-// una cuenta propia no es una fila del presupuesto (decisión Jose).
-export type MetodoPagoCompromiso =
-  | 'domiciliacion'
-  | 'transferencia'
-  | 'tarjeta'
-  | 'efectivo'
-  | 'bizum';
+// El método de pago es el eje 3 del catálogo único (E2.4.1): un solo
+// vocabulario para recurrentes y movimientos. NO existe "lo paga otra persona":
+// si no mueve una cuenta propia no es una fila del presupuesto (decisión Jose).
 // Los tres estados de la sección 2.3. `pausado` ELIMINADO (no convive con
 // `preparado`). `preparado` = existe en el plan, nunca ha tenido un cargo · sin
 // fecha · NO se proyecta. `baja` = se cobraba y dejó de llegar · lleva la fecha
@@ -255,7 +252,7 @@ export interface CompromisoRecurrente {
   // Vinculación operativa
   cuentaCargo: number; // accountId destino del cargo
   conceptoBancario: string; // texto que aparece en extracto · "IBERDROLA CLIENTES SA"
-  metodoPago: MetodoPagoCompromiso;
+  metodoPago: MetodoPago;
   /**
    * Con qué TARJETA se paga · solo cuando `metodoPago === 'tarjeta'`
    * (docs/VOCABULARIO-dinero.md §3).

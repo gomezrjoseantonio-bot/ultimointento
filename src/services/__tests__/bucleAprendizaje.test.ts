@@ -83,7 +83,7 @@ async function reglaPara(
     descriptionPattern: 'adeudo comunidad propietarios tenderina contrato',
     amountSign: 'negative',
     categoria: 'comunidad_inmueble',
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     inmuebleId: '4',
     source: 'IMPLICIT',
     createdAt: ahora,
@@ -126,7 +126,7 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
     const [regla] = await reglas();
     expect(regla).toMatchObject({
       categoria: 'comunidad_inmueble',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: '4',
       resolucion: 'clasificar',
       appliedCount: 1,
@@ -147,7 +147,7 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
       categoryKey: 'ocio',
     });
     const [regla] = await reglas();
-    expect(regla).toMatchObject({ categoria: 'ocio', ambito: 'PERSONAL' });
+    expect(regla).toMatchObject({ categoria: 'ocio', ambito: 'personal' });
     expect(regla.inmuebleId).toBeUndefined();
   });
 
@@ -161,7 +161,7 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
       categoria: 'traspaso_salida',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       appliedCount: 1,
     });
   });
@@ -187,7 +187,7 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
     });
 
     const [regla] = await reglas();
-    expect(regla).toMatchObject({ categoria: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: '4' });
+    expect(regla).toMatchObject({ categoria: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: '4' });
     expect((await linea(lineaId)).estado).toBe('resuelta');
   });
 
@@ -234,7 +234,7 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
     await createOrUpdateRule({
       learnKey: buildLearnKey(m),
       categoria: 'comunidad_inmueble',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: '4',
       movement: m,
     });
@@ -248,13 +248,13 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
 
   it('un gasto de INMUEBLE sin casilla no resuelve solo aunque tenga confianza · seguiría pidiéndola', () => {
     expect(
-      puedeResolverSola({ appliedCount: 5, ambito: 'INMUEBLE', categoria: 'una_categoria_sin_casilla' })
+      puedeResolverSola({ appliedCount: 5, ambito: 'inmueble', categoria: 'una_categoria_sin_casilla' })
     ).toBe(false);
-    expect(puedeResolverSola({ appliedCount: 5, ambito: 'INMUEBLE', categoria: 'comunidad_inmueble' })).toBe(true);
-    expect(puedeResolverSola({ appliedCount: 5, ambito: 'PERSONAL', categoria: 'ocio' })).toBe(true);
-    expect(puedeResolverSola({ appliedCount: 5, ambito: 'PERSONAL', categoria: 'x', resolucion: 'traspaso' })).toBe(false);
+    expect(puedeResolverSola({ appliedCount: 5, ambito: 'inmueble', categoria: 'comunidad_inmueble' })).toBe(true);
+    expect(puedeResolverSola({ appliedCount: 5, ambito: 'personal', categoria: 'ocio' })).toBe(true);
+    expect(puedeResolverSola({ appliedCount: 5, ambito: 'personal', categoria: 'x', resolucion: 'traspaso' })).toBe(false);
     expect(
-      puedeResolverSola({ appliedCount: 5, ambito: 'PERSONAL', categoria: 'x', resolucion: 'traspaso', cuentaDestinoId: 7 })
+      puedeResolverSola({ appliedCount: 5, ambito: 'personal', categoria: 'x', resolucion: 'traspaso', cuentaDestinoId: 7 })
     ).toBe(true);
   });
 
@@ -264,7 +264,7 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
       categoria: 'traspaso_salida',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       inmuebleId: undefined,
     });
     const viaB = (await suggestForLineas([await linea(lineaId)])).get(lineaId)!.find((s) => s.via === 'learning_rule')!;
@@ -294,7 +294,7 @@ describe('E2.2 · B · corregir una regla la devuelve a proponer', () => {
     const r = await createOrUpdateRule({
       learnKey: buildLearnKey(m),
       categoria: 'comunidad_inmueble',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: '7', // antes era el 4
       movement: m,
     });
@@ -309,7 +309,7 @@ describe('E2.2 · B · corregir una regla la devuelve a proponer', () => {
     const r = await createOrUpdateRule({
       learnKey: buildLearnKey(m),
       categoria: 'comunidad_inmueble',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: '4',
       movement: m,
     });
@@ -351,7 +351,7 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
       amount: -150,
       categoryKey: 'comunidad_inmueble',
       inmuebleId: '4',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       statusConciliacion: 'match_automatico',
     });
     // El texto del banco se conserva en el movimiento (dedupe por él).
@@ -414,7 +414,7 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
       categoria: 'traspaso_salida',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       inmuebleId: undefined,
     });
 

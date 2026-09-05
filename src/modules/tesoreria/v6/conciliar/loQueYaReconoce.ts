@@ -50,7 +50,7 @@ export function quienDeLaRegla(r: MovementLearningRule): string {
 /** En qué se convierte · la categoría en cristiano, con el piso si lo hay. */
 export function enQueDeLaRegla(r: MovementLearningRule, aliasInmueble?: string): string {
   const que = etiquetaDeCategoria(r.categoria) ?? r.categoria;
-  if (r.ambito === 'PERSONAL') return `${que} · tuyo`;
+  if (r.ambito === 'personal') return `${que} · tuyo`;
   return aliasInmueble ? `${que} de ${aliasInmueble}` : que;
 }
 

@@ -11,7 +11,7 @@
 // Efectos de confirmTreasuryEvent:
 //   1. Crea un movement con los datos del treasuryEvent (opcionalmente editados)
 //   2. Marca el treasuryEvent como 'executed' con executedMovementId + executedAt
-//   3. Si ambito === 'INMUEBLE' y categoryLabel apunta a reparación/mejora/
+//   3. Si ambito === 'inmueble' y categoryLabel apunta a reparación/mejora/
 //      mobiliario, crea la línea correspondiente en gastosInmueble /
 //      mejorasInmueble / mueblesInmueble con referencia cruzada al movement
 //      y al treasuryEvent.
@@ -274,7 +274,7 @@ function buildMovementPayload({
     type,
     origin: 'Manual',
     movementState: 'Conciliado',
-    ambito: event.ambito ?? 'PERSONAL',
+    ambito: event.ambito ?? 'personal',
     inmuebleId: event.inmuebleId != null ? String(event.inmuebleId) : undefined,
     statusConciliacion: 'match_manual',
     tags: ['treasury_confirmation'],
@@ -326,7 +326,7 @@ export async function confirmTreasuryEvent(
 
   const esLineaInmueble =
     !esTransfer &&
-    existingEvent.ambito === 'INMUEBLE' &&
+    existingEvent.ambito === 'inmueble' &&
     (!!categoryDef?.storeName || !!existingEvent.categoryLabel);
 
   // El store se deriva del catálogo; si no hay key canónica, fallback al
@@ -806,7 +806,7 @@ export interface UpdateConfirmedUpdates {
   invoiceNumber?: string;
   notes?: string;
   categoryLabel?: string;
-  ambito?: 'PERSONAL' | 'INMUEBLE';
+  ambito?: 'personal' | 'inmueble';
   inmuebleId?: number;
   facturaId?: number;
   facturaNoAplica?: boolean;
@@ -988,7 +988,7 @@ export async function updateConfirmedMovement(
     categoryLabel: updates.categoryLabel ?? event.categoryLabel,
     ambito: updates.ambito ?? event.ambito,
     inmuebleId:
-      updates.ambito === 'PERSONAL'
+      updates.ambito === 'personal'
         ? undefined
         : updates.inmuebleId ?? event.inmuebleId,
     facturaId:
@@ -1023,7 +1023,7 @@ export async function updateConfirmedMovement(
             : -Math.abs(updates.amount)
           : movement.amount;
       const nextInmuebleId =
-        updates.ambito === 'PERSONAL'
+        updates.ambito === 'personal'
           ? undefined
           : updates.inmuebleId != null
           ? String(updates.inmuebleId)

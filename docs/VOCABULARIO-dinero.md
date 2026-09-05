@@ -72,21 +72,22 @@ pueden elegir. Un formulario que ofrece las diez cuentas cuando el método es
 Bizum, o que pide cuenta de cargo cuando el método es Efectivo, está ofreciendo
 estados imposibles — y alguien acabará guardándolos.
 
-### Dos vocabularios, y hay que saberlo
+### Un solo vocabulario · desde E2.4.1
 
-Hoy conviven dos enumeraciones para lo mismo:
+Convivían dos enumeraciones para lo mismo —`MetodoDePago` en movimientos
+(`Domiciliado | TPV | …`) y `MetodoPagoCompromiso` en recurrentes
+(`domiciliacion | tarjeta | …`)— con `metodoDePago.ts` traduciendo entre ellas.
+Fue esa traducción a mano la que dejó `bizum` sin caso durante meses.
 
-- `MetodoDePago` (movimientos): `Domiciliado | Transferencia | TPV | Efectivo | Bizum`
-- `MetodoPagoCompromiso` (recurrentes): `domiciliacion | transferencia | tarjeta | efectivo | bizum`
+**Decisión · 5 de septiembre de 2026 (E2.4.1):** queda UNO. `MetodoPago`, eje 3
+del catálogo único (`services/catalogo/catalogoUnico.ts`):
 
-No coinciden ni en los valores (`TPV` / `tarjeta`) ni en la forma. Mientras
-sigan siendo dos, **la traducción vive en `metodoDePago.ts` y en ningún otro
-sitio** — con tablas exhaustivas, no con un `switch`: añadir un método al tipo
-tiene que romper la compilación, no devolver `undefined` en silencio. Fue
-exactamente eso lo que dejó `bizum` sin traducir durante meses.
+`transferencia | bizum | domiciliacion | tarjeta | efectivo | cheque | cargo_abono_banco`
 
-De ahí sale también **el nombre que ve el usuario**, para que dos pantallas no
-llamen distinto a lo mismo.
+Lo llevan igual `Movement.paymentMethod`, `TreasuryEvent.paymentMethod` y
+`CompromisoRecurrente.metodoPago`. **El nombre que ve el usuario** sale de
+`labelMetodo`, para que dos pantallas no llamen distinto a lo mismo. Los dos
+vocabularios viejos y su traductor ya no existen en el código.
 
 ---
 

@@ -59,7 +59,7 @@ export type SuggestionAction =
   | {
       kind: 'create_treasury_event';
       type: TreasuryEvent['type'];
-      ambito: 'PERSONAL' | 'INMUEBLE';
+      ambito: 'personal' | 'inmueble';
       inmuebleId?: number;
       categoryKey?: string;
       sourceType: TreasuryEvent['sourceType'];
@@ -210,7 +210,7 @@ function suggestFromCompromiso(
   const r = reconocerRecurrente(movement, compromisos);
   if (!r) return null;
   const c = r.compromiso;
-  const ambito = c.ambito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL';
+  const ambito = c.ambito;
   const porQue =
     r.porIdentidad === 'cups'
       ? ' · por CUPS'
@@ -321,12 +321,12 @@ function suggestFromLearningRule(
   const action: SuggestionAction =
     rule.resolucion === 'traspaso' && rule.cuentaDestinoId != null
       ? { kind: 'transfer', cuentaDestinoId: rule.cuentaDestinoId }
-      : rule.ambito === 'PERSONAL'
+      : rule.ambito === 'personal'
       ? { kind: 'mark_personal_expense', categoryKey: rule.categoria }
       : {
           kind: 'create_treasury_event',
           type: rule.amountSign === 'positive' ? 'income' : 'expense',
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: rule.inmuebleId ? Number(rule.inmuebleId) : undefined,
           categoryKey: rule.categoria,
           // Keep sourceType aligned with the event type so downstream flows
@@ -406,7 +406,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       action: {
         kind: 'create_treasury_event',
         type: 'expense',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         categoryKey: 'inmueble.suministros',
         sourceType: 'gasto',
       },
@@ -421,7 +421,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       action: {
         kind: 'create_treasury_event',
         type: 'expense',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         categoryKey: 'vivienda.hipoteca',
         sourceType: 'prestamo',
       },
@@ -437,7 +437,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       action: {
         kind: 'create_treasury_event',
         type: 'expense',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         categoryKey: 'inmueble.ibi',
         sourceType: 'gasto',
       },
@@ -452,7 +452,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       action: {
         kind: 'create_treasury_event',
         type: 'expense',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         categoryKey: 'inmueble.comunidad',
         sourceType: 'gasto',
       },

@@ -55,7 +55,7 @@ export function parcheDeClasificacion(m: Movement, ev: TreasuryEvent): Partial<M
   // apunte no los tiene (el `PERSONAL` de un mudo es el valor por defecto, no una
   // elección), y solo cuando de verdad heredamos una clasificación.
   if (parche.categoryKey || parche.conceptoId) {
-    if (ev.ambito && (!m.ambito || m.ambito === 'PERSONAL')) parche.ambito = ev.ambito;
+    if (ev.ambito && (!m.ambito || m.ambito === 'personal')) parche.ambito = ev.ambito;
     if (ev.inmuebleId != null && m.inmuebleId == null) parche.inmuebleId = String(ev.inmuebleId);
   }
   return parche;

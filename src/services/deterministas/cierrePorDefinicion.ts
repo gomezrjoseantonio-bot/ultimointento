@@ -159,7 +159,7 @@ async function cerrarRenta(db: Base, o: OrigenDeterminista, m: Movement, ahora: 
         accountId: m.accountId,
         ...(o.inmuebleId != null && o.inmuebleId > 0 ? { inmuebleId: o.inmuebleId } : {}),
         categoryKey: o.categoryKey ?? 'alquiler',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         generadoPor: 'user',
         createdAt: ahora,
         ...ejecutado,
@@ -171,7 +171,7 @@ async function cerrarRenta(db: Base, o: OrigenDeterminista, m: Movement, ahora: 
   await db.put('movements', {
     ...m,
     categoryKey: o.categoryKey ?? 'alquiler',
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     ...(o.inmuebleId != null ? { inmuebleId: String(o.inmuebleId) } : {}),
     updatedAt: ahora,
   } as Movement);

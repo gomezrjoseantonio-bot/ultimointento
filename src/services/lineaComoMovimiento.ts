@@ -79,7 +79,7 @@ export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Mo
     // Lo que venga en la columna del fichero manda; si no, se lee del texto
     // (los Bizum lo traen dentro). Es lo mismo que hace `insertMovements`.
     counterparty: linea.contraparte ?? contraparteDeBizum(description),
-    ...(pareceBizum(description) ? { paymentMethod: 'Bizum' as const } : {}),
+    ...(pareceBizum(description) ? { paymentMethod: 'bizum' as const } : {}),
     reference: linea.referencia,
     balance: linea.saldo,
     currency: linea.divisa,
@@ -93,7 +93,7 @@ export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Mo
     category: { tipo: amount >= 0 ? 'Ingresos' : 'Gastos' },
     tags: [],
     isAutoTagged: false,
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     statusConciliacion: 'sin_match',
     importBatch: linea.importBatchId,
     createdAt: linea.createdAt,

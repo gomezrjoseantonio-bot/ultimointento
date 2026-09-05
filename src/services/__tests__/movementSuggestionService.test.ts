@@ -117,7 +117,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           descriptionPattern: 'bizum a fuentes',
           amountSign: 'positive',
           categoria: 'contrato.alquiler',
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: '7',
           source: 'IMPLICIT',
           createdAt: '2026-01-01T00:00:00.000Z',
@@ -171,7 +171,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     expect(heuristic!.confidence).toBe(60);
     expect(heuristic!.action.kind).toBe('create_treasury_event');
     if (heuristic!.action.kind === 'create_treasury_event') {
-      expect(heuristic!.action.ambito).toBe('INMUEBLE');
+      expect(heuristic!.action.ambito).toBe('inmueble');
       expect(heuristic!.action.categoryKey).toBe('inmueble.suministros');
     }
   });
@@ -271,7 +271,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           descriptionPattern: 'recibo iberdrola',
           amountSign: 'negative',
           categoria: 'inmueble.suministros',
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           source: 'IMPLICIT',
           createdAt: '2026-04-22T00:00:00.000Z',
           updatedAt: '2026-04-22T00:00:00.000Z',
@@ -309,7 +309,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           descriptionPattern: 'recibo iberdrola clientes sau contrato',
           amountSign: 'negative',
           categoria: 'inmueble.suministros',
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: '4',
           source: 'IMPLICIT',
           createdAt: '2026-01-01T00:00:00.000Z',
@@ -333,7 +333,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     (buildLearnKeyV1 as jest.Mock).mockReturnValue('hash:v1-ambigua');
     const regla = (id: number, learnKey: string, inmuebleId: string): MovementLearningRule => ({
       id, learnKey, counterpartyPattern: 'iberdrola', descriptionPattern: 'recibo iberdrola', amountSign: 'negative',
-      categoria: 'inmueble.suministros', ambito: 'INMUEBLE', inmuebleId, source: 'IMPLICIT',
+      categoria: 'inmueble.suministros', ambito: 'inmueble', inmuebleId, source: 'IMPLICIT',
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-04-22T00:00:00.000Z', appliedCount: 1,
     } as MovementLearningRule);
     const stores: FakeStores = {
@@ -361,7 +361,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           descriptionPattern: 'retirada cajero servired',
           amountSign: 'negative',
           categoria: 'traspaso_salida',
-          ambito: 'PERSONAL',
+          ambito: 'personal',
           source: 'IMPLICIT',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-04-22T00:00:00.000Z',
@@ -391,7 +391,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           descriptionPattern: 'recibo iberdrola',
           amountSign: 'negative',
           categoria: 'suministros_inmueble',
-          ambito: 'INMUEBLE',
+          ambito: 'inmueble',
           inmuebleId: '4',
           source: 'IMPLICIT',
           createdAt: '2026-01-01T00:00:00.000Z',

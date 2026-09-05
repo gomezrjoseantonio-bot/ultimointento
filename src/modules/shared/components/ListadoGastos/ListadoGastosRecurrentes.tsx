@@ -138,7 +138,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         const year = new Date().getFullYear();
         const esFin = (e: TreasuryEvent) => e.sourceType === 'hipoteca' || e.sourceType === 'prestamo';
         const ambitoOk = (e: TreasuryEvent) =>
-          mode === 'inmueble' ? e.inmuebleId === inmuebleId : e.ambito == null || e.ambito === 'PERSONAL';
+          mode === 'inmueble' ? e.inmuebleId === inmuebleId : e.ambito == null || e.ambito === 'personal';
         const total = eventos
           .filter((e) => esFin(e) && e.año === year && ambitoOk(e))
           .reduce((s, e) => s + Math.abs(e.amount), 0);

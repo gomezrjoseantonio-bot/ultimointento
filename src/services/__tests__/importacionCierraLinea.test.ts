@@ -19,7 +19,7 @@ const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
     sourceId: 42,
     año: 2026,
     mes: 3,
-    ambito: 'INMUEBLE',
+    ambito: 'inmueble',
     inmuebleId: 1,
     status: 'executed',
     ...over,
@@ -132,7 +132,7 @@ describe('cerrarLineaDeGastoDelEvento', () => {
 
   it('un evento que no es de inmueble no toca nada', async () => {
     const { db, filas } = conLineas([linea()]);
-    const personal = evento({ ambito: 'PERSONAL' as never, inmuebleId: undefined });
+    const personal = evento({ ambito: 'personal' as never, inmuebleId: undefined });
     expect(await cerrarLineaDeGastoDelEvento(db as never, personal, mov)).toBe(false);
     expect(filas[0].estado).toBe('previsto');
   });

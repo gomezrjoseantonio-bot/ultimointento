@@ -16,7 +16,7 @@
 // ============================================================================
 
 import type { Account } from './db';
-import type { MetodoPagoCompromiso } from '../types/compromisosRecurrentes';
+import type { MetodoPago } from './catalogo/catalogoUnico';
 import type { Tarjeta } from '../types/tarjetas';
 
 /**
@@ -37,7 +37,7 @@ function esBancaria(c: Account): boolean {
  * antes eso que guardar un gasto en efectivo colgado de una cuenta bancaria.
  */
 export function cuentasQuePuedenPagar(
-  metodo: MetodoPagoCompromiso,
+  metodo: MetodoPago,
   cuentas: Account[]
 ): Account[] {
   switch (metodo) {
@@ -61,7 +61,7 @@ export function cuentasQuePuedenPagar(
  * Enseñar un desplegable con una sola opción invita a pensar que hay algo que
  * decidir, y no lo hay: si pagas en efectivo sale del efectivo.
  */
-export function elMetodoDecideLaCuenta(metodo: MetodoPagoCompromiso): boolean {
+export function elMetodoDecideLaCuenta(metodo: MetodoPago): boolean {
   return metodo === 'efectivo' || metodo === 'bizum';
 }
 
@@ -74,7 +74,7 @@ export function elMetodoDecideLaCuenta(metodo: MetodoPagoCompromiso): boolean {
  * viejo, que es la peor de las dos formas de estar mal — invisible.
  */
 export function cuentaParaElMetodo(
-  metodo: MetodoPagoCompromiso,
+  metodo: MetodoPago,
   cuentas: Account[],
   cuentaActual?: number | null
 ): number | undefined {
@@ -102,7 +102,7 @@ export function cuentaParaElMetodo(
  * copia que nada.
  */
 export function cuentaDelCargo(
-  compromiso: { metodoPago: MetodoPagoCompromiso; cuentaCargo: number },
+  compromiso: { metodoPago: MetodoPago; cuentaCargo: number },
   tarjeta: Pick<Tarjeta, 'cuentaLiquidacionId'> | undefined,
   cuentas: Account[]
 ): number {

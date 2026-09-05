@@ -13,6 +13,7 @@ import {
 // de datos detrás. El criterio sigue siendo uno solo, que era todo el asunto.
 import { loQueQueda } from './prestamos/loQueQueda';
 import { sincronizarPrevisionesDelPlan } from './prestamos/previsionesDelPlan';
+import { ambitoDelPrestamo } from './prestamos/ambitoDelPrestamo';
 import type { PlanDeAmortizaciones } from '../types/planDeAmortizaciones';
 import {
   compararModos,
@@ -192,7 +193,7 @@ const createMovement = ({
   type: 'Gasto' as const,
   origin: 'Manual' as const,
   movementState: 'Conciliado' as const,
-  ambito: prestamo.ambito,
+  ambito: ambitoDelPrestamo(prestamo),
   inmuebleId: prestamo.inmuebleId,
   statusConciliacion: 'match_manual' as const,
   tags: ['loan_settlement'],

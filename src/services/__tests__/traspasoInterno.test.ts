@@ -30,7 +30,7 @@ const pata = (over: Partial<TreasuryEvent>): TreasuryEvent =>
     sourceType: 'manual',
     accountId: 1,
     status: 'predicted',
-    ambito: 'PERSONAL',
+    ambito: 'personal',
     categoryKey: TRANSFER_KEYS.SALIDA,
     createdAt: '',
     updatedAt: '',

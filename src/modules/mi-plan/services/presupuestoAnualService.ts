@@ -150,13 +150,13 @@ function esDeuda(c: { prestamoId?: unknown; categoria?: string }): boolean {
 
 // ── Mapeo bolsa/ámbito → grupo (sección 4.4 · ámbito manda · decisión 3) ──
 function grupoDeGastoReal(ev: {
-  ambito?: 'PERSONAL' | 'INMUEBLE';
+  ambito?: 'personal' | 'inmueble';
   bolsaPresupuesto?: string;
   categoria?: string;
   prestamoId?: unknown;
 }): GrupoKey | 'residuo' {
   if (esDeuda(ev)) return 'deuda';
-  if (ev.ambito === 'INMUEBLE') return 'inmuebles';        // ámbito manda (decisión 3)
+  if (ev.ambito === 'inmueble') return 'inmuebles';        // ámbito manda (decisión 3)
   const bolsa = ev.bolsaPresupuesto
     ?? (ev.categoria ? bolsaForCategoria(ev.categoria) : undefined);
   switch (bolsa) {
@@ -404,7 +404,7 @@ export async function buildReal(year: number): Promise<RealMes[]> {
       add(i, grupoDeIngresoRealMovimiento(mv), amount);
     } else {
       const grp = grupoDeGastoReal({
-        ambito: (mv as { ambito?: 'PERSONAL' | 'INMUEBLE' }).ambito,
+        ambito: (mv as { ambito?: 'personal' | 'inmueble' }).ambito,
         categoria: (mv as { categoria?: string }).categoria,
       });
       add(i, grp, amount);

@@ -200,7 +200,7 @@ export async function aplicarPlanTarjeta(
       actualDate: linea.fecha,
       actualAmount: Math.abs(linea.importe),
       certeza: 'estimado',
-      ambito: 'PERSONAL',
+      ambito: 'personal',
       año: Number(linea.fecha.slice(0, 4)),
       mes: Number(linea.fecha.slice(5, 7)),
       createdAt: now,

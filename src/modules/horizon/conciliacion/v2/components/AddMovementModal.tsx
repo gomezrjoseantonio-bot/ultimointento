@@ -397,15 +397,15 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
       const db = await initDB();
 
       // Resolver ámbito + inmueble efectivos.
-      let effectiveAmbito: 'PERSONAL' | 'INMUEBLE' = 'PERSONAL';
+      let effectiveAmbito: 'personal' | 'inmueble' = 'personal';
       let effectiveInmuebleId: number | undefined;
       if (tipo === 'financiacion') {
         if (prestamoInmueble) {
-          effectiveAmbito = 'INMUEBLE';
+          effectiveAmbito = 'inmueble';
           effectiveInmuebleId = prestamoInmueble.id;
         }
       } else if (ambito === 'inmueble') {
-        effectiveAmbito = 'INMUEBLE';
+        effectiveAmbito = 'inmueble';
         effectiveInmuebleId = inmuebleId;
       }
 

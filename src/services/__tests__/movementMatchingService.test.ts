@@ -488,7 +488,7 @@ describe('movementMatchingService.matchBatch', () => {
         date: '2026-04-03',
         amount: 380,
         description: 'BIZUM DE ADNAN PARWEZ CONCEPTO: ALQUILER ABRIL',
-        paymentMethod: 'Bizum',
+        paymentMethod: 'bizum',
       }),
     ],
     treasuryEvents: [
@@ -548,7 +548,7 @@ describe('movementMatchingService.matchBatch', () => {
           date: '2026-04-02',
           amount: 380,
           description: 'BIZUM DE MARIA',
-          paymentMethod: 'Bizum',
+          paymentMethod: 'bizum',
         }),
       ],
       treasuryEvents: [
@@ -595,7 +595,7 @@ describe('movementMatchingService.matchBatch', () => {
       descriptionPattern: '',
       amountSign: 'positive',
       categoria: 'Alquiler',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       source: 'IMPLICIT',
       createdAt: '2026-03-03',
       updatedAt: '2026-03-03',
@@ -615,7 +615,7 @@ describe('movementMatchingService.matchBatch', () => {
         amount: 380,
         description: 'BIZUM DE MPARWEZ',
         counterparty: 'MPARWEZ',
-        paymentMethod: 'Bizum',
+        paymentMethod: 'bizum',
       }),
     ],
     treasuryEvents: [

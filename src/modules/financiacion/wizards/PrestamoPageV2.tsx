@@ -91,6 +91,7 @@ import { topesDeReembolso, type OpcionDeTope } from '../../../services/prestamos
 import ComisionEditor, { SIN_COMISION, describirComision, TopesLegales } from './ComisionEditor';
 import { BASE_POR_DEFECTO, NOMBRE_DE_LA_BASE, type BaseDeCalculo }
   from '../../../services/prestamos/baseDeCalculo';
+import { ambitoDelPrestamo } from '../../../services/prestamos/ambitoDelPrestamo';
 import styles from './PrestamoPageV2.module.css';
 // El panel navy es otra superficie y vive en su propio módulo · ver la
 // cabecera de `PanelCalculo.module.css`.
@@ -1637,7 +1638,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         prestamoId: d.prestamoId,
         numeroCuota: d.numeroCuota,
         status,
-        ambito: prestamo.ambito,
+        ambito: ambitoDelPrestamo(prestamo),
         notes: d.esCarenciaTecnica ? 'carencia_tecnica' : undefined,
         createdAt: now,
         updatedAt: now,

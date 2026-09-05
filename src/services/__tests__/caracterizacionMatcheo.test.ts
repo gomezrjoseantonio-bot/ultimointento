@@ -142,7 +142,7 @@ const LOTE: Movement[] = [
   // 2 · renta por transferencia · previsto 102 (Adnan) · un día tarde, con «ALQUILER».
   mov({ id: 2, date: '2026-08-06', amount: 380, description: 'TRANSFERENCIA ALQUILER AGOSTO HAB 2' }),
   // 3 · renta por Bizum · previsto 103 (Laura) · el nombre del banco no es el del contrato.
-  mov({ id: 3, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }),
+  mov({ id: 3, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }),
   // 4 · luz VARIABLE · previsto 104 de 45 € · llega por 108,44.
   mov({ id: 4, date: '2026-08-12', amount: -108.44, description: 'RECIBO IBERDROLA CLIENTES SAU' }),
   // 5 · agua · previsto 105 de 82 € el 27-8 · llega 87,40 el 3-9 (7 días).
@@ -163,7 +163,7 @@ const LOTE: Movement[] = [
   // 13 · IBI · heurística IBI · y el determinista lo ATRIBUYE al piso que lo declaró.
   mov({ id: 13, date: '2026-08-03', amount: -321.5, description: 'RECIBO IBI AYTO OVIEDO' }),
   // 14 · Bizum que SALE.
-  mov({ id: 14, date: '2026-08-09', amount: -70.48, description: 'COMPRA BIZUM IRYO', paymentMethod: 'Bizum' }),
+  mov({ id: 14, date: '2026-08-09', amount: -70.48, description: 'COMPRA BIZUM IRYO', paymentMethod: 'bizum' }),
   // 15 · transferencia recibida sin dueño.
   mov({ id: 15, date: '2026-08-22', amount: 200, description: 'TRANSFERENCIA RECIBIDA' }),
   // 16 · con REGLA APRENDIDA (5 aplicaciones) · vía B cortocircuita.
@@ -177,7 +177,7 @@ const LOTE: Movement[] = [
 ];
 
 const PREVISTOS: TreasuryEvent[] = [
-  previsto({ id: 101, type: 'expense', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'INMUEBLE', inmuebleId: 4 }),
+  previsto({ id: 101, type: 'expense', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
   previsto({ id: 102, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
   previsto({ id: 103, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
   previsto({ id: 104, type: 'expense', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
@@ -193,8 +193,8 @@ function sembrarLoteDeAgosto(): void {
     movements: [...LOTE],
     treasuryEvents: [...PREVISTOS],
     movementLearningRules: [
-      { id: 1, learnKey: buildLearnKey(NETFLIX), categoria: 'ocio', ambito: 'PERSONAL', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 2, learnKey: buildLearnKey(DEVOLUCION), categoria: 'tecnologia', ambito: 'PERSONAL', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 1, learnKey: buildLearnKey(NETFLIX), categoria: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 2, learnKey: buildLearnKey(DEVOLUCION), categoria: 'tecnologia', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
     ],
     compromisosRecurrentes: [
       { id: 3, alias: 'Gas Tenderina', ambito: 'inmueble', inmuebleId: 4, cuentaCargo: CUENTA, estado: 'activo', importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, categoria: 'suministros' },
@@ -339,12 +339,12 @@ describe('matchBatch · el lote de agosto', () => {
   });
 
   it('un alias APRENDIDO casa lo que el nombre no deja adivinar', async () => {
-    stores.movements.push(mov({ id: 31, date: '2026-08-05', amount: 380, description: 'BIZUM DE MPARWEZ', counterparty: 'MPARWEZ', paymentMethod: 'Bizum' }));
+    stores.movements.push(mov({ id: 31, date: '2026-08-05', amount: 380, description: 'BIZUM DE MPARWEZ', counterparty: 'MPARWEZ', paymentMethod: 'bizum' }));
     const sinAlias = await matchBatch([31]);
     // Sin alias: 75 contra los dos previstos de 380 · multiMatch.
     expect(sinAlias.multiMatches.map((m) => m.candidates.map((c) => c.score))).toEqual([[75, 75]]);
 
-    stores.movementLearningRules.push({ id: 9, learnKey: 'x', categoria: 'alquiler', ambito: 'INMUEBLE', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' });
+    stores.movementLearningRules.push({ id: 9, learnKey: 'x', categoria: 'alquiler', ambito: 'inmueble', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' });
     const conAlias = await matchBatch([31]);
     expect(conAlias.matches).toEqual([
       { movementId: 31, treasuryEventId: 102, score: 100, reasons: ['fecha_exacta', 'importe_exacto', 'cuenta_match', 'alias_aprendido'] },
@@ -374,7 +374,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       // 5 · HOY: el agua no está en la heurística de suministros (AQUALIA no es luz ni telco).
       [5, [noSeQueEs(5)]],
       // 6 · comunidad.
-      [6, [{ movementId: 6, via: 'heuristica', confidence: 60, description: 'Posible cuota de comunidad de propietarios', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', categoryKey: 'inmueble.comunidad', sourceType: 'gasto' } }]],
+      [6, [{ movementId: 6, via: 'heuristica', confidence: 60, description: 'Posible cuota de comunidad de propietarios', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'inmueble.comunidad', sourceType: 'gasto' } }]],
       // 8 · HOY: «CDAD PROP» no lo lee la heurística de comunidad (pide COMUNIDAD o FINCAS).
       [8, [noSeQueEs(8)]],
       // 9 · HOY: la nómina no tiene heurística · la reconoce el determinista, no esto.
@@ -384,7 +384,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       [11, [{ movementId: 11, via: 'heuristica', confidence: 50, description: 'Compra online (Amazon / AliExpress) · proponer marcar como gasto personal', action: { kind: 'mark_personal_expense', categoryKey: 'tecnologia' } }]],
       [12, [noSeQueEs(12)]],
       // 13 · IBI.
-      [13, [{ movementId: 13, via: 'heuristica', confidence: 60, description: 'Posible impuesto del inmueble (IBI, tasa de basura, etc.)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', categoryKey: 'inmueble.ibi', sourceType: 'gasto' } }]],
+      [13, [{ movementId: 13, via: 'heuristica', confidence: 60, description: 'Posible impuesto del inmueble (IBI, tasa de basura, etc.)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'inmueble.ibi', sourceType: 'gasto' } }]],
       // 14 · Bizum que sale.
       [14, [{ movementId: 14, via: 'heuristica', confidence: 30, description: 'Bizum que sale de tu cuenta · lo pagas tú, así que no es el cobro de ninguna renta', action: { kind: 'ignore' } }]],
       // 15 · transferencia recibida sin dueño · pregunta abierta, no una renta inventada.
@@ -392,7 +392,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       // 16 · regla aprendida con 5 aplicaciones · 70 + round(log10(6)·5) = 74 · cortocircuita.
       [16, [{ movementId: 16, via: 'learning_rule', confidence: 74, description: 'Regla aprendida (5 aplicaciones previas) → ocio', action: { kind: 'mark_personal_expense', categoryKey: 'ocio' }, metadata: { learnKey: buildLearnKey(NETFLIX), ruleId: 1, appliedCount: 5, resuelveSola: true } }]],
       // 17 · compromiso activo · 70 + 10 (céntimo exacto) + 10 (proveedor en el texto) · cortocircuita.
-      [17, [{ movementId: 17, via: 'compromiso_recurrente', confidence: 90, description: 'Coincide con compromiso "Gas Tenderina" (Naturgy)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', inmuebleId: 4, categoryKey: 'suministros', sourceType: 'gasto_recurrente', sourceId: 3 }, metadata: { compromisoId: 3, razones: ['texto', 'importe_exacto'] } }]],
+      [17, [{ movementId: 17, via: 'compromiso_recurrente', confidence: 90, description: 'Coincide con compromiso "Gas Tenderina" (Naturgy)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', inmuebleId: 4, categoryKey: 'suministros', sourceType: 'gasto_recurrente', sourceId: 3 }, metadata: { compromisoId: 3, razones: ['texto', 'importe_exacto'] } }]],
       // 18 · la regla PERSONAL (gasto) sobre un ABONO la tira el signo · y Amazon en positivo tampoco es compra.
       [18, [noSeQueEs(18)]],
       // 19 · HOY: «TRANSFERENCIA VENTA» no es «TRANSFERENCIA RECIBIDA» · sin heurística.
@@ -401,7 +401,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
   });
 
   it('un Bizum recibido con contrato vivo a su nombre · propone asignarlo a ESE contrato', async () => {
-    stores.movements.push(mov({ id: 32, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }));
+    stores.movements.push(mov({ id: 32, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }));
     const r = await suggestForUnmatched([32]);
     expect(r.get(32)).toEqual([
       { movementId: 32, via: 'heuristica', confidence: 60, description: 'Bizum o transferencia recibida · proponer asignarlo a la renta de Laura Sánchez Ruiz', action: { kind: 'assign_to_contract', contractId: 21 } },
@@ -410,7 +410,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
 
   it('un Bizum recibido que solo trae el nombre de pila · no se elige contrato · pregunta abierta', async () => {
     stores.contracts.push({ id: 24, inmuebleId: 5, estadoContrato: 'activo', inquilino: { nombre: 'Laura', apellidos: 'Pérez Vega' } });
-    stores.movements.push(mov({ id: 33, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA', counterparty: 'LAURA', paymentMethod: 'Bizum' }));
+    stores.movements.push(mov({ id: 33, date: '2026-08-05', amount: 380, description: 'BIZUM DE LAURA', counterparty: 'LAURA', paymentMethod: 'bizum' }));
     const r = await suggestForUnmatched([33]);
     expect(r.get(33)![0].action).toEqual({ kind: 'ignore' });
     expect(r.get(33)![0].confidence).toBe(30);
@@ -430,7 +430,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
     stores.movements.push(mov({ id: 34, date: '2026-08-01', amount: -454.66, description: 'CUOTA PRESTAMO 0123 UNICAJA' }));
     const r = await suggestForUnmatched([34]);
     expect(r.get(34)).toEqual([
-      { movementId: 34, via: 'heuristica', confidence: 65, description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'INMUEBLE', categoryKey: 'vivienda.hipoteca', sourceType: 'prestamo' } },
+      { movementId: 34, via: 'heuristica', confidence: 65, description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'vivienda.hipoteca', sourceType: 'prestamo' } },
     ]);
     // HOY: «RECIBO PRESTAMO» (como lo escribe Unicaja en la línea 1) NO lo lee esta heurística.
     const r1 = await suggestForUnmatched([1]);
@@ -530,7 +530,7 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
     mov({ id: 31, importBatch: 'lote-sept', date: '2026-09-03', valueDate: '2026-09-04', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
     // Duplicado intra-lote del anterior · solo UNO puede fundirse con el confirmado.
     mov({ id: 32, importBatch: 'lote-sept', date: '2026-09-03', valueDate: '2026-09-04', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
-    mov({ id: 33, importBatch: 'lote-sept', date: '2026-09-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'Bizum' }),
+    mov({ id: 33, importBatch: 'lote-sept', date: '2026-09-05', amount: 380, description: 'BIZUM DE LAURA SANCHEZ', counterparty: 'LAURA SANCHEZ', paymentMethod: 'bizum' }),
     mov({ id: 34, importBatch: 'lote-sept', date: '2026-09-06', amount: -12.99, description: 'NETFLIX.COM' }),
   ];
 
@@ -556,9 +556,9 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
       lineasExtracto: [...LINEAS_SEPT],
       movements: [
         // 20 · el agua punteada a mano el 1-9 (previsto 7 ejecutado sobre él).
-        mov({ id: 20, source: 'manual', importBatch: undefined, date: '2026-09-01', amount: -87.4, description: 'Agua Tenderina', reference: 'treasury_event:7', categoryKey: 'suministro_inmueble', ambito: 'INMUEBLE', inmuebleId: '1', unifiedStatus: 'conciliado' }),
+        mov({ id: 20, source: 'manual', importBatch: undefined, date: '2026-09-01', amount: -87.4, description: 'Agua Tenderina', reference: 'treasury_event:7', categoryKey: 'suministro_inmueble', ambito: 'inmueble', inmuebleId: '1', unifiedStatus: 'conciliado' }),
         // 21 · la renta de Laura anotada a mano el mismo día.
-        mov({ id: 21, source: 'manual', importBatch: undefined, date: '2026-09-05', amount: 380, description: 'Renta Laura', categoryKey: 'alquiler', ambito: 'INMUEBLE', inmuebleId: '4', unifiedStatus: 'confirmado' as never }),
+        mov({ id: 21, source: 'manual', importBatch: undefined, date: '2026-09-05', amount: 380, description: 'Renta Laura', categoryKey: 'alquiler', ambito: 'inmueble', inmuebleId: '4', unifiedStatus: 'confirmado' as never }),
         // 22 · ya del banco (import de otro lote) · NO es candidato.
         mov({ id: 22, importBatch: 'lote-viejo', date: '2026-09-02', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
         // 23 · compra a crédito · NO es candidata.
@@ -567,7 +567,7 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
         mov({ id: 24, source: 'manual', importBatch: undefined, accountId: 3, date: '2026-09-06', amount: -12.99, description: 'Netflix' }),
       ],
       treasuryEvents: [
-        previsto({ id: 7, status: 'executed', amount: 82, predictedDate: '2026-08-27', description: 'Agua Tenderina', sourceType: 'gasto_recurrente', sourceId: 42, categoryKey: 'suministro_inmueble', ambito: 'INMUEBLE', inmuebleId: 1, movementId: 20, executedMovementId: 20, actualAmount: 82, actualDate: '2026-09-01' }),
+        previsto({ id: 7, status: 'executed', amount: 82, predictedDate: '2026-08-27', description: 'Agua Tenderina', sourceType: 'gasto_recurrente', sourceId: 42, categoryKey: 'suministro_inmueble', ambito: 'inmueble', inmuebleId: 1, movementId: 20, executedMovementId: 20, actualAmount: 82, actualDate: '2026-09-01' }),
       ],
       gastosInmueble: [
         { id: 5, inmuebleId: 1, ejercicio: 2026, fecha: '2026-09-01', concepto: 'Agua Tenderina', categoria: 'suministro', casillaAEAT: '0113', importe: 82, origen: 'recurrente', origenId: 'recurrente-42-2026-8', estado: 'confirmado', estadoTesoreria: 'confirmed', movimientoId: '20', treasuryEventId: 7, createdAt: '', updatedAt: '' },
@@ -625,7 +625,7 @@ describe('conciliación con confirmados · el lote de septiembre', () => {
       expect(m(20)).toMatchObject({
         description: 'Agua Tenderina',
         categoryKey: 'suministro_inmueble',
-        ambito: 'INMUEBLE',
+        ambito: 'inmueble',
         inmuebleId: '1',
         amount: -87.4,
         date: '2026-09-03',

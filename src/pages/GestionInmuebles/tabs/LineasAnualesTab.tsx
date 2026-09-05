@@ -250,7 +250,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
       }
       const allEvents = (await db.getAll('treasuryEvents').catch(() => [])) as TreasuryEvent[];
       for (const ev of allEvents) {
-        if (ev.ambito !== 'INMUEBLE') continue;
+        if (ev.ambito !== 'inmueble') continue;
         if (ev.inmuebleId !== propertyId) continue;
         if (!eventBelongsToCategoria(ev, categoria)) continue;
         if (ev.status !== 'predicted') continue;
@@ -889,7 +889,7 @@ async function createExpensePrevision(
       sourceType: 'manual',
       accountId: input.accountId,
       status: 'predicted',
-      ambito: 'INMUEBLE',
+      ambito: 'inmueble',
       inmuebleId: input.propertyId,
       categoryLabel: config.tipoCategory,
       counterparty: input.proveedorNIF,
