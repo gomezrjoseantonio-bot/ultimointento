@@ -73,6 +73,19 @@ export function claveDeNombre(nombre: string): string {
 export type NivelCoincidencia = 'ninguna' | 'parcial' | 'fuerte';
 
 /**
+ * Cuántas palabras comparables comparten dos nombres · la medida cruda detrás
+ * de `nivelDeCoincidencia`, para quien necesite otro umbral (E2.4 · el titular
+ * de la cuenta dentro del texto entero de una transferencia pide tres, no dos).
+ */
+export function palabrasEnComun(unNombre: string, otroNombre: string): number {
+  const unas = palabrasDe(unNombre);
+  const otras = palabrasDe(otroNombre);
+  let comunes = 0;
+  for (const palabra of unas) if (otras.has(palabra)) comunes += 1;
+  return comunes;
+}
+
+/**
  * Cuánto se parecen dos nombres de persona.
  *
  * - `fuerte`: comparten dos palabras o más — nombre de pila y algún apellido.

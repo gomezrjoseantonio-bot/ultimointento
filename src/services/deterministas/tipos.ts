@@ -23,10 +23,43 @@
 // exactamente lo que se retiró en #1821 y #1824 —previsiones fabricadas para
 // fechas ya pasadas— y volvería a mover saldos. El dato de origen se lee tal
 // cual, sin materializar nada.
+//
+// ── E2.4 · contra la DEFINICIÓN ─────────────────────────────────────────────
+//
+// Lo mismo vale para lo que el usuario dio de alta como estructura: un
+// recurrente (su CUPS, su póliza, su día y su importe), el contrato de un
+// inquilino (su nombre, su renta, sus fechas) y sus propias cuentas (su IBAN,
+// su nombre). Todo eso existe para TODO el histórico; la previsión, solo para
+// el mes en curso. Aquí se casa la línea contra la definición, y el
+// emparejador de previsiones (`movementMatchingService`) no se toca: esto es
+// un camino AÑADIDO para lo que él no puede ver, no una reescritura.
 // ============================================================================
 
-/** De qué libro del usuario sale este reconocimiento. */
-export type FuenteDeterminista = 'prestamo' | 'venta' | 'inversion' | 'nomina';
+/**
+ * De qué libro del usuario sale este reconocimiento.
+ *
+ * E2.4 añade `recurrente` (compromisosRecurrentes), `renta` (el contrato de
+ * alquiler) y `traspaso` (una cuenta del propio titular al otro lado).
+ */
+export type FuenteDeterminista =
+  | 'prestamo'
+  | 'venta'
+  | 'inversion'
+  | 'nomina'
+  | 'recurrente'
+  | 'renta'
+  | 'traspaso';
+
+/** E2.4 · las fuentes que casan contra una definición, no contra un cuadro. */
+export const FUENTES_POR_DEFINICION: ReadonlySet<FuenteDeterminista> = new Set<FuenteDeterminista>([
+  'recurrente',
+  'renta',
+  'traspaso',
+]);
+
+export function esPorDefinicion(fuente: FuenteDeterminista): boolean {
+  return FUENTES_POR_DEFINICION.has(fuente);
+}
 
 /**
  * Cómo se reconoció la línea. No es cosmético: gobierna qué se puede dar por
@@ -39,8 +72,14 @@ export type FuenteDeterminista = 'prestamo' | 'venta' | 'inversion' | 'nomina';
  * importe no se puede derivar: de un bruto anual no sale el neto de la nómina
  * (falta la Seguridad Social y la retención real de ese mes). Lo que manda ahí
  * es el banco, que no estima: paga. Se acepta su importe como verdad consumada.
+ *
+ * E2.4 · `identidad` es un identificador estable que solo puede ser de ESA
+ * cosa: el CUPS, el nº de contrato o póliza, el IBAN de una cuenta propia, el
+ * nombre del titular. `definicion` es lo que la definición dice que pasa
+ * (texto del proveedor + importe según el modo + calendario del patrón; el
+ * inquilino + su renta + sus fechas) cuando cuadra sin contradicción.
  */
-export type ComoSeReconocio = 'fecha_importe' | 'concepto_cuenta_dia';
+export type ComoSeReconocio = 'fecha_importe' | 'concepto_cuenta_dia' | 'identidad' | 'definicion';
 
 /**
  * El desglose fiscal · se calcula y se guarda POR DETRÁS.
@@ -67,6 +106,20 @@ export interface OrigenDeterminista {
   /** Atribución, cuando el origen la sabe · un préstamo conoce su inmueble. */
   inmuebleId?: number;
   categoryKey?: string;
+  /**
+   * E2.4 · solo `fuente: 'traspaso'` · de qué lado está esta línea y con qué
+   * cuenta propia va. Sin `cuentaContrariaId` se sabe que es un traspaso (el
+   * titular es el propio usuario) pero no a qué cuenta: se marca como
+   * traspaso sin pata al otro lado, y no se inventa una.
+   */
+  traspaso?: {
+    sentido: 'salida' | 'entrada';
+    cuentaContrariaId?: number;
+    /** El movimiento que ya existe al otro lado (su extracto ya se importó). */
+    movimientoEspejoId?: number;
+  };
+  /** E2.4 · solo `fuente: 'renta'` · el contrato que explica el cobro. */
+  renta?: { contratoId: number; inquilino: string };
 }
 
 /**

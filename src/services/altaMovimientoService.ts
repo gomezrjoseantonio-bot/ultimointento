@@ -627,7 +627,16 @@ export async function origenIdRecurrenteDelGasto(
   );
   const c = compromisos[0];
   if (!c?.id) return undefined;
+  return claveOrigenRecurrente(c.id, fecha);
+}
 
+/**
+ * La clave `origenId` de la fila fiscal de un recurrente en un mes ·
+ * `recurrente-<compromiso>-<año>-<mes>`. E2.4 · la usa también el
+ * reconocimiento contra definición, que ya sabe QUÉ compromiso es y no
+ * necesita buscarlo por piso y categoría.
+ */
+export function claveOrigenRecurrente(compromisoId: number, fecha: string): string {
   const [año, mes] = fecha.slice(0, 10).split('-').map(Number);
-  return `recurrente-${c.id}-${año}-${mes}`;
+  return `recurrente-${compromisoId}-${año}-${mes}`;
 }

@@ -173,3 +173,145 @@ export async function convertirLineaEnTraspaso(
   );
   return convertirEnTraspaso(movement.id as number, cuentaDestinoId);
 }
+
+// ─── E2.4 · las otras formas de la misma conversión ─────────────────────────
+//
+// Reconocer un traspaso propio contra la definición (`deterministas/
+// traspasosPropios`) trae tres casos que `convertirEnTraspaso` no cubre: la
+// línea es la ENTRADA (el dinero llegó de otra cuenta propia), la otra pata YA
+// EXISTE (su extracto se importó antes) o no se sabe a qué cuenta fue. Las
+// tres marcan el movimiento como traspaso —fuera de gasto e ingreso, §1— y
+// solo la primera escribe una pata nueva.
+
+export class NoEsUnAbonoError extends Error {
+  constructor() {
+    super('Solo un abono puede ser la entrada de un traspaso.');
+    this.name = 'NoEsUnAbonoError';
+  }
+}
+
+/** La huella de traspaso sobre un movimiento · sin tocar importe ni fecha. */
+function comoPataDe(
+  m: Movement,
+  sentido: 'salida' | 'entrada',
+  transferMetadata: Movement['transferMetadata'] | undefined,
+  ahora: string
+): Movement {
+  const conMetadata = transferMetadata ? { transferMetadata } : {};
+  return {
+    ...m,
+    type: 'Transferencia',
+    categoryKey: sentido === 'salida' ? TRANSFER_KEYS.SALIDA : TRANSFER_KEYS.ENTRADA,
+    categoryLabel: sentido === 'salida' ? 'Traspaso · salida' : 'Traspaso · entrada',
+    category: { tipo: 'Traspaso' },
+    ...conMetadata,
+    updatedAt: ahora,
+  } as unknown as Movement;
+}
+
+/**
+ * Convierte `movementId` (un ABONO) en la entrada de un traspaso que vino de
+ * `cuentaOrigenId`. La pata de salida nace `source: 'manual'` en la cuenta de
+ * origen, por lo mismo que en `convertirEnTraspaso`: el banco de origen no ha
+ * dicho nada todavía; cuando llegue su extracto, su línea confirmará esa pata
+ * (D1) en vez de crear otra.
+ *
+ * No enseña: la regla de traspaso aprendida (E2.2) resuelve SALIDAS, y una
+ * entrada con la misma regla no tiene sentido.
+ */
+export async function convertirEnEntradaDeTraspaso(
+  movementId: number,
+  cuentaOrigenId: number
+): Promise<ResultadoConversion> {
+  const db = await initDB();
+  const movimiento = (await db.get('movements', movementId)) as Movement | undefined;
+  if (!movimiento) throw new MovimientoNoEncontradoError();
+  if (movimiento.accountId === cuentaOrigenId) throw new TraspasoALaMismaCuentaError();
+  if (movimiento.amount <= 0) throw new NoEsUnAbonoError();
+
+  const yaConvertido = movimiento.transferMetadata?.pairMovementId;
+  if (yaConvertido != null) return { movementId, movementIdDestino: yaConvertido };
+
+  const ahora = new Date().toISOString();
+  const magnitud = Math.abs(movimiento.amount);
+
+  const salida: Omit<Movement, 'id'> = {
+    ...movimiento,
+    id: undefined,
+    accountId: cuentaOrigenId,
+    amount: -magnitud,
+    type: 'Transferencia',
+    source: 'manual',
+    origin: 'Manual',
+    unifiedStatus: 'no_planificado',
+    movementState: 'Confirmado',
+    state: 'pending',
+    status: 'pendiente',
+    statusConciliacion: 'sin_match',
+    categoryKey: TRANSFER_KEYS.SALIDA,
+    categoryLabel: 'Traspaso · salida',
+    category: { tipo: 'Traspaso' },
+    transferMetadata: { targetAccountId: movimiento.accountId },
+    reference: undefined,
+    documentIds: undefined,
+    createdAt: ahora,
+    updatedAt: ahora,
+  } as unknown as Omit<Movement, 'id'>;
+  delete (salida as Record<string, unknown>).id;
+
+  const movementIdDestino = Number(await db.add('movements', salida as Movement));
+
+  await (db as any).put(
+    'movements',
+    comoPataDe(movimiento, 'entrada', { targetAccountId: cuentaOrigenId, pairMovementId: movementIdDestino }, ahora)
+  );
+
+  return { movementId, movementIdDestino };
+}
+
+/**
+ * Empareja dos movimientos que YA existen como las dos patas de un traspaso ·
+ * la salida en una cuenta propia y la entrada en otra (los dos extractos ya se
+ * importaron). No nace nada. Idempotente: ya emparejados entre sí, no se
+ * escribe.
+ */
+export async function emparejarComoTraspaso(salidaId: number, entradaId: number): Promise<void> {
+  const db = await initDB();
+  const salida = (await db.get('movements', salidaId)) as Movement | undefined;
+  const entrada = (await db.get('movements', entradaId)) as Movement | undefined;
+  if (!salida || !entrada) throw new MovimientoNoEncontradoError();
+  if (salida.accountId === entrada.accountId) throw new TraspasoALaMismaCuentaError();
+  if (salida.amount >= 0) throw new NoEsUnCargoError();
+  if (entrada.amount <= 0) throw new NoEsUnAbonoError();
+  if (
+    salida.transferMetadata?.pairMovementId === entradaId &&
+    entrada.transferMetadata?.pairMovementId === salidaId
+  ) {
+    return;
+  }
+  const ahora = new Date().toISOString();
+  await (db as any).put(
+    'movements',
+    comoPataDe(salida, 'salida', { targetAccountId: entrada.accountId, pairMovementId: entradaId }, ahora)
+  );
+  await (db as any).put(
+    'movements',
+    comoPataDe(entrada, 'entrada', { targetAccountId: salida.accountId, pairMovementId: salidaId }, ahora)
+  );
+}
+
+/**
+ * Marca el movimiento como traspaso SIN pata al otro lado · se sabe que el
+ * otro lado es el propio usuario (su nombre está en la transferencia) pero no
+ * a qué cuenta. No se inventa una: el movimiento sale de gasto e ingreso, y
+ * el saldo de esta cuenta sigue siendo el del banco. Cuando se importe el
+ * extracto de la otra cuenta, su línea se reconocerá igual y quedará marcada.
+ */
+export async function marcarComoTraspasoSinPar(movementId: number): Promise<void> {
+  const db = await initDB();
+  const m = (await db.get('movements', movementId)) as Movement | undefined;
+  if (!m) throw new MovimientoNoEncontradoError();
+  if (m.amount === 0) return;
+  const sentido = m.amount < 0 ? 'salida' : 'entrada';
+  await (db as any).put('movements', comoPataDe(m, sentido, undefined, new Date().toISOString()));
+}

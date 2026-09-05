@@ -13,6 +13,9 @@
 //       para esa fecha) · nace el movimiento, el previsto pasa a `executed`;
 //   2 · reconocido contra un libro (préstamo, nómina, inversión, venta) · nace
 //       el movimiento y se cierra contra su origen · NO pisa un cuadre;
+//       E2.4 · también lo reconocido contra una DEFINICIÓN (recurrente, renta
+//       de un contrato, traspaso entre cuentas propias) · sin previsión ·
+//       `cierrePorDefinicion`;
 //   3 · la línea confirma algo que YA tenías anotado a mano (Confirmado) · D1:
 //       NO nace nada · el Confirmado se conserva y recibe el aval del banco, y
 //       la línea queda enlazada a él;
@@ -44,6 +47,8 @@ import { puedeResolverSola } from './reglaResuelveSola';
 import { gastoDesdeMovimiento, origenIdRecurrenteDelGasto } from './altaMovimientoService';
 import { convertirLineaEnTraspaso } from './traspasoDesdeMovimiento';
 import { aplicarReconocimiento, baseDe } from './deterministas/cierreDeterminista';
+import { aplicarPorDefinicion } from './deterministas/cierrePorDefinicion';
+import { esPorDefinicion } from './deterministas/tipos';
 import { aplicarReconciliacionConfirmado } from './reconciliarConfirmado';
 import { origenParaMovimiento, type OrigenPorLinea } from './lineaComoMovimiento';
 import {
@@ -147,20 +152,28 @@ export async function confirmDecisions(
   for (const origen of payload.approvedDeterministic ?? []) {
     if (lineasTocadas.has(origen.lineaId)) continue;
     try {
-      const { movement } = await materializarLinea(base, origen.lineaId, now, 'motor');
-      const cerrado = await aplicarReconocimiento(
-        baseDe(db as never),
-        origenParaMovimiento(origen, movement.id as number),
-        now
-      );
+      const { movement, nuevo } = await materializarLinea(base, origen.lineaId, now, 'motor');
+      const conMovimiento = origenParaMovimiento(origen, movement.id as number);
+      // E2.4 · lo reconocido contra una DEFINICIÓN (recurrente, renta,
+      // traspaso propio) se aplica por el mismo camino que el gesto humano
+      // equivalente (ficha con fila fiscal, cobro del contrato, traspaso); lo
+      // reconocido contra un cuadro (préstamo, venta, inversión, nómina) se
+      // cierra como hasta ahora.
+      const cerrado = esPorDefinicion(origen.fuente)
+        ? await aplicarPorDefinicion(db, conMovimiento, movement, nuevo, now)
+        : await aplicarReconocimiento(baseDe(db as never), conMovimiento, now);
       if (cerrado) {
         lineasTocadas.add(origen.lineaId);
         // E2.2 · lo reconocido también ENSEÑA · se lee del movimiento ya
-        // cerrado (piso, categoría). Hoy los orígenes deterministas no ponen
-        // categoría, así que de ellos aún no nace regla; el enganche queda
-        // hecho para el día que la traigan.
-        const cerradoMov = (await db.get('movements', movement.id as number)) as Movement | undefined;
-        if (cerradoMov) await feedLearningRule(cerradoMov, deriveCategoryFromMovement(cerradoMov));
+        // cerrado (piso, categoría). Los orígenes de cuadro no ponen
+        // categoría y de ellos no nace regla; un recurrente o una renta sí la
+        // traen. Un traspaso NO pasa por aquí: `convertirEnTraspaso` ya
+        // enseña la regla de traspaso con su cuenta, y volver a aprender el
+        // mismo texto como «clasificar» contaría como cambio de opinión.
+        if (origen.fuente !== 'traspaso') {
+          const cerradoMov = (await db.get('movements', movement.id as number)) as Movement | undefined;
+          if (cerradoMov) await feedLearningRule(cerradoMov, deriveCategoryFromMovement(cerradoMov));
+        }
       }
     } catch (err) {
       // Una fuente que falla no puede tumbar el Guardar entero: el resto de
