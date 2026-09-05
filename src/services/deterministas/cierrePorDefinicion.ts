@@ -36,6 +36,11 @@ import {
 import { RENT_SOURCE_TYPES } from '../../modules/inmuebles/utils/estadoCobroContratoService';
 import { sinMarcaDeDescarte } from '../descarteDePrevision';
 
+/**
+ * La base tal como la devuelve `initDB` · solo el TIPO. Un `import type` sí
+ * puede ir dentro de `typeof` en posición de tipo (TypeScript ≥ 3.8); el
+ * valor `initDB` no se toca aquí: la base llega ya abierta desde el Guardar.
+ */
 type Base = Awaited<ReturnType<typeof initDB>>;
 
 const MS_DIA = 86_400_000;
@@ -211,13 +216,19 @@ export async function aplicarPorDefinicion(
   ahora: string,
 ): Promise<boolean> {
   if (movement.id == null) return false;
-  if (!nuevo && (movement.unifiedStatus === 'conciliado' || movement.categoryKey)) return true;
+  if (!nuevo && movement.unifiedStatus === 'conciliado') return true;
 
-  let cerrado = false;
-  if (o.fuente === 'recurrente') cerrado = await cerrarRecurrente(o, movement);
-  else if (o.fuente === 'renta') cerrado = await cerrarRenta(db, o, movement, ahora);
-  else if (o.fuente === 'traspaso') cerrado = await cerrarTraspaso(o, movement);
-  if (!cerrado) return false;
+  // Ya clasificado pero sin conciliar: el Guardar anterior escribió la fila /
+  // el cobro / la pata y falló justo antes de la huella. No se repite lo
+  // escrito (segunda fila fiscal, segunda pata); solo falta la huella.
+  const yaAplicado = !nuevo && !!movement.categoryKey;
+  if (!yaAplicado) {
+    let cerrado = false;
+    if (o.fuente === 'recurrente') cerrado = await cerrarRecurrente(o, movement);
+    else if (o.fuente === 'renta') cerrado = await cerrarRenta(db, o, movement, ahora);
+    else if (o.fuente === 'traspaso') cerrado = await cerrarTraspaso(o, movement);
+    if (!cerrado) return false;
+  }
 
   await dejarConciliado(db, movement.id, o, ahora);
   return true;

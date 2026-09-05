@@ -161,6 +161,24 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
     expect(await todos('gastosInmueble')).toHaveLength(1);
   });
 
+  it('un Guardar que falló DESPUÉS de clasificar y ANTES de la huella · el reintento completa la huella sin repetir la fila', async () => {
+    await sembrar('compromisosRecurrentes', [decesos]);
+    const id = await nuevaLinea({ conceptoLiteral: 'Recibo Comunidad Propietarios Tenderina Mandato 07085234611' });
+    await reconocerYGuardar([id]);
+    // Se simula el fallo a medias: el movimiento quedó clasificado (la fila
+    // fiscal ya está) pero sin conciliar ni nombre legible.
+    const d = await db();
+    const [m] = await todos<Movement>('movements');
+    await d.put('movements', { ...m, unifiedStatus: 'no_planificado', statusConciliacion: 'sin_match', descripcionPrevision: undefined } as never);
+
+    await reconocerYGuardar([id]);
+
+    const movs = await todos<Movement>('movements');
+    expect(movs).toHaveLength(1);
+    expect(movs[0]).toMatchObject({ unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Comunidad Tenderina · Comunidad Propietarios Tenderina' });
+    expect(await todos('gastosInmueble')).toHaveLength(1);
+  });
+
   it('un recurrente PERSONAL clasifica el movimiento sin fila fiscal', async () => {
     await sembrar('compromisosRecurrentes', [{ ...decesos, id: 12, ambito: 'personal', inmuebleId: undefined, alias: 'Seguro decesos', categoria: 'seguros' }]);
     const id = await nuevaLinea({ conceptoLiteral: 'Recibo Comunidad Propietarios Tenderina Mandato 07085234611' });
