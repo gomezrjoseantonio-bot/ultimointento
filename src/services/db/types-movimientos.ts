@@ -85,10 +85,10 @@ export interface Movement {
     subtipo?: string;       // e.g., "Luz"
   };
   
-  // Transfer detection
-  is_transfer?: boolean;
-  transfer_group_id?: string; // groups the two transfer legs
-  
+  // `is_transfer` / `transfer_group_id` (H8): RETIRADOS en E2.4.1 · sin escritor
+  // en src/ y un único lector que ya miraba `transferMetadata`. La neutralidad
+  // de un traspaso la dirá la naturaleza `movimiento_interno` del catálogo único.
+
   // Invoice/OCR linking
   invoice_id?: string;      // link to OCR invoice if matched
   

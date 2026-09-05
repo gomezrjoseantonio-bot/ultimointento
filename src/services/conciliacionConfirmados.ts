@@ -67,7 +67,7 @@ function esConfirmadoEmparejable(m: Movement): boolean {
   // admiten las patas de traspaso (`isTransferKey`); cualquier otra cosa con
   // `transferMetadata` sigue fuera. La pata creada al importar es `source:
   // 'import'` y ya la filtra la guarda de arriba: aquí solo entran las manuales.
-  if ((m.transferMetadata || m.is_transfer) && !isTransferKey(m.categoryKey)) return false;
+  if (m.transferMetadata && !isTransferKey(m.categoryKey)) return false;
   // Una compra a crédito no mueve la cuenta el día de la compra (sale en el
   // recibo), así que no le corresponde una línea del extracto de la cuenta.
   if (m.gastoTarjetaCredito) return false;
