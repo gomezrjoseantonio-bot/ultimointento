@@ -9,7 +9,8 @@
 // minúsculas. Ésta es la ÚNICA traducción entre los dos; no se repite en cada
 // pantalla.
 //
-// TODO(E2.4.x): retirar cuando `Prestamo.ambito` pase al catálogo único.
+// Se retira cuando `Prestamo.ambito` pase al catálogo único (E2.4.1c · ver
+// docs/VERIFICACION-E2.4.1-preflight-catalogo-unico-2026-09-05.md §2.3).
 // ============================================================================
 
 import type { Ambito } from '../catalogo/catalogoUnico';

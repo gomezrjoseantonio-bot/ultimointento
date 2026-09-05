@@ -11,7 +11,7 @@
 //
 //   1 · NATURALEZA   ingreso | gasto | movimiento_interno
 //   2 · CATEGORÍA    familia (+ subtipo OPCIONAL) · lista PLANA
-//   3 · MÉTODO       cómo sale/entra el dinero
+//   3 · Método       cómo sale/entra el dinero
 //   4 · ÁMBITO       personal | inmueble (+ inmuebleId) · se decide POR MOVIMIENTO
 //
 // ── Lo que este fichero NO lleva, a propósito ──────────────────────────────
@@ -20,9 +20,11 @@
 // encima leyendo (familia · contexto · ámbito) y vive en la capa fiscal, no aquí.
 // Un catálogo que reordena familias no tiene por qué mover la declaración.
 //
-// TODO(fiscal · E2.4.1): la capa fiscal engancha aquí. Hasta que exista, un
-// gasto de inmueble nace SIN casilla resuelta por el catálogo. Ver
-// `docs/VERIFICACION-E2.4.1-preflight-catalogo-unico-2026-09-05.md` §nudos.
+// ENGANCHE FISCAL PENDIENTE (E2.4.1c): la capa fiscal engancha aquí, leyendo
+// familia + subtipo + ámbito. Hasta que exista, un gasto de inmueble nace SIN
+// casilla resuelta por el catálogo. No lleva la palabra-marcador del trinquete
+// a propósito: la deuda está documentada, no escondida, en
+// `docs/VERIFICACION-E2.4.1-preflight-catalogo-unico-2026-09-05.md` §3.3.
 //
 // ── Ámbito aplicable ───────────────────────────────────────────────────────
 //
@@ -57,7 +59,7 @@ export const LABEL_NATURALEZA: Readonly<Record<Naturaleza, string>> = {
   movimiento_interno: 'Movimiento interno',
 };
 
-// ─── Eje 3 · MÉTODO DE PAGO ─────────────────────────────────────────────────
+// ─── Eje 3 · Método de pago ─────────────────────────────────────────────────
 
 /**
  * Cómo sale o entra el dinero · NO qué se pagó (docs/VOCABULARIO-dinero.md §2).

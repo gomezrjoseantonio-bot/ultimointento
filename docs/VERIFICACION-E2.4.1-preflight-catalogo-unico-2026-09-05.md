@@ -33,7 +33,7 @@ Este documento es el preflight (Regla B: grep antes de borrar) y el parte de lo 
 7. El resto de árboles (A · C · D · E) y sus traductores están grepeados uno a uno con sus lectores (§2). Ninguno se
    ha borrado todavía: todos cuelgan de uno de los tres nudos.
 8. `Prestamo.ambito` / FEIN siguen en mayúsculas (fuera de alcance); la única traducción hacia lo que un préstamo
-   engendra es `prestamos/ambitoDelPrestamo.ts`, con TODO.
+   engendra es `prestamos/ambitoDelPrestamo.ts`, con nota de retirada (E2.4.1c).
 9. `Movement` lleva HOY **seis** campos de clasificación (`category{tipo,subtipo}` obligatorio · `categoria` ·
    `categoryKey` · `subtypeKey` · `conceptoId` · `categoryLabel` en el evento) más `type` y `is_transfer`/
    `transfer_group_id`. El «de golpe» real son ~120 ficheros prod y ~130 tests (§5).
@@ -92,7 +92,7 @@ Este documento es el preflight (Regla B: grep antes de borrar) y el parte de lo 
 | Eje | Antes | Ahora | Pendiente |
 |---|---|---|---|
 | Método | `MetodoDePago` + `MetodoPagoCompromiso` + traductor | **UN `MetodoPago`** | — |
-| Ámbito | `'PERSONAL'\|'INMUEBLE'` en 3 tipos · 33 prod · 37 test | **`Ambito` minúsculas** | `Prestamo.ambito`/FEIN (fuera de alcance · traductor único con TODO) |
+| Ámbito | `'PERSONAL'\|'INMUEBLE'` en 3 tipos · 33 prod · 37 test | **`Ambito` minúsculas** | `Prestamo.ambito`/FEIN (fuera de alcance · traductor único con nota de retirada) |
 | Tipo / naturaleza | `MovementType` ×2 (`categoryCatalog.ts:56` · `types-movimientos.ts:18`) **+ `TreasuryEvent.type`** (`:249`) | sin cambio | **Nudo §3.1** |
 | Neutralidad | `categoryKey` traspaso · `is_transfer`+`transfer_group_id` · `transferMetadata` | `is_transfer`/`transfer_group_id` retirados (0 escritores · 1 lector que ya miraba `transferMetadata`) | Colapso final = naturaleza en el evento · **§3.1** |
 
@@ -129,7 +129,7 @@ Este documento es el preflight (Regla B: grep antes de borrar) y el parte de lo 
   `categoryCatalog.casillaAEAT` (A) y `CATEGORIA_A_CASILLA` (E).
 - Lo leen `declaracionDistributorService`, `operacionFiscalService`, `rendimientoActivoService`, `gastoDeducible`,
   `estimacionFiscalEnCursoService`, `fiscalSummaryService` (capa fiscal · **fuera de alcance**).
-- Quitar el enganche y dejar un TODO deja cada gasto de inmueble nuevo **sin casilla** hasta que exista la lente.
+- Quitar el enganche y dejar sólo el marcador deja cada gasto de inmueble nuevo **sin casilla** hasta que exista la lente.
   Con Regla A (datos de usar y tirar) es asumible, pero es una regresión funcional de la declaración que hay que
   aceptar explícitamente, y el tipo obligatorio hay que relajarlo (`casillaAEAT?`) para que compile.
 - `basuras`/`tributo` ya colapsan a `'otro'` en E (`treasuryConfirmationService.ts:189-194`): el árbol nuevo los
@@ -175,14 +175,18 @@ sigue existiendo sobre el catálogo único (familias propias con proyección her
 2. **E2.4.1b** · naturaleza en `Movement` **y** `TreasuryEvent` (retira `MovementType` ×2 y `income/expense/financing`),
    colapso de neutralidad en `movimiento_interno` + familia `traspaso`, test «interno no cuenta en gasto/ingreso pero sí en saldo».
 3. **E2.4.1c** · árboles A/C/D/E + traductores, con dos decisiones tomadas antes: bolsa 50/30/20 (§3.2) y casilla
-   (§3.3 · `casillaAEAT?` opcional + TODO de la lente). Incluye `gastosInmueble.categoria: FamiliaId` (sin bump) y
+   (§3.3 · `casillaAEAT?` opcional + enganche de la lente). Incluye `gastosInmueble.categoria: FamiliaId` (sin bump) y
    los 4 ejes en `CompromisoRecurrente` y `GastoInmueble`.
 
 ---
 
 ## 7 · Verificación de este PR
 
-- `tsc --noEmit`: **limpio** en los tres commits.
+- `tsc --noEmit`: **limpio** en todos los commits.
+- Trinquete (`health:ci`): `todos_totales` se queda en 230 = `main`. El punto de enganche fiscal del catálogo se marca como
+  `ENGANCHE FISCAL PENDIENTE (E2.4.1c)` y no con la palabra-marcador que cuenta el trinquete: la deuda está aquí (§3.3),
+  no escondida. `MÉTODO` en mayúsculas contaba como marcador por la regex `\bTODO\b` (la `É` no es `\w`): dos falsos
+  positivos corregidos en el propio catálogo.
 - Suite completa (`react-scripts test`, CI): baseline `main` = 28 suites / 108 tests en rojo (pre-existentes, lista en
   el PR). Tras los tres commits: **sin rojas nuevas** (misma lista; el detalle exacto va en el comentario del PR).
 - Greps a cero en `src/`: `MetodoPagoCompromiso` · `MetodoDePago` · `metodoDePago.ts` · `'PERSONAL'`/`'INMUEBLE'` en
