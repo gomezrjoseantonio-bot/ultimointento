@@ -75,7 +75,7 @@ const rentaDe = async (
   const todos = (await db.getAll('treasuryEvents')) as TreasuryEvent[];
   return todos.find(
     (e) =>
-      e.type === 'income' &&
+      e.naturaleza === 'ingreso' &&
       e.sourceType === 'contrato' &&
       e.sourceId === contratoId &&
       typeof e.predictedDate === 'string' &&

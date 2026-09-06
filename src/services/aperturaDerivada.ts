@@ -51,6 +51,7 @@ import {
   type LineaParaSaldo,
 } from './accountBalanceService';
 import { cuentasService } from './cuentasService';
+import { naturalezaPorSigno } from './catalogo/catalogoUnico';
 
 /** La línea más RECIENTE con saldo · lo que el banco afirma «a día de hoy». */
 export interface ExtremoReciente {
@@ -337,7 +338,7 @@ export async function aplicarApertura(
       valueDate: apertura.openingBalanceDate,
       balance: apertura.openingBalance,
       saldo: apertura.openingBalance,
-      type: apertura.openingBalance >= 0 ? 'Ingreso' : 'Gasto',
+      naturaleza: naturalezaPorSigno(apertura.openingBalance),
       updatedAt: new Date().toISOString(),
     });
   }

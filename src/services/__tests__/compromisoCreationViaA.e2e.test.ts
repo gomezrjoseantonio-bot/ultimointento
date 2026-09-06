@@ -80,7 +80,7 @@ describe('T9.2 · vía A activada end-to-end', () => {
       status: 'pending',
       unifiedStatus: 'no_planificado',
       source: 'import',
-      type: 'Gasto',
+      naturaleza: 'gasto',
       origin: 'CSV',
       movementState: 'Confirmado',
       category: { tipo: 'suministros' },

@@ -16,7 +16,7 @@ import { resumirMes } from '../../modules/tesoreria/v6/calendarioDias';
 import type { Account, TreasuryEvent } from '../db';
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: '2026-08-10',
   description: 'x',
@@ -43,11 +43,11 @@ describe('cierrePorCuenta · la función canónica', () => {
     const c = cierrePorCuenta({
       saldoHoy: 1000,
       eventos: [
-        ev({ type: 'income', amount: 650, predictedDate: '2026-08-20' }),
-        ev({ type: 'expense', amount: 74.09, predictedDate: '2026-08-25' }),
-        ev({ type: 'expense', amount: 999, predictedDate: '2026-09-01' }), // otro mes
-        ev({ type: 'expense', amount: 500, predictedDate: '2026-08-05', descartado: true }),
-        ev({ type: 'expense', amount: 500, predictedDate: '2026-08-05', status: 'executed' }),
+        ev({ naturaleza: 'ingreso', amount: 650, predictedDate: '2026-08-20' }),
+        ev({ naturaleza: 'gasto', amount: 74.09, predictedDate: '2026-08-25' }),
+        ev({ naturaleza: 'gasto', amount: 999, predictedDate: '2026-09-01' }), // otro mes
+        ev({ naturaleza: 'gasto', amount: 500, predictedDate: '2026-08-05', descartado: true }),
+        ev({ naturaleza: 'gasto', amount: 500, predictedDate: '2026-08-05', status: 'executed' }),
       ],
       year: 2026,
       month0: 7,
@@ -59,8 +59,8 @@ describe('cierrePorCuenta · la función canónica', () => {
     const c = cierrePorCuenta({
       saldoHoy: 100,
       eventos: [
-        ev({ type: 'expense', amount: 200, categoryKey: 'traspaso_salida' }),
-        ev({ type: 'income', amount: 200, categoryKey: 'traspaso_entrada' }),
+        ev({ amount: 200, naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale' }),
+        ev({ amount: 200, naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra' }),
       ],
       year: 2026,
       month0: 7,
@@ -77,12 +77,12 @@ describe('cierrePorCuenta · la función canónica', () => {
       [2, 500],
     ]);
     const eventos = [
-      ev({ accountId: 1, type: 'income', amount: 650, predictedDate: '2026-08-20' }),
-      ev({ accountId: 1, type: 'expense', amount: 74.09, predictedDate: '2026-08-25' }),
-      ev({ accountId: 2, type: 'expense', amount: 33.5, predictedDate: '2026-08-12' }),
+      ev({ accountId: 1, naturaleza: 'ingreso', amount: 650, predictedDate: '2026-08-20' }),
+      ev({ accountId: 1, naturaleza: 'gasto', amount: 74.09, predictedDate: '2026-08-25' }),
+      ev({ accountId: 2, naturaleza: 'gasto', amount: 33.5, predictedDate: '2026-08-12' }),
       // Un traspaso 1 → 2 · sus patas no deben mover ningún cierre.
-      ev({ accountId: 1, type: 'expense', amount: 300, categoryKey: 'traspaso_salida' }),
-      ev({ accountId: 2, type: 'income', amount: 300, categoryKey: 'traspaso_entrada' }),
+      ev({ accountId: 1, amount: 300, naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale' }),
+      ev({ accountId: 2, amount: 300, naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra' }),
     ];
 
     const hero = calcularKpisHero({ cuentas, saldoPorCuenta: saldos, eventos, year: 2026, month0: 7 });
@@ -109,9 +109,9 @@ describe('cierrePorCuenta · la función canónica', () => {
       [2, 500],
     ]);
     const eventos = [
-      ev({ accountId: 1, type: 'income', amount: 650, predictedDate: '2026-08-20' }),
-      ev({ accountId: 1, type: 'expense', amount: 300, categoryKey: 'traspaso_salida' }),
-      ev({ accountId: 2, type: 'income', amount: 300, categoryKey: 'traspaso_entrada' }),
+      ev({ accountId: 1, naturaleza: 'ingreso', amount: 650, predictedDate: '2026-08-20' }),
+      ev({ accountId: 1, amount: 300, naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale' }),
+      ev({ accountId: 2, amount: 300, naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra' }),
     ];
     const hero = calcularKpisHero({ cuentas, saldoPorCuenta: saldos, eventos, year: 2026, month0: 7 });
     const resumen = resumirMes({ year: 2026, month0: 7, eventos, saldoTotalHoy: hero.saldo });
@@ -133,8 +133,8 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
         [2, 500],
       ]),
       eventos: [
-        ev({ accountId: 1, type: 'income', amount: 650, predictedDate: '2026-08-20' }),
-        ev({ accountId: 2, type: 'expense', amount: 100, predictedDate: '2026-08-25' }),
+        ev({ accountId: 1, naturaleza: 'ingreso', amount: 650, predictedDate: '2026-08-20' }),
+        ev({ accountId: 2, naturaleza: 'gasto', amount: 100, predictedDate: '2026-08-25' }),
       ],
       hoy: HOY,
     });
@@ -158,7 +158,7 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
     const { puntos } = serieDiariaConsolidada({
       cuentas: [cuenta(1)],
       saldoPorCuenta: new Map([[1, 100]]),
-      eventos: [ev({ accountId: 1, type: 'expense', amount: 30, predictedDate: '2026-08-01' })],
+      eventos: [ev({ accountId: 1, naturaleza: 'gasto', amount: 30, predictedDate: '2026-08-01' })],
       hoy: HOY,
     });
     expect(puntos[0].saldo).toBe(100);
@@ -171,7 +171,7 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
     const { puntos, descubierto } = serieDiariaConsolidada({
       cuentas: [cuenta(1, 'Sabadell')],
       saldoPorCuenta: new Map([[1, 20]]),
-      eventos: [ev({ accountId: 1, type: 'expense', amount: 50, predictedDate: HOY })],
+      eventos: [ev({ accountId: 1, naturaleza: 'gasto', amount: 50, predictedDate: HOY })],
       hoy: HOY,
     });
     expect(puntos[0].saldo).toBe(20);
@@ -186,7 +186,7 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
         [1, 778.07],
         [2, 31487.05],
       ]),
-      eventos: [ev({ accountId: 1, type: 'expense', amount: 2500, predictedDate: '2026-08-27' })],
+      eventos: [ev({ accountId: 1, naturaleza: 'gasto', amount: 2500, predictedDate: '2026-08-27' })],
       hoy: HOY,
     });
     expect(descubierto).toEqual({
@@ -205,8 +205,8 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
         [2, 1000],
       ]),
       eventos: [
-        ev({ accountId: 1, type: 'expense', amount: 300, predictedDate: '2026-08-22', categoryKey: 'traspaso_salida' }),
-        ev({ accountId: 2, type: 'income', amount: 300, predictedDate: '2026-08-22', categoryKey: 'traspaso_entrada' }),
+        ev({ accountId: 1, amount: 300, predictedDate: '2026-08-22', naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale' }),
+        ev({ accountId: 2, amount: 300, predictedDate: '2026-08-22', naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra' }),
       ],
       hoy: HOY,
     });
@@ -234,7 +234,7 @@ describe('serieDiariaConsolidada · 30 días rodantes', () => {
     const { descubierto } = serieDiariaConsolidada({
       cuentas: [cuenta(1)],
       saldoPorCuenta: new Map([[1, -50]]),
-      eventos: [ev({ accountId: 1, type: 'expense', amount: 30, predictedDate: '2026-08-20' })],
+      eventos: [ev({ accountId: 1, naturaleza: 'gasto', amount: 30, predictedDate: '2026-08-20' })],
       hoy: HOY,
     });
     expect(descubierto).toBeNull();

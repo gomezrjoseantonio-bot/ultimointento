@@ -28,7 +28,7 @@ const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     prestamoId: 'p1',
-    type: 'financing',
+    naturaleza: 'gasto', familia: 'prestamo_hipoteca',
     amount: -300,
     predictedDate: '2026-09-01',
     description: 'Cuota',

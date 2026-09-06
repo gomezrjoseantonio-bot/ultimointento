@@ -63,7 +63,7 @@ export function recibosDomiciliados(eventos: TreasuryEvent[]): RecibosDeUnMes[] 
   const porClave = new Map<string, { cuentaId: number; mes: string; quienes: Set<string>; abierto: boolean }>();
 
   for (const ev of eventos) {
-    if (ev.type !== 'expense' || ev.paymentMethod !== DOMICILIADO) continue;
+    if (ev.naturaleza !== 'gasto' || ev.paymentMethod !== DOMICILIADO) continue;
     if (ev.descartado === true) continue;
     if (ev.accountId == null) continue;
 

@@ -8,7 +8,7 @@
 // Enlace evento ↔ contrato (spec auditoría §5):
 //   · principal · `TreasuryEvent.contratoId === contractId`
 //   · legacy    · `sourceType ∈ {'contract','contrato'}` && `sourceId === contractId`
-// Renta = `type === 'income'`. Se excluyen los descartados (`descartado`).
+// Renta = `naturaleza === 'ingreso'`. Se excluyen los descartados (`descartado`).
 // Cobrado = `status ∈ {'confirmed','executed'}` (materializado en un movimiento).
 
 import type { Contract, TreasuryEvent } from '../../../services/db';
@@ -36,7 +36,7 @@ const diaUTC = (d: Date): number =>
 
 /** ¿El evento de tesorería es una renta viva (no descartada) de este contrato? */
 export function esRentaDeContrato(e: TreasuryEvent, contractId: number): boolean {
-  if (e.type !== 'income') return false;
+  if (e.naturaleza !== 'ingreso') return false;
   if (e.descartado) return false;
   if (e.contratoId === contractId) return true;
   return (

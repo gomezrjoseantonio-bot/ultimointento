@@ -293,7 +293,7 @@ beforeEach(() => {
           description: 'Posible suministro · proponer crear evento de tesorería',
           action: {
             kind: 'create_treasury_event',
-            type: 'expense',
+            naturaleza: 'gasto',
             ambito: 'inmueble',
             categoryKey: 'inmueble.suministros',
             sourceType: 'gasto',
@@ -412,8 +412,8 @@ describe('bankStatementOrchestrator', () => {
     );
     nextLineaId = 5;
     stores.treasuryEvents.push(
-      { id: 1000, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta 1', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
-      { id: 1001, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta 2', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1000, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta 1', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1001, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta 2', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
     );
     const saldoAntes = saldo42();
     expect(redondea(saldoAntes)).toBe(redondea(380 + 380 - 45.23 - 32.99));
@@ -535,7 +535,7 @@ describe('bankStatementOrchestrator', () => {
     stores.treasuryEvents.push({
       id: 700,
       accountId: 42,
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: -20,
       predictedDate: '2026-04-14',
       status: 'executed',
@@ -1009,8 +1009,8 @@ describe('E1.5 · el corte · saldo y minas', () => {
     expect(stores.movements).toHaveLength(2);
     const salida = stores.movements.find((m) => m.id === movementId)!;
     const entrada = stores.movements.find((m) => m.id === movementIdDestino)!;
-    expect(salida).toMatchObject({ accountId: 42, amount: linea.importe, categoryKey: 'traspaso_salida', importBatch: res.importBatchId });
-    expect(entrada).toMatchObject({ accountId: 7, amount: -linea.importe, categoryKey: 'traspaso_entrada', importBatch: res.importBatchId, source: 'manual' });
+    expect(salida).toMatchObject({ accountId: 42, amount: linea.importe, naturaleza: 'movimiento_interno', familia: 'traspaso', importBatch: res.importBatchId });
+    expect(entrada).toMatchObject({ accountId: 7, amount: -linea.importe, naturaleza: 'movimiento_interno', familia: 'traspaso', importBatch: res.importBatchId, source: 'manual' });
     expect(salida.transferMetadata?.pairMovementId).toBe(movementIdDestino);
     // D2 · solo la pata de ESTA cuenta.
     expect(stores.lineasExtracto.find((l) => l.id === linea.id)?.movementIds).toEqual([movementId]);
@@ -1081,7 +1081,7 @@ describe('E1.5 · el corte · saldo y minas', () => {
     );
     nextLineaId = 3;
     stores.treasuryEvents.push(
-      { id: 1000, type: 'income', amount: 380, predictedDate: '2026-04-22', description: 'Renta', sourceType: 'contract', status: 'predicted', accountId: 42, categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1000, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta', sourceType: 'contract', status: 'predicted', accountId: 42, categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
     );
     const saldoAntes = saldo42();
     const origen = { fuente: 'prestamo' as any, origenId: 'p-1', piezaId: '7', titulo: 'Cuota 7/240', como: 'importe_y_dia' as any };

@@ -59,6 +59,33 @@ export const LABEL_NATURALEZA: Readonly<Record<Naturaleza, string>> = {
   movimiento_interno: 'Movimiento interno',
 };
 
+export function esNaturaleza(v: unknown): v is Naturaleza {
+  return v === 'ingreso' || v === 'gasto' || v === 'movimiento_interno';
+}
+
+/**
+ * Hacia dónde mueve el dinero de la cuenta · lo que antes decía `type`
+ * (`income`/`expense`) en los previstos, que guardan el importe en magnitud.
+ *
+ * Ingreso entra y gasto sale, siempre. Un `movimiento_interno` puede hacer las
+ * dos cosas (la pata de salida y la de entrada de un traspaso son internas las
+ * dos), así que ÉL lo dice en `sentido`; si no lo dice, sale: un traspaso, una
+ * aportación o una fianza que se devuelve son dinero que se va de esta cuenta.
+ */
+export type Sentido = 'entra' | 'sale';
+
+export function sentidoDe(x: { naturaleza: Naturaleza; sentido?: Sentido | null }): Sentido {
+  if (x.naturaleza === 'ingreso') return 'entra';
+  if (x.naturaleza === 'gasto') return 'sale';
+  return x.sentido ?? 'sale';
+}
+
+/** Magnitud con el signo que le toca · + entra · − sale. */
+export function conSigno(x: { naturaleza: Naturaleza; sentido?: Sentido | null }, magnitud: number): number {
+  const m = Math.abs(magnitud);
+  return sentidoDe(x) === 'entra' ? m : -m;
+}
+
 // ─── Eje 3 · Método de pago ─────────────────────────────────────────────────
 
 /**

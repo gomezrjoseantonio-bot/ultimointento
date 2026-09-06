@@ -58,7 +58,7 @@ async function sembrarVencido(
 ): Promise<void> {
   const db = await initDB();
   await db.add('treasuryEvents', {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -60,
     predictedDate: iso(periodo),
     description: 'Comunidad',

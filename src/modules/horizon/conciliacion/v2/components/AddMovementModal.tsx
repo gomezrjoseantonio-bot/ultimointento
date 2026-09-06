@@ -22,7 +22,6 @@ import {
   getOpexCategories,
   type Ambito,
   type CategoryDef,
-  type MovementType,
 } from '../../../../../services/categoryCatalog';
 import {
   familiasDeAmbito,
@@ -52,7 +51,7 @@ function looksLikeSpanishNif(value: string): boolean {
 }
 
 export interface AddMovementModalPrefill {
-  tipo?: MovementType;
+  tipo?: TipoAlta;
   ambito?: Ambito;
   inmuebleId?: number;
   categoryKey?: string;
@@ -85,7 +84,14 @@ interface AddMovementModalProps {
   defaultAccountId?: number;
 }
 
-const TIPO_PILLS: { value: MovementType; label: string; Icon: React.ElementType }[] = [
+/**
+ * Las pestañas del modal · un flujo de alta, no un vocabulario de dominio: la
+ * naturaleza que se guarda es la del catálogo único (financiación = gasto ·
+ * prestamo_hipoteca · traspaso = movimiento_interno).
+ */
+export type TipoAlta = 'ingreso' | 'gasto' | 'financiacion' | 'traspaso';
+
+const TIPO_PILLS: { value: TipoAlta; label: string; Icon: React.ElementType }[] = [
   { value: 'ingreso', label: 'Ingreso', Icon: ArrowUp },
   { value: 'gasto', label: 'Gasto', Icon: ArrowDown },
   { value: 'financiacion', label: 'Financiación', Icon: Landmark },
@@ -124,7 +130,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   // PR5-HOTFIX v2 · fecha default = hoy (no el primer día del mes navegado).
   const today = new Date().toISOString().slice(0, 10);
 
-  const [tipo, setTipo] = useState<MovementType>(prefill?.tipo ?? 'gasto');
+  const [tipo, setTipo] = useState<TipoAlta>(prefill?.tipo ?? 'gasto');
   const [fecha, setFecha] = useState(prefill?.fecha ?? today);
   const [importeStr, setImporteStr] = useState('');
   const [cuentaId, setCuentaId] = useState<number | undefined>(() => {
@@ -285,7 +291,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   }, [prestamoSel, properties]);
 
   // ── handlers de cambio de sección (reset campos dependientes) ─────────
-  const handleTipoChange = (next: MovementType) => {
+  const handleTipoChange = (next: TipoAlta) => {
     if (tipoLocked) return;
     setTipo(next);
     if (!categoriaLocked) {
@@ -426,12 +432,8 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
       const invoiceNumberTrimmed = invoiceNumber.trim();
 
       const eventPayload: Omit<TreasuryEvent, 'id'> = {
-        type:
-          tipo === 'ingreso'
-            ? 'income'
-            : tipo === 'financiacion'
-              ? 'financing'
-              : 'expense',
+        naturaleza: tipo === 'ingreso' ? 'ingreso' : 'gasto',
+        ...(tipo === 'financiacion' ? { familia: 'prestamo_hipoteca' as const } : {}),
         amount: Math.abs(parsedImporte),
         predictedDate: fecha,
         description,
@@ -496,7 +498,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
       ? properties.find((p) => p.id === inmuebleId)?.alias ?? '—'
       : null;
 
-  const subtitleByTipo: Record<MovementType, string> = {
+  const subtitleByTipo: Record<TipoAlta, string> = {
     ingreso: 'Alquiler u otros ingresos',
     gasto: 'Gasto de inmueble o personal',
     financiacion: 'Cargo asociado a un préstamo',

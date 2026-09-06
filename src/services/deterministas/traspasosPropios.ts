@@ -32,7 +32,6 @@ import { normalizarTexto } from './texto';
 import { identificadoresDeMovimiento, normalizarIdentificador } from '../identificadoresDelConcepto';
 import { palabrasEnComun } from '../coincidenciaNombre';
 import { estaDeBaja } from '../cuentasEnUso';
-import { isTransferKey } from '../categoryCatalog';
 
 const MS_DIA = 86_400_000;
 /** El espejo puede llegar al otro banco hasta esto después (o antes). */
@@ -131,7 +130,7 @@ function dia(iso: string): number {
 
 /** ¿Este movimiento ya es una pata de traspaso emparejada? */
 function yaEmparejado(m: Movement): boolean {
-  return m.transferMetadata?.pairMovementId != null || isTransferKey(m.categoryKey);
+  return m.transferMetadata?.pairMovementId != null || m.naturaleza === 'movimiento_interno';
 }
 
 /**

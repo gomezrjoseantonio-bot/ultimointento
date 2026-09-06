@@ -7,14 +7,14 @@ import { comparativaService } from './comparativaService';
 
 const MAR = 2; // índice de marzo (0=ene)
 
-type Ev = { id: number; type: 'income' | 'expense' | 'financing'; amount: number; actualAmount: number; mid: number; desc: string };
+type Ev = { id: number; naturaleza: 'ingreso' | 'gasto'; familia?: string; amount: number; actualAmount: number; mid: number; desc: string };
 // amount = previsto (con signo) · actualAmount = real (magnitud) · mid = movimiento vinculado
 const EVENTOS: Ev[] = [
-  { id: 1, type: 'income',    amount:  850, actualAmount: 850,  mid: 1, desc: 'Renta Buigas 15' },
-  { id: 2, type: 'income',    amount:  450, actualAmount: 430,  mid: 2, desc: 'Renta Tenderina 64 (inquilino pagó 20 menos)' },
-  { id: 3, type: 'financing', amount: -3445, actualAmount: 3445, mid: 3, desc: 'Cuota préstamos' },
-  { id: 4, type: 'expense',   amount: -312, actualAmount: 312,  mid: 4, desc: 'Comunidad' },
-  { id: 5, type: 'expense',   amount: -40,  actualAmount: 40,   mid: 5, desc: 'Compromiso personal · gimnasio' },
+  { id: 1, naturaleza: 'ingreso',    amount:  850, actualAmount: 850,  mid: 1, desc: 'Renta Buigas 15' },
+  { id: 2, naturaleza: 'ingreso',    amount:  450, actualAmount: 430,  mid: 2, desc: 'Renta Tenderina 64 (inquilino pagó 20 menos)' },
+  { id: 3, naturaleza: 'gasto', familia: 'prestamo_hipoteca', amount: -3445, actualAmount: 3445, mid: 3, desc: 'Cuota préstamos' },
+  { id: 4, naturaleza: 'gasto',   amount: -312, actualAmount: 312,  mid: 4, desc: 'Comunidad' },
+  { id: 5, naturaleza: 'gasto',   amount: -40,  actualAmount: 40,   mid: 5, desc: 'Compromiso personal · gimnasio' },
 ];
 // Movimiento conciliado NO planificado (sin evento) — gasto imprevisto.
 const IMPREVISTO = { id: 6, amount: -85, desc: 'Gasolina (no planificado)' };
@@ -31,19 +31,19 @@ describe('PRUEBA · marzo 2026 cerrado · previsto vs real', () => {
     const db = await initDB();
     for (const e of EVENTOS) {
       await db.put('treasuryEvents', {
-        id: e.id, type: e.type, amount: e.amount, predictedDate: '2026-03-10T00:00:00.000Z',
+        id: e.id, naturaleza: e.naturaleza, familia: e.familia, amount: e.amount, predictedDate: '2026-03-10T00:00:00.000Z',
         año: 2026, mes: 3, status: 'executed', actualAmount: e.actualAmount,
         executedMovementId: e.mid, movementId: e.mid, description: e.desc,
         sourceType: 'contrato', createdAt: '', updatedAt: '',
       } as never);
       await db.put('movements', {
-        id: e.mid, accountId: 1, date: '2026-03-12', amount: e.type === 'income' ? e.actualAmount : -e.actualAmount,
+        id: e.mid, accountId: 1, date: '2026-03-12', naturaleza: e.naturaleza, amount: e.naturaleza === 'ingreso' ? e.actualAmount : -e.actualAmount,
         description: e.desc, unifiedStatus: 'conciliado', status: 'conciliado', source: 'import',
-        category: { tipo: e.type === 'income' ? 'Ingresos' : 'Gastos' }, createdAt: '', updatedAt: '',
+        category: { tipo: e.naturaleza === 'ingreso' ? 'Ingresos' : 'Gastos' }, createdAt: '', updatedAt: '',
       } as never);
     }
     await db.put('movements', {
-      id: IMPREVISTO.id, accountId: 1, date: '2026-03-20', amount: IMPREVISTO.amount,
+      id: IMPREVISTO.id, accountId: 1, date: '2026-03-20', naturaleza: 'gasto', amount: IMPREVISTO.amount,
       description: IMPREVISTO.desc, unifiedStatus: 'conciliado', status: 'conciliado', source: 'import',
       category: { tipo: 'Gastos' }, createdAt: '', updatedAt: '',
     } as never);

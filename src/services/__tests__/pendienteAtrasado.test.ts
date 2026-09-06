@@ -41,7 +41,7 @@ const MES_QUE_VIENE = diaDelMes(1);
 
 const evento = (over: Partial<TreasuryEvent>): Omit<TreasuryEvent, 'id'> =>
   ({
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -60,
     predictedDate: MES_PASADO,
     description: 'Comunidad',

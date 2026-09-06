@@ -23,7 +23,7 @@ const cuenta: Account = {
 };
 
 const ev = (over: Partial<TreasuryEvent> & { id: number }): TreasuryEvent => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: '2026-07-20',
   description: 'Recibo luz',
@@ -44,7 +44,7 @@ const mov = (over: Partial<Movement> & { id: number }): Movement => ({
   unifiedStatus: 'conciliado',
   source: 'import',
   category: { tipo: 'Gastos' },
-  type: 'Gasto',
+  naturaleza: 'gasto',
   origin: 'CSV',
   movementState: 'Confirmado',
   ambito: 'personal',
@@ -75,8 +75,8 @@ describe('cabecera', () => {
       <DrawerCuenta
         {...base}
         eventos={[
-          ev({ id: 1, type: 'income', amount: 650, predictedDate: '2026-07-20' }),
-          ev({ id: 2, type: 'expense', amount: 200, predictedDate: '2026-07-25' }),
+          ev({ id: 1, naturaleza: 'ingreso', amount: 650, predictedDate: '2026-07-20' }),
+          ev({ id: 2, naturaleza: 'gasto', amount: 200, predictedDate: '2026-07-25' }),
         ]}
       />
     );
@@ -96,7 +96,7 @@ describe('cabecera', () => {
     render(
       <DrawerCuenta
         {...base}
-        eventos={[ev({ id: 1, type: 'expense', amount: 500, descartado: true })]}
+        eventos={[ev({ id: 1, naturaleza: 'gasto', amount: 500, descartado: true })]}
       />
     );
     // Saldo final sigue siendo el saldo de hoy.

@@ -94,7 +94,7 @@ it('el corte de la compra no coincide con el del previsto · cuenta pero el tile
   store.treasuryEvents = [
     {
       id: 900,
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: -30,
       predictedDate: '2026-08-31',
       description: 'Recibo tarjeta Carrefour',

@@ -31,6 +31,7 @@ import {
   cobroPrevistoDelMes,
   cuadroDePosicion,
 } from '../../../../services/prestamoInversionCuadro';
+import { clasificacionDeOrigen } from '../../../../services/catalogo/clasificacionDeOrigen';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -398,7 +399,7 @@ export async function generateMonthlyForecasts(
       const cuentaCobro = planGestion.cuentaPorContrato.get(contract.id) ?? contract.cuentaCobroId;
 
       await insertEvent({
-        type: 'income' as const,
+        ...clasificacionDeOrigen('contrato'),
         amount,
         predictedDate: buildDate(year, month, day),
         description: `Renta – ${inquilino}`,
@@ -450,7 +451,7 @@ export async function generateMonthlyForecasts(
       const padre = contracts.find((c) => c.id === com.padreId);
       const day = padre?.diaPago ?? 1;
       await insertEvent({
-        type: 'expense' as const,
+        ...clasificacionDeOrigen('comision_gestion'),
         amount: com.importe,
         predictedDate: buildDate(year, month, day),
         description: `Comisión gestión – ${padre?.inquilino?.nombre ?? 'Agencia'}`,
@@ -492,7 +493,7 @@ export async function generateMonthlyForecasts(
       if (netoMes <= 0) continue;
 
       await insertEvent({
-        type: 'income' as const,
+        ...clasificacionDeOrigen('nomina'),
         amount: netoMes,
         predictedDate: getBusinessDayForRule(year, month, resolveReglaCobroNomina(nomina), 25),
         description: `Nómina – ${nomina.nombre ?? 'Empresa'}`,
@@ -526,7 +527,7 @@ export async function generateMonthlyForecasts(
       }
 
       await insertEvent({
-        type: 'income' as const,
+        ...clasificacionDeOrigen('otros_ingresos'),
         amount: ingreso.importe,
         predictedDate: buildDate(year, month, ingreso.reglasDia?.dia ?? 1),
         description: `Otros ingresos – ${ingreso.nombre ?? ingreso.tipo}`,
@@ -612,7 +613,7 @@ export async function generateMonthlyForecasts(
       if (existingByDescription) {
         await db.put('treasuryEvents', {
           ...existingByDescription,
-          type: 'financing' as const,
+          ...clasificacionDeOrigen(sourceType),
           amount: cuota,
           predictedDate: currentPeriodo?.fechaCargo ?? buildDate(year, month, prestamo.diaCargoMes ?? 1),
           description,
@@ -626,7 +627,7 @@ export async function generateMonthlyForecasts(
         updated++;
       } else {
         await insertEvent({
-          type: 'financing' as const,
+          ...clasificacionDeOrigen(sourceType),
           amount: cuota,
           predictedDate: currentPeriodo?.fechaCargo ?? buildDate(year, month, prestamo.diaCargoMes ?? 1),
           description,
@@ -670,7 +671,7 @@ export async function generateMonthlyForecasts(
         }
 
         await insertEvent({
-          type: 'income' as const,
+          ...clasificacionDeOrigen('autonomo_ingreso'),
           amount: fuente.importeEstimado,
           predictedDate: buildDate(year, month, fuente.diaCobro ?? 1),
           description: `${fuente.nombre || 'Ingreso autónomo'} – ${autonomoActivo.nombre}`,
@@ -714,7 +715,7 @@ export async function generateMonthlyForecasts(
         }
 
         await insertEvent({
-          type: 'expense' as const,
+          ...clasificacionDeOrigen('autonomo_gasto'),
           amount: gasto.importe,
           predictedDate: buildDate(year, month, gasto.diaPago ?? 1),
           description: `${gasto.descripcion || 'Gasto actividad'} – ${autonomoActivo.nombre}`,
@@ -733,7 +734,7 @@ export async function generateMonthlyForecasts(
           skipped++;
         } else {
           await insertEvent({
-            type: 'expense' as const,
+            ...clasificacionDeOrigen('autonomo_cuota'),
             amount: autonomoActivo.cuotaAutonomos,
             predictedDate: cuotaPredictedDate,
             description: `Cuota autónomos – ${autonomoActivo.nombre}`,
@@ -763,7 +764,7 @@ export async function generateMonthlyForecasts(
           }
 
           await insertEvent({
-            type: 'expense' as const,
+            ...clasificacionDeOrigen('autonomo_gasto_legacy'),
             amount: monthlyAmount,
             predictedDate: cuotaPredictedDate,
             description: `${gasto.descripcion || 'Gasto deducible'} – ${autonomoActivo.nombre}`,
@@ -826,7 +827,7 @@ export async function generateMonthlyForecasts(
             skipped++;
           } else {
             await insertEvent({
-              type: 'expense' as const,
+              ...clasificacionDeOrigen('inversion_compra'),
               amount: pos.total_aportado,
               predictedDate: fechaCompraDateOnly,
               description: `Compra – ${pos.nombre}`,
@@ -854,7 +855,7 @@ export async function generateMonthlyForecasts(
             skipped++;
           } else {
             await insertEvent({
-              type: 'expense' as const,
+              ...clasificacionDeOrigen('inversion_aportacion'),
               amount: aportacion.importe,
               predictedDate: fechaAp,
               description: `Aportación – ${pos.nombre} (${fechaAp})`,
@@ -903,7 +904,7 @@ export async function generateMonthlyForecasts(
               skipped++;
             } else {
               await insertEvent({
-                type: 'expense' as const,
+                ...clasificacionDeOrigen('inversion_aportacion'),
                 amount: planAp.importe,
                 predictedDate: fechaPlanAp,
                 description: descPlanAp,
@@ -975,7 +976,7 @@ export async function generateMonthlyForecasts(
               skipped++;
             } else {
               await insertEvent({
-                type: 'income' as const,
+                ...clasificacionDeOrigen('inversion_rendimiento'),
                 amount: Math.round(cobroPrestamo.neto * 100) / 100,
                 predictedDate: cobroPrestamo.fecha,
                 description: cobroPrestamo.incluyeCapital
@@ -1013,7 +1014,7 @@ export async function generateMonthlyForecasts(
                 skipped++;
               } else {
                 await insertEvent({
-                  type: 'income' as const,
+                  ...clasificacionDeOrigen('inversion_rendimiento'),
                   amount: Math.round(netoPorPago * 100) / 100,
                   predictedDate: fechaRend,
                   description: `Intereses netos – ${pos.nombre}`,
@@ -1066,7 +1067,7 @@ export async function generateMonthlyForecasts(
                 skipped++;
               } else {
                 await insertEvent({
-                  type: 'income' as const,
+                  ...clasificacionDeOrigen('inversion_dividendo'),
                   amount: Math.round(netoPorPago * 100) / 100,
                   predictedDate: fechaDiv,
                   description: `Dividendos netos – ${pos.nombre}`,
@@ -1103,7 +1104,7 @@ export async function generateMonthlyForecasts(
             skipped++;
           } else {
             await insertEvent({
-              type: 'income' as const,
+              ...clasificacionDeOrigen('inversion_liquidacion'),
               amount: pos.valor_actual,
               predictedDate: fechaVenc,
               description: `Vencimiento depósito – ${pos.nombre}`,
@@ -1127,7 +1128,7 @@ export async function generateMonthlyForecasts(
             skipped++;
           } else {
             await insertEvent({
-              type: 'income' as const,
+              ...clasificacionDeOrigen('inversion_liquidacion'),
               amount: importeLiq,
               predictedDate: fechaLiq,
               description: `Liquidación – ${pos.nombre}`,
@@ -1263,7 +1264,9 @@ export async function generateMonthlyForecasts(
             if (Math.abs(resultado) > 1) {
               const fechaDeclaracion = buildDate(year, mesDeclaracion, diaDeclaracion);
               await insertEvent({
-                type: resultado > 0 ? ('expense' as const) : ('income' as const),
+                naturaleza: resultado > 0 ? ('gasto' as const) : ('ingreso' as const),
+                familia: 'impuestos_tasas' as const,
+                subtipo: 'otros_tributos' as const,
                 amount: Math.round(Math.abs(resultado) * 100) / 100,
                 predictedDate: fechaDeclaracion,
                 description: irpfDescripcion,

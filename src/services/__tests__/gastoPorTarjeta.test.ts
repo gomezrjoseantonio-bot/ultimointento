@@ -19,7 +19,7 @@ import type { Tarjeta } from '../../types/tarjetas';
 const recibo = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     // Los gastos se guardan en negativo.
     amount: -180,
     predictedDate: '2026-02-05',

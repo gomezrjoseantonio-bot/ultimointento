@@ -53,7 +53,10 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { AEATBox } from './db/types-contratos';
 
-export type MovementType = 'ingreso' | 'gasto' | 'financiacion' | 'traspaso';
+// `MovementType` (ingreso/gasto/financiacion/traspaso) RETIRADO en E2.4.1b · la
+// naturaleza es la del catálogo único. Lo que el modal de alta ofrece como
+// pestañas es cosa suya (`TipoAlta`), no un vocabulario de dominio.
+import type { Naturaleza } from './catalogo/catalogoUnico';
 export type Ambito = 'personal' | 'inmueble';
 export type CategoryStoreName = 'gastosInmueble' | 'mejorasInmueble' | 'mueblesInmueble';
 
@@ -64,8 +67,8 @@ export interface CategoryDef {
   label: string;
   /** Icono lucide para cards y pills. */
   icon: LucideIcon;
-  /** Tipo de movimiento al que pertenece. */
-  tipo: MovementType;
+  /** Naturaleza (eje 1 del catálogo único) a la que pertenece. */
+  tipo: Exclude<Naturaleza, 'movimiento_interno'>;
   /** Ámbito (personal, inmueble o ambos). */
   ambito: Ambito | 'ambos';
   /**
@@ -405,7 +408,7 @@ export function getAllCategories(): CategoryDef[] {
  * pero siguen tipando registros históricos vía `getCategoryByKey`).
  */
 export function getCategoriesForModal(
-  tipo: MovementType,
+  tipo: Naturaleza,
   ambito?: Ambito,
 ): CategoryDef[] {
   const notLegacy = (c: CategoryDef) => !c.legacy;
@@ -492,16 +495,6 @@ export function resolveCategoryFromRecord(record: {
   return inferCategoryFromLegacyLabel(record.categoryLabel);
 }
 
-/**
- * Keys especiales para las dos patas de un traspaso entre cuentas propias.
- * NO aparecen en `getAllCategories()` — no son categorías visibles; son
- * marcadores para excluirlas de los KPIs.
- */
-export const TRANSFER_KEYS = {
-  SALIDA: 'traspaso_salida',
-  ENTRADA: 'traspaso_entrada',
-} as const;
-
-export function isTransferKey(key?: string | null): boolean {
-  return key === TRANSFER_KEYS.SALIDA || key === TRANSFER_KEYS.ENTRADA;
-}
+// `TRANSFER_KEYS` / `isTransferKey` RETIRADOS en E2.4.1b: una pata de traspaso
+// es `naturaleza: 'movimiento_interno'` + `familia: 'traspaso'` (con `sentido`
+// en el previsto y el signo en el movimiento). Ver `catalogoUnico.esMovimientoInterno`.

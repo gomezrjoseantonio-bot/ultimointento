@@ -1,5 +1,6 @@
 import { initDB, Account, TreasuryEvent, Movement } from './db';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
+import { conSigno } from './catalogo/catalogoUnico';
 
 // ============================================================================
 // E1.5 · el saldo cuenta las LÍNEAS del extracto que aún no tienen movimiento
@@ -69,13 +70,13 @@ function getSignedEventAmount(event: TreasuryEvent): number {
   // (confirmTreasuryEvent / confirmDecisions) y solo existe en lo ya cobrado, así
   // que un previsto puro cae a `amount` como antes.
   //
-  // Magnitud SIEMPRE por |·| y dirección por `type`. Los generadores no comparten
+  // Magnitud SIEMPRE por |·| y dirección por la naturaleza (y `sentido` en un interno). Los generadores no comparten
   // convención de signo: treasurySyncService guarda gastos en POSITIVO y
   // compromisos/vivienda en NEGATIVO. Sin Math.abs, un gasto negativo se contaba
   // como INGRESO (`-(-100)=+100`) → saldos mal y que bailan al regenerar.
   const base = event.actualAmount != null ? event.actualAmount : event.amount;
   const magnitude = Math.abs(base);
-  return event.type === 'income' ? magnitude : -magnitude;
+  return conSigno(event, magnitude);
 }
 
 function isCommittedTreasuryEvent(event: TreasuryEvent): boolean {

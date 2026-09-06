@@ -51,7 +51,7 @@ const baseMovement: Movement = {
 
 const baseEvent: TreasuryEvent = {
   id: 0,
-  type: 'income',
+  naturaleza: 'ingreso',
   amount: 0,
   predictedDate: '2026-04-22',
   description: '',
@@ -90,7 +90,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 380,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Perez',
@@ -134,7 +134,7 @@ describe('movementMatchingService.matchBatch', () => {
         }),
       ],
       treasuryEvents: [
-        event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
+        event({ id: 100, accountId: 42, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(alquilerStores));
@@ -152,7 +152,7 @@ describe('movementMatchingService.matchBatch', () => {
     const sinPalabraStores: FakeStores = {
       movements: [movement({ id: 1, accountId: 42, date: '2026-04-23', amount: 380, description: 'CONCEPTO GENERICO' })],
       treasuryEvents: [
-        event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
+        event({ id: 100, accountId: 42, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(sinPalabraStores));
@@ -163,7 +163,7 @@ describe('movementMatchingService.matchBatch', () => {
     const lejosStores: FakeStores = {
       movements: [movement({ id: 1, accountId: 42, date: '2026-04-30', amount: 380, description: 'ALQUILER' })],
       treasuryEvents: [
-        event({ id: 100, accountId: 42, type: 'income', amount: 380, predictedDate: '2026-04-22' }),
+        event({ id: 100, accountId: 42, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(lejosStores));
@@ -183,7 +183,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 380,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Perez',
@@ -206,8 +206,8 @@ describe('movementMatchingService.matchBatch', () => {
         movement({ id: 1, accountId: 42, date: '2026-04-23', amount: 395, description: 'TRANSFERENCIA ALQUILER' }),
       ],
       treasuryEvents: [
-        event({ id: 100, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-22', providerName: 'Inquilino A' }),
-        event({ id: 101, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-24', providerName: 'Inquilino B' }),
+        event({ id: 100, accountId: 42, naturaleza: 'ingreso', amount: 395, predictedDate: '2026-04-22', providerName: 'Inquilino A' }),
+        event({ id: 101, accountId: 42, naturaleza: 'ingreso', amount: 395, predictedDate: '2026-04-24', providerName: 'Inquilino B' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
@@ -228,9 +228,9 @@ describe('movementMatchingService.matchBatch', () => {
         movement({ id: 1, accountId: 42, date: '2026-04-23', amount: 395, description: 'TRANSFERENCIA DE MIGUEL LORENZO ALQUILER' }),
       ],
       treasuryEvents: [
-        event({ id: 100, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-22', providerName: 'Miguel Lorenzo' }),
-        event({ id: 101, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-22', providerName: 'Otro Uno' }),
-        event({ id: 102, accountId: 42, type: 'income', amount: 395, predictedDate: '2026-04-24', providerName: 'Otro Dos' }),
+        event({ id: 100, accountId: 42, naturaleza: 'ingreso', amount: 395, predictedDate: '2026-04-22', providerName: 'Miguel Lorenzo' }),
+        event({ id: 101, accountId: 42, naturaleza: 'ingreso', amount: 395, predictedDate: '2026-04-22', providerName: 'Otro Uno' }),
+        event({ id: 102, accountId: 42, naturaleza: 'ingreso', amount: 395, predictedDate: '2026-04-24', providerName: 'Otro Dos' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
@@ -256,9 +256,9 @@ describe('movementMatchingService.matchBatch', () => {
         }),
       ],
       treasuryEvents: [
-        event({ id: 100, accountId: 42, type: 'expense', amount: 48, predictedDate: '2026-08-01', providerName: 'Curenergía' }),
-        event({ id: 101, accountId: 42, type: 'expense', amount: 48, predictedDate: '2026-09-01', providerName: 'Curenergía' }),
-        event({ id: 102, accountId: 42, type: 'expense', amount: 48, predictedDate: '2026-10-01', providerName: 'Curenergía' }),
+        event({ id: 100, accountId: 42, naturaleza: 'gasto', amount: 48, predictedDate: '2026-08-01', providerName: 'Curenergía' }),
+        event({ id: 101, accountId: 42, naturaleza: 'gasto', amount: 48, predictedDate: '2026-09-01', providerName: 'Curenergía' }),
+        event({ id: 102, accountId: 42, naturaleza: 'gasto', amount: 48, predictedDate: '2026-10-01', providerName: 'Curenergía' }),
       ],
     };
     (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
@@ -287,7 +287,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: 48,
           predictedDate: '2026-08-01',
           providerName: 'Curenergía',
@@ -324,7 +324,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 500,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Norte',
@@ -332,7 +332,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 101,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 500,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Sur',
@@ -380,7 +380,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 500,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Perez',
@@ -413,7 +413,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 380,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Perez',
@@ -422,7 +422,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 101,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 380,
           predictedDate: '2026-04-22',
           providerName: 'Inquilino Perez',
@@ -456,7 +456,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 100,
           accountId: 42,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 380,
           predictedDate: '2026-06-20', // ~59 días · fuera hasta de la ventana de importe exacto
           providerName: 'Inquilino Perez',
@@ -495,7 +495,7 @@ describe('movementMatchingService.matchBatch', () => {
       event({
         id: 100,
         accountId: 42,
-        type: 'income',
+        naturaleza: 'ingreso',
         amount: 380,
         predictedDate: '2026-04-01',
         description: 'Renta 2026-04 · Adnan Parwez Khan',
@@ -622,7 +622,7 @@ describe('movementMatchingService.matchBatch', () => {
       event({
         id: 100,
         accountId: 42,
-        type: 'income',
+        naturaleza: 'ingreso',
         amount: 380,
         predictedDate: '2026-04-01',
         counterparty: 'Adnan Parwez Khan',
@@ -682,7 +682,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 200,
           accountId: 9,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: -30, // previsto
           predictedDate: '2026-08-02',
           providerName: 'Naturgy',
@@ -719,7 +719,7 @@ describe('movementMatchingService.matchBatch', () => {
         event({
           id: 200,
           accountId: 9,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: -30,
           predictedDate: '2026-08-02',
           providerName: 'Naturgy',

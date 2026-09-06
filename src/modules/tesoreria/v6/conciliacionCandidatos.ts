@@ -18,6 +18,7 @@
 // ============================================================================
 
 import type { TreasuryEvent } from '../../../services/db';
+import { conSigno, sentidoDe } from '../../../services/catalogo/catalogoUnico';
 
 export interface CandidatoPrevisto {
   id: number;
@@ -33,7 +34,7 @@ export interface CandidatoPrevisto {
 
 const importeConSigno = (e: TreasuryEvent): number => {
   const mag = Math.abs(e.actualAmount ?? e.amount);
-  return e.type === 'income' ? mag : -mag;
+  return conSigno(e, mag);
 };
 
 const soloDia = (iso?: string): string => (iso ?? '').slice(0, 10);
@@ -45,12 +46,9 @@ const diasEntre = (a: string, b: string): number => {
   return Math.abs(Math.round((ta - tb) / 86_400_000));
 };
 
-/** Signo del tipo compatible con el de la línea (financiación vale para los dos). */
-const signoCompatible = (importeLinea: number, tipo: TreasuryEvent['type']): boolean => {
-  if (tipo === 'income') return importeLinea >= 0;
-  if (tipo === 'expense') return importeLinea < 0;
-  return true; // financing
-};
+/** El sentido del previsto casa con el signo de la línea. */
+const signoCompatible = (importeLinea: number, e: Pick<TreasuryEvent, 'naturaleza' | 'sentido'>): boolean =>
+  sentidoDe(e) === 'entra' ? importeLinea >= 0 : importeLinea < 0;
 
 /**
  * Clave de SERIE · colapsa las instancias mensuales de un mismo recurrente.
@@ -89,7 +87,7 @@ export function candidatosDeLinea(
   // 1) Nos quedamos con el mismo signo y dentro de la ventana.
   const enVentana = previstos
     .filter((e) => e.id != null)
-    .filter((e) => signoCompatible(linea.importe, e.type))
+    .filter((e) => signoCompatible(linea.importe, e))
     .map((e) => ({ e, diffDias: diasEntre(linea.fecha, e.predictedDate) }))
     .filter((x) => x.diffDias <= maxDias);
 

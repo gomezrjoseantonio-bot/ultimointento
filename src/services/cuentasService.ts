@@ -6,6 +6,7 @@
 
 import { Account, Movement, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
+import { naturalezaPorSigno } from './catalogo/catalogoUnico';
 
 // Logging prefix for Treasury operations
 const LOG_PREFIX = '[TESO-ACCOUNTS]';
@@ -494,7 +495,7 @@ class CuentasService {
           balance: openingBalance,
           status: 'conciliado' as const,
           state: 'reconciled', // TransactionState legacy ('confirmed' no era un valor válido) · apertura = conciliada
-          type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
+          naturaleza: naturalezaPorSigno(openingBalance),
           origin: 'Manual' as const,
           movementState: 'Confirmado',
           ambito: 'personal' as const,

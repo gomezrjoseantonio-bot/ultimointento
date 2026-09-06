@@ -36,9 +36,9 @@ describe('accountBalanceService', () => {
       },
       cutoffDate: '2024-03-01',
       treasuryEvents: [
-        { accountId: 1, type: 'income', amount: 200, predictedDate: '2024-02-10' } as any,
-        { accountId: 1, type: 'expense', amount: 50, predictedDate: '2024-02-12' } as any,
-        { accountId: 1, type: 'income', amount: 999, predictedDate: '2024-03-02' } as any,
+        { accountId: 1, naturaleza: 'ingreso', amount: 200, predictedDate: '2024-02-10' } as any,
+        { accountId: 1, naturaleza: 'gasto', amount: 50, predictedDate: '2024-02-12' } as any,
+        { accountId: 1, naturaleza: 'ingreso', amount: 999, predictedDate: '2024-03-02' } as any,
       ],
       movements: [
         { accountId: 1, amount: -20, date: '2024-02-15' } as any,
@@ -70,7 +70,7 @@ describe('accountBalanceService', () => {
         {
           id: 900,
           accountId: 4,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: -30, // previsto
           actualAmount: 13.38, // real (magnitud positiva)
           predictedDate: '2026-08-03',
@@ -161,7 +161,7 @@ describe('accountBalanceService', () => {
       } as any,
       cutoffDate: '2026-08-16',
       treasuryEvents: [
-        { accountId: 7, type: 'income', amount: 500, predictedDate: '2026-08-30', status: 'predicted' } as any,
+        { accountId: 7, naturaleza: 'ingreso', amount: 500, predictedDate: '2026-08-30', status: 'predicted' } as any,
       ],
       movements: [],
       incluirRealesFuturos: true,
@@ -186,9 +186,9 @@ describe('accountBalanceService', () => {
       treasuryEvents: [
         // Pieza confirmada, incluso con accountId de la cuenta: NO debe contar
         // (la representa el recibo agregado). El guard la excluye.
-        { accountId: 8, type: 'expense', amount: -100, actualAmount: 100, predictedDate: '2026-08-10', status: 'executed', sourceType: 'gasto_tarjeta', tarjetaId: 11 } as any,
+        { accountId: 8, naturaleza: 'gasto', amount: -100, actualAmount: 100, predictedDate: '2026-08-10', status: 'executed', sourceType: 'gasto_tarjeta', tarjetaId: 11 } as any,
         // El RECIBO agregado sí cuenta cuando está confirmado.
-        { accountId: 8, type: 'expense', amount: -100, predictedDate: '2026-08-31', status: 'confirmed', sourceType: 'tarjeta_recibo' } as any,
+        { accountId: 8, naturaleza: 'gasto', amount: -100, predictedDate: '2026-08-31', status: 'confirmed', sourceType: 'tarjeta_recibo' } as any,
       ],
       movements: [],
     });
@@ -210,8 +210,8 @@ describe('accountBalanceService', () => {
       },
       cutoffDate: '2024-03-01',
       treasuryEvents: [
-        { accountId: 1, type: 'income', amount: 200, predictedDate: '2024-02-10' } as any,
-        { accountId: 1, type: 'expense', amount: 50, predictedDate: '2024-02-12' } as any,
+        { accountId: 1, naturaleza: 'ingreso', amount: 200, predictedDate: '2024-02-10' } as any,
+        { accountId: 1, naturaleza: 'gasto', amount: 50, predictedDate: '2024-02-12' } as any,
       ],
       movements: [],
     });
@@ -265,8 +265,8 @@ describe('accountBalanceService', () => {
       },
       cutoffDate: '2024-04-01',
       treasuryEvents: [
-        { accountId: 1, type: 'income', amount: 200, predictedDate: '2024-03-10' } as any,
-        { accountId: 1, type: 'expense', amount: 50, predictedDate: '2024-03-12' } as any,
+        { accountId: 1, naturaleza: 'ingreso', amount: 200, predictedDate: '2024-03-10' } as any,
+        { accountId: 1, naturaleza: 'gasto', amount: 50, predictedDate: '2024-03-12' } as any,
       ],
       movements: [
         { accountId: 1, amount: -25, date: '2024-03-20' } as any,
@@ -291,8 +291,8 @@ describe('accountBalanceService', () => {
       },
       cutoffDate: '2024-04-01',
       treasuryEvents: [
-        { accountId: 1, type: 'expense', amount: 22514.97, predictedDate: '2024-03-18', status: 'predicted' } as any,
-        { accountId: 1, type: 'income', amount: 22510, predictedDate: '2024-03-18', status: 'predicted' } as any,
+        { accountId: 1, naturaleza: 'gasto', amount: 22514.97, predictedDate: '2024-03-18', status: 'predicted' } as any,
+        { accountId: 1, naturaleza: 'ingreso', amount: 22510, predictedDate: '2024-03-18', status: 'predicted' } as any,
       ],
       movements: [
         { accountId: 1, amount: -22.99, date: '2024-03-01' } as any,
@@ -320,7 +320,7 @@ describe('accountBalanceService', () => {
       },
       cutoffDate: '2024-04-01',
       treasuryEvents: [
-        { accountId: 1, type: 'expense', amount: 200, predictedDate: '2024-03-18', status: 'confirmed' } as any,
+        { accountId: 1, naturaleza: 'gasto', amount: 200, predictedDate: '2024-03-18', status: 'confirmed' } as any,
       ],
       movements: [
         { accountId: 1, amount: -200, date: '2024-03-18' } as any,
@@ -347,14 +347,14 @@ describe('accountBalanceService', () => {
       treasuryEvents: [
         {
           accountId: 1,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: 200,
           predictedDate: '2024-03-18',
           movementId: 9001,
         } as any,
         {
           accountId: 1,
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 120,
           predictedDate: '2024-03-18',
         } as any,
@@ -384,9 +384,9 @@ describe('accountBalanceService', () => {
       cutoffDate: '2026-12-31',
       treasuryEvents: [
         // Anterior al saldo inicial → NO debe contarse (ya está en openingBalance).
-        { accountId: 1, type: 'income', amount: 180000, predictedDate: '2026-03-15', status: 'executed' } as any,
+        { accountId: 1, naturaleza: 'ingreso', amount: 180000, predictedDate: '2026-03-15', status: 'executed' } as any,
         // Posterior → sí cuenta.
-        { accountId: 1, type: 'expense', amount: 500, predictedDate: '2026-09-10', status: 'executed' } as any,
+        { accountId: 1, naturaleza: 'gasto', amount: 500, predictedDate: '2026-09-10', status: 'executed' } as any,
       ],
       movements: [
         // Anterior al saldo inicial → NO debe contarse.
@@ -451,7 +451,7 @@ describe('accountBalanceService', () => {
         { id: 1, accountId: 7, amount: -80, date: '2026-08-10' },
         { id: 2, accountId: 7, amount: 380, date: '2026-08-05' },
       ] as any[];
-      const eventos = [{ accountId: 7, type: 'expense', amount: 50, predictedDate: '2026-08-12', status: 'confirmed' }] as any[];
+      const eventos = [{ accountId: 7, naturaleza: 'gasto', amount: 50, predictedDate: '2026-08-12', status: 'confirmed' }] as any[];
       // Las líneas tal como las deja E1.1: una por movimiento, más las descartadas.
       const lineasDeHoy = [
         linea({ movementIds: [1] }),
@@ -528,7 +528,7 @@ describe('accountBalanceService', () => {
         ];
       }
       if (table === 'treasuryEvents') {
-        return [{ accountId: 1, type: 'expense', amount: 200, predictedDate: '2024-01-20' }];
+        return [{ accountId: 1, naturaleza: 'gasto', amount: 200, predictedDate: '2024-01-20' }];
       }
       if (table === 'movements') {
         return [{ accountId: 1, amount: 50, date: '2024-02-10' }];
@@ -560,7 +560,7 @@ describe('accountBalanceService', () => {
       openingBalance: 2648.67, openingBalanceDate: '2026-09-02',
     } as any;
     const recibo = {
-      id: 700, accountId: 42, type: 'expense', amount: 98.44, predictedDate: '2026-09-04',
+      id: 700, accountId: 42, naturaleza: 'gasto', amount: 98.44, predictedDate: '2026-09-04',
       status: 'executed', executedMovementId: 7, actualDate: '2026-09-01', actualAmount: 98.44,
     } as any;
     const cargo = { id: 7, accountId: 42, amount: -98.44, date: '2026-09-01' } as any;
@@ -583,7 +583,7 @@ describe('accountBalanceService', () => {
 
     it('el vínculo por executedMovementId manda aunque el importe real difiera del previsto', () => {
       // Previsto 30, real 13,38 el mismo día · el hub cuenta 13,38 una vez.
-      const gas = { id: 701, accountId: 42, type: 'expense', amount: 30, predictedDate: '2026-09-10', status: 'executed', executedMovementId: 8, actualDate: '2026-09-09', actualAmount: 13.38 } as any;
+      const gas = { id: 701, accountId: 42, naturaleza: 'gasto', amount: 30, predictedDate: '2026-09-10', status: 'executed', executedMovementId: 8, actualDate: '2026-09-09', actualAmount: 13.38 } as any;
       const mov = { id: 8, accountId: 42, amount: -13.38, date: '2026-09-09' } as any;
       const cuenta = { ...anclada, openingBalance: 100, openingBalanceDate: '2026-09-01' };
       expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-30', treasuryEvents: [gas], movements: [mov] })).toBeCloseTo(86.62, 2);
@@ -606,7 +606,7 @@ describe('accountBalanceService', () => {
     });
 
     it('un previsto sin puntear sigue en su fecha prevista', () => {
-      const previsto = { id: 702, accountId: 42, type: 'expense', amount: 40, predictedDate: '2026-09-04', status: 'predicted', actualDate: '2026-09-01' } as any;
+      const previsto = { id: 702, accountId: 42, naturaleza: 'gasto', amount: 40, predictedDate: '2026-09-04', status: 'predicted', actualDate: '2026-09-01' } as any;
       const cuenta = { ...anclada, openingBalance: 0, openingBalanceDate: '2026-08-01' };
       // No está comprometido: no suma en ningún corte.
       expect(calculateAccountBalanceAtDate({ account: cuenta, cutoffDate: '2026-09-06', treasuryEvents: [previsto], movements: [] })).toBe(0);

@@ -57,8 +57,8 @@ function direccionQueImplicaLaPropuesta(action: SuggestionAction): Direccion {
     case 'mark_personal_expense':
       return 'sale';
     case 'create_treasury_event':
-      if (action.type === 'income') return 'entra';
-      if (action.type === 'expense') return 'sale';
+      if (action.naturaleza === 'ingreso') return 'entra';
+      if (action.naturaleza === 'gasto') return 'sale';
       return 'ninguna';
     case 'ignore':
     default:
@@ -213,7 +213,7 @@ describe('el signo manda primero · un positivo no es un gasto', () => {
     const sugerencias = await sugerenciasDe(descripcion as string, importe as number);
 
     const gasto = sugerencias.find(
-      (s) => s.action.kind === 'create_treasury_event' && s.action.type === 'expense',
+      (s) => s.action.kind === 'create_treasury_event' && s.action.naturaleza === 'gasto',
     );
     expect(gasto).toBeDefined();
   });

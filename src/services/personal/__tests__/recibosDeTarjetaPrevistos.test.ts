@@ -216,7 +216,7 @@ describe('piezas de tarjeta', () => {
   const pieza = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
     ({
       id: 1,
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: -100,
       predictedDate: '2026-01-10',
       sourceType: 'gasto_tarjeta',

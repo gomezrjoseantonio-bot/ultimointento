@@ -625,7 +625,7 @@ export function generarEventosDesdeCompromiso(
     const importeFinal = esIngreso ? importeAjustado : -importeAjustado;
 
     const evento: Omit<TreasuryEvent, 'id'> = {
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: importeFinal,
       predictedDate: toISODateLocal(fecha),
       description: compromiso.alias,

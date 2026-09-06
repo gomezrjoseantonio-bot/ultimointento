@@ -8,10 +8,7 @@
 // distinto (ML · clasificación OCR). Este módulo cubre los defaults de factura y
 // justificante bancario en la pantalla de Conciliación.
 
-import {
-  resolveCategoryFromRecord,
-  TRANSFER_KEYS,
-} from './categoryCatalog';
+import { resolveCategoryFromRecord } from './categoryCatalog';
 
 export type DocRequirement = 'requerido' | 'no_aplica' | 'opcional';
 
@@ -43,9 +40,8 @@ const DEFAULTS_BY_KEY: Record<string, CategoryDocDefaults> = {
   // ── Gasto personal ──────────────────────────────────
   gasto_personal:        { factura: 'no_aplica',  justificante: 'opcional' },
 
-  // ── Traspasos internos (keys especiales, no en catálogo) ──
-  [TRANSFER_KEYS.SALIDA]:  { factura: 'no_aplica', justificante: 'no_aplica' },
-  [TRANSFER_KEYS.ENTRADA]: { factura: 'no_aplica', justificante: 'no_aplica' },
+  // Un traspaso interno no lleva factura ni justificante · lo decide su
+  // naturaleza (`movimiento_interno`), no una key: ver `computeDocFlags`.
 };
 
 // Defaults por `label` legado — solo para datos antiguos donde no existe

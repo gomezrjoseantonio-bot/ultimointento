@@ -67,7 +67,7 @@ describe('reconciliar duplicados existentes', () => {
     mockDB.get.mockImplementation(async (store: string, id: number) => {
       if (store === 'movements') return id === 9 ? punteado() : id === 50 ? importLine() : undefined;
       if (store === 'treasuryEvents' && id === 700) {
-        return { id: 700, movementId: 9, executedMovementId: 9, type: 'expense', amount: -98.44 };
+        return { id: 700, movementId: 9, executedMovementId: 9, naturaleza: 'gasto', amount: -98.44 };
       }
       return undefined;
     });

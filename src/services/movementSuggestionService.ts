@@ -52,13 +52,14 @@ import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { movimientosDesdeLineas, sugerenciasPorLinea, type SugerenciaPorLinea } from './lineaComoMovimiento';
+import type { Naturaleza } from './catalogo/catalogoUnico';
 
 export type SuggestionVia = 'compromiso_recurrente' | 'learning_rule' | 'heuristica';
 
 export type SuggestionAction =
   | {
       kind: 'create_treasury_event';
-      type: TreasuryEvent['type'];
+      naturaleza: Naturaleza;
       ambito: 'personal' | 'inmueble';
       inmuebleId?: number;
       categoryKey?: string;
@@ -226,7 +227,7 @@ function suggestFromCompromiso(
     description: `Coincide con compromiso "${c.alias}" (${c.proveedor?.nombre ?? 'proveedor sin nombre'})${porQue}`,
     action: {
       kind: 'create_treasury_event',
-      type: 'expense',
+      naturaleza: 'gasto',
       ambito,
       inmuebleId: r.inmuebleId,
       categoryKey: c.categoria,
@@ -325,7 +326,7 @@ function suggestFromLearningRule(
       ? { kind: 'mark_personal_expense', categoryKey: rule.categoria }
       : {
           kind: 'create_treasury_event',
-          type: rule.amountSign === 'positive' ? 'income' : 'expense',
+          naturaleza: rule.amountSign === 'positive' ? 'ingreso' : 'gasto',
           ambito: 'inmueble',
           inmuebleId: rule.inmuebleId ? Number(rule.inmuebleId) : undefined,
           categoryKey: rule.categoria,
@@ -405,7 +406,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       description: 'Posible suministro · proponer crear evento de tesorería en INMUEBLE (puedes cambiarlo a PERSONAL)',
       action: {
         kind: 'create_treasury_event',
-        type: 'expense',
+        naturaleza: 'gasto',
         ambito: 'inmueble',
         categoryKey: 'inmueble.suministros',
         sourceType: 'gasto',
@@ -420,7 +421,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta',
       action: {
         kind: 'create_treasury_event',
-        type: 'expense',
+        naturaleza: 'gasto',
         ambito: 'inmueble',
         categoryKey: 'vivienda.hipoteca',
         sourceType: 'prestamo',
@@ -436,7 +437,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       description: 'Posible impuesto del inmueble (IBI, tasa de basura, etc.)',
       action: {
         kind: 'create_treasury_event',
-        type: 'expense',
+        naturaleza: 'gasto',
         ambito: 'inmueble',
         categoryKey: 'inmueble.ibi',
         sourceType: 'gasto',
@@ -451,7 +452,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       description: 'Posible cuota de comunidad de propietarios',
       action: {
         kind: 'create_treasury_event',
-        type: 'expense',
+        naturaleza: 'gasto',
         ambito: 'inmueble',
         categoryKey: 'inmueble.comunidad',
         sourceType: 'gasto',

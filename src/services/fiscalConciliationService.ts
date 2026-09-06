@@ -409,7 +409,7 @@ async function conciliarAutonomo(
         const fecha = e.actualDate ?? e.predictedDate;
         if (!fecha) return false;
         const d = new Date(fecha);
-        return d.getFullYear() === ejercicio && d.getMonth() + 1 === mes && e.type === 'income';
+        return d.getFullYear() === ejercicio && d.getMonth() + 1 === mes && e.naturaleza === 'ingreso';
       });
 
       lineas.push(buildLineItem({

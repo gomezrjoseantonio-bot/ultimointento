@@ -18,12 +18,13 @@ import {
   TraspasoALaMismaCuentaError,
   TraspasoIncompletoError,
 } from '../traspasoInterno';
-import { TRANSFER_KEYS } from '../categoryCatalog';
 import { initDB, TreasuryEvent } from '../db';
 
 const pata = (over: Partial<TreasuryEvent>): TreasuryEvent =>
   ({
-    type: 'expense',
+    naturaleza: 'movimiento_interno',
+    sentido: 'sale',
+    familia: 'traspaso',
     amount: 2000,
     predictedDate: '2026-08-03',
     description: 'Traspaso · salida',
@@ -31,7 +32,6 @@ const pata = (over: Partial<TreasuryEvent>): TreasuryEvent =>
     accountId: 1,
     status: 'predicted',
     ambito: 'personal',
-    categoryKey: TRANSFER_KEYS.SALIDA,
     createdAt: '',
     updatedAt: '',
     ...over,
@@ -45,10 +45,9 @@ async function traspasoDe1a2(): Promise<{ salidaId: number; entradaId: number }>
     await db.add(
       'treasuryEvents',
       pata({
-        type: 'income',
+        sentido: 'entra',
         accountId: 2,
         description: 'Traspaso · entrada',
-        categoryKey: TRANSFER_KEYS.ENTRADA,
         transferMetadata: { targetAccountId: 1, pairEventId: salidaId },
       }) as never
     )
@@ -70,7 +69,8 @@ describe('reconocer una pata', () => {
   it('lo es si es traspaso y tiene pareja', () => {
     expect(
       esPataDeTraspaso({
-        categoryKey: TRANSFER_KEYS.SALIDA,
+        naturaleza: 'movimiento_interno',
+        familia: 'traspaso',
         transferMetadata: { targetAccountId: 2, pairEventId: 9 },
       })
     ).toBe(true);
@@ -78,12 +78,12 @@ describe('reconocer una pata', () => {
 
   it('un traspaso sin pareja no lo es · no hay nada que arrastrar', () => {
     expect(
-      esPataDeTraspaso({ categoryKey: TRANSFER_KEYS.SALIDA, transferMetadata: { targetAccountId: 2 } })
+      esPataDeTraspaso({ naturaleza: 'movimiento_interno', familia: 'traspaso', transferMetadata: { targetAccountId: 2 } })
     ).toBe(false);
   });
 
   it('un gasto normal tampoco', () => {
-    expect(esPataDeTraspaso({ categoryKey: 'suministro_inmueble' })).toBe(false);
+    expect(esPataDeTraspaso({ naturaleza: 'gasto', familia: 'suministro' })).toBe(false);
   });
 });
 
@@ -149,9 +149,9 @@ describe('corregir el traspaso entero', () => {
     const salida = await leerEvento(salidaId);
     const entrada = await leerEvento(entradaId);
     expect(salida?.accountId).toBe(3);
-    expect(salida?.type).toBe('expense');
+    expect(salida?.sentido).toBe('sale');
     expect(entrada?.accountId).toBe(4);
-    expect(entrada?.type).toBe('income');
+    expect(entrada?.sentido).toBe('entra');
     // `targetAccountId` es siempre "la otra".
     expect(salida?.transferMetadata?.targetAccountId).toBe(4);
     expect(entrada?.transferMetadata?.targetAccountId).toBe(3);

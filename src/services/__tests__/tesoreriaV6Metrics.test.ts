@@ -16,7 +16,7 @@ import {
 import type { Account, Movement, TreasuryEvent } from '../db';
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: '2026-07-10',
   description: 'x',
@@ -36,7 +36,7 @@ const mov = (over: Partial<Movement> = {}): Movement => ({
   unifiedStatus: 'conciliado',
   source: 'import',
   category: { tipo: 'Gastos' },
-  type: 'Gasto',
+  naturaleza: 'gasto',
   origin: 'CSV',
   movementState: 'Confirmado',
   ambito: 'personal',
@@ -59,9 +59,9 @@ describe('convenciones de signo y pendiente', () => {
   it('la dirección la marca `type`, no el signo de `amount`', () => {
     // treasurySyncService guarda gastos en positivo y otros en negativo; sin
     // Math.abs, un gasto de -100 se contaría como ingreso de +100.
-    expect(importeConSigno({ amount: 100, type: 'expense' })).toBe(-100);
-    expect(importeConSigno({ amount: -100, type: 'expense' })).toBe(-100);
-    expect(importeConSigno({ amount: -650, type: 'income' })).toBe(650);
+    expect(importeConSigno({ amount: 100, naturaleza: 'gasto' })).toBe(-100);
+    expect(importeConSigno({ amount: -100, naturaleza: 'gasto' })).toBe(-100);
+    expect(importeConSigno({ amount: -650, naturaleza: 'ingreso' })).toBe(650);
   });
 
   it('un descartado no es pendiente, y un ejecutado tampoco', () => {
@@ -90,9 +90,9 @@ describe('§4.1 · KPIs del hero', () => {
       cuentas: [cuenta(1), cuenta(2)],
       saldoPorCuenta: saldos,
       eventos: [
-        ev({ type: 'income', amount: 650, predictedDate: '2026-07-20' }),
-        ev({ type: 'expense', amount: 74.09, predictedDate: '2026-07-25' }),
-        ev({ type: 'expense', amount: 999, predictedDate: '2026-08-01' }), // otro mes
+        ev({ naturaleza: 'ingreso', amount: 650, predictedDate: '2026-07-20' }),
+        ev({ naturaleza: 'gasto', amount: 74.09, predictedDate: '2026-07-25' }),
+        ev({ naturaleza: 'gasto', amount: 999, predictedDate: '2026-08-01' }), // otro mes
       ],
       year: 2026,
       month0: 6,
@@ -112,7 +112,7 @@ describe('§4.1 · KPIs del hero', () => {
     const conDescarte = calcularKpisHero({
       cuentas: [cuenta(1)],
       saldoPorCuenta: saldos,
-      eventos: [ev({ type: 'expense', amount: 500, predictedDate: '2026-07-20', descartado: true })],
+      eventos: [ev({ naturaleza: 'gasto', amount: 500, predictedDate: '2026-07-20', descartado: true })],
       year: 2026,
       month0: 6,
     });
@@ -139,9 +139,9 @@ describe('§4.1 · KPIs del hero', () => {
       cuentas: [cuenta(1), cuenta(2)],
       saldoPorCuenta: saldos,
       eventos: [
-        ev({ type: 'income', amount: 650, predictedDate: '2026-07-20' }),
-        ev({ type: 'income', amount: 2500, predictedDate: '2026-07-21', categoryKey: 'traspaso_entrada' }),
-        ev({ type: 'expense', amount: 2500, predictedDate: '2026-07-21', categoryKey: 'traspaso_salida' }),
+        ev({ naturaleza: 'ingreso', amount: 650, predictedDate: '2026-07-20' }),
+        ev({ amount: 2500, predictedDate: '2026-07-21', naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra' }),
+        ev({ amount: 2500, predictedDate: '2026-07-21', naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale' }),
       ],
       year: 2026,
       month0: 6,
@@ -270,8 +270,8 @@ describe('§4.3 · rejilla de 6 meses', () => {
     const meses = proyectarMeses({
       saldoHoy: 1000,
       eventos: [
-        ev({ type: 'income', amount: 500, predictedDate: '2026-07-20' }),
-        ev({ type: 'expense', amount: 200, predictedDate: '2026-08-10' }),
+        ev({ naturaleza: 'ingreso', amount: 500, predictedDate: '2026-07-20' }),
+        ev({ naturaleza: 'gasto', amount: 200, predictedDate: '2026-08-10' }),
       ],
       year: 2026,
       month0: 6,
@@ -293,8 +293,8 @@ describe('§4.3 · rejilla de 6 meses', () => {
     const meses = proyectarMeses({
       saldoHoy: 1000,
       eventos: [
-        ev({ type: 'income', amount: 300, predictedDate: '2026-07-02' }),
-        ev({ type: 'income', amount: 500, predictedDate: '2026-07-20' }),
+        ev({ naturaleza: 'ingreso', amount: 300, predictedDate: '2026-07-02' }),
+        ev({ naturaleza: 'ingreso', amount: 500, predictedDate: '2026-07-20' }),
       ],
       year: 2026,
       month0: 6,
@@ -306,9 +306,9 @@ describe('§4.3 · rejilla de 6 meses', () => {
 
   it('la tarjeta del mes en curso cuadra con el hero · era la queja de Jose', () => {
     const eventos = [
-      ev({ type: 'income', amount: 395, predictedDate: '2026-07-01' }),
-      ev({ type: 'income', amount: 330, predictedDate: '2026-07-01' }),
-      ev({ type: 'expense', amount: 200, predictedDate: '2026-07-25' }),
+      ev({ naturaleza: 'ingreso', amount: 395, predictedDate: '2026-07-01' }),
+      ev({ naturaleza: 'ingreso', amount: 330, predictedDate: '2026-07-01' }),
+      ev({ naturaleza: 'gasto', amount: 200, predictedDate: '2026-07-25' }),
     ];
     const kpis = calcularKpisHero({
       cuentas: [{ id: 1, status: 'ACTIVE' } as never],
@@ -333,7 +333,7 @@ describe('§4.3 · rejilla de 6 meses', () => {
   it('cruza el fin de año sin perderse', () => {
     const meses = proyectarMeses({
       saldoHoy: 0,
-      eventos: [ev({ type: 'income', amount: 100, predictedDate: '2027-01-10' })],
+      eventos: [ev({ naturaleza: 'ingreso', amount: 100, predictedDate: '2027-01-10' })],
       year: 2026,
       month0: 10,
       hoy: '2026-11-01',
@@ -347,8 +347,8 @@ describe('§4.10 · cómo va el mes', () => {
   it('escala cada línea contra SU propio previsto', () => {
     const r = calcularRealidad({
       eventos: [
-        ev({ type: 'income', amount: 1000, predictedDate: '2026-07-05' }),
-        ev({ type: 'expense', amount: 200, predictedDate: '2026-07-06' }),
+        ev({ naturaleza: 'ingreso', amount: 1000, predictedDate: '2026-07-05' }),
+        ev({ naturaleza: 'gasto', amount: 200, predictedDate: '2026-07-06' }),
       ],
       movimientos: [mov({ amount: 500 }), mov({ amount: -100 })],
       year: 2026,
@@ -365,7 +365,7 @@ describe('§4.10 · cómo va el mes', () => {
     // −1.048 sobre −821 daría "128 % lleno", que se lee como mejor cuando
     // significa haber gastado de más.
     const r = calcularRealidad({
-      eventos: [ev({ type: 'expense', amount: 821, predictedDate: '2026-07-06' })],
+      eventos: [ev({ naturaleza: 'gasto', amount: 821, predictedDate: '2026-07-06' })],
       movimientos: [mov({ amount: -1048 })],
       year: 2026,
       month0: 6,
@@ -382,9 +382,9 @@ describe('§4.10 · cómo va el mes', () => {
         // `executedMovementId` es lo que escribe `confirmTreasuryEvent`: sin él
         // el mismo pago se contaría dos veces, una por la previsión que cumplió
         // y otra como gasto no planificado.
-        ev({ type: 'expense', amount: 1838.42, actualAmount: 1473.42, predictedDate: '2026-07-05', status: 'executed', executedMovementId: 7 }),
+        ev({ naturaleza: 'gasto', amount: 1838.42, actualAmount: 1473.42, predictedDate: '2026-07-05', status: 'executed', executedMovementId: 7 }),
         // Aún no ha ocurrido: no entra, o la desviación saldría falsa.
-        ev({ type: 'expense', amount: 5000, predictedDate: '2026-07-28' }),
+        ev({ naturaleza: 'gasto', amount: 5000, predictedDate: '2026-07-28' }),
       ],
       movimientos: [mov({ id: 7, amount: -1473.42 })],
       year: 2026,
@@ -401,7 +401,7 @@ describe('§4.10 · cómo va el mes', () => {
   it('un pago que nadie previó cuenta entero como desviación', () => {
     const r = calcularRealidad({
       eventos: [
-        ev({ type: 'expense', amount: 100, actualAmount: 100, predictedDate: '2026-07-05', status: 'executed', executedMovementId: 1 }),
+        ev({ naturaleza: 'gasto', amount: 100, actualAmount: 100, predictedDate: '2026-07-05', status: 'executed', executedMovementId: 1 }),
       ],
       movimientos: [
         mov({ id: 1, amount: -100, date: '2026-07-05' }),
@@ -424,8 +424,8 @@ describe('§4.10 · cómo va el mes', () => {
     const r = calcularRealidad({
       eventos: [],
       movimientos: [
-        mov({ id: 1, amount: -20, categoryKey: 'traspaso_salida' }),
-        mov({ id: 2, amount: 20, categoryKey: 'traspaso_entrada' }),
+        mov({ id: 1, amount: -20, naturaleza: 'movimiento_interno', familia: 'traspaso' }),
+        mov({ id: 2, amount: 20, naturaleza: 'movimiento_interno', familia: 'traspaso' }),
       ],
       year: 2026,
       month0: 6,
@@ -444,7 +444,7 @@ describe('§4.10 · cómo va el mes', () => {
       eventos: [
         // Con cuenta · un ejecutado SIEMPRE la tiene (`confirmTreasuryEvent`
         // la exige). Lo que le falta a este es a qué movimiento dio lugar.
-        ev({ type: 'expense', amount: 120, actualAmount: 96, predictedDate: '2026-07-05', status: 'executed', accountId: 1 }),
+        ev({ naturaleza: 'gasto', amount: 120, actualAmount: 96, predictedDate: '2026-07-05', status: 'executed', accountId: 1 }),
       ],
       movimientos: [mov({ id: 9, accountId: 1, amount: -96, date: '2026-07-05' })],
       year: 2026,
@@ -481,7 +481,7 @@ describe('§4.10 · cómo va el mes', () => {
 
   it('el descartado no cuenta como previsto', () => {
     const r = calcularRealidad({
-      eventos: [ev({ type: 'expense', amount: 500, predictedDate: '2026-07-05', descartado: true })],
+      eventos: [ev({ naturaleza: 'gasto', amount: 500, predictedDate: '2026-07-05', descartado: true })],
       movimientos: [],
       year: 2026,
       month0: 6,

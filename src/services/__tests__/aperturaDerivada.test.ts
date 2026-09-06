@@ -225,7 +225,7 @@ describe('el extracto ANTIGUO · la apertura retrocede sola (§31)', () => {
     stores.movements.push({ id: 700, accountId: 42, date: '2026-09-02', amount: -10.2, description: 'Bizum', source: 'import', importBatch: 'lote-sept' } as Movement);
     stores.lineasExtracto[0].movementIds = [700];
     // Y un previsto confirmado del día 1 con su movimiento aparte.
-    stores.treasuryEvents.push({ id: 5, accountId: 42, type: 'expense', amount: 993.43, predictedDate: '2026-09-01', status: 'executed', movementId: 701 });
+    stores.treasuryEvents.push({ id: 5, accountId: 42, naturaleza: 'gasto', amount: 993.43, predictedDate: '2026-09-01', status: 'executed', movementId: 701 });
     stores.movements.push({ id: 701, accountId: 42, date: '2026-09-01', amount: -993.43, description: 'Prestamo', source: 'manual' } as Movement);
     stores.lineasExtracto[3].movementIds = [701];
 
@@ -294,7 +294,7 @@ describe('aplicar · solo tras confirmar', () => {
     const extremos = extremosConSaldo(SANTANDER)!;
     await aplicarApertura(42, extremos);
     expect(stores.movements.find((m) => m.isOpeningBalance)).toMatchObject({
-      amount: APERTURA_DERIVADA, date: '2026-08-26', type: 'Ingreso',
+      amount: APERTURA_DERIVADA, date: '2026-08-26', naturaleza: 'ingreso',
     });
     // Y el hub lo sigue excluyendo: no cuenta dos veces.
     expect(saldoAtlasEl('2026-09-02', stores.accounts[0])).toBe(2635.4);

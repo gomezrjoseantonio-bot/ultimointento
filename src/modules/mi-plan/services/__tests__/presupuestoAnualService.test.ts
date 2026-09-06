@@ -37,16 +37,16 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
     const db = await initDB();
     // Renta (ingreso): previsto 450, real 430 (el inquilino pagó de menos).
     await db.add('treasuryEvents', ev({
-      type: 'income', sourceType: 'contrato', mes: 3, amount: 450, actualAmount: 430,
+      naturaleza: 'ingreso', sourceType: 'contrato', mes: 3, amount: 450, actualAmount: 430,
       description: 'Renta Tenderina',
     }));
     // Gasto de inmueble (ámbito INMUEBLE manda sobre la bolsa · decisión 3).
     await db.add('treasuryEvents', ev({
-      type: 'expense', ambito: 'inmueble', mes: 3, amount: 312, description: 'Comunidad',
+      naturaleza: 'gasto', ambito: 'inmueble', mes: 3, amount: 312, description: 'Comunidad',
     }));
     // Gasto personal · bolsa necesidades → Hogar y familia.
     await db.add('treasuryEvents', ev({
-      type: 'expense', bolsaPresupuesto: 'necesidades', mes: 3, amount: 3445, description: 'Vivienda',
+      naturaleza: 'gasto', bolsaPresupuesto: 'necesidades', mes: 3, amount: 3445, description: 'Vivienda',
     }));
     // Movimiento conciliado SIN evento · categoría transporte → necesidades → Hogar.
     await db.add('movements', {
@@ -70,7 +70,7 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
   it('lo no clasificable (ahorro/sin categoría) va al residuo VISIBLE, no a un grupo', async () => {
     const db = await initDB();
     await db.add('treasuryEvents', ev({
-      type: 'expense', bolsaPresupuesto: 'ahorroInversion', mes: 3, amount: 500, description: 'Aportación fondo',
+      naturaleza: 'gasto', bolsaPresupuesto: 'ahorroInversion', mes: 3, amount: 500, description: 'Aportación fondo',
     }));
     const real = await buildReal(2026);
     const m = real[MAR];
@@ -81,7 +81,7 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
   it('una cuota con prestamoId va SOLO a Deuda (regla 2)', async () => {
     const db = await initDB();
     await db.add('treasuryEvents', ev({
-      type: 'expense', ambito: 'inmueble', prestamoId: '7', mes: 3, amount: 620,
+      naturaleza: 'gasto', ambito: 'inmueble', prestamoId: '7', mes: 3, amount: 620,
       bolsaPresupuesto: 'inmueble', description: 'Cuota hipoteca',
     }));
     const real = await buildReal(2026);
@@ -277,7 +277,7 @@ describe('presupuestoAnualService · el mes de la foto cuenta desde hoy (secció
     } as any);
     // Un ingreso PREDICHO (no ejecutado) que vence a fin de mes → pendiente desde la foto.
     await db.add('treasuryEvents', {
-      id: 9001, type: 'income', sourceType: 'nomina', status: 'predicted',
+      id: 9001, naturaleza: 'ingreso', sourceType: 'nomina', status: 'predicted',
       amount: 1000, predictedDate: finMes, año: cy, mes: cm + 1, description: 'Nómina pendiente',
     } as any);
 

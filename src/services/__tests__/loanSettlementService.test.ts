@@ -345,7 +345,7 @@ describe('loanSettlementService', () => {
 
     // Una cuota prevista del cuadro, como la emite el guardado del préstamo.
     await db.add('treasuryEvents', {
-      type: 'financing',
+      naturaleza: 'gasto', familia: 'prestamo_hipoteca',
       amount: 700,
       predictedDate: '2027-01-01',
       description: 'Cuota 24',

@@ -37,8 +37,8 @@ async function seedV77() {
     id: 11, estadoContrato: 'sin_identificar',
     inquilino: { nombre: '', apellidos: '', dni: '', telefono: '', email: '' },
   });
-  await legacy.put('treasuryEvents', { id: 100, type: 'income', sourceType: 'contrato', sourceId: 11, amount: 500 });
-  await legacy.put('treasuryEvents', { id: 101, type: 'income', sourceType: 'contrato', sourceId: 10, amount: 600 });
+  await legacy.put('treasuryEvents', { id: 100, naturaleza: 'ingreso', sourceType: 'contrato', sourceId: 11, amount: 500 });
+  await legacy.put('treasuryEvents', { id: 101, naturaleza: 'ingreso', sourceType: 'contrato', sourceId: 10, amount: 600 });
   legacy.close();
 }
 

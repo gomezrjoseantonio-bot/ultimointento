@@ -17,7 +17,7 @@
 
 import { initDB } from './db';
 import type { Movement, TreasuryEvent } from './db';
-import { isTransferKey, TRANSFER_KEYS } from './categoryCatalog';
+import { conSigno, sentidoDe } from './catalogo/catalogoUnico';
 import {
   deleteTreasuryEventCompletely,
   revertTreasuryConfirmation,
@@ -39,9 +39,13 @@ export class TraspasoALaMismaCuentaError extends Error {
 
 /** `true` si este evento es una de las dos patas de un traspaso interno. */
 export function esPataDeTraspaso(
-  e: Pick<TreasuryEvent, 'categoryKey' | 'transferMetadata'>
+  e: Pick<TreasuryEvent, 'naturaleza' | 'familia' | 'transferMetadata'>
 ): boolean {
-  return isTransferKey(e.categoryKey) && e.transferMetadata?.pairEventId != null;
+  return (
+    e.naturaleza === 'movimiento_interno' &&
+    e.familia === 'traspaso' &&
+    e.transferMetadata?.pairEventId != null
+  );
 }
 
 export interface ParDeTraspaso {
@@ -66,10 +70,10 @@ export async function parDeTraspaso(eventId: number): Promise<ParDeTraspaso> {
   if (!otro || !esPataDeTraspaso(otro)) throw new TraspasoIncompletoError();
   if (otro.transferMetadata?.pairEventId !== eventId) throw new TraspasoIncompletoError();
 
-  const salida = uno.categoryKey === TRANSFER_KEYS.SALIDA ? uno : otro;
+  const salida = sentidoDe(uno) === 'sale' ? uno : otro;
   const entrada = salida === uno ? otro : uno;
-  if (salida.categoryKey !== TRANSFER_KEYS.SALIDA) throw new TraspasoIncompletoError();
-  if (entrada.categoryKey !== TRANSFER_KEYS.ENTRADA) throw new TraspasoIncompletoError();
+  if (sentidoDe(salida) !== 'sale') throw new TraspasoIncompletoError();
+  if (sentidoDe(entrada) !== 'entra') throw new TraspasoIncompletoError();
 
   return { salida, entrada } as ParDeTraspaso;
 }
@@ -137,7 +141,7 @@ export async function editarTraspasoInterno(
       date: fecha,
       valueDate: fecha,
       // El signo lo manda el papel de la pata, no lo que llegue en `importe`.
-      amount: evento.type === 'income' ? magnitud : -magnitud,
+      amount: conSigno(evento, magnitud),
       description: `${concepto} · ${sufijo}`,
       transferMetadata: { ...movimiento.transferMetadata, targetAccountId: otra },
       updatedAt: ahora,

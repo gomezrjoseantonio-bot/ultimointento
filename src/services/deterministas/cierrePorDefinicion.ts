@@ -99,7 +99,7 @@ async function previsionDelMes(db: Base, contratoId: number, fecha: string): Pro
   const cerca = eventos.filter(
     (e) =>
       e.id != null &&
-      e.type === 'income' &&
+      e.naturaleza === 'ingreso' &&
       RENT_SOURCE_TYPES.has(e.sourceType) &&
       (String(e.sourceId) === String(contratoId) || e.contratoId === contratoId) &&
       e.status !== 'executed' &&
@@ -148,7 +148,8 @@ async function cerrarRenta(db: Base, o: OrigenDeterminista, m: Movement, ahora: 
       // El pasado · el cobro se registra ya ejecutado. No es una previsión
       // fabricada (#1821/#1824): apunta al movimiento real y con su importe.
       const cobro: Omit<TreasuryEvent, 'id'> = {
-        type: 'income',
+        naturaleza: 'ingreso',
+        familia: 'alquiler',
         amount: Math.abs(m.amount),
         predictedDate: m.date,
         description: `Renta – ${renta.inquilino}`,

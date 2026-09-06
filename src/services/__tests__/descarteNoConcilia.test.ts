@@ -25,7 +25,7 @@ import { confirmTreasuryEvent } from '../treasuryConfirmationService';
 import { esConciliable, sinMarcaDeDescarte } from '../descarteDePrevision';
 
 const PREVISION = {
-  type: 'expense', amount: 60, predictedDate: '2026-08-15', description: 'Comunidad',
+  naturaleza: 'gasto', amount: 60, predictedDate: '2026-08-15', description: 'Comunidad',
   accountId: 1, status: 'predicted', sourceType: 'gasto_recurrente', sourceId: 1,
   createdAt: '', updatedAt: '',
 } as const;

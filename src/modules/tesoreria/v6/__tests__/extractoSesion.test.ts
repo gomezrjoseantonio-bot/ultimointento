@@ -36,7 +36,7 @@ const evt = (id: number, description: string, amount: number, date = '2026-03-10
     id,
     description,
     amount: Math.abs(amount),
-    type: amount >= 0 ? 'income' : 'expense',
+    naturaleza: amount >= 0 ? 'ingreso' : 'gasto',
     predictedDate: date,
     status: 'predicted',
   }) as TreasuryEvent;
@@ -554,7 +554,7 @@ describe('lote de traspasos iguales (A2)', () => {
 describe('seOfrecePara · a qué previsión se le puede asignar una línea', () => {
   const prev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
     ({
-      id: 1, type: 'expense', amount: 60, predictedDate: '2026-08-15',
+      id: 1, naturaleza: 'gasto', amount: 60, predictedDate: '2026-08-15',
       description: 'Comunidad', accountId: 7, status: 'predicted',
       sourceType: 'gasto_recurrente', createdAt: '', updatedAt: '', ...over,
     }) as TreasuryEvent;
@@ -580,12 +580,12 @@ describe('seOfrecePara · a qué previsión se le puede asignar una línea', () 
   // La red para las cuotas que el regenerado dejó sin cuenta: sin esto, la
   // hipoteca salía «sin rastro» y no había forma de conciliarla a mano.
   it('una cuota de préstamo huérfana de cuenta sí, para poder cuadrarla', () => {
-    expect(seOfrecePara(prev({ type: 'financing' as never, accountId: undefined }), 7)).toBe(true);
+    expect(seOfrecePara(prev({ naturaleza: 'gasto', familia: 'prestamo_hipoteca' as never, accountId: undefined }), 7)).toBe(true);
   });
 
   it('pero una descartada huérfana, no', () => {
     expect(
-      seOfrecePara(prev({ type: 'financing' as never, accountId: undefined, descartado: true }), 7)
+      seOfrecePara(prev({ naturaleza: 'gasto', familia: 'prestamo_hipoteca' as never, accountId: undefined, descartado: true }), 7)
     ).toBe(false);
   });
 

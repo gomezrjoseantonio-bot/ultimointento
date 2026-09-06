@@ -25,7 +25,7 @@ const viaB = (lineaId: number, ruleId: number, resuelveSola: boolean): Sugerenci
   via: 'learning_rule',
   confidence: 80,
   description: 'Regla aprendida',
-  action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', sourceType: 'gasto' },
+  action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', sourceType: 'gasto' },
   metadata: { learnKey: 'k', ruleId, appliedCount: 3, resuelveSola },
 });
 

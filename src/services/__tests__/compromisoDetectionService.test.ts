@@ -70,7 +70,7 @@ function mkMovement(
     unifiedStatus: fields.unifiedStatus ?? 'no_planificado',
     source: 'import',
     status: 'pending',
-    type: 'Gasto',
+    naturaleza: 'gasto',
     origin: 'CSV',
     movementState: 'Confirmado',
     category: { tipo: 'otros' },

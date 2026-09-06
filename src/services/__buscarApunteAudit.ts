@@ -442,7 +442,7 @@ export async function cargosCruzados(): Promise<CargoCruzado[]> {
   const porClave = new Map<string, TreasuryEvent[]>();
   for (const ev of eventos) {
     if (ev.descartado === true) continue;
-    if (ev.type !== 'expense') continue;
+    if (ev.naturaleza !== 'gasto') continue;
     const periodo = (ev.predictedDate ?? '').slice(0, 7);
     if (!periodo) continue;
     // El INMUEBLE entra en la clave, igual que en la sección 2 y por lo mismo:

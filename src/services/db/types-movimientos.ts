@@ -5,7 +5,7 @@
 import type { ArrastresEjercicio, DeclaracionInmueble, DeclaracionIRPF, OrigenDeclaracion } from '../../types/fiscal';
 import type { BolsaPresupuesto } from '../../types/compromisosRecurrentes';
 // Eje 3 del catálogo único (E2.4.1) · cómo se pagó o se cobró, NO qué se pagó.
-import type { Ambito, MetodoPago } from '../catalogo/catalogoUnico';
+import type { Ambito, FamiliaId, MetodoPago, Naturaleza, Sentido } from '../catalogo/catalogoUnico';
 
 export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
 export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New field for treasury_transactions
@@ -14,8 +14,8 @@ export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New fiel
 // Campo redundante que solo codificaba el booleano "conciliado". Fuente única de conciliación:
 // `unifiedStatus === 'conciliado'` (modelo unificado ATLAS HORIZON, escrito por todos los flujos).
 
-// V1.0: Enhanced movement types and statuses per requirements
-export type MovementType = 'Ingreso' | 'Gasto' | 'Transferencia' | 'Ajuste';
+// `MovementType` (Ingreso/Gasto/Transferencia/Ajuste) RETIRADO en E2.4.1b: la
+// naturaleza del catálogo único (eje 1) es la única que queda.
 export type MovementOrigin = 'OCR' | 'CSV' | 'Manual';
 export type MovementState = 'Previsto' | 'Confirmado' | 'Conciliado' | 'Revisar';
 
@@ -115,8 +115,14 @@ export interface Movement {
   importBatch?: string; // ID of the import batch
   csvRowIndex?: number; // Original row index in CSV (metadata only)
   
-  // V1.0: New fields per requirements
-  type: MovementType; // Ingreso/Gasto/Transferencia/Ajuste
+  // ── Los 4 ejes del catálogo único (E2.4.1b) ─────────────────────────────
+  /** Eje 1 · ingreso · gasto · movimiento_interno. La dirección la dice el signo de `amount`. */
+  naturaleza: Naturaleza;
+  /** Eje 2 · familia del catálogo · ausente = sin clasificar. */
+  familia?: FamiliaId;
+  /** Eje 2 · subtipo de la familia · opcional siempre. */
+  subtipo?: string;
+  // (eje 3 · `paymentMethod` · eje 4 · `ambito` + `inmuebleId`)
   origin: MovementOrigin; // OCR/CSV/Manual
   movementState: MovementState; // Previsto/Confirmado/Conciliado/Revisar
   tags?: string[]; // Auto-assigned tags from rules
@@ -246,7 +252,23 @@ export interface TransferSuggestion {
 }
 export interface TreasuryEvent {
   id?: number;
-  type: 'income' | 'expense' | 'financing';
+  // ── Los 4 ejes del catálogo único (E2.4.1b) ─────────────────────────────
+  // `type: 'income' | 'expense' | 'financing'` RETIRADO. La cuota de un
+  // préstamo es `gasto · prestamo_hipoteca`; la disposición, `movimiento_interno
+  // · disposicion_prestamo` (decisión Jose · 5 sep 2026).
+  /** Eje 1 · ingreso · gasto · movimiento_interno. */
+  naturaleza: Naturaleza;
+  /**
+   * Hacia dónde mueve el dinero de la cuenta · SOLO hace falta en un
+   * `movimiento_interno` (`amount` es magnitud): la pata de salida de un
+   * traspaso dice `sale`, la de entrada `entra`. Ingreso y gasto no lo llevan.
+   * Léelo siempre con `sentidoDe()`, nunca a pelo.
+   */
+  sentido?: Sentido;
+  /** Eje 2 · familia del catálogo · ausente = sin clasificar. */
+  familia?: FamiliaId;
+  /** Eje 2 · subtipo · opcional siempre. */
+  subtipo?: string;
   amount: number;
   predictedDate: string;
   description: string;

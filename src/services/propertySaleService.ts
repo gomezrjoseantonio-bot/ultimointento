@@ -11,6 +11,7 @@ import {
   calcularGananciaPatrimonial,
   type GananciaPatrimonialResult,
 } from './gananciaPatrimonialService';
+import { clasificacionDeOrigen } from './catalogo/clasificacionDeOrigen';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -911,7 +912,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const estimatedIrpf = fiscalSnapshot?.irpfEstimado ?? 0;
   if (estimatedIrpf > 0) {
     const treasuryEventId = await tx.objectStore('treasuryEvents').add({
-      type: 'expense',
+      ...clasificacionDeOrigen('irpf_prevision'),
       amount: estimatedIrpf,
       predictedDate: getSaleIrpfPredictionDate(input.saleDate),
       description: `IRPF estimado por venta ${propLabel}`,
@@ -958,7 +959,9 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     };
     const saleTreasuryEvents: Array<Omit<TreasuryEvent, 'id'>> = [
       {
-        type: 'income',
+        naturaleza: 'ingreso',
+        familia: 'venta',
+        subtipo: 'inmueble',
         amount: simulation.grossProceeds,
         predictedDate: input.saleDate,
         description: `Cobro venta ${propLabel}`,
@@ -966,7 +969,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         ...baseMeta,
       },
       ...saleExpenseBreakdown.map((expense) => ({
-        type: 'expense' as const,
+        naturaleza: 'gasto' as const,
         amount: expense.amount,
         predictedDate: input.saleDate,
         description: expense.description,
@@ -975,7 +978,8 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       })),
       ...(simulation.totalLoanSettlement > 0
         ? [{
-            type: 'financing' as const,
+            naturaleza: 'gasto' as const,
+            familia: 'prestamo_hipoteca' as const,
             amount: simulation.totalLoanSettlement,
             predictedDate: input.saleDate,
             description: `Cancelación deuda ${propLabel}`,
@@ -1408,7 +1412,7 @@ export const finalizePropertySaleLoanCancellationFromTreasuryEvent = async (trea
   if (!treasuryEvent) return false;
 
   const isSaleLoanCancellationEvent =
-    treasuryEvent.type === 'financing' &&
+    treasuryEvent.familia === 'prestamo_hipoteca' &&
     treasuryEvent.sourceType === 'manual' &&
     typeof treasuryEvent.sourceId === 'number' &&
     String(treasuryEvent.description || '').startsWith('Cancelación deuda ');

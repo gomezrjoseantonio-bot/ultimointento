@@ -18,7 +18,6 @@
 
 import { initDB } from './db';
 import type { Movement } from './db';
-import { TRANSFER_KEYS } from './categoryCatalog';
 import { materializarLinea, type BaseParaMaterializar } from './materializarLinea';
 import { feedLearningRule } from './aplicarSugerencia';
 
@@ -88,7 +87,8 @@ export async function convertirEnTraspaso(
     id: undefined,
     accountId: cuentaDestinoId,
     amount: magnitud,
-    type: 'Transferencia',
+    naturaleza: 'movimiento_interno',
+    familia: 'traspaso',
     // La entrada NO la respalda ningún extracto: existe porque el usuario dijo
     // que ese dinero fue a parar aquí.
     source: 'manual',
@@ -102,7 +102,6 @@ export async function convertirEnTraspaso(
     state: 'pending',
     status: 'pendiente',
     statusConciliacion: 'sin_match',
-    categoryKey: TRANSFER_KEYS.ENTRADA,
     categoryLabel: 'Traspaso · entrada',
     category: { tipo: 'Traspaso' },
     // La otra cuenta · en la entrada es la de ORIGEN, que es de donde vino.
@@ -127,8 +126,8 @@ export async function convertirEnTraspaso(
   //     traspaso sin pata al otro lado.
   await (db as any).put('movements', {
     ...movimiento,
-    type: 'Transferencia',
-    categoryKey: TRANSFER_KEYS.SALIDA,
+    naturaleza: 'movimiento_interno',
+    familia: 'traspaso',
     categoryLabel: 'Traspaso · salida',
     // Un traspaso no es gasto ni ingreso · quien suma los KPIs mira esta key
     // (`isTransferKey`) para dejarlo fuera, y la categoría vieja lo colaba.
@@ -143,7 +142,7 @@ export async function convertirEnTraspaso(
   // deshacer un traspaso que ya está escrito.
   await feedLearningRule(
     movimiento,
-    { categoria: TRANSFER_KEYS.SALIDA, ambito: 'personal' },
+    { categoria: 'traspaso', ambito: 'personal' },
     undefined,
     { tipo: 'traspaso', cuentaDestinoId }
   );
@@ -200,8 +199,8 @@ function comoPataDe(
   const conMetadata = transferMetadata ? { transferMetadata } : {};
   return {
     ...m,
-    type: 'Transferencia',
-    categoryKey: sentido === 'salida' ? TRANSFER_KEYS.SALIDA : TRANSFER_KEYS.ENTRADA,
+    naturaleza: 'movimiento_interno',
+    familia: 'traspaso',
     categoryLabel: sentido === 'salida' ? 'Traspaso · salida' : 'Traspaso · entrada',
     category: { tipo: 'Traspaso' },
     ...conMetadata,
@@ -240,7 +239,8 @@ export async function convertirEnEntradaDeTraspaso(
     id: undefined,
     accountId: cuentaOrigenId,
     amount: -magnitud,
-    type: 'Transferencia',
+    naturaleza: 'movimiento_interno',
+    familia: 'traspaso',
     source: 'manual',
     origin: 'Manual',
     unifiedStatus: 'no_planificado',
@@ -248,7 +248,6 @@ export async function convertirEnEntradaDeTraspaso(
     state: 'pending',
     status: 'pendiente',
     statusConciliacion: 'sin_match',
-    categoryKey: TRANSFER_KEYS.SALIDA,
     categoryLabel: 'Traspaso · salida',
     category: { tipo: 'Traspaso' },
     transferMetadata: { targetAccountId: movimiento.accountId },

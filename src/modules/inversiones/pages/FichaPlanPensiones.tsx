@@ -854,7 +854,9 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                     date: input.fecha,
                     amount: -total,
                     description: `Aportación plan pensiones: ${plan.nombre}`,
-                    type: 'Gasto',
+                    naturaleza: 'movimiento_interno',
+                    familia: 'aportacion',
+                    subtipo: 'plan_pensiones',
                     status: 'Confirmado',
                     unifiedStatus: 'confirmado',
                     source: 'manual',
@@ -862,7 +864,10 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                     updatedAt: now,
                   } as never);
                   await db.add('treasuryEvents' as never, {
-                    type: 'expense',
+                    naturaleza: 'movimiento_interno',
+                    sentido: 'sale',
+                    familia: 'aportacion',
+                    subtipo: 'plan_pensiones',
                     amount: total,
                     predictedDate: input.fecha,
                     description: `Aportación plan pensiones: ${plan.nombre}`,

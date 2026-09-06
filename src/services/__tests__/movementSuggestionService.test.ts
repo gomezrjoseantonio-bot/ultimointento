@@ -138,7 +138,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     // sourceType must align with event type (positive amountSign ⇒ income ⇒ 'ingreso').
     expect(suggestions[0].action.kind).toBe('create_treasury_event');
     if (suggestions[0].action.kind === 'create_treasury_event') {
-      expect(suggestions[0].action.type).toBe('income');
+      expect(suggestions[0].action.naturaleza).toBe('ingreso');
       expect(suggestions[0].action.sourceType).toBe('ingreso');
     }
     // BIZUM heuristic would have fired had vía B not short-circuited; assert it
@@ -360,7 +360,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           counterpartyPattern: '',
           descriptionPattern: 'retirada cajero servired',
           amountSign: 'negative',
-          categoria: 'traspaso_salida',
+          categoria: 'traspaso',
           ambito: 'personal',
           source: 'IMPLICIT',
           createdAt: '2026-01-01T00:00:00.000Z',

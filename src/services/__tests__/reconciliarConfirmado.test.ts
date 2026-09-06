@@ -44,8 +44,7 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
         accountId: 1,
         amount: -200,
         source: 'import',
-        type: 'Transferencia',
-        categoryKey: 'traspaso_salida',
+        naturaleza: 'movimiento_interno', familia: 'traspaso',
         transferMetadata: { targetAccountId: 9, pairMovementId: 6 },
       },
       // Pata de ENTRADA · la creó convertirEnTraspaso, manual, aún sin extracto.
@@ -55,8 +54,7 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
         date: '2026-08-18',
         amount: 200,
         source: 'manual',
-        type: 'Transferencia',
-        categoryKey: 'traspaso_entrada',
+        naturaleza: 'movimiento_interno', familia: 'traspaso',
         categoryLabel: 'Traspaso · entrada',
         category: { tipo: 'Traspaso' },
         transferMetadata: { targetAccountId: 1 },
@@ -77,8 +75,7 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
       unifiedStatus: 'conciliado',
       movementState: 'Conciliado',
       statusConciliacion: 'match_automatico',
-      categoryKey: 'traspaso_entrada',
-      type: 'Transferencia',
+      naturaleza: 'movimiento_interno', familia: 'traspaso',
       transferMetadata: { targetAccountId: 1 },
       amount: 200,
       date: '2026-08-19',
@@ -120,7 +117,7 @@ describe('un previsto PUNTEADO · su evento sigue apuntándole y toma el dato re
       },
     };
     eventos = {
-      700: { id: 700, accountId: 42, type: 'expense', amount: 20, status: 'executed', movementId: 9, executedMovementId: 9, actualDate: '2026-04-14', actualAmount: 20 },
+      700: { id: 700, accountId: 42, naturaleza: 'gasto', amount: 20, status: 'executed', movementId: 9, executedMovementId: 9, actualDate: '2026-04-14', actualAmount: 20 },
     };
     lineas = {};
   });

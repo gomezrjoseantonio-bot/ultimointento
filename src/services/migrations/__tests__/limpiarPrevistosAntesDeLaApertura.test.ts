@@ -20,7 +20,7 @@ const APERTURA = '2026-08-27';
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -50,
     predictedDate: '2026-08-05',
     description: 'Agua',

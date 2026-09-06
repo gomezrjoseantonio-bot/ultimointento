@@ -13,7 +13,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent & { id: number } =
   ({
     id: 1,
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 40.29,
     predictedDate: '2026-08-10',
     description: 'Seguro hogar',
@@ -86,7 +86,7 @@ describe('los dos seguros de 40,29 € y 40,23 €', () => {
 describe('el anidado piso → habitación', () => {
   const renta = (over: Partial<TreasuryEvent> = {}) =>
     eventoAItem(
-      ev({ sourceType: 'contrato', type: 'income', description: 'Renta', ...over }) as
+      ev({ sourceType: 'contrato', naturaleza: 'ingreso', description: 'Renta', ...over }) as
         TreasuryEvent & { id: number }
     );
 
@@ -129,7 +129,7 @@ describe('la renta de una habitación, suelta y bajo su piso', () => {
     ev({
       id: 1,
       sourceType: 'contrato',
-      type: 'income',
+      naturaleza: 'ingreso',
       inmuebleId: 4,
       inmuebleAlias: 'Tenderina 64 4IZ',
       unidadInmueble: 'hab-2',
@@ -157,7 +157,7 @@ describe('la renta de una habitación, suelta y bajo su piso', () => {
       ev({
         id: 2,
         sourceType: 'contrato',
-        type: 'income',
+        naturaleza: 'ingreso',
         inmuebleId: 5,
         inmuebleAlias: 'Carles Buigas 15',
         description: 'Renta – CONCEPCION RAMIREZ',
@@ -185,7 +185,7 @@ describe('el movimiento se lee igual que la previsión de la que nació', () => 
       unifiedStatus: 'conciliado',
       source: 'manual',
       category: { tipo: 'Ingresos' },
-      type: 'Ingreso',
+      naturaleza: 'ingreso',
       origin: 'Manual',
       movementState: 'Confirmado',
       ambito: 'inmueble',
@@ -231,14 +231,14 @@ describe('el movimiento se lee igual que la previsión de la que nació', () => 
 // vocabulario de pantalla: tienen que ser palabras que el producto use.
 describe('las etiquetas de tipo hablan el idioma de la aplicación', () => {
   it('un contrato es un ALQUILER · es lo que dice su propia fila', () => {
-    expect(origenDeEvento({ sourceType: 'contrato', type: 'income' })).toBe('Alquiler');
+    expect(origenDeEvento({ sourceType: 'contrato', naturaleza: 'ingreso' })).toBe('Alquiler');
   });
 
   it('un gasto recurrente es un RECIBO · "recurrente" es cómo lo genera ATLAS', () => {
-    expect(origenDeEvento({ sourceType: 'gasto_recurrente', type: 'expense' })).toBe('Recibo');
+    expect(origenDeEvento({ sourceType: 'gasto_recurrente', naturaleza: 'gasto' })).toBe('Recibo');
     // Salvo que sea de suministros, que tiene nombre propio.
     expect(
-      origenDeEvento({ sourceType: 'gasto_recurrente', type: 'expense', categoryKey: 'suministros.luz' })
+      origenDeEvento({ sourceType: 'gasto_recurrente', naturaleza: 'gasto', categoryKey: 'suministros.luz' })
     ).toBe('Suministro');
   });
 });
@@ -254,9 +254,8 @@ describe('un traspaso dice si es interno o externo', () => {
     eventoAItem(
       ev({
         id: 1,
-        type: 'expense',
         description: 'A la de ahorro · salida',
-        categoryKey: 'traspaso_salida',
+        naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale',
         transferMetadata: { targetAccountId: 3 },
         ...over,
       }) as TreasuryEvent & { id: number },
@@ -274,9 +273,8 @@ describe('un traspaso dice si es interno o externo', () => {
   // dos es "la otra".
   it('la entrada dice DESDE cuál viene', () => {
     const it = traspaso({
-      type: 'income',
       description: 'A la de ahorro · entrada',
-      categoryKey: 'traspaso_entrada',
+      naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra',
       transferMetadata: { targetAccountId: 1 },
     });
     expect(it.detalle).toBe('Transferencia interna · desde Santander');
@@ -289,7 +287,7 @@ describe('un traspaso dice si es interno o externo', () => {
       ev({
         id: 2,
         description: 'Traspaso · salida',
-        categoryKey: 'traspaso_salida',
+        naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale',
         transferMetadata: { targetAccountId: 99 },
       }) as TreasuryEvent & { id: number },
       undefined,
@@ -318,7 +316,7 @@ describe('un Bizum dice QUIÉN, no cómo', () => {
         unifiedStatus: 'no_planificado',
         source: 'import',
         category: { tipo: 'Ingresos' },
-        type: 'Ingreso',
+        naturaleza: 'ingreso',
         origin: 'CSV',
         movementState: 'Confirmado',
         ambito: 'personal',
@@ -363,7 +361,7 @@ describe('P6 · la clasificación se ve aunque haya pagador o sea externa', () =
       unifiedStatus: 'no_planificado',
       source: 'import',
       category: { tipo: 'Gastos' },
-      type: 'Gasto',
+      naturaleza: 'gasto',
       origin: 'CSV',
       movementState: 'Confirmado',
       ambito: 'inmueble',
@@ -382,14 +380,14 @@ describe('P6 · la clasificación se ve aunque haya pagador o sea externa', () =
 
   it('una transferencia externa clasificada enseña la clasificación', () => {
     const it = movimientoAItem(
-      base({ id: 2, type: 'Transferencia', description: 'TRANSFERENCIA A TERCERO' })
+      base({ id: 2, paymentMethod: 'transferencia', description: 'TRANSFERENCIA A TERCERO' })
     );
     expect(it.detalle).toBe('Gas');
   });
 
   it('sin clasificar, la transferencia externa sigue diciendo "Transferencia externa"', () => {
     const it = movimientoAItem(
-      base({ id: 3, type: 'Transferencia', categoryKey: undefined, subtypeKey: undefined })
+      base({ id: 3, paymentMethod: 'transferencia', categoryKey: undefined, subtypeKey: undefined })
     );
     expect(it.detalle).toBe('Transferencia externa');
   });
@@ -415,7 +413,7 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
       unifiedStatus: 'no_planificado',
       source: 'manual',
       category: { tipo: 'Gastos' },
-      type: 'Gasto',
+      naturaleza: 'gasto',
       origin: 'Manual',
       movementState: 'Confirmado',
       ambito: 'inmueble',
@@ -483,13 +481,13 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
     const it = movimientoAItem(
       gasto({
         id: 6,
-        type: 'Ingreso',
+        naturaleza: 'ingreso',
         amount: 400,
         categoryKey: 'otros_ingresos',
         subtypeKey: undefined,
       })
     );
-    expect(it.origen).toBe(origenDeEvento({ sourceType: 'otros_ingresos', type: 'income' }));
+    expect(it.origen).toBe(origenDeEvento({ sourceType: 'otros_ingresos', naturaleza: 'ingreso' }));
   });
 
   // Quien cobra manda sobre la etiqueta: es lo que se lee en el extracto.

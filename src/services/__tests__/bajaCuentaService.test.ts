@@ -27,7 +27,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-08-10',
     description: 'Recibo luz',
@@ -84,7 +84,7 @@ describe('cuándo se puede dar de baja', () => {
   });
 
   it('el importe de los ejemplos lleva signo · un ingreso no es un gasto', async () => {
-    eventos = [ev({ type: 'income', amount: 850, description: 'Alquiler' })];
+    eventos = [ev({ naturaleza: 'ingreso', amount: 850, description: 'Alquiler' })];
     const motivo = await motivoParaNoDarDeBaja(1);
     expect(motivo?.ejemplos[0].importe).toBe(850);
   });

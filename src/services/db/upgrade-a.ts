@@ -253,7 +253,9 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
         // H9: Treasury Events store
         if (!db.objectStoreNames.contains('treasuryEvents')) {
           const treasuryEventsStore = db.createObjectStore('treasuryEvents', { keyPath: 'id', autoIncrement: true });
-          treasuryEventsStore.createIndex('type', 'type', { unique: false });
+          // V93 (E2.4.1b): `naturaleza` (eje 1 del catálogo único) sustituye al
+          // índice `type` (income/expense/financing), que ya no existe.
+          treasuryEventsStore.createIndex('naturaleza', 'naturaleza', { unique: false });
           treasuryEventsStore.createIndex('predictedDate', 'predictedDate', { unique: false });
           treasuryEventsStore.createIndex('accountId', 'accountId', { unique: false });
           treasuryEventsStore.createIndex('status', 'status', { unique: false });
@@ -269,6 +271,15 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
         } else {
           // GAP-3: Añadir índices históricos a bases de datos existentes
           const treasuryEventsStore = transaction.objectStore('treasuryEvents');
+          if (oldVersion < 93) {
+            // V93 (E2.4.1b): fuera el índice `type` (el campo desaparece del
+            // esquema tipado, de ahí el `as never`) y dentro `naturaleza`.
+            // Regla A: no se reescribe ningún registro.
+            if (treasuryEventsStore.indexNames.contains('type' as never)) {
+              treasuryEventsStore.deleteIndex('type' as never);
+            }
+          }
+          ensureIndex(treasuryEventsStore, 'naturaleza', 'naturaleza', { unique: false });
           ensureIndex(treasuryEventsStore, 'año', 'año', { unique: false });
           ensureIndex(treasuryEventsStore, 'generadoPor', 'generadoPor', { unique: false });
           ensureIndex(treasuryEventsStore, 'certeza', 'certeza', { unique: false });

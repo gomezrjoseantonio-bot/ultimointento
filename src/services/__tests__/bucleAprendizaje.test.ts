@@ -160,7 +160,7 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
     expect(regla).toMatchObject({
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
-      categoria: 'traspaso_salida',
+      categoria: 'traspaso',
       ambito: 'personal',
       appliedCount: 1,
     });
@@ -263,7 +263,7 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
     await reglaPara(lineaId, 1, {
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
-      categoria: 'traspaso_salida',
+      categoria: 'traspaso',
       ambito: 'personal',
       inmuebleId: undefined,
     });
@@ -413,7 +413,7 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
     const regla = await reglaPara(lineaId, APLICACIONES_PARA_RESOLVER_SOLA, {
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
-      categoria: 'traspaso_salida',
+      categoria: 'traspaso',
       ambito: 'personal',
       inmuebleId: undefined,
     });
@@ -428,8 +428,8 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
     expect(movs).toHaveLength(2);
     const salida = movs.find((m) => m.accountId === CUENTA)!;
     const entrada = movs.find((m) => m.accountId === EFECTIVO)!;
-    expect(salida).toMatchObject({ amount: -200, type: 'Transferencia', categoryKey: 'traspaso_salida' });
-    expect(entrada).toMatchObject({ amount: 200, type: 'Transferencia', categoryKey: 'traspaso_entrada' });
+    expect(salida).toMatchObject({ amount: -200, naturaleza: 'movimiento_interno', familia: 'traspaso' });
+    expect(entrada).toMatchObject({ amount: 200, naturaleza: 'movimiento_interno', familia: 'traspaso' });
     // D2 · la línea solo enlaza SU pata.
     const l = await linea(lineaId);
     expect(l.movementIds).toEqual([salida.id]);

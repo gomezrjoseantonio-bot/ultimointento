@@ -221,7 +221,7 @@ describe('E2.4 · renta · el cobro del contrato queda registrado, sin fabricar 
     const eventos = await todos<TreasuryEvent>('treasuryEvents');
     expect(eventos).toHaveLength(1);
     expect(eventos[0]).toMatchObject({
-      type: 'income',
+      naturaleza: 'ingreso',
       sourceType: 'contrato',
       sourceId: 21,
       contratoId: 21,
@@ -240,7 +240,7 @@ describe('E2.4 · renta · el cobro del contrato queda registrado, sin fabricar 
   it('el MES EN CURSO · si el contrato tiene previsión sin ejecutar cerca, se ejecuta ESA y no nace otra', async () => {
     await sembrar('contracts', [contrato]);
     await sembrar('treasuryEvents', [
-      { id: 900, type: 'income', amount: 650, predictedDate: '2026-08-05', description: 'Renta – Miguel Lorenzo Cabanelas', sourceType: 'contrato', sourceId: 21, accountId: SANTANDER, inmuebleId: 4, status: 'predicted', createdAt: AHORA, updatedAt: AHORA },
+      { id: 900, naturaleza: 'ingreso', amount: 650, predictedDate: '2026-08-05', description: 'Renta – Miguel Lorenzo Cabanelas', sourceType: 'contrato', sourceId: 21, accountId: SANTANDER, inmuebleId: 4, status: 'predicted', createdAt: AHORA, updatedAt: AHORA },
     ]);
     const id = await nuevaLinea({ fechaOperacion: '2026-08-06', fechaValor: '2026-08-06', importe: 650, conceptoLiteral: 'Transferencia De Miguel Lorenzo Cabanelas Concepto Alquiler' });
 
@@ -272,9 +272,9 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
     const movs = (await todos<Movement>('movements')).sort((a, b) => (a.id as number) - (b.id as number));
     expect(movs).toHaveLength(2);
     const [salida, entrada] = movs;
-    expect(salida).toMatchObject({ accountId: SANTANDER, amount: -1500, type: 'Transferencia', categoryKey: 'traspaso_salida', source: 'import', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Traspaso a Bankinter' });
+    expect(salida).toMatchObject({ accountId: SANTANDER, amount: -1500, naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'import', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Traspaso a Bankinter' });
     expect(salida.transferMetadata).toEqual({ targetAccountId: BANKINTER, pairMovementId: entrada.id });
-    expect(entrada).toMatchObject({ accountId: BANKINTER, amount: 1500, type: 'Transferencia', categoryKey: 'traspaso_entrada', source: 'manual' });
+    expect(entrada).toMatchObject({ accountId: BANKINTER, amount: 1500, naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'manual' });
     expect(await linea(id)).toMatchObject({ estado: 'resuelta', movementIds: [salida.id] });
     // Enseña la regla de TRASPASO con su cuenta (E2.2) · y solo esa, no una de «clasificar».
     const reglas = await todos<MovementLearningRule>('movementLearningRules');
@@ -288,7 +288,7 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
 
     const movs = await todos<Movement>('movements');
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ amount: 2000, type: 'Transferencia', categoryKey: 'traspaso_entrada', unifiedStatus: 'conciliado', descripcionPrevision: 'Traspaso entre tus cuentas' });
+    expect(movs[0]).toMatchObject({ amount: 2000, naturaleza: 'movimiento_interno', familia: 'traspaso', unifiedStatus: 'conciliado', descripcionPrevision: 'Traspaso entre tus cuentas' });
     expect(movs[0].transferMetadata).toBeUndefined();
     expect(await todos('movementLearningRules')).toEqual([]);
   });
@@ -298,14 +298,14 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
     await reconocerYGuardar([id]);
     const movs = (await todos<Movement>('movements')).sort((a, b) => (a.id as number) - (b.id as number));
     expect(movs).toHaveLength(2);
-    expect(movs[0]).toMatchObject({ accountId: SANTANDER, amount: 700, categoryKey: 'traspaso_entrada' });
+    expect(movs[0]).toMatchObject({ accountId: SANTANDER, amount: 700, naturaleza: 'movimiento_interno', familia: 'traspaso' });
     expect(movs[0].transferMetadata).toEqual({ targetAccountId: BANKINTER, pairMovementId: movs[1].id });
-    expect(movs[1]).toMatchObject({ accountId: BANKINTER, amount: -700, categoryKey: 'traspaso_salida', source: 'manual' });
+    expect(movs[1]).toMatchObject({ accountId: BANKINTER, amount: -700, naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'manual' });
   });
 
   it('la otra pata YA está importada en Bankinter · se emparejan y no nace nada', async () => {
     await sembrar('movements', [
-      { id: 501, accountId: BANKINTER, date: '2025-03-03', valueDate: '2025-03-03', amount: 1500, description: 'Transferencia De Gomez Ramirez Jose Antonio', unifiedStatus: 'no_planificado', source: 'import', type: 'Ingreso', origin: 'CSV', movementState: 'Confirmado', state: 'pending', status: 'pendiente', category: { tipo: 'Ingresos' }, ambito: 'personal', statusConciliacion: 'sin_match', createdAt: AHORA, updatedAt: AHORA },
+      { id: 501, accountId: BANKINTER, date: '2025-03-03', valueDate: '2025-03-03', amount: 1500, description: 'Transferencia De Gomez Ramirez Jose Antonio', unifiedStatus: 'no_planificado', source: 'import', naturaleza: 'ingreso', origin: 'CSV', movementState: 'Confirmado', state: 'pending', status: 'pendiente', category: { tipo: 'Ingresos' }, ambito: 'personal', statusConciliacion: 'sin_match', createdAt: AHORA, updatedAt: AHORA },
     ]);
     const id = await nuevaLinea({ importe: -1500, conceptoLiteral: 'Transferencia A Favor De Gomez Ramirez Jose Antonio' });
     await reconocerYGuardar([id]);
@@ -314,9 +314,9 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
     expect(movs).toHaveLength(2);
     const salida = movs.find((m) => m.accountId === SANTANDER)!;
     const entrada = movs.find((m) => m.id === 501)!;
-    expect(salida).toMatchObject({ categoryKey: 'traspaso_salida', type: 'Transferencia', descripcionPrevision: 'Traspaso a Bankinter' });
+    expect(salida).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', descripcionPrevision: 'Traspaso a Bankinter' });
     expect(salida.transferMetadata).toEqual({ targetAccountId: BANKINTER, pairMovementId: 501 });
-    expect(entrada).toMatchObject({ categoryKey: 'traspaso_entrada', type: 'Transferencia', amount: 1500 });
+    expect(entrada).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', amount: 1500 });
     expect(entrada.transferMetadata).toEqual({ targetAccountId: SANTANDER, pairMovementId: salida.id });
   });
 
@@ -340,7 +340,7 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
 describe('E2.4 · lo que cuadra con una previsión NO pasa por aquí', () => {
   it('un cuadre con previsto (bloque 1) manda sobre el reconocimiento (bloque 2) de la misma línea', async () => {
     await sembrar('compromisosRecurrentes', [{ id: 11, alias: 'Seguro decesos', ambito: 'personal', tipo: 'seguro', proveedor: { nombre: 'Segurcaixa' }, numeroContrato: '07085234611', patron: { tipo: 'mensualDiaFijo', dia: 2 }, importe: { modo: 'fijo', importe: 24.9 }, cuentaCargo: SANTANDER, conceptoBancario: 'SEGURCAIXA', metodoPago: 'domiciliacion', categoria: 'seguros', estado: 'activo' }]);
-    await sembrar('treasuryEvents', [{ id: 800, type: 'expense', amount: 24.9, predictedDate: '2026-08-02', description: 'Seguro decesos', sourceType: 'gasto_recurrente', sourceId: 11, accountId: SANTANDER, status: 'predicted', categoryKey: 'seguros', createdAt: AHORA, updatedAt: AHORA }]);
+    await sembrar('treasuryEvents', [{ id: 800, naturaleza: 'gasto', amount: 24.9, predictedDate: '2026-08-02', description: 'Seguro decesos', sourceType: 'gasto_recurrente', sourceId: 11, accountId: SANTANDER, status: 'predicted', categoryKey: 'seguros', createdAt: AHORA, updatedAt: AHORA }]);
     const id = await nuevaLinea({ fechaOperacion: '2026-08-02', conceptoLiteral: 'Recibo Segurcaixa Adeslas Mandato 07085234611' });
     const r = await reconocerDeterministasDeLineas([await linea(id)]);
     expect(r.origenes.has(id)).toBe(true);

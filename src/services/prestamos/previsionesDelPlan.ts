@@ -109,7 +109,8 @@ export async function sincronizarPrevisionesDelPlan(
 
   for (const { d, status } of plan.emitir) {
     const event: Omit<TreasuryEvent, 'id'> = {
-      type: 'financing',
+      naturaleza: 'gasto',
+      familia: 'prestamo_hipoteca',
       amount: d.importe,
       predictedDate: d.fecha,
       description: d.concepto,

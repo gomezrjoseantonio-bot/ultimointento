@@ -2,6 +2,7 @@ import { initDB, Property, Budget } from '../../../../../services/db';
 import { formatEuro } from '../../../../../utils/formatUtils';
 import { generateProyeccionMensual } from '../../mensual/services/proyeccionMensualService';
 import type { ProyeccionAnual } from '../../mensual/types/proyeccionMensual';
+import { conSigno } from '../../../../../services/catalogo/catalogoUnico';
 
 // budgetService.ts eliminado en PR-C-PROY-1-bis (store fantasma `'budgets'`).
 // Hasta que `presupuestoService` Mi Plan v2 cierre, no hay fuente de presupuesto confirmado
@@ -229,7 +230,7 @@ class ComparativaService {
         if (realAmount == null) realAmount = Math.abs(ev.amount);
 
         // income → entra (+) · expense/financing → sale (−).
-        monthlyActual[monthIndex] += ev.type === 'income' ? Math.abs(realAmount) : -Math.abs(realAmount);
+        monthlyActual[monthIndex] += conSigno(ev, realAmount);
       }
 
       // 2) Real NO planificado: movimientos conciliados SIN evento vinculado, por su fecha.

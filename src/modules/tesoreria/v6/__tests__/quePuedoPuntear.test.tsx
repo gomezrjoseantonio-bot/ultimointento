@@ -237,7 +237,7 @@ describe('el botón dice si hay algo que de verdad cuadra', () => {
   const previsto = (id: number, amount: number, predictedDate: string) => ({
     id,
     accountId: 1,
-    type: 'income',
+    naturaleza: 'ingreso',
     amount,
     predictedDate,
     description: `Renta piso ${id}`,

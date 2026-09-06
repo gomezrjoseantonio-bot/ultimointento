@@ -27,7 +27,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-08-10',
     description: 'Recibo',
@@ -109,7 +109,7 @@ describe('los pendientes, agrupados por cuenta', () => {
     render(
       <TesoreriaMovil
         {...base}
-        eventos={[ev({ type: 'income', amount: 475, description: 'Lucía' })]}
+        eventos={[ev({ naturaleza: 'ingreso', amount: 475, description: 'Lucía' })]}
       />
     );
     const fila = screen.getByRole('button', { name: /Confirmar Lucía/ });

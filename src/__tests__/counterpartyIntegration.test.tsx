@@ -11,7 +11,7 @@ describe('UI Contraparte Integration Tests', () => {
       amount: 100,
       counterparty: 'Test Supplier S.L.',
       date: '2024-01-15',
-      type: 'Gasto'
+      naturaleza: 'gasto'
     };
 
     expect(formData).toHaveProperty('counterparty');
@@ -31,7 +31,7 @@ describe('UI Contraparte Integration Tests', () => {
       unifiedStatus: 'confirmado' as any,
       source: 'manual' as any,
       category: { tipo: 'Test' },
-      type: 'Ingreso' as const,
+      naturaleza: 'ingreso' as const,
       origin: 'Manual' as const,
       movementState: 'Confirmado' as const,
       ambito: 'personal' as const,
@@ -67,7 +67,7 @@ describe('UI Contraparte Integration Tests', () => {
       amount: 100,
       counterparty: 'Test Supplier S.L.',
       date: '2024-01-15',
-      type: 'Gasto'
+      naturaleza: 'gasto'
     };
 
     // In a real form submission, this would be the data sent to the database

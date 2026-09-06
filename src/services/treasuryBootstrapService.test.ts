@@ -79,7 +79,7 @@ jest.mock('./personal/compromisosRecurrentesService', () => ({
 function seedEvent(partial: Partial<TreasuryEvent>): StoredEvent {
   const ev = {
     id: nextEventId++,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-05-15',
     description: 'seed',

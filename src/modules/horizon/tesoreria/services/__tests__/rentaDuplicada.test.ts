@@ -66,7 +66,7 @@ const contrato = (): Omit<Contract, 'id'> =>
  */
 const cobroDesdeExtracto = (contratoId: number): Omit<TreasuryEvent, 'id'> =>
   ({
-    type: 'income',
+    naturaleza: 'ingreso',
     amount: 500,
     predictedDate: `${PREFIJO}-01`,
     description: 'BIZUM DE ADNAN PARWEZ',
@@ -99,7 +99,7 @@ const rentasDelMes = async (contratoId: number): Promise<TreasuryEvent[]> => {
   const todos = (await db.getAll('treasuryEvents')) as TreasuryEvent[];
   return todos.filter(
     (e) =>
-      e.type === 'income' &&
+      e.naturaleza === 'ingreso' &&
       (e.sourceType === 'contrato' || e.sourceType === 'contract') &&
       e.sourceId === contratoId &&
       typeof e.predictedDate === 'string' &&

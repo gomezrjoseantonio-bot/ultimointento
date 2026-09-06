@@ -19,6 +19,7 @@
 import { initDB } from './db';
 import { eventosPasadosDePrestamo } from './prestamoEventosPlan';
 import type { TreasuryEvent } from './db';
+import { conSigno, sentidoDe } from './catalogo/catalogoUnico';
 
 /** Un grupo de previsiones que son la misma cosa repetida. */
 export interface GrupoDuplicado {
@@ -121,7 +122,7 @@ export function analizarDuplicados(eventos: TreasuryEvent[]): InformeDuplicados 
   for (const [clave, copias] of porClave) {
     if (copias.length < 2) continue;
     const primera = copias[0];
-    const signo = primera.type === 'income' ? 1 : -1;
+    const signo = sentidoDe(primera) === 'entra' ? 1 : -1;
     const importe = Math.abs(primera.amount) * signo;
 
     grupos.push({
@@ -229,7 +230,7 @@ export async function limpiarDuplicados(): Promise<{
 
   // Lo que sobraba desviaba el cierre; al quitarlo, se corrige al revés.
   const desviacion = aBorrar.reduce(
-    (s, e) => s + Math.abs(e.amount) * (e.type === 'income' ? 1 : -1),
+    (s, e) => s + conSigno(e, e.amount),
     0
   );
 

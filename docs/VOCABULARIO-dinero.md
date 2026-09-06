@@ -340,7 +340,8 @@ desaparecer dinero:
 | ¿Es gasto? | **No** · el dinero no sale del patrimonio | Sí |
 | Cómo se corrige | Las dos patas a la vez (`traspasoInterno.ts`) | Como cualquier movimiento |
 
-El interno guarda `categoryKey` `traspaso_salida` / `traspaso_entrada` y las dos
+El interno es `naturaleza: 'movimiento_interno'` con familia `traspaso` (E2.4.1b · el
+previsto dice además `sentido: 'sale' | 'entra'`; en el movimiento lo dice el signo) y las dos
 patas se apuntan por `transferMetadata.pairEventId`. `transferMetadata.targetAccountId`
 guarda **«la otra cuenta»**: el destino en la salida y el **origen** en la
 entrada. Quien lo lea sin saber esto invierte el traspaso.

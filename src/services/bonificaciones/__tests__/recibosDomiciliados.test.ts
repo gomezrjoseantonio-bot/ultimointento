@@ -10,7 +10,7 @@ import type { TreasuryEvent } from '../../db';
 const recibo = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -62.4,
     predictedDate: '2026-03-05',
     description: 'Luz',
@@ -79,7 +79,7 @@ describe('qué NO es un recibo domiciliado', () => {
   });
 
   it('un ingreso no es un recibo', () => {
-    expect(recibosDomiciliados([recibo({ type: 'income' })])).toEqual([]);
+    expect(recibosDomiciliados([recibo({ naturaleza: 'ingreso' })])).toEqual([]);
   });
 
   it('lo descartado no está domiciliado ese mes', () => {

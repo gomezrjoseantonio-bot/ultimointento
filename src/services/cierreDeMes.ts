@@ -27,6 +27,7 @@
 // ============================================================================
 
 import { initDB, type TreasuryEvent } from './db';
+import { sentidoDe } from './catalogo/catalogoUnico';
 
 /** Dónde vive la lista de meses cerrados. */
 const CLAVE = 'cierresDeMes';
@@ -130,8 +131,8 @@ const redondear = (n: number): number => Math.round(n * 100) / 100;
 
 /** Lo que no entraría y lo que no saldría · el mismo reparto para los dos sitios. */
 const totales = (eventos: TreasuryEvent[]): { totalEntra: number; totalSale: number } => ({
-  totalEntra: redondear(eventos.filter((e) => e.type === 'income').reduce(suma, 0)),
-  totalSale: redondear(eventos.filter((e) => e.type !== 'income').reduce(suma, 0)),
+  totalEntra: redondear(eventos.filter((e) => sentidoDe(e) === 'entra').reduce(suma, 0)),
+  totalSale: redondear(eventos.filter((e) => sentidoDe(e) === 'sale').reduce(suma, 0)),
 });
 
 /** Un mes de la tira de cierre · lo que hay que saber de él sin abrirlo. */

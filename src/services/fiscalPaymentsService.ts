@@ -251,7 +251,9 @@ export async function generarEventosFiscales(
 
 export function eventoFiscalToTreasuryEvent(evento: EventoFiscal): Omit<TreasuryEvent, 'id'> {
   return {
-    type: evento.importe >= 0 ? 'expense' : 'income',
+    naturaleza: evento.importe >= 0 ? 'gasto' : 'ingreso',
+    familia: 'impuestos_tasas',
+    subtipo: 'otros_tributos',
     amount: Math.abs(evento.importe),
     predictedDate: evento.fechaLimite,
     description: evento.descripcion,

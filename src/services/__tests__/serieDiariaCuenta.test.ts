@@ -12,7 +12,7 @@ const YEAR = 2026;
 const MONTH0 = 7; // agosto
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: '2026-08-10',
   description: 'x',
@@ -64,7 +64,7 @@ describe('la fuente doble', () => {
     // Este es el fallo que la fuente única habría producido: el evento está
     // "confirmado" pero el dinero no se ha movido, así que es pendiente.
     const s = serie(
-      [ev({ status: 'confirmed', type: 'income', amount: 500, predictedDate: '2026-08-12' })],
+      [ev({ status: 'confirmed', naturaleza: 'ingreso', amount: 500, predictedDate: '2026-08-12' })],
       []
     );
     const d = dia(s, '2026-08-12');
@@ -74,8 +74,8 @@ describe('la fuente doble', () => {
 
   it('lo PENDIENTE sale de treasuryEvents vivos', () => {
     const s = serie([
-      ev({ type: 'income', amount: 300, predictedDate: '2026-08-03' }),
-      ev({ type: 'expense', amount: 120, predictedDate: '2026-08-03' }),
+      ev({ naturaleza: 'ingreso', amount: 300, predictedDate: '2026-08-03' }),
+      ev({ naturaleza: 'gasto', amount: 120, predictedDate: '2026-08-03' }),
     ]);
     const d = dia(s, '2026-08-03');
     expect(d.entradaPrev).toBe(300);
@@ -95,7 +95,7 @@ describe('la fuente doble', () => {
 
   it('confirmado y pendiente conviven en el mismo día sin pisarse', () => {
     const s = serie(
-      [ev({ type: 'expense', amount: 40, predictedDate: '2026-08-09' })],
+      [ev({ naturaleza: 'gasto', amount: 40, predictedDate: '2026-08-09' })],
       [mov({ date: '2026-08-09', amount: -60 })]
     );
     const d = dia(s, '2026-08-09');
@@ -138,8 +138,8 @@ describe('lo que NO cuenta', () => {
   it('un traspaso interno no entra · ni por la pata que sale ni por la que entra', () => {
     // Sus dos patas espejo inflarían las barras de los dos lados a la vez.
     const s = serie(
-      [ev({ categoryKey: 'traspaso_salida', amount: 2000, predictedDate: '2026-08-20' })],
-      [mov({ date: '2026-08-20', amount: -2000, categoryKey: 'traspaso_salida' })]
+      [ev({ naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'sale', amount: 2000, predictedDate: '2026-08-20' })],
+      [mov({ date: '2026-08-20', amount: -2000, naturaleza: 'movimiento_interno', familia: 'traspaso' })]
     );
     const d = dia(s, '2026-08-20');
     expect(d.salidaPrev).toBe(0);
@@ -170,8 +170,8 @@ describe('acumulación en el día', () => {
   it('varios apuntes del mismo día se suman, y se redondea a dos decimales', () => {
     const s = serie(
       [
-        ev({ type: 'income', amount: 10.1, predictedDate: '2026-08-18' }),
-        ev({ type: 'income', amount: 20.2, predictedDate: '2026-08-18' }),
+        ev({ naturaleza: 'ingreso', amount: 10.1, predictedDate: '2026-08-18' }),
+        ev({ naturaleza: 'ingreso', amount: 20.2, predictedDate: '2026-08-18' }),
       ],
       [mov({ id: 1, date: '2026-08-18', amount: -0.1 }), mov({ id: 2, date: '2026-08-18', amount: -0.2 })]
     );
@@ -183,7 +183,7 @@ describe('acumulación en el día', () => {
   it('la magnitud manda sobre el signo del importe guardado', () => {
     // Los generadores no comparten convención de signo: un gasto puede venir
     // con `amount` negativo. Sin |amount| se contaría como ingreso.
-    const s = serie([ev({ type: 'expense', amount: -45, predictedDate: '2026-08-22' })]);
+    const s = serie([ev({ naturaleza: 'gasto', amount: -45, predictedDate: '2026-08-22' })]);
     const d = dia(s, '2026-08-22');
     expect(d.salidaPrev).toBe(45);
     expect(d.entradaPrev).toBe(0);

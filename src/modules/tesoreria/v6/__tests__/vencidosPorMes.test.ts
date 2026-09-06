@@ -11,7 +11,7 @@ import type { TreasuryEvent } from '../../../../services/db';
 
 const ev = (over: Partial<TreasuryEvent>): TreasuryEvent =>
   ({
-    id: 1, type: 'expense', amount: 50, predictedDate: '2026-08-01',
+    id: 1, naturaleza: 'gasto', amount: 50, predictedDate: '2026-08-01',
     description: 'Aqualia', accountId: 1, status: 'predicted',
     sourceType: 'gasto_recurrente', createdAt: '', updatedAt: '', ...over,
   }) as TreasuryEvent;
@@ -55,7 +55,7 @@ describe('vencidosPorMes', () => {
 
   it('un ingreso vencido suma', () => {
     const r = vencidosPorMes({
-      eventos: [ev({ type: 'income' as never, amount: 607, predictedDate: '2026-08-05' })],
+      eventos: [ev({ naturaleza: 'ingreso' as never, amount: 607, predictedDate: '2026-08-05' })],
       ...EN_SEPTIEMBRE,
     });
     expect(r[0].total).toBe(607);

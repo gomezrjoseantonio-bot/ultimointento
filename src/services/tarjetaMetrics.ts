@@ -129,7 +129,7 @@ export function serieDiariaTarjeta(params: {
     if (!punto) continue;
     // `importeConSigno` da negativo a un gasto · aquí se acumula la magnitud y
     // una devolución (income) resta.
-    const imp = -importeConSigno({ amount: e.actualAmount ?? e.amount, type: e.type });
+    const imp = -importeConSigno({ amount: e.actualAmount ?? e.amount, naturaleza: e.naturaleza, sentido: e.sentido });
     if (e.status === 'executed') punto.salidaConf = redondear(punto.salidaConf + imp);
     else punto.salidaPrev = redondear(punto.salidaPrev + imp);
   }

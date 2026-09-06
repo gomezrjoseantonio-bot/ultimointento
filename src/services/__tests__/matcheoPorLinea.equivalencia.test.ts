@@ -79,7 +79,7 @@ function mov(over: Partial<Movement> & { id: number }): Movement {
 
 function previsto(over: Partial<TreasuryEvent> & { id: number }): TreasuryEvent {
   return {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 0,
     predictedDate: '2026-08-01',
     description: '',
@@ -141,15 +141,15 @@ const LOTE: Movement[] = [
 const LINEAS: LineaExtractoPersistida[] = LOTE.map((m) => lineaDe(m));
 
 const PREVISTOS: TreasuryEvent[] = [
-  previsto({ id: 101, type: 'expense', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
-  previsto({ id: 102, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
-  previsto({ id: 103, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
-  previsto({ id: 104, type: 'expense', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
-  previsto({ id: 105, type: 'expense', amount: 82, predictedDate: '2026-08-27', sourceType: 'gasto_recurrente', description: 'Agua Tenderina' }),
-  previsto({ id: 106, type: 'expense', amount: 100, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad Tenderina' }),
-  previsto({ id: 107, type: 'expense', amount: 50, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad garaje' }),
-  previsto({ id: 108, type: 'expense', amount: 72.5, predictedDate: '2026-08-10', sourceType: 'gasto_recurrente', providerName: 'CALLE URIA', description: 'Comunidad Uría' }),
-  previsto({ id: 109, type: 'expense', amount: 30, predictedDate: '2026-08-14', sourceType: 'gasto', providerName: 'Revolut', description: 'Revolut', descartado: true }),
+  previsto({ id: 101, naturaleza: 'gasto', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
+  previsto({ id: 102, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
+  previsto({ id: 103, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
+  previsto({ id: 104, naturaleza: 'gasto', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
+  previsto({ id: 105, naturaleza: 'gasto', amount: 82, predictedDate: '2026-08-27', sourceType: 'gasto_recurrente', description: 'Agua Tenderina' }),
+  previsto({ id: 106, naturaleza: 'gasto', amount: 100, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad Tenderina' }),
+  previsto({ id: 107, naturaleza: 'gasto', amount: 50, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad garaje' }),
+  previsto({ id: 108, naturaleza: 'gasto', amount: 72.5, predictedDate: '2026-08-10', sourceType: 'gasto_recurrente', providerName: 'CALLE URIA', description: 'Comunidad Uría' }),
+  previsto({ id: 109, naturaleza: 'gasto', amount: 30, predictedDate: '2026-08-14', sourceType: 'gasto', providerName: 'Revolut', description: 'Revolut', descartado: true }),
 ];
 
 function libros(): Stores {
@@ -241,7 +241,7 @@ describe('movementDesdeLinea · el mismo movimiento que insertMovements, en memo
       currency: 'EUR',
       unifiedStatus: 'no_planificado',
       source: 'import',
-      type: 'Ingreso',
+      naturaleza: 'ingreso',
       origin: 'CSV',
       movementState: 'Confirmado',
       state: 'pending',
@@ -264,7 +264,7 @@ describe('movementDesdeLinea · el mismo movimiento que insertMovements, en memo
 
   it('un gasto sale como Gasto · sin Bizum no hay método ni contraparte inventada', () => {
     const m = movementDesdeLinea(lineaDe(LOTE[3]));
-    expect(m).toMatchObject({ type: 'Gasto', category: { tipo: 'Gastos' }, amount: -108.44 });
+    expect(m).toMatchObject({ naturaleza: 'gasto', category: { tipo: 'Gastos' }, amount: -108.44 });
     expect(m.counterparty).toBeUndefined();
     expect(m).not.toHaveProperty('paymentMethod');
   });
