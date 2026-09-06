@@ -882,7 +882,6 @@ interface CreateExpensePrevisionInput {
 async function createExpensePrevision(
   input: CreateExpensePrevisionInput,
 ): Promise<number | null> {
-  const config = CATEGORIA_TO_MOVEMENT[input.categoria];
   const now = new Date().toISOString();
   try {
     const db = await initDB();

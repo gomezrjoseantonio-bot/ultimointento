@@ -40,8 +40,8 @@ const AGUA: GuardadoFicha = {
   fecha: '2026-06-25',
   cuentaId: 1,
   inmuebleId: undefined,
-  familia: 'suministro', subtipo: 'agua',
-  subtipo: null,
+  familia: 'suministro',
+  subtipo: 'agua',
   esMejora: false,
 } as unknown as GuardadoFicha;
 

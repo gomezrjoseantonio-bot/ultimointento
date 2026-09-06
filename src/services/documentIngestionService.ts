@@ -376,7 +376,6 @@ async function processAcquisitionCosts(document: Document): Promise<DocumentInge
  * Destino: Context-dependent routing
  */
 async function processTaxOrOtherDocumentation(document: Document): Promise<DocumentIngestionResult> {
-  const db = await initDB();
   const metadata = document.metadata || {};
   const filename = document.filename.toLowerCase();
 

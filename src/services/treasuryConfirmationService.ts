@@ -82,12 +82,6 @@ const ALL_LINE_STORES: CategoriaStoreName[] = [
   'mueblesInmueble',
 ];
 
-const normalize = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
 /**
  * En qué tabla de líneas de inmueble nace un previsto al confirmarse, o `null`
  * si no genera línea (ingresos, gastos personales, traspasos, sin clasificar).
