@@ -29,7 +29,7 @@ const gasto = (over: Partial<CompromisoRecurrente> = {}) =>
     patron: { tipo: 'anualMesesConcretos', mesesPago: [6, 11], diaPago: 15, diaPagoPorMes: { 6: 15, 11: 11 } },
     importe: { modo: 'porPago', importesPorPago: { 6: 200, 11: 120 } },
     cuentaCargo: 1, conceptoBancario: 'IBI', metodoPago: 'domiciliacion',
-    categoria: 'inmueble.ibi', bolsaPresupuesto: 'inmueble', responsable: 'titular',
+    familia: 'impuestos_tasas', subtipo: 'ibi', responsable: 'titular',
     ambito: 'inmueble', inmuebleId: 1, fechaInicio: '2026-01-01', estado: 'activo',
     createdAt: '', updatedAt: '', ...over,
   }) as CompromisoRecurrente & { id: number };

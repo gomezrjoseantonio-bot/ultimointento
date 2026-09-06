@@ -10,7 +10,7 @@ import {
 describe('Fase 3 VH · esCompromisoAlquilerVH', () => {
   const base = {
     ambito: 'personal' as const,
-    categoria: 'vivienda.alquiler',
+    familia: 'alquiler_renting', subtipo: 'vivienda',
     estado: 'activo' as const,
   };
 
@@ -27,7 +27,7 @@ describe('Fase 3 VH · esCompromisoAlquilerVH', () => {
   });
 
   test('otra categoría · NO', () => {
-    expect(esCompromisoAlquilerVH({ ...base, categoria: 'vivienda.suministros' })).toBe(false);
+    expect(esCompromisoAlquilerVH({ ...base, familia: 'suministro' })).toBe(false);
   });
 
   test('ámbito inmueble · NO (eso es un gasto del inmueble de inversión)', () => {

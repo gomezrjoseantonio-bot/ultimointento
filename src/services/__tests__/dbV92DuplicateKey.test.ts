@@ -38,9 +38,9 @@ describe('V92 · retirar el índice duplicate-key de movements', () => {
 
     const dbModule = require('../db');
     const db = await dbModule.initDB();
-    // V93 (E2.4.1b) va por encima · lo que este test vigila es el índice de `movements`.
-    expect(db.version).toBe(93);
-    expect(dbModule.DB_VERSION).toBe(93);
+    // V93 (E2.4.1b) y V94 (E2.4.1c) van por encima · lo que este test vigila es el índice de `movements`.
+    expect(db.version).toBe(94);
+    expect(dbModule.DB_VERSION).toBe(94);
 
     const indices = Array.from(db.transaction('movements').store.indexNames as DOMStringList).sort();
     expect(indices).toEqual(['accountId', 'date', 'importBatch', 'status']);

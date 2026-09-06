@@ -91,7 +91,6 @@ export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Mo
     movementState: 'Confirmado',
     state: 'pending',
     status: 'pendiente',
-    category: { tipo: amount >= 0 ? 'Ingresos' : 'Gastos' },
     tags: [],
     isAutoTagged: false,
     ambito: 'personal',

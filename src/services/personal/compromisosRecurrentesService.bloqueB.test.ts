@@ -12,15 +12,13 @@ const compromiso = (): CompromisoRecurrente =>
     id: 'c1',
     ambito: 'personal',
     alias: 'Gimnasio',
-    tipo: 'suscripcion',
     proveedor: { nombre: 'GymCo' },
     patron: { tipo: 'mensualDiaFijo', dia: 1 },
     importe: { modo: 'fijo', importe: 40 },
     cuentaCargo: 0,
     conceptoBancario: 'GYMCO',
     metodoPago: 'domiciliacion',
-    categoria: 'personal.suscripciones' as never,
-    bolsaPresupuesto: 'deseos',
+    familia: 'suscripciones' as never,
     responsable: 'titular',
     fechaInicio: '2019-01-01',
     estado: 'activo',
@@ -28,11 +26,12 @@ const compromiso = (): CompromisoRecurrente =>
     updatedAt: '2019-01-01',
   }) as unknown as CompromisoRecurrente;
 
-describe('compromisosRecurrentesService · Bloque B.4 · la bolsa viaja al evento', () => {
-  it('cada evento generado lleva la bolsaPresupuesto del compromiso', () => {
+describe('compromisosRecurrentesService · la clasificación viaja al evento (E2.4.1c)', () => {
+  it('cada evento generado lleva la familia del compromiso · sin bolsa', () => {
     const eventos = generarEventosDesdeCompromiso(compromiso());
     expect(eventos.length).toBeGreaterThan(0);
-    expect(eventos.every((e) => e.bolsaPresupuesto === 'deseos')).toBe(true);
+    expect(eventos.every((e) => e.familia === 'suscripciones')).toBe(true);
+    expect(eventos.every((e) => !('bolsaPresupuesto' in e))).toBe(true);
   });
 });
 
@@ -66,8 +65,8 @@ describe('compromisosRecurrentesService · Bloque B.3 · proyección hacia atrá
     expect(eventos.length).toBeGreaterThanOrEqual(3);
     expect(eventos.every((e) => e.año === 2020)).toBe(true);
     expect(eventos.map((e) => e.mes).sort()).toEqual([1, 2, 3]);
-    // y siguen llevando su bolsa.
-    expect(eventos.every((e) => e.bolsaPresupuesto === 'deseos')).toBe(true);
+    // y siguen llevando su clasificación.
+    expect(eventos.every((e) => e.familia === 'suscripciones')).toBe(true);
   });
 
   // La capa viva arranca en el mes en curso, no en `fechaInicio`: un

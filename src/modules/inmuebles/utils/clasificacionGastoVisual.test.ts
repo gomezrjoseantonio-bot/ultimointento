@@ -25,13 +25,11 @@ function crearCompromisoBase(
     ambito: 'inmueble',
     inmuebleId: 10,
     alias: 'Compromiso test',
-    tipo: 'otros',
     subtipo: 'otros',
     proveedor: { nombre: 'Proveedor' },
     patron: patronMensual,
     importe: importeFijo(100),
-    categoria: 'inmueble.otros',
-    bolsaPresupuesto: 'inmueble',
+    familia: 'otros',
     responsable: 'titular',
     cuentaCargo: 1,
     conceptoBancario: 'TEST',
@@ -51,8 +49,8 @@ function crearGastoRealBase(parcial: Partial<GastoInmueble> = {}): GastoInmueble
     ejercicio: 2026,
     fecha: '2026-01-10',
     concepto: 'Gasto real',
-    categoria: 'servicio',
-    casillaAEAT: '0108',
+    familia: 'gestion',
+    casillaAEAT: '0112',
     importe: 80,
     origen: 'manual',
     estado: 'confirmado',
@@ -95,45 +93,48 @@ function crearMuebleBase(parcial: Partial<MuebleInmueble> = {}): MuebleInmueble 
 
 describe('clasificacionGastoVisual (inmueble)', () => {
   it('no clasifica luz personal como explotación patrimonial', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'personal', concepto: 'luz' })).toBe('sin_clasificar');
+    expect(clasificarGastoVisualInmueble({ ambito: 'personal', familia: 'suministro', subtipo: 'luz' })).toBe('sin_clasificar');
   });
 
   it('clasifica luz de inmueble como explotar', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'luz' })).toBe('explotar');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'suministro', subtipo: 'luz' })).toBe('explotar');
   });
 
   it('clasifica IBI de inmueble como mantener', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'ibi' })).toBe('mantener');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'impuestos_tasas', subtipo: 'ibi' })).toBe('mantener');
   });
 
   it('clasifica limpieza por estancia como explotar', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'limpieza_por_estancia' })).toBe('explotar');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'limpieza', subtipo: 'por_estancia' })).toBe('explotar');
   });
 
   it('clasifica gestión del alquiler como explotar', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'honorarios_agencia' })).toBe('explotar');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'gestion' })).toBe('explotar');
   });
 
   it('clasifica mantenimiento de caldera como mantener', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'mantenimiento_caldera' })).toBe('mantener');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'reparacion_mantenimiento', subtipo: 'caldera' })).toBe('mantener');
   });
 
   it('clasifica mobiliario como mobiliario', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'muebles' })).toBe('mobiliario');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'mobiliario_enseres', subtipo: 'muebles' })).toBe('mobiliario');
   });
 
-  it('clasifica mejora por categoryKey como mejorar', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', categoryKey: 'mejora_inmueble' })).toBe('mejorar');
+  it('clasifica la reforma como mejorar', () => {
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'reforma_mejora' })).toBe('mejorar');
   });
 
   it('clasifica derrama como mantener sin forzar mejora', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'derrama' })).toBe('mantener');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'comunidad', subtipo: 'derrama' })).toBe('mantener');
   });
 
-  it('deja desconocidos como sin_clasificar', () => {
-    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', concepto: 'concepto_no_existente' })).toBe(
-      'sin_clasificar',
-    );
+  it('la alarma es explotación aunque viva con los seguros', () => {
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'seguros_alarmas', subtipo: 'alarma' })).toBe('explotar');
+  });
+
+  it('deja desconocidos y sin familia como sin_clasificar', () => {
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble' })).toBe('sin_clasificar');
+    expect(clasificarGastoVisualInmueble({ ambito: 'inmueble', familia: 'familia_no_existente' })).toBe('sin_clasificar');
   });
 });
 
@@ -143,7 +144,6 @@ describe('compromisos y adaptador de gastos inmueble', () => {
       ambito: 'personal',
       inmuebleId: undefined,
       personalDataId: 1,
-      concepto: 'luz',
     });
 
     expect(esCompromisoRecurrenteDeInmueble(personal)).toBe(false);
@@ -151,8 +151,8 @@ describe('compromisos y adaptador de gastos inmueble', () => {
   });
 
   it('filtra compromisos por inmueble correctamente', () => {
-    const c1 = crearCompromisoBase({ id: 1, inmuebleId: 10, concepto: 'luz' });
-    const c2 = crearCompromisoBase({ id: 2, inmuebleId: 99, concepto: 'ibi' });
+    const c1 = crearCompromisoBase({ id: 1, inmuebleId: 10 });
+    const c2 = crearCompromisoBase({ id: 2, inmuebleId: 99 });
     const filtrados = filtrarCompromisosRecurrentesDeInmueble([c1, c2], 10);
 
     expect(filtrados).toHaveLength(1);
@@ -160,10 +160,10 @@ describe('compromisos y adaptador de gastos inmueble', () => {
   });
 
   it('no mezcla importes previstos y reales al unificar orígenes', () => {
-    const compromiso = crearCompromisoBase({ id: 11, inmuebleId: 10, concepto: 'luz', importe: importeFijo(120) });
-    const gastoReal = crearGastoRealBase({ id: 21, inmuebleId: 10, categoryKey: 'suministro_inmueble', importe: 95 });
-    const mejora = crearMejoraBase({ id: 31, inmuebleId: 10, categoryKey: 'mejora_inmueble', importe: 2200 });
-    const mueble = crearMuebleBase({ id: 41, inmuebleId: 10, categoryKey: 'mobiliario_inmueble', importe: 400 });
+    const compromiso = crearCompromisoBase({ id: 11, inmuebleId: 10, importe: importeFijo(120) });
+    const gastoReal = crearGastoRealBase({ id: 21, inmuebleId: 10, familia: 'suministro', importe: 95 });
+    const mejora = crearMejoraBase({ id: 31, inmuebleId: 10, familia: 'reforma_mejora', importe: 2200 });
+    const mueble = crearMuebleBase({ id: 41, inmuebleId: 10, familia: 'mobiliario_enseres', importe: 400 });
 
     const lista = construirListaVisualGastosInmueble({
       inmuebleId: 10,

@@ -80,12 +80,15 @@ export function sumaDeducidaPorCasilla(
   for (const g of gastos) {
     const importe = Number(g.importe);
     if (!Number.isFinite(importe)) continue;
-    if (!ES_DE_GASTO.has(g.casillaAEAT)) {
-      declarado[g.casillaAEAT] = (declarado[g.casillaAEAT] ?? 0) + importe;
+    // Sin casilla no hay dónde sumarlo · una línea sin clasificar no se declara.
+    const casilla = g.casillaAEAT;
+    if (!casilla) continue;
+    if (!ES_DE_GASTO.has(casilla)) {
+      declarado[casilla] = (declarado[casilla] ?? 0) + importe;
       continue;
     }
     if (!yaOcurrio(g)) continue;
-    deGasto[g.casillaAEAT] = (deGasto[g.casillaAEAT] ?? 0) + importe;
+    deGasto[casilla] = (deGasto[casilla] ?? 0) + importe;
   }
 
   const proporcion = diasDelAnio > 0 ? Math.min(1, Math.max(0, diasArrendados / diasDelAnio)) : 0;

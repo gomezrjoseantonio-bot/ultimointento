@@ -12,8 +12,8 @@ import {
   CompromisoRecurrente,
   PatronRecurrente,
   ImporteEvento,
-  TipoCompromiso,
 } from '../types/compromisosRecurrentes';
+import type { FamiliaId } from './catalogo/catalogoUnico';
 import {
   listarCompromisos,
   crearCompromiso,
@@ -24,74 +24,36 @@ import {
 // Re-export types from db.ts for backward compatibility
 export type { OpexRule, OpexCategory, OpexFrequency, OpexEstacionalidad, ExpenseBusinessType, AsymmetricPayment } from './db';
 
-// ─── Mapping helpers · OpexCategory ↔ tipo + categoria string ──────────────
+// ─── Mapping helpers · OpexCategory ↔ familia del catálogo único ────────────
+//
+// `OpexRule` es la vista legacy de un compromiso de inmueble. Su enum de 7
+// categorías se traduce a la familia del catálogo único (E2.4.1c) al escribir,
+// y de vuelta al leer. La familia es la verdad; el enum, la fachada.
 
-/**
- * OpexCategory → CompromisoRecurrente.tipo (TipoCompromiso).
- * Cubre las 7 categorías del enum OpexRule.categoria.
- */
-function mapCategoriaToTipo(categoria: OpexCategory): TipoCompromiso {
+/** OpexCategory → familia (+ subtipo) del catálogo único. */
+function familiaDeOpexCategoria(categoria: OpexCategory): { familia: FamiliaId; subtipo?: string } {
   switch (categoria) {
-    case 'comunidad':  return 'comunidad';
-    case 'impuesto':   return 'impuesto';
-    case 'seguro':     return 'seguro';
-    case 'suministro': return 'suministro';
-    case 'servicio':   return 'suscripcion';
-    case 'gestion':    return 'otros';
-    case 'otro':       return 'otros';
+    case 'comunidad':  return { familia: 'comunidad' };
+    case 'impuesto':   return { familia: 'impuestos_tasas' };
+    case 'seguro':     return { familia: 'seguros_alarmas' };
+    case 'suministro': return { familia: 'suministro' };
+    case 'servicio':   return { familia: 'limpieza' };
+    case 'gestion':    return { familia: 'gestion' };
+    case 'otro':
+    default:           return { familia: 'otros' };
   }
 }
 
-/**
- * OpexCategory → CompromisoRecurrente.categoria (string normalizada inmueble.*).
- */
-function mapCategoriaToCategoriaCompromiso(categoria: OpexCategory, concepto?: string): string {
-  switch (categoria) {
-    case 'comunidad':  return 'inmueble.comunidad';
-    case 'impuesto':   return 'inmueble.ibi';
-    case 'seguro':     return 'inmueble.seguros';
-    case 'suministro': return 'inmueble.suministros';
-    case 'gestion':    return 'inmueble.gestionAlquiler';
-    case 'servicio':   return 'inmueble.opex';
-    case 'otro': {
-      // Heurística: si el concepto sugiere reparación/conservación lo dejamos
-      // en `inmueble.otros`. La fuente de verdad para reparaciones es
-      // mejorasInmueble/gastosInmueble — no compromisos recurrentes.
-      const c = (concepto ?? '').toLowerCase();
-      if (c.includes('repar') || c.includes('conserv')) return 'inmueble.otros';
-      return 'inmueble.otros';
-    }
-  }
-}
-
-/**
- * tipo + categoria string (CompromisoRecurrente) → OpexCategory.
- * Prioriza la categoria string normalizada cuando aporta información (es más
- * específica que `tipo`).
- */
-function mapTipoToCategoria(
-  tipo: TipoCompromiso,
-  categoria?: string,
-): OpexCategory {
-  if (categoria) {
-    switch (categoria) {
-      case 'inmueble.comunidad':       return 'comunidad';
-      case 'inmueble.ibi':             return 'impuesto';
-      case 'inmueble.seguros':         return 'seguro';
-      case 'inmueble.suministros':     return 'suministro';
-      case 'inmueble.gestionAlquiler': return 'gestion';
-      case 'inmueble.opex':            return 'servicio';
-      case 'inmueble.otros':           return 'otro';
-    }
-  }
-  switch (tipo) {
-    case 'comunidad':  return 'comunidad';
-    case 'impuesto':   return 'impuesto';
-    case 'seguro':     return 'seguro';
-    case 'suministro': return 'suministro';
-    case 'suscripcion': return 'servicio';
-    case 'cuota':      return 'gestion';
-    case 'otros':      return 'otro';
+/** familia del catálogo único → OpexCategory (fachada legacy). */
+function opexCategoriaDeFamilia(familia: FamiliaId | undefined, subtipo?: string): OpexCategory {
+  switch (familia) {
+    case 'comunidad':                return 'comunidad';
+    case 'impuestos_tasas':          return 'impuesto';
+    case 'seguros_alarmas':          return subtipo === 'alarma' ? 'servicio' : 'seguro';
+    case 'suministro':               return 'suministro';
+    case 'limpieza':                 return 'servicio';
+    case 'gestion':                  return 'gestion';
+    default:                         return 'otro';
   }
 }
 
@@ -270,7 +232,7 @@ export function mapCompromisoToOpexRule(compromiso: CompromisoRecurrente): OpexR
     id: compromiso.id,
     propertyId: compromiso.inmuebleId,
     accountId: compromiso.cuentaCargo > 0 ? compromiso.cuentaCargo : undefined,
-    categoria: mapTipoToCategoria(compromiso.tipo, compromiso.categoria),
+    categoria: opexCategoriaDeFamilia(compromiso.familia, compromiso.subtipo),
     concepto: compromiso.alias,
     importeEstimado,
     frecuencia,
@@ -281,7 +243,8 @@ export function mapCompromisoToOpexRule(compromiso: CompromisoRecurrente): OpexR
     proveedorNIF: compromiso.proveedor?.nif,
     proveedorNombre: compromiso.proveedor?.nombre,
     activo: compromiso.estado === 'activo',
-    subtypeKey: compromiso.subtipo,
+    familia: compromiso.familia,
+    subtipo: compromiso.subtipo,
     createdAt: compromiso.createdAt,
     updatedAt: compromiso.updatedAt,
   };
@@ -296,14 +259,15 @@ export function mapOpexRuleToCompromiso(
 ): Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'> {
   const patron = mapFrecuenciaToPatron(rule);
   const importe = mapImporteEstimadoToImporte(rule);
-  const categoriaCompromiso = mapCategoriaToCategoriaCompromiso(rule.categoria, rule.concepto);
+  // La familia explícita manda; el enum legacy solo se traduce si no viene.
+  const clas = rule.familia ? { familia: rule.familia, subtipo: rule.subtipo } : familiaDeOpexCategoria(rule.categoria);
 
   return {
     ambito: 'inmueble',
     inmuebleId: rule.propertyId,
     alias: rule.concepto || 'Gasto recurrente',
-    tipo: mapCategoriaToTipo(rule.categoria),
-    subtipo: rule.subtypeKey,
+    familia: clas.familia,
+    subtipo: rule.subtipo ?? clas.subtipo,
     proveedor: {
       nombre: rule.proveedorNombre || rule.concepto || 'Proveedor',
       nif: rule.proveedorNIF,
@@ -313,8 +277,6 @@ export function mapOpexRuleToCompromiso(
     cuentaCargo: rule.accountId ?? 0,
     conceptoBancario: rule.proveedorNombre || rule.concepto || 'Gasto recurrente',
     metodoPago: 'domiciliacion',
-    categoria: categoriaCompromiso,
-    bolsaPresupuesto: 'inmueble',
     responsable: 'titular',
     fechaInicio: new Date().toISOString().slice(0, 10),
     estado: rule.activo ? 'activo' : 'preparado',

@@ -141,7 +141,7 @@ const LOTE: Movement[] = [
 const LINEAS: LineaExtractoPersistida[] = LOTE.map((m) => lineaDe(m));
 
 const PREVISTOS: TreasuryEvent[] = [
-  previsto({ id: 101, naturaleza: 'gasto', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
+  previsto({ id: 101, naturaleza: 'gasto', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', familia: 'prestamo_hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
   previsto({ id: 102, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
   previsto({ id: 103, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
   previsto({ id: 104, naturaleza: 'gasto', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
@@ -156,12 +156,12 @@ function libros(): Stores {
   return {
     treasuryEvents: [...PREVISTOS],
     movementLearningRules: [
-      { id: 1, learnKey: buildLearnKey(NETFLIX), categoria: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 2, learnKey: buildLearnKey(DEVOLUCION), categoria: 'tecnologia', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 9, learnKey: 'x', categoria: 'alquiler', ambito: 'inmueble', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' },
+      { id: 1, learnKey: buildLearnKey(NETFLIX), familia: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 2, learnKey: buildLearnKey(DEVOLUCION), familia: 'compra_online', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 9, learnKey: 'x', familia: 'alquiler', ambito: 'inmueble', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' },
     ],
     compromisosRecurrentes: [
-      { id: 3, alias: 'Gas Tenderina', ambito: 'inmueble', inmuebleId: 4, cuentaCargo: CUENTA, estado: 'activo', importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, categoria: 'suministros' },
+      { id: 3, alias: 'Gas Tenderina', ambito: 'inmueble', inmuebleId: 4, cuentaCargo: CUENTA, estado: 'activo', importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, familia: 'suministro' },
     ],
     contracts: [
       { id: 21, inmuebleId: 4, estadoContrato: 'activo', inquilino: { nombre: 'Laura', apellidos: 'Sánchez Ruiz' } },
@@ -246,7 +246,6 @@ describe('movementDesdeLinea · el mismo movimiento que insertMovements, en memo
       movementState: 'Confirmado',
       state: 'pending',
       status: 'pendiente',
-      category: { tipo: 'Ingresos' },
       tags: [],
       isAutoTagged: false,
       ambito: 'personal',
@@ -264,7 +263,7 @@ describe('movementDesdeLinea · el mismo movimiento que insertMovements, en memo
 
   it('un gasto sale como Gasto · sin Bizum no hay método ni contraparte inventada', () => {
     const m = movementDesdeLinea(lineaDe(LOTE[3]));
-    expect(m).toMatchObject({ naturaleza: 'gasto', category: { tipo: 'Gastos' }, amount: -108.44 });
+    expect(m).toMatchObject({ naturaleza: 'gasto', amount: -108.44 });
     expect(m.counterparty).toBeUndefined();
     expect(m).not.toHaveProperty('paymentMethod');
   });
@@ -399,8 +398,8 @@ describe('EQUIVALENCIA · conciliación con confirmados · el lote de septiembre
     mov({ id: 34, importBatch: 'lote-sept', date: '2026-09-06', amount: -12.99, description: 'NETFLIX.COM' }),
   ];
   const CONFIRMADOS: Movement[] = [
-    mov({ id: 20, source: 'manual', importBatch: undefined, date: '2026-09-01', amount: -87.4, description: 'Agua Tenderina', reference: 'treasury_event:7', categoryKey: 'suministro_inmueble' }),
-    mov({ id: 21, source: 'manual', importBatch: undefined, date: '2026-09-05', amount: 380, description: 'Renta Laura', categoryKey: 'alquiler' }),
+    mov({ id: 20, source: 'manual', importBatch: undefined, date: '2026-09-01', amount: -87.4, description: 'Agua Tenderina', reference: 'treasury_event:7', familia: 'suministro' }),
+    mov({ id: 21, source: 'manual', importBatch: undefined, date: '2026-09-05', amount: 380, description: 'Renta Laura', familia: 'alquiler' }),
     mov({ id: 22, importBatch: 'lote-viejo', date: '2026-09-02', amount: -87.4, description: 'ADEUDO RECIBO AQUALIA SA 0034ES' }),
     mov({ id: 23, source: 'manual', importBatch: undefined, date: '2026-09-03', amount: -87.4, description: 'Agua con tarjeta', gastoTarjetaCredito: true } as never),
     mov({ id: 24, source: 'manual', importBatch: undefined, accountId: 3, date: '2026-09-06', amount: -12.99, description: 'Netflix' }),

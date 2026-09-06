@@ -36,22 +36,22 @@ describe('toIsoDate', () => {
 
 describe('detectConceptoId', () => {
   it('detects electricity by provider (VISALIA)', () => {
-    expect(detectConceptoId(docWith({ proveedor: 'Doméstica Gas y Electricidad S.L.U. (VISALIA)', tipo_gasto: 'electricidad' }))).toBe('luz');
+    expect(detectConceptoId(docWith({ proveedor: 'Doméstica Gas y Electricidad S.L.U. (VISALIA)', tipo_gasto: 'electricidad' }))).toBe('suministro:luz');
   });
   it('detects IBI, comunidad, seguro, gestoría, agua, caldera by keyword', () => {
-    expect(detectConceptoId(docWith({ proveedor: 'Ayuntamiento de Oviedo — IBI 2026' }))).toBe('ibi');
-    expect(detectConceptoId(docWith({ proveedor: 'Comunidad de Propietarios C/ Uría' }))).toBe('comunidad_ordinaria');
-    expect(detectConceptoId(docWith({ proveedor: 'MAPFRE Seguros del Hogar' }))).toBe('seguro_hogar');
-    expect(detectConceptoId(docWith({ proveedor: 'Gestoría Pérez SL' }))).toBe('gestoria');
-    expect(detectConceptoId(docWith({ proveedor: 'Aqualia Gestión Integral del Agua' }))).toBe('agua');
-    expect(detectConceptoId(docWith({ proveedor: 'Reparación de caldera Junkers' }))).toBe('mantenimiento_caldera');
+    expect(detectConceptoId(docWith({ proveedor: 'Ayuntamiento de Oviedo — IBI 2026' }))).toBe('impuestos_tasas:ibi');
+    expect(detectConceptoId(docWith({ proveedor: 'Comunidad de Propietarios C/ Uría' }))).toBe('comunidad:cuota_mensual');
+    expect(detectConceptoId(docWith({ proveedor: 'MAPFRE Seguros del Hogar' }))).toBe('seguros_alarmas:hogar');
+    expect(detectConceptoId(docWith({ proveedor: 'Gestoría Pérez SL' }))).toBe('gestion:gestoria');
+    expect(detectConceptoId(docWith({ proveedor: 'Aqualia Gestión Integral del Agua' }))).toBe('suministro:agua');
+    expect(detectConceptoId(docWith({ proveedor: 'Reparación de caldera Junkers' }))).toBe('reparacion_mantenimiento:caldera');
   });
   it('refines telecom to internet when fibra is present', () => {
-    expect(detectConceptoId(docWith({ proveedor: 'Movistar' }))).toBe('telefonia');
-    expect(detectConceptoId(docWith({ proveedor: 'Movistar Fibra 600', tipo_gasto: 'telecomunicaciones' }))).toBe('internet');
+    expect(detectConceptoId(docWith({ proveedor: 'Movistar' }))).toBe('suministro:telefonia');
+    expect(detectConceptoId(docWith({ proveedor: 'Movistar Fibra 600', tipo_gasto: 'telecomunicaciones' }))).toBe('suministro:internet');
   });
   it('falls back to tipo_gasto when no provider keyword matches', () => {
-    expect(detectConceptoId(docWith({ proveedor: 'Proveedor Genérico', tipo_gasto: 'agua' }))).toBe('agua');
+    expect(detectConceptoId(docWith({ proveedor: 'Proveedor Genérico', tipo_gasto: 'agua' }))).toBe('suministro:agua');
   });
   it('returns undefined when nothing is confident', () => {
     expect(detectConceptoId(docWith({ proveedor: 'XYZ', tipo_gasto: 'otros' }))).toBeUndefined();
@@ -72,9 +72,10 @@ describe('classifyDocumentFromOCR', () => {
         importe_total: '37,67',
       }),
     );
-    expect(c.conceptoId).toBe('luz');
-    expect(c.familia).toBe('suministros');
-    expect(c.label).toBe('Luz');
+    expect(c.conceptoId).toBe('suministro:luz');
+    expect(c.familia).toBe('suministro');
+    expect(c.subtipo).toBe('luz');
+    expect(c.label).toBe('Suministro · Luz');
     expect(c.total).toBe(37.67);
     expect(c.base).toBe(31.13);
     expect(c.ejercicio).toBe(2026);
@@ -86,8 +87,9 @@ describe('applyClassificationMetadata', () => {
   it('writes concepto/tipo/carpeta/financialData without assigning a property', () => {
     const doc = docWith({ proveedor: 'MAPFRE', tipo_gasto: 'seguros', importe_total: '120,00' });
     const out = applyClassificationMetadata(doc, classifyDocumentFromOCR(doc));
-    expect(out.metadata.concepto).toBe('seguro_hogar');
-    expect(out.metadata.categoria).toBe('Seguro hogar');
+    expect(out.metadata.familia).toBe('seguros_alarmas');
+    expect(out.metadata.subtipo).toBe('hogar');
+    expect(out.metadata.categoria).toBe('Seguros y alarmas · Hogar');
     expect(out.metadata.tipo).toBe('Factura');
     expect(out.metadata.financialData?.amount).toBe(120);
     expect(out.metadata.entityType).toBeUndefined();
@@ -97,10 +99,10 @@ describe('applyClassificationMetadata', () => {
 
 describe('elegirCompromiso (match a un gasto previsto)', () => {
   const compromisos: CompromisoLike[] = [
-    { id: 1, concepto: 'luz', cups: 'ES0026000000024563MV', numeroContrato: '1006826478', proveedor: { nombre: 'VISALIA', nif: 'B99340564' }, inmuebleId: 3 },
-    { id: 2, concepto: 'agua', proveedor: { nombre: 'Aqualia', nif: 'A26019992' }, inmuebleId: 3 },
-    { id: 3, concepto: 'seguro_hogar', proveedor: { nombre: 'Mapfre', nif: 'A28141935' }, inmuebleId: 5 },
-    { id: 4, concepto: 'seguro_hogar', proveedor: { nombre: 'Mapfre', nif: 'A28141935' }, inmuebleId: 7 },
+    { id: 1, cups: 'ES0026000000024563MV', numeroContrato: '1006826478', proveedor: { nombre: 'VISALIA', nif: 'B99340564' }, inmuebleId: 3 },
+    { id: 2, proveedor: { nombre: 'Aqualia', nif: 'A26019992' }, inmuebleId: 3 },
+    { id: 3, proveedor: { nombre: 'Mapfre', nif: 'A28141935' }, inmuebleId: 5 },
+    { id: 4, proveedor: { nombre: 'Mapfre', nif: 'A28141935' }, inmuebleId: 7 },
   ];
 
   it('matches by CUPS first (strongest signal)', () => {
@@ -127,10 +129,11 @@ describe('elegirCompromiso (match a un gasto previsto)', () => {
 describe('withConcepto', () => {
   it('overrides the concepto keeping OCR amounts', () => {
     const base = classifyDocumentFromOCR(docWith({ proveedor: 'Genérico', importe_total: '90,00' }));
-    const out = withConcepto(base, 'ibi');
-    expect(out.conceptoId).toBe('ibi');
-    expect(out.familia).toBe('tributos');
-    expect(out.label).toBe('IBI');
+    const out = withConcepto(base, 'impuestos_tasas:ibi');
+    expect(out.conceptoId).toBe('impuestos_tasas:ibi');
+    expect(out.familia).toBe('impuestos_tasas');
+    expect(out.subtipo).toBe('ibi');
+    expect(out.label).toBe('Impuestos y tasas · IBI');
     expect(out.total).toBe(90);
   });
 });
@@ -139,12 +142,12 @@ describe('conceptosInmueblePorFamilia', () => {
   it('groups only inmueble-deductible concepts by family', () => {
     const groups = conceptosInmueblePorFamilia();
     const familias = groups.map((g) => g.familia);
-    expect(familias).toContain('suministros');
-    expect(familias).toContain('tributos');
-    expect(familias).toContain('seguros');
+    expect(familias).toContain('suministro');
+    expect(familias).toContain('impuestos_tasas');
+    expect(familias).toContain('seguros_alarmas');
     // Personal-only families (e.g. suscripciones) have no inmueble projection
     expect(familias).not.toContain('suscripciones');
-    const suministros = groups.find((g) => g.familia === 'suministros');
-    expect(suministros?.conceptos.some((c) => c.id === 'luz')).toBe(true);
+    const suministros = groups.find((g) => g.familia === 'suministro');
+    expect(suministros?.conceptos.some((c) => c.id === 'suministro:luz')).toBe(true);
   });
 });

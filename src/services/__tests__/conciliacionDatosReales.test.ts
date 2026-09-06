@@ -44,7 +44,7 @@ const linea = (over: Partial<GastoInmueble> = {}): GastoInmueble =>
     ejercicio: 2026,
     fecha: '2026-08-27',
     concepto: 'Agua Tenderina',
-    categoria: 'suministro',
+    familia: 'suministro',
     casillaAEAT: '0113',
     importe: 82,
     origen: 'recurrente',
@@ -128,7 +128,7 @@ describe('B1 · conciliar por extracto escribe el importe y la fecha REALES', ()
     await cerrarLineaDeGastoDelEvento(db as never, evento(), delBanco());
     expect(filas[0].concepto).toBe('Agua Tenderina');
     expect(filas[0].casillaAEAT).toBe('0113');
-    expect(filas[0].categoria).toBe('suministro');
+    expect(filas[0].familia).toBe('suministro');
   });
 });
 

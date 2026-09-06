@@ -32,27 +32,27 @@ const conContratos = (contratos: unknown[], yaDados: unknown[] = []): void => {
 };
 
 describe('conceptosASembrar · el subtipo lo pone el contrato', () => {
-  it('MEDIA estancia en un inmueble de modo «completo» · 16, no 7', async () => {
+  it('MEDIA estancia en un inmueble de modo «completo» · 15, no 7', async () => {
     conContratos([contratoDe('media_estancia')]);
     const refs = await conceptosASembrar(1, 'completo', HOY);
-    expect(refs).toHaveLength(16);
+    expect(refs).toHaveLength(15);
   });
 
   it('CORTA estancia, igual', async () => {
     conContratos([contratoDe('corta_estancia')]);
-    expect(await conceptosASembrar(1, 'completo', HOY)).toHaveLength(16);
+    expect(await conceptosASembrar(1, 'completo', HOY)).toHaveLength(15);
   });
 
   it('la licencia turística deja de faltar', async () => {
     conContratos([contratoDe('media_estancia')]);
     const refs = await conceptosASembrar(1, 'completo', HOY);
-    expect(refs).toContainEqual({ tipoId: 'tributos', subtipoId: 'licencia_turistica' });
+    expect(refs).toContainEqual({ tipoId: 'impuestos_tasas', subtipoId: 'licencia_turistica' });
   });
 
   it('y el seguro de impago deja de sugerirse', async () => {
     conContratos([contratoDe('media_estancia')]);
     const refs = await conceptosASembrar(1, 'completo', HOY);
-    expect(refs).not.toContainEqual({ tipoId: 'seguros', subtipoId: 'impago' });
+    expect(refs).not.toContainEqual({ tipoId: 'seguros_alarmas', subtipoId: 'impago' });
   });
 
   it('la larga estancia no cambia · 7', async () => {
@@ -67,16 +67,16 @@ describe('conceptosASembrar · el subtipo lo pone el contrato', () => {
 
   it('sin contratos todavía, manda el modo · un turístico recién marcado recibe los suyos', async () => {
     conContratos([]);
-    expect(await conceptosASembrar(1, 'turistico', HOY)).toHaveLength(16);
+    expect(await conceptosASembrar(1, 'turistico', HOY)).toHaveLength(15);
     conContratos([]);
     expect(await conceptosASembrar(1, 'completo', HOY)).toHaveLength(7);
   });
 
   it('lo que ya está dado de alta no se vuelve a ofrecer', async () => {
-    conContratos([contratoDe('media_estancia')], [{ tipoFamilia: 'tributos', subtipo: 'ibi' }]);
+    conContratos([contratoDe('media_estancia')], [{ familia: 'impuestos_tasas', subtipo: 'ibi' }]);
     const refs = await conceptosASembrar(1, 'completo', HOY);
-    expect(refs).toHaveLength(15);
-    expect(refs).not.toContainEqual({ tipoId: 'tributos', subtipoId: 'ibi' });
+    expect(refs).toHaveLength(14);
+    expect(refs).not.toContainEqual({ tipoId: 'impuestos_tasas', subtipoId: 'ibi' });
   });
 
   it('pregunta por los contratos DE ESE inmueble', async () => {

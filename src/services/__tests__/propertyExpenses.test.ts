@@ -48,15 +48,13 @@ describe('propertyExpenses service', () => {
       ambito: 'inmueble',
       inmuebleId: PROPERTY_ID,
       alias: 'Comunidad',
-      tipo: 'comunidad',
       proveedor: { nombre: 'Comunidad de vecinos' },
       patron: { tipo: 'mensualDiaFijo', dia: 1 },
       importe: { modo: 'fijo', importe: 120 },
       cuentaCargo: 0,
       conceptoBancario: 'Comunidad',
       metodoPago: 'domiciliacion',
-      categoria: 'inmueble.comunidad' as any,
-      bolsaPresupuesto: 'inmueble',
+      familia: 'comunidad' as any,
       responsable: 'titular',
       fechaInicio: now,
       estado: 'activo',
@@ -68,7 +66,7 @@ describe('propertyExpenses service', () => {
     await db.add('compromisosRecurrentes', compromiso as CompromisoRecurrente);
     await db.add('gastosInmueble', {
       inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),
-      fecha: now, concepto: 'Proveedor test', categoria: 'suministro',
+      fecha: now, concepto: 'Proveedor test', familia: 'suministro',
       casillaAEAT: '0113', importe: 300, origen: 'tesoreria', estado: 'confirmado',
       createdAt: now, updatedAt: now,
     });
@@ -83,7 +81,7 @@ describe('propertyExpenses service', () => {
 
     await db.add('gastosInmueble', {
       inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),
-      fecha: now, concepto: 'Proveedor legacy', categoria: 'comunidad',
+      fecha: now, concepto: 'Proveedor legacy', familia: 'comunidad',
       casillaAEAT: '0109', importe: 500, origen: 'tesoreria', estado: 'confirmado',
       createdAt: now, updatedAt: now,
     });

@@ -32,18 +32,18 @@ describe('§3.3 · vivienda completa · precarga 7 SIN suministros', () => {
   });
   it('los suministros NO se precargan (los paga el inquilino)', () => {
     for (const s of ['luz', 'agua', 'gas', 'internet']) {
-      expect(has(cat.precargados, 'suministros', s)).toBe(false);
-      expect(has(cat.disponibles, 'suministros', s)).toBe(true);
+      expect(has(cat.precargados, 'suministro', s)).toBe(false);
+      expect(has(cat.disponibles, 'suministro', s)).toBe(true);
     }
   });
   it('precarga comunidad, IBI, basuras, seguro hogar, seguro impago, derramas, gestión', () => {
-    expect(has(cat.precargados, 'comunidad', 'cuota_ordinaria')).toBe(true);
-    expect(has(cat.precargados, 'tributos', 'ibi')).toBe(true);
-    expect(has(cat.precargados, 'tributos', 'tasa_basuras')).toBe(true);
-    expect(has(cat.precargados, 'seguros', 'hogar')).toBe(true);
-    expect(has(cat.precargados, 'seguros', 'impago')).toBe(true);
+    expect(has(cat.precargados, 'comunidad', 'cuota_mensual')).toBe(true);
+    expect(has(cat.precargados, 'impuestos_tasas', 'ibi')).toBe(true);
+    expect(has(cat.precargados, 'impuestos_tasas', 'basuras')).toBe(true);
+    expect(has(cat.precargados, 'seguros_alarmas', 'hogar')).toBe(true);
+    expect(has(cat.precargados, 'seguros_alarmas', 'impago')).toBe(true);
     expect(has(cat.precargados, 'comunidad', 'derrama')).toBe(true);
-    expect(has(cat.precargados, 'gestion', 'honorarios_agencia')).toBe(true);
+    expect(has(cat.precargados, 'gestion', 'otros')).toBe(true);
   });
 });
 
@@ -54,30 +54,31 @@ describe('§3.3 · habitaciones · precarga 13', () => {
   });
   it('incluye suministros y limpieza de zonas comunes', () => {
     for (const s of ['luz', 'agua', 'gas', 'internet']) {
-      expect(has(cat.precargados, 'suministros', s)).toBe(true);
+      expect(has(cat.precargados, 'suministro', s)).toBe(true);
     }
-    expect(has(cat.precargados, 'servicios', 'limpieza_zonas_comunes')).toBe(true);
+    expect(has(cat.precargados, 'limpieza', 'zonas_comunes')).toBe(true);
   });
 });
 
-describe('§3.3 · temporada/turístico · precarga 16', () => {
+describe('§3.3 · temporada/turístico · precarga 15', () => {
+  // Eran 16 con el catálogo viejo: los «consumibles de bienvenida» no tienen
+  // familia propia en el catálogo único y caen en gestión · otros, que ya está.
   const cat = catalogoSugeridoPorModalidad('temporada', 'vivienda');
-  it('precarga exactamente 16 conceptos', () => {
-    expect(cat.precargados).toHaveLength(16);
+  it('precarga exactamente 15 conceptos', () => {
+    expect(cat.precargados).toHaveLength(15);
   });
-  it('incluye los 5 propios de turístico', () => {
-    expect(has(cat.precargados, 'servicios', 'limpieza_por_estancia')).toBe(true);
-    expect(has(cat.precargados, 'servicios', 'lavanderia')).toBe(true);
+  it('incluye los 4 propios de turístico', () => {
+    expect(has(cat.precargados, 'limpieza', 'por_estancia')).toBe(true);
+    expect(has(cat.precargados, 'limpieza', 'lavanderia')).toBe(true);
     expect(has(cat.precargados, 'gestion', 'comision_plataformas')).toBe(true);
-    expect(has(cat.precargados, 'servicios', 'consumibles_bienvenida')).toBe(true);
-    expect(has(cat.precargados, 'tributos', 'licencia_turistica')).toBe(true);
+    expect(has(cat.precargados, 'impuestos_tasas', 'licencia_turistica')).toBe(true);
   });
   it('mantiene gestión del alquiler (turístico gestionado por empresa es normal)', () => {
-    expect(has(cat.precargados, 'gestion', 'honorarios_agencia')).toBe(true);
+    expect(has(cat.precargados, 'gestion', 'otros')).toBe(true);
   });
   it('excluye impago y limpieza de zonas comunes (2 de larga duración)', () => {
-    expect(has(cat.precargados, 'seguros', 'impago')).toBe(false);
-    expect(has(cat.precargados, 'servicios', 'limpieza_zonas_comunes')).toBe(false);
+    expect(has(cat.precargados, 'seguros_alarmas', 'impago')).toBe(false);
+    expect(has(cat.precargados, 'limpieza', 'zonas_comunes')).toBe(false);
   });
 });
 
@@ -101,9 +102,9 @@ describe('integridad · toda ref del mapa existe en el catálogo', () => {
 describe('restarYaDados · el catálogo ofrece solo lo que aún no está', () => {
   it('quita los conceptos ya dados de alta', () => {
     const cat = catalogoSugeridoPorModalidad('larga_estancia', 'vivienda');
-    const yaDados: ConceptoInmuebleRef[] = [{ tipoId: 'tributos', subtipoId: 'ibi' }];
+    const yaDados: ConceptoInmuebleRef[] = [{ tipoId: 'impuestos_tasas', subtipoId: 'ibi' }];
     const restantes = restarYaDados(cat.precargados, yaDados);
-    expect(has(restantes, 'tributos', 'ibi')).toBe(false);
+    expect(has(restantes, 'impuestos_tasas', 'ibi')).toBe(false);
     expect(restantes).toHaveLength(cat.precargados.length - 1);
   });
 });

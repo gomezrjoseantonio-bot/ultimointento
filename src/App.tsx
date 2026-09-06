@@ -15,20 +15,16 @@ import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/
 import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/migrations/backfillImporteBruto0106';
 import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migrations/cleanStaleCPAndInferITP';
 import { runMigrationIfNeeded as fixFechasImposiblesGastos } from './services/migrations/fixFechasImposiblesGastos';
-import { runMigrationIfNeeded as migrarConceptoUnificado } from './services/migrations/migrarConceptoUnificado';
 import { runMigrationIfNeeded as backfillClasificacionConciliados } from './services/migrations/backfillClasificacionConciliados';
-import { cargarConceptosUsuario } from './services/conceptos/conceptosUsuarioService';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { runKeyvalCleanup } from './services/keyvalCleanupService';
 import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrateKeyvalPlanpagosToPrestamos';
 import { cleanupConfigFiscalKeyval } from './services/migrations/cleanupConfigFiscalKeyval';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
-import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
 import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
 import { runSeedV74PR4 } from './services/migrations/seedV74_PR4';
 import { runSeedV74PR5 } from './services/migrations/seedV74_PR5';
 import { runAuditV74PR6 } from './services/migrations/auditV74_PR6';
-import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import { fixAportacionesPlanCruceB6 } from './services/migrations/fixAportacionesPlanCruceB6';
 import { fixDeclaracionCompletaCruceB6 } from './services/migrations/fixDeclaracionCompletaCruceB6';
 import { fixCasillaAEATOficial } from './services/migrations/fixCasillaAEATOficial';
@@ -205,7 +201,6 @@ const PersonalGastos = lazyWithPreload(() => import('./modules/personal/pages/Ga
 const PersonalDetectarCompromisos = lazyWithPreload(
   () => import('./modules/personal/pages/DetectarCompromisosPage'),
 );
-const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
 
 
 // Gestión Inmuebles hub
@@ -323,14 +318,6 @@ function App() {
       // imposible no falla al parsearse, rueda al mes siguiente, así que quien
       // la lea antes de arreglarla imputa el gasto a otro mes.
       .then(() => fixFechasImposiblesGastos())
-      // Los conceptos propios del usuario se aplican al catálogo en memoria
-      // ANTES de que nadie lo consulte · si no, un gasto que use uno suyo se
-      // leería como «sin clasificar» durante el primer render.
-      .then(() => cargarConceptosUsuario())
-      // Va DESPUÉS de las limpiezas de `gastosInmueble` y ANTES de que nadie
-      // lea la clasificación: escribe `concepto` en cada gasto y realinea
-      // `categoria`, `bolsaPresupuesto` y `tipo` con el ámbito del registro.
-      .then(() => migrarConceptoUnificado())
       .then(() => migrateOrphanedInmuebleIds())
       .then((migrationReport) => {
         if (migrationReport && !migrationReport.skipped && Object.keys(migrationReport.storeUpdates).length > 0) {
@@ -375,8 +362,6 @@ function App() {
       // Limpieza de ejercicios fiscales basura — eager para evitar que la UI
       // muestre años futuros residuales durante los primeros 2.5s.
       .then(() => limpiarEjerciciosCoordBasura())
-      // T38: migración v68 · inferir tipoFamilia en compromisosRecurrentes existentes
-      .then(() => runV68TipoFamiliaMigration())
       // PR-C4 (V70): backfill `historial` inicial en nóminas existentes
       .then(() => runV70NominaHistorialMigration())
       .then((v70Report) => {
@@ -418,18 +403,6 @@ function App() {
       .then(() => runAuditV74PR6().catch((err) => {
         console.warn('[ATLAS] Audit v74-PR6 falló (no bloqueante)', err);
       }))
-      // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
-      // en los 2 patrones documentados (dia_a_dia.otros + seguros_cuotas.seguro_otros).
-      .then(() => cleanupCategoriasT34T35Fix2())
-      .then((t34Fix2Report) => {
-        if (!t34Fix2Report.skipped &&
-            (t34Fix2Report.caso1Corregidos > 0 || t34Fix2Report.caso2Corregidos > 0)) {
-          console.log('[ATLAS] Limpieza T34/T35-fix-2 categorías:', t34Fix2Report);
-        }
-        if (t34Fix2Report.errors.length > 0) {
-          console.warn('[ATLAS] Limpieza T34/T35-fix-2 · errores parciales:', t34Fix2Report.errors);
-        }
-      })
       // FIX-B6 · one-shot · voltea importeTitular ↔ importeEmpresa en
       // aportacionesPlan con origen='xml_aeat' escritas por el parser AEAT
       // antes del fix de irpfXmlParserService.extraerPlanPensiones. Idempotente.
@@ -1213,11 +1186,9 @@ function App() {
                   Gastos · la hipoteca en Financiación · el rol fiscal en el
                   inmueble (usoTipo). Redirect de compat. */}
               <Route path="vivienda" element={<Navigate to="/personal/gastos" replace />} />
-              <Route path="presupuesto" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PersonalPresupuesto />
-                </React.Suspense>
-              } />
+              {/* E2.4.1c · el presupuesto 50/30/20 se retiró (la bolsa no existe ·
+                  DEFINITIVO principio 7). Enlaces antiguos van a la proyección. */}
+              <Route path="presupuesto" element={<Navigate to="/mi-plan/proyeccion" replace />} />
               {/* Compat · /personal/supervision legacy redirige a panel */}
               <Route path="supervision" element={<Navigate to="/personal" replace />} />
               {/* Compat · /personal/importar-nominas legacy (T-NOMINAS-CLEANUP · entrada Excel eliminada) redirige a panel */}

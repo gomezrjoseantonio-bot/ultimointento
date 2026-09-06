@@ -17,21 +17,12 @@ import '../conciliacion-v2.css';
 import { initDB } from '../../../../../services/db';
 import type { Account, Property, TreasuryEvent } from '../../../../../services/db';
 import {
-  getCategoriesForModal,
-  getCategoryByKey,
-  getOpexCategories,
+  familiasSugeridas,
+  labelFamilia,
+  subtiposDe,
   type Ambito,
-  type CategoryDef,
-} from '../../../../../services/categoryCatalog';
-import {
-  familiasDeAmbito,
-  conceptosDe,
-  proyectar,
-  conceptoDesdeClasificacion,
   type FamiliaId,
-  type ProyeccionInmueble,
-} from '../../../../../services/conceptos/catalogoConceptos';
-import { keyPersonalDeFamilia } from '../../../../../services/catalogoPresentacionPersistencia';
+} from '../../../../../services/catalogo/catalogoUnico';
 import { computeDocFlags } from '../../../../../services/documentRequirementsService';
 import { confirmTreasuryEvent } from '../../../../../services/treasuryConfirmationService';
 import { createTransfer } from '../../../../../services/treasuryTransferService';
@@ -54,8 +45,8 @@ export interface AddMovementModalPrefill {
   tipo?: TipoAlta;
   ambito?: Ambito;
   inmuebleId?: number;
-  categoryKey?: string;
-  subtypeKey?: string;
+  familia?: FamiliaId;
+  subtipo?: string;
   fecha?: string;
 }
 
@@ -143,12 +134,14 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   });
   const [ambito, setAmbito] = useState<Ambito | undefined>(prefill?.ambito ?? 'inmueble');
   const [inmuebleId, setInmuebleId] = useState<number | undefined>(prefill?.inmuebleId);
-  // Categoría de INGRESO · el gasto ya no usa esta key directamente (la deriva
-  // del concepto elegido), pero el ingreso sigue eligiendo su categoría aquí.
-  const [categoriaKey, setCategoriaKey] = useState<string | undefined>(prefill?.categoryKey);
-  const [subtipoKey, setSubtipoKey] = useState<string | undefined>(prefill?.subtypeKey);
-  // Gasto · familia + concepto del catálogo UNIFICADO (mismo que la ficha V6).
-  // El ámbito lo dan las pills personal/inmueble; de aquí sale la categoryKey.
+  // Familia de INGRESO · tarjetas del catálogo único.
+  const [categoriaKey, setCategoriaKey] = useState<string | undefined>(
+    prefill?.familia && familiasSugeridas('ingreso', 'inmueble').concat(familiasSugeridas('ingreso', 'personal')).some((f) => f.id === prefill.familia)
+      ? prefill.familia
+      : undefined,
+  );
+  // Gasto · familia + subtipo del catálogo único (mismo que la ficha V6).
+  // El ámbito lo dan las pills personal/inmueble.
   const [familiaSel, setFamiliaSel] = useState<string>('');
   const [conceptoSel, setConceptoSel] = useState<string>('');
   const [prestamoId, setPrestamoId] = useState<string | undefined>(undefined);
@@ -200,57 +193,39 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   // Ámbito unificado (personal|inmueble) para el catálogo de gasto.
   const ambitoGasto = ambito === 'inmueble' ? 'inmueble' : 'personal';
 
-  // Keys de gasto admitidas en OPEX · para filtrar el catálogo cuando el modal
-  // se abre desde recurrentes de inmueble (`restrictCategoriesTo="opex"`).
-  const opexKeys = useMemo(() => new Set(getOpexCategories().map((c) => c.key)), []);
-  const esConceptoOpex = (categoryKeyDeConcepto: string | null | undefined) =>
-    restrictCategoriesTo !== 'opex' || (!!categoryKeyDeConcepto && opexKeys.has(categoryKeyDeConcepto));
+  // Familias de gasto que son OPEX de un inmueble (gasto recurrente deducible) ·
+  // para filtrar el catálogo cuando el modal se abre desde recurrentes de
+  // inmueble (`restrictCategoriesTo="opex"`). Una reforma o el mobiliario se
+  // amortizan, no son OPEX.
+  const esFamiliaOpex = (familia: string) =>
+    restrictCategoriesTo !== 'opex' || !['reforma_mejora', 'mobiliario_enseres', 'prestamo_hipoteca'].includes(familia);
 
-  // Categorías de INGRESO (tarjetas) · el gasto ya no las usa.
-  const categoriesToShow: CategoryDef[] = useMemo(() => {
+  // Familias de INGRESO (tarjetas) · el gasto no las usa.
+  const categoriesToShow = useMemo(() => {
     if (!showCategoriaIngreso) return [];
-    return getCategoriesForModal('ingreso', ambito);
+    return ambito ? familiasSugeridas('ingreso', ambito) : familiasSugeridas('ingreso', 'personal').concat(familiasSugeridas('ingreso', 'inmueble')).filter((f, i, arr) => arr.findIndex((x) => x.id === f.id) === i);
   }, [showCategoriaIngreso, ambito]);
 
-  // Familias de GASTO del ámbito · filtradas a las que tienen algún concepto OPEX
-  // cuando el modal está restringido.
+  // Familias de GASTO sugeridas para el ámbito · filtradas a OPEX cuando el
+  // modal está restringido.
   const familiasGasto = useMemo(() => {
     if (!showClasifGasto) return [];
-    return familiasDeAmbito(ambitoGasto).filter((f) =>
-      ambitoGasto === 'personal'
-        ? true
-        : conceptosDe(f.id, 'inmueble').some((c) => esConceptoOpex(c.inmueble?.categoryKey)),
-    );
+    return familiasSugeridas('gasto', ambitoGasto).filter((f) => esFamiliaOpex(f.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showClasifGasto, ambitoGasto, restrictCategoriesTo]);
 
-  // Conceptos de la familia elegida · mismo filtro OPEX.
+  // Subtipos de la familia elegida · opcionales.
   const conceptosGasto = useMemo(() => {
     if (!showClasifGasto || !familiaSel) return [];
-    return conceptosDe(familiaSel as FamiliaId, ambitoGasto).filter((c) =>
-      ambitoGasto === 'personal' ? true : esConceptoOpex(c.inmueble?.categoryKey),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showClasifGasto, familiaSel, ambitoGasto, restrictCategoriesTo]);
+    return subtiposDe(familiaSel as FamiliaId);
+  }, [showClasifGasto, familiaSel]);
 
-  // Traducción PRESENTACIÓN → PERSISTENCIA del gasto (misma regla que la ficha):
-  // inmueble → key/subtype del concepto; personal → macro `gasto_personal_*`.
-  // Una derrama (pregunta) se registra aquí como conservación: este modal no
-  // capitaliza mejoras (eso vive en la ficha de Tesorería / mejoras del inmueble).
-  const gastoPersistencia = useMemo((): { categoryKey?: string; subtypeKey?: string } => {
-    if (!showClasifGasto || !conceptoSel) return {};
-    if (ambitoGasto === 'inmueble') {
-      const p = proyectar(conceptoSel, 'inmueble') as ProyeccionInmueble | undefined;
-      const ck = p?.categoryKey ?? (p?.estado === 'pregunta' ? 'comunidad_inmueble' : undefined);
-      return { categoryKey: ck ?? undefined, subtypeKey: p?.subtypeKey };
-    }
-    return { categoryKey: keyPersonalDeFamilia(familiaSel), subtypeKey: undefined };
-  }, [showClasifGasto, ambitoGasto, familiaSel, conceptoSel]);
-
-  // La categoría efectiva que se persiste · ingreso la elige en tarjeta, gasto la deriva.
-  const categoryKeyEfectiva = tipo === 'ingreso' ? categoriaKey : gastoPersistencia.categoryKey;
-  const subtypeKeyEfectiva = tipo === 'ingreso' ? subtipoKey : gastoPersistencia.subtypeKey;
-  const categoriaDef = categoryKeyEfectiva ? getCategoryByKey(categoryKeyEfectiva) : undefined;
+  // La clasificación efectiva que se persiste · ingreso la elige en tarjeta,
+  // gasto en familia + subtipo.
+  const familiaEfectiva: FamiliaId | undefined =
+    tipo === 'ingreso' ? (categoriaKey as FamiliaId | undefined) : (familiaSel as FamiliaId) || undefined;
+  const subtipoEfectivo = tipo === 'ingreso' ? undefined : conceptoSel || undefined;
+  const requiereInmuebleIngreso = tipo === 'ingreso' && categoriaKey === 'alquiler';
 
   // Mantiene familia/concepto de gasto válidos para el ámbito actual · en el
   // primer render coloca la clasificación del prefill (si llega) o la primera
@@ -258,20 +233,15 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   // cuando el valor cambia de verdad, para no entrar en bucle.
   useEffect(() => {
     if (tipo !== 'gasto') return;
-    if (!familiaSel && prefill?.categoryKey) {
-      const clas = conceptoDesdeClasificacion(prefill.categoryKey, prefill.subtypeKey, ambitoGasto);
-      if (clas) {
-        setFamiliaSel(clas.familia);
-        setConceptoSel(clas.conceptoId);
-        return;
-      }
+    if (!familiaSel && prefill?.familia && familiasGasto.some((f) => f.id === prefill.familia)) {
+      setFamiliaSel(prefill.familia);
+      setConceptoSel(prefill.subtipo ?? '');
+      return;
     }
     if (!familiasGasto.length) return;
     const fam = familiasGasto.some((f) => f.id === familiaSel) ? familiaSel : familiasGasto[0].id;
-    const cs = conceptosDe(fam as FamiliaId, ambitoGasto).filter((c) =>
-      ambitoGasto === 'personal' ? true : esConceptoOpex(c.inmueble?.categoryKey),
-    );
-    const sub = cs.some((c) => c.id === conceptoSel) ? conceptoSel : cs[0]?.id ?? '';
+    const cs = subtiposDe(fam as FamiliaId);
+    const sub = cs.some((c) => c.id === conceptoSel) ? conceptoSel : '';
     if (fam !== familiaSel) setFamiliaSel(fam);
     if (sub !== conceptoSel) setConceptoSel(sub);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -296,7 +266,6 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     setTipo(next);
     if (!categoriaLocked) {
       setCategoriaKey(undefined);
-      setSubtipoKey(undefined);
       // El gasto reconstruye familia/concepto en su efecto; vaciarlos fuerza
       // que arranque de la primera opción del nuevo tipo/ámbito.
       setFamiliaSel('');
@@ -319,7 +288,6 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     setAmbito(next);
     if (!categoriaLocked) {
       setCategoriaKey(undefined);
-      setSubtipoKey(undefined);
       // El gasto reajusta familia/concepto al nuevo ámbito en su efecto.
       setFamiliaSel('');
       setConceptoSel('');
@@ -331,7 +299,6 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   const handleCategoriaChange = (key: string) => {
     if (categoriaLocked) return;
     setCategoriaKey(key);
-    setSubtipoKey(undefined); // reset sub-tipo al cambiar categoría
   };
 
   const handlePrestamoChange = (id: string | undefined) => {
@@ -359,12 +326,11 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
 
     if (tipo === 'ingreso') {
       if (!categoriaKey) return true;
-      if (categoriaDef?.requiereInmueble && !inmuebleId) return true;
-      if (categoriaDef?.hasSubtype && !subtipoKey) return true;
+      if (requiereInmuebleIngreso && !inmuebleId) return true;
     }
     if (tipo === 'gasto') {
-      // Familia + concepto elegidos, y el inmueble si el ámbito lo pide.
-      if (!familiaSel || !conceptoSel) return true;
+      // Familia elegida (el subtipo es opcional), y el inmueble si el ámbito lo pide.
+      if (!familiaSel) return true;
       if (ambito === 'inmueble' && !inmuebleId) return true;
     }
     if (tipo === 'financiacion') {
@@ -422,10 +388,14 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
           ? esAmortizacionParcial
             ? `Amortización parcial · ${prestamoSel?.nombre ?? ''}`.trim()
             : `Cargo financiación · ${prestamoSel?.nombre ?? ''}`.trim()
-          : categoriaDef?.label ?? 'Movimiento');
+          : familiaEfectiva ? labelFamilia(familiaEfectiva) : 'Movimiento');
 
       // Calcular flags documentales por categoría canónica.
-      const flags = computeDocFlags(categoryKeyEfectiva ?? (tipo === 'financiacion' ? 'gasto_financiero' : undefined));
+      const flags = computeDocFlags({
+        familia: tipo === 'financiacion' ? 'prestamo_hipoteca' : familiaEfectiva,
+        naturaleza: tipo === 'ingreso' ? 'ingreso' : 'gasto',
+        ambito: effectiveAmbito,
+      });
 
       const providerNameTrimmed = providerName.trim();
       const providerNifTrimmed = providerNif.trim();
@@ -433,7 +403,11 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
 
       const eventPayload: Omit<TreasuryEvent, 'id'> = {
         naturaleza: tipo === 'ingreso' ? 'ingreso' : 'gasto',
-        ...(tipo === 'financiacion' ? { familia: 'prestamo_hipoteca' as const } : {}),
+        ...(tipo === 'financiacion'
+          ? { familia: 'prestamo_hipoteca' as const }
+          : familiaEfectiva
+            ? { familia: familiaEfectiva, ...(subtipoEfectivo ? { subtipo: subtipoEfectivo } : {}) }
+            : {}),
         amount: Math.abs(parsedImporte),
         predictedDate: fecha,
         description,
@@ -443,11 +417,6 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
         status: 'predicted',
         ambito: effectiveAmbito,
         inmuebleId: effectiveInmuebleId,
-        categoryKey: categoryKeyEfectiva,
-        categoryLabel: categoriaDef?.label,
-        subtypeKey: subtypeKeyEfectiva,
-        // Sub-clasificador · para el gasto, la familia del catálogo unificado.
-        tipoFamilia: tipo === 'gasto' ? familiaSel || undefined : undefined,
         // PR-C1 · marca de esporádico: alta manual desde modal sin vínculo
         // explícito a un compromiso recurrente. Default true para ingresos
         // y gastos; en financiación es siempre `false` (cuota de préstamo
@@ -662,17 +631,16 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                 className={`cv2-cat-grid ${categoriesToShow.length >= 10 ? 'cv2-cat-grid--cols-5' : ''}`}
               >
                 {categoriesToShow.map((cat) => {
-                  const active = categoriaKey === cat.key;
+                  const active = categoriaKey === cat.id;
                   const disabled = busy || (categoriaLocked && !active);
                   return (
                     <button
-                      key={cat.key}
+                      key={cat.id}
                       type="button"
                       className={`cv2-cat-card ${active ? 'active' : ''}`}
-                      onClick={() => handleCategoriaChange(cat.key)}
+                      onClick={() => handleCategoriaChange(cat.id)}
                       disabled={disabled}
                     >
-                      <cat.icon size={20} />
                       <span>{cat.label}</span>
                     </button>
                   );
@@ -697,12 +665,8 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                     aria-label="Familia"
                     value={familiaSel}
                     onChange={(e) => {
-                      const f = e.target.value;
-                      setFamiliaSel(f);
-                      const cs = conceptosDe(f as FamiliaId, ambitoGasto).filter((c) =>
-                        ambitoGasto === 'personal' ? true : esConceptoOpex(c.inmueble?.categoryKey),
-                      );
-                      setConceptoSel(cs[0]?.id ?? '');
+                      setFamiliaSel(e.target.value);
+                      setConceptoSel('');
                     }}
                     disabled={busy || categoriaLocked}
                   >
@@ -711,19 +675,22 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                     ))}
                   </select>
                 </div>
-                <div className="cv2-field">
-                  <label>Concepto</label>
-                  <select
-                    aria-label="Concepto del gasto"
-                    value={conceptoSel}
-                    onChange={(e) => setConceptoSel(e.target.value)}
-                    disabled={busy || categoriaLocked || !familiaSel}
-                  >
-                    {conceptosGasto.map((c) => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
+                {conceptosGasto.length > 0 && (
+                  <div className="cv2-field">
+                    <label>Concepto</label>
+                    <select
+                      aria-label="Concepto del gasto"
+                      value={conceptoSel}
+                      onChange={(e) => setConceptoSel(e.target.value)}
+                      disabled={busy || categoriaLocked || !familiaSel}
+                    >
+                      <option value="">Sin concretar</option>
+                      {conceptosGasto.map((c) => (
+                        <option key={c.id} value={c.id}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           )}

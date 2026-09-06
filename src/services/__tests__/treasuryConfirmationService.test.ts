@@ -4,9 +4,8 @@ import {
   revertTreasuryConfirmation,
   deleteTreasuryEventCompletely,
   updateConfirmedMovement,
-  categoryLabelToStoreName,
-  resolveCasillaAEAT,
 } from '../treasuryConfirmationService';
+import { casillaDe, storeDestinoDe } from '../fiscal/lenteFiscal';
 
 const ACCOUNT_ID = 77;
 const INMUEBLE_ID = 42;
@@ -37,44 +36,29 @@ describe('treasuryConfirmationService · PR3', () => {
     ]);
   });
 
-  describe('categoryLabelToStoreName', () => {
-    it('mapea categoryLabel a store correcto', () => {
-      expect(categoryLabelToStoreName('Reparación inmueble')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('Reparacion inmueble')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('Mejora inmueble')).toBe('mejorasInmueble');
-      expect(categoryLabelToStoreName('Mobiliario inmueble')).toBe('mueblesInmueble');
-      expect(categoryLabelToStoreName('Muebles varios')).toBe('mueblesInmueble');
+  describe('la lente fiscal decide store y casilla por la familia (E2.4.1c)', () => {
+    it('mapea la familia al store correcto', () => {
+      expect(storeDestinoDe('reparacion_mantenimiento')).toBe('gastosInmueble');
+      expect(storeDestinoDe('reforma_mejora')).toBe('mejorasInmueble');
+      expect(storeDestinoDe('mobiliario_enseres')).toBe('mueblesInmueble');
+      expect(storeDestinoDe('comunidad')).toBe('gastosInmueble');
+      expect(storeDestinoDe('seguros_alarmas')).toBe('gastosInmueble');
+      expect(storeDestinoDe('impuestos_tasas')).toBe('gastosInmueble');
+      expect(storeDestinoDe('suministro')).toBe('gastosInmueble');
     });
 
-    it('mapea gastos recurrentes deducibles a gastosInmueble', () => {
-      expect(categoryLabelToStoreName('Comunidad')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('Seguro inmueble')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('IBI')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('Suministros')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('Gasto recurrente')).toBe('gastosInmueble');
-      expect(categoryLabelToStoreName('Tributos locales')).toBe('gastosInmueble');
-    });
-
-    it('devuelve null para labels sin mapeo o vacíos', () => {
-      expect(categoryLabelToStoreName(undefined)).toBeNull();
-      expect(categoryLabelToStoreName('')).toBeNull();
-      expect(categoryLabelToStoreName('Ocio personal')).toBeNull();
-    });
-  });
-
-  describe('resolveCasillaAEAT', () => {
     it('devuelve casillas AEAT alineadas con el resto del codebase', () => {
-      // Consistente con aeatClassificationService y rendimientoActivoService
-      expect(resolveCasillaAEAT('Reparación inmueble')).toBe('0106');
-      expect(resolveCasillaAEAT('Comunidad')).toBe('0109');
-      expect(resolveCasillaAEAT('Seguro')).toBe('0114');
-      expect(resolveCasillaAEAT('IBI')).toBe('0115');
-      expect(resolveCasillaAEAT('Suministros')).toBe('0113');
+      expect(casillaDe({ familia: 'reparacion_mantenimiento', ambito: 'inmueble' })).toBe('0106');
+      expect(casillaDe({ familia: 'comunidad', ambito: 'inmueble' })).toBe('0109');
+      expect(casillaDe({ familia: 'seguros_alarmas', ambito: 'inmueble' })).toBe('0114');
+      expect(casillaDe({ familia: 'impuestos_tasas', subtipo: 'ibi', ambito: 'inmueble' })).toBe('0115');
+      expect(casillaDe({ familia: 'suministro', ambito: 'inmueble' })).toBe('0113');
     });
 
-    it('devuelve undefined si no hay mapeo', () => {
-      expect(resolveCasillaAEAT(undefined)).toBeUndefined();
-      expect(resolveCasillaAEAT('Otra cosa')).toBeUndefined();
+    it('sin familia, en personal o en una familia que no deduce, no hay casilla', () => {
+      expect(casillaDe({ familia: undefined, ambito: 'inmueble' })).toBeUndefined();
+      expect(casillaDe({ familia: 'comunidad', ambito: 'personal' })).toBeUndefined();
+      expect(casillaDe({ familia: 'ocio', ambito: 'inmueble' })).toBeUndefined();
     });
   });
 
@@ -111,18 +95,19 @@ describe('treasuryConfirmationService · PR3', () => {
       expect(movement.naturaleza).toBe('ingreso');
     });
 
-    // F2b · el concepto fino de la previsión viaja al movimiento al confirmar,
-    // para que la fila enseñe el subtipo (no la categoría gorda).
-    it('propaga el conceptoId de la previsión al movimiento', async () => {
+    // La clasificación de la previsión viaja al movimiento al confirmar, para
+    // que la fila enseñe el subtipo (no la familia a secas).
+    it('propaga familia y subtipo de la previsión al movimiento', async () => {
       const db = await initDB();
       const eventId = Number(
-        await db.add('treasuryEvents', baseEvent({ conceptoId: 'limpieza' }) as any),
+        await db.add('treasuryEvents', baseEvent({ familia: 'limpieza', subtipo: 'integral' }) as any),
       );
 
       const { movementId } = await confirmTreasuryEvent(eventId);
 
       const movement = (await db.get('movements', movementId)) as Movement;
-      expect(movement.conceptoId).toBe('limpieza');
+      expect(movement.familia).toBe('limpieza');
+      expect(movement.subtipo).toBe('integral');
     });
 
     it('materializa events type=financing como Movement.type=Gasto', async () => {
@@ -235,7 +220,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
           counterparty: 'A11111111',
           amount: 150,
           predictedDate: '2026-04-09',
@@ -250,7 +235,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const linea = (await db.get('gastosInmueble', lineaId as number)) as any;
       expect(linea.inmuebleId).toBe(INMUEBLE_ID);
       expect(linea.casillaAEAT).toBe('0106');
-      expect(linea.categoria).toBe('reparacion');
+      expect(linea.familia).toBe('reparacion_mantenimiento');
       expect(linea.origen).toBe('tesoreria');
       expect(linea.estado).toBe('confirmado');
       expect(linea.importe).toBe(150);
@@ -265,7 +250,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Mejora inmueble',
+          familia: 'reforma_mejora',
           description: 'Cambio ventanas',
           amount: 3500,
         }) as any),
@@ -286,7 +271,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Mobiliario inmueble',
+          familia: 'mobiliario_enseres',
           description: 'Lavadora nueva',
           amount: 400,
         }) as any),
@@ -307,7 +292,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Comunidad',
+          familia: 'comunidad',
           amount: 90,
         }) as any),
       );
@@ -315,7 +300,8 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Seguro inmueble',
+          familia: 'seguros_alarmas',
+          subtipo: 'hogar',
           amount: 320,
         }) as any),
       );
@@ -326,9 +312,9 @@ describe('treasuryConfirmationService · PR3', () => {
       const comuLinea = (await db.get('gastosInmueble', comuLineaId as number)) as any;
       const segLinea = (await db.get('gastosInmueble', segLineaId as number)) as any;
       expect(comuLinea.casillaAEAT).toBe('0109');
-      expect(comuLinea.categoria).toBe('comunidad');
+      expect(comuLinea.familia).toBe('comunidad');
       expect(segLinea.casillaAEAT).toBe('0114');
-      expect(segLinea.categoria).toBe('seguro');
+      expect(segLinea.familia).toBe('seguros_alarmas');
     });
 
     it('no crea línea de inmueble si el event es ambito=PERSONAL', async () => {
@@ -336,7 +322,6 @@ describe('treasuryConfirmationService · PR3', () => {
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
           ambito: 'personal',
-          categoryLabel: 'Reparación inmueble',
         }) as any),
       );
 
@@ -358,7 +343,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
           amount: 150,
         }) as any),
       );
@@ -389,7 +374,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
         }) as any),
       );
 
@@ -451,7 +436,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
           amount: 150,
         }) as any),
       );
@@ -482,7 +467,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
           amount: 80,
         }) as any),
       );
@@ -512,7 +497,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
           amount: 35,
         }) as any),
       );
@@ -558,7 +543,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
           counterparty: 'Viejo',
         }) as any),
       );
@@ -589,7 +574,7 @@ describe('treasuryConfirmationService · PR3', () => {
         await db.add('treasuryEvents', baseEvent({
           ambito: 'inmueble',
           inmuebleId: INMUEBLE_ID,
-          categoryLabel: 'Reparación inmueble',
+          familia: 'reparacion_mantenimiento',
         }) as any),
       );
       const { movementId, lineaId } = await confirmTreasuryEvent(eventId);

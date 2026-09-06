@@ -127,7 +127,7 @@ describe('decisiones · confirmar / descartar', () => {
       conceptoNormalizado: 'comunidad',
       cuentaCargo: 4127,
       ocurrencias: [{ movementId: 100, fecha: '2024-01-05', importe: -68, descripcionRaw: 'COMUNIDAD' }],
-      propuesta: { ambito: 'personal', categoria: 'vivienda.comunidad', alias: 'Comunidad' },
+      propuesta: { ambito: 'personal', familia: 'comunidad', alias: 'Comunidad' },
     } as unknown as Sugerencia['candidato'],
   };
 

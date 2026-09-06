@@ -333,7 +333,6 @@ export function eventoDeRecibo(
     paymentMethod: 'tarjeta',
     status: 'predicted',
     ambito: 'personal',
-    categoryLabel: `Recibo tarjeta ${alias}`,
     counterparty: alias,
     createdAt: ahora,
     updatedAt: ahora,

@@ -214,7 +214,7 @@ async function buildIdMap(
         let allMatch = true;
         let matchCount = 0;
         for (const gasto of gastosInYear) {
-          const campo = CASILLA_A_CAMPO[gasto.casillaAEAT];
+          const campo = gasto.casillaAEAT ? CASILLA_A_CAMPO[gasto.casillaAEAT] : undefined;
           if (!campo) continue;
           const xmlAmount = xmlInm.gastos[campo] || 0;
           if (Math.abs(xmlAmount - gasto.importe) < 0.01) {

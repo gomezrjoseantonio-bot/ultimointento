@@ -16,9 +16,7 @@
 
 import type { ModoExplotacionAlquiler } from '../../../services/db';
 import type { CompromisoRecurrente, PatronRecurrente } from '../../../types/compromisosRecurrentes';
-import type { Ambito } from '../../../services/conceptos/catalogoConceptos';
-import { conceptoPorId, proyectar } from '../../../services/conceptos/catalogoConceptos';
-import { resolverConcepto, parLegacyDe } from '../../../services/conceptos/mapaLegacy';
+import { labelClasificacion, type Ambito } from '../../../services/catalogo/catalogoUnico';
 import {
   catalogoDelInmueble,
   restarYaDados,
@@ -30,42 +28,28 @@ import {
 } from '../../../services/personal/compromisosRecurrentesService';
 import { getContractsByProperty } from '../../../services/contractService';
 
-/**
- * El id de concepto unificado de una ref del catálogo por modalidad · P8c.
- *
- * La ref habla en pares legacy `{tipoId, subtipoId}`. La mayoría de subtipoIds ya
- * SON el id de concepto (luz, gas…), pero tres no (`cuota_ordinaria`, `hogar`,
- * `impago`), así que el atajo por subtipoId va siempre respaldado por el mapa de
- * pares. Antes esto tiraba de `tiposDeGastoInmueble` (el 4º catálogo, retirado).
- */
-function idConceptoDeRef(ref: ConceptoInmuebleRef): string | undefined {
-  if (conceptoPorId(ref.subtipoId)) return ref.subtipoId;
-  return resolverConcepto(ref.tipoId, ref.subtipoId) ?? undefined;
-}
-
 export type Periodicidad = 'mensual' | 'trimestral' | 'anual';
 
 // ─── Helpers puros (con tests) ───────────────────────────────────────────────
 
 /** La ref de catálogo (tipo:subtipo) que representa un compromiso ya dado de alta. */
 export function refDeCompromiso(
-  c: Pick<CompromisoRecurrente, 'tipoFamilia' | 'subtipo'>,
+  c: Pick<CompromisoRecurrente, 'familia' | 'subtipo'>,
 ): ConceptoInmuebleRef | null {
-  if (!c.tipoFamilia || !c.subtipo) return null;
-  return { tipoId: c.tipoFamilia, subtipoId: c.subtipo };
+  if (!c.familia) return null;
+  return { tipoId: c.familia, subtipoId: c.subtipo ?? '' };
 }
 
-/** Etiqueta legible de un concepto del catálogo de inmueble. */
+/** Etiqueta legible de un concepto del catálogo · «Suministro · Luz». */
 export function etiquetaConcepto(ref: ConceptoInmuebleRef): string {
-  const id = idConceptoDeRef(ref);
-  return (id ? conceptoPorId(id)?.label : undefined) ?? ref.subtipoId;
+  return labelClasificacion(ref.tipoId, ref.subtipoId || undefined);
 }
 
 /** Periodicidad por defecto sugerida · lo anual es anual, el resto mensual. */
 export function periodicidadPorDefecto(ref: ConceptoInmuebleRef): Periodicidad {
-  const anuales = new Set(['ibi', 'tasa_basuras', 'licencia_turistica']);
-  if (ref.tipoId === 'seguros') return 'anual';
-  if (ref.tipoId === 'tributos' && anuales.has(ref.subtipoId)) return 'anual';
+  const anuales = new Set(['ibi', 'basuras', 'licencia_turistica']);
+  if (ref.tipoId === 'seguros_alarmas' && ref.subtipoId !== 'alarma') return 'anual';
+  if (ref.tipoId === 'impuestos_tasas' && anuales.has(ref.subtipoId)) return 'anual';
   return 'mensual';
 }
 
@@ -91,38 +75,30 @@ export interface OpcionesSkeleton {
 }
 
 /**
- * El `CompromisoRecurrente` que nace de una sugerencia. Misma lógica de
- * clasificación que el alta manual (`ListadoGastosRecurrentes.crearGasto`): el
- * concepto se PROYECTA sobre el ámbito inmueble, no se copia. Nace `activo` si
- * lleva importe (genera previsiones); `preparado` si no (espera a completarse).
+ * El `CompromisoRecurrente` que nace de una sugerencia. Misma clasificación que
+ * el alta manual (`ListadoGastosRecurrentes.crearGasto`): familia + subtipo del
+ * catálogo único. Nace `activo` si lleva importe (genera previsiones);
+ * `preparado` si no (espera a completarse).
  */
 export function construirSkeletonOpex(
   ref: ConceptoInmuebleRef,
   opts: OpcionesSkeleton,
 ): Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'> {
   const ambito: Ambito = 'inmueble';
-  const idConcepto = idConceptoDeRef(ref);
-  const def = idConcepto ? conceptoPorId(idConcepto) : undefined;
-  const proyeccion = idConcepto ? proyectar(idConcepto, ambito) : undefined;
-  const par = idConcepto ? parLegacyDe(idConcepto, ambito) : undefined;
   const estado: CompromisoRecurrente['estado'] = opts.importe > 0 ? 'activo' : 'preparado';
 
   return {
     ambito,
     inmuebleId: opts.inmuebleId,
-    alias: def?.label ?? ref.subtipoId,
-    concepto: proyeccion ? idConcepto : undefined,
-    tipo: def?.tipoCompromiso,
-    subtipo: par?.subtipo ?? ref.subtipoId,
-    tipoFamilia: par?.tipoFamilia ?? ref.tipoId,
+    alias: etiquetaConcepto(ref),
+    familia: ref.tipoId,
+    subtipo: ref.subtipoId || undefined,
     proveedor: { nombre: '' },
     patron: patronDePeriodicidad(opts.periodicidad),
     importe: { modo: 'fijo', importe: opts.importe },
     cuentaCargo: opts.cuentaCargo,
     conceptoBancario: '',
     metodoPago: 'domiciliacion',
-    categoria: proyeccion?.categoria ?? 'inmueble.otros',
-    bolsaPresupuesto: 'inmueble',
     responsable: 'titular',
     fechaInicio: opts.fechaInicio,
     estado,

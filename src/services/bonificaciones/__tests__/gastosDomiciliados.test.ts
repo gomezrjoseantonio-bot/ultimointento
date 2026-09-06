@@ -20,7 +20,7 @@ const poliza = (over: Partial<CompromisoRecurrente> = {}): CompromisoRecurrente 
   ({
     ambito: 'personal',
     alias: 'Seguro de hogar',
-    tipo: 'seguro',
+    familia: 'seguros_alarmas',
     subtipo: 'hogar',
     proveedor: { nombre: 'Mapfre' },
     patron: { tipo: 'mensualDiaFijo', dia: 5 },
@@ -99,7 +99,7 @@ describe('la prima se proyecta, no se espera a que llegue', () => {
   // se gana o se pierde, así que no puede salir de una heurística.
   it('un recibo que no es un seguro no es un seguro aunque se llame así', () => {
     expect(
-      segurosDomiciliados([poliza({ tipo: 'suministro', alias: 'Seguro de luz' })], 2026)
+      segurosDomiciliados([poliza({ familia: 'suministro', alias: 'Seguro de luz' })], 2026)
     ).toHaveLength(0);
   });
 });

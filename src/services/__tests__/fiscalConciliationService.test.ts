@@ -83,7 +83,7 @@ function makeGasto(
     ejercicio: EJERCICIO,
     fecha: `${EJERCICIO}-${String(mes).padStart(2, '0')}-01`,
     concepto: 'Proveedor',
-    categoria: 'comunidad',
+    familia: 'comunidad',
     casillaAEAT: '0109',
     importe: total,
     origen: 'tesoreria',

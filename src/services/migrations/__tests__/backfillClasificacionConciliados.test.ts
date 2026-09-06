@@ -14,29 +14,27 @@ const mov = (over: Partial<Movement>): Movement => ({ id: 1, amount: -48, ...ove
 const evt = (over: Partial<TreasuryEvent>): TreasuryEvent => ({ id: 100, ...over }) as TreasuryEvent;
 
 describe('estaMudo', () => {
-  it('mudo si no tiene ni categoría ni concepto', () => {
-    expect(estaMudo({ categoryKey: undefined, conceptoId: undefined })).toBe(true);
-    expect(estaMudo({ categoryKey: 'servicio_inmueble', conceptoId: undefined })).toBe(false);
-    expect(estaMudo({ categoryKey: undefined, conceptoId: 'limpieza' })).toBe(false);
+  it('mudo si no tiene familia', () => {
+    expect(estaMudo({ familia: undefined })).toBe(true);
+    expect(estaMudo({ familia: 'gestion' })).toBe(false);
   });
 });
 
 describe('parcheDeClasificacion', () => {
   it('hereda categoría, subtipo, concepto, ámbito e inmueble de la previsión', () => {
     const m = mov({ ambito: 'personal', inmuebleId: undefined });
-    const ev = evt({ categoryKey: 'suministro_inmueble', subtypeKey: 'gas', conceptoId: 'gas', ambito: 'inmueble', inmuebleId: 7 });
+    const ev = evt({ familia: 'suministro', subtipo: 'gas', ambito: 'inmueble', inmuebleId: 7 });
     expect(parcheDeClasificacion(m, ev)).toEqual({
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'gas',
-      conceptoId: 'gas',
+      familia: 'suministro',
+      subtipo: 'gas',
       ambito: 'inmueble',
       inmuebleId: '7',
     });
   });
 
   it('no pisa un apunte ya clasificado', () => {
-    const m = mov({ categoryKey: 'otra_cosa' });
-    const ev = evt({ categoryKey: 'suministro_inmueble' });
+    const m = mov({ familia: 'otra_cosa' });
+    const ev = evt({ familia: 'suministro' });
     expect(parcheDeClasificacion(m, ev)).toEqual({});
   });
 
@@ -63,36 +61,36 @@ describe('backfillClasificacionConciliados', () => {
   it('rellena por reference treasury_event:<id>', async () => {
     const store = setup(
       [mov({ id: 1, reference: 'treasury_event:100' })],
-      [evt({ id: 100, categoryKey: 'servicio_inmueble', conceptoId: 'limpieza', ambito: 'inmueble', inmuebleId: 3 })]
+      [evt({ id: 100, familia: 'gestion', subtipo: 'gestoria', ambito: 'inmueble', inmuebleId: 3 })]
     );
     const r = await backfillClasificacionConciliados();
     expect(r.rellenados).toBe(1);
-    expect(store.get(1)?.categoryKey).toBe('servicio_inmueble');
-    expect(store.get(1)?.conceptoId).toBe('limpieza');
+    expect(store.get(1)?.familia).toBe('gestion');
+    expect(store.get(1)?.subtipo).toBe('gestoria');
     expect(store.get(1)?.inmuebleId).toBe('3');
   });
 
   it('rellena por el enlace de la previsión (executedMovementId)', async () => {
     const store = setup(
       [mov({ id: 5, reference: undefined })],
-      [evt({ id: 100, executedMovementId: 5, categoryKey: 'comunidad_inmueble' })]
+      [evt({ id: 100, executedMovementId: 5, familia: 'comunidad' })]
     );
     const r = await backfillClasificacionConciliados();
     expect(r.rellenados).toBe(1);
-    expect(store.get(5)?.categoryKey).toBe('comunidad_inmueble');
+    expect(store.get(5)?.familia).toBe('comunidad');
   });
 
   it('no toca un apunte ya clasificado ni uno sin previsión', async () => {
     const store = setup(
       [
-        mov({ id: 1, categoryKey: 'ya_tengo' }),
+        mov({ id: 1, familia: 'ya_tengo' }),
         mov({ id: 2, reference: undefined }), // sin previsión
       ],
       []
     );
     const r = await backfillClasificacionConciliados();
     expect(r.rellenados).toBe(0);
-    expect(store.get(1)?.categoryKey).toBe('ya_tengo');
-    expect(store.get(2)?.categoryKey).toBeUndefined();
+    expect(store.get(1)?.familia).toBe('ya_tengo');
+    expect(store.get(2)?.familia).toBeUndefined();
   });
 });

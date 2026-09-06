@@ -8,22 +8,17 @@
 
 import type { TreasuryEvent, Movement } from '../db';
 import { rutaDelGastoRecurrente } from './enlaceGastoRecurrente';
-import {
-  getCategoryByKey,
-  getSubtypeByKey,
-} from '../categoryCatalog';
 import { esMovimientoEditable } from '../altaMovimientoService';
-import { conceptoPorId } from '../conceptos/catalogoConceptos';
 import {
   estadoDeEvento,
   estadoDeMovimiento,
   type ItemPunteo,
 } from './punteoModel';
-import { conSigno, LABEL_NATURALEZA, type Naturaleza, type Sentido } from '../catalogo/catalogoUnico';
+import { conSigno, LABEL_NATURALEZA, labelFamilia, labelSubtipo, sentidoDe, type FamiliaId, type Naturaleza, type Sentido } from '../catalogo/catalogoUnico';
 
 // ─── Etiqueta de origen (qué es la cosa) ────────────────────────────────────
 
-export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'naturaleza' | 'categoryKey'>): string {
+export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'naturaleza' | 'familia'>): string {
   switch (e.sourceType) {
     case 'prestamo':
     case 'hipoteca':
@@ -47,9 +42,7 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'naturaleza
       // "Recibo" y no "Recurrente": lo que llega al banco es un recibo
       // domiciliado. "Recurrente" describe cómo lo genera ATLAS por dentro, y
       // eso no es asunto de quien lee la lista.
-      return e.categoryKey?.startsWith('suministros') || e.categoryKey === 'vivienda.suministros'
-        ? 'Suministro'
-        : 'Recibo';
+      return e.familia === 'suministro' ? 'Suministro' : 'Recibo';
     case 'autonomo':
     case 'autonomo_ingreso':
     case 'autonomo_gasto':
@@ -79,12 +72,11 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'naturaleza
  * movimiento que la cumple caigan en el mismo sitio.
  */
 export function origenDeMovimiento(
-  m: Pick<Movement, 'categoryKey' | 'naturaleza' | 'paymentMethod'>
+  m: Pick<Movement, 'familia' | 'naturaleza' | 'paymentMethod'>
 ): string {
   if (m.naturaleza === 'movimiento_interno') return 'Transferencia';
-  const categoria = getCategoryByKey(m.categoryKey);
-  if (categoria) {
-    return DICE_OTRA_COSA_EL_EVENTO[categoria.key] ?? categoria.label;
+  if (m.familia) {
+    return DICE_OTRA_COSA_EL_EVENTO[m.familia] ?? labelFamilia(m.familia);
   }
   // Una transferencia EXTERNA es un ingreso/gasto pagado por transferencia.
   if (m.paymentMethod === 'transferencia') return 'Transferencia';
@@ -102,8 +94,11 @@ export function origenDeMovimiento(
  * Gana la palabra del evento porque es la que ya está en pantalla: la previsión
  * se ve antes que el movimiento que la cumple.
  */
-const DICE_OTRA_COSA_EL_EVENTO: Record<string, string> = {
+const DICE_OTRA_COSA_EL_EVENTO: Partial<Record<FamiliaId, string>> = {
   otros_ingresos: 'Ingreso',
+  nomina: 'Ingreso',
+  prestamo_hipoteca: 'Financiación',
+  gestion: 'Comisión',
 };
 
 /**
@@ -114,17 +109,10 @@ const DICE_OTRA_COSA_EL_EVENTO: Record<string, string> = {
  * gas. `undefined` si no eligió nada.
  */
 function etiquetaDeClasificacion(
-  m: Pick<Movement, 'categoryKey' | 'subtypeKey' | 'conceptoId'>
+  m: Pick<Movement, 'familia' | 'subtipo'>
 ): string | undefined {
-  // El concepto FINO manda: "Limpieza" y "Gestoría" colapsan las dos en la
-  // categoría `servicio_inmueble`, así que sin él la fila solo diría "Servicios"
-  // (F2). Detrás, el subtipo (suministros) y por último la categoría gorda.
-  return (
-    conceptoPorId(m.conceptoId)?.label ??
-    getSubtypeByKey(m.subtypeKey)?.label ??
-    getCategoryByKey(m.categoryKey)?.label ??
-    undefined
-  );
+  if (!m.familia) return undefined;
+  return labelSubtipo(m.familia, m.subtipo) ?? labelFamilia(m.familia);
 }
 
 // ─── Quién cobra, cuando no viene en su campo ───────────────────────────────
@@ -228,6 +216,24 @@ export function etiquetaHabitacion(unidad?: string): string | undefined {
 export type AliasCuenta = (id: number) => string | undefined;
 
 /**
+ * ¿Sale el dinero de ESTA cuenta? Un previsto lo dice con `sentido` (y sin él
+ * vale el default del catálogo, `sale`: su `amount` es magnitud y leerle el
+ * signo lo invertiría); un movimiento lo dice con el signo de `amount`. Se
+ * distingue por `pairEventId`: sólo un previsto de traspaso lleva pareja.
+ */
+function saleElTraspaso(r: {
+  naturaleza?: Naturaleza;
+  sentido?: Sentido;
+  amount?: number;
+  transferMetadata?: { targetAccountId: number; pairEventId?: number };
+}): boolean {
+  if (r.sentido) return r.sentido === 'sale';
+  const esPrevisto = r.transferMetadata?.pairEventId != null;
+  if (esPrevisto) return sentidoDe({ naturaleza: 'movimiento_interno' }) === 'sale';
+  return (r.amount ?? 0) < 0;
+}
+
+/**
  * Una TRANSFERENCIA dice si es interna o externa · no son lo mismo.
  *
  * Externa, el dinero se va a un tercero y es un gasto como cualquier otro.
@@ -247,12 +253,12 @@ function piezasDeTransferencia(
     sentido?: Sentido;
     amount?: number;
     description?: string;
-    transferMetadata?: { targetAccountId: number };
+    transferMetadata?: { targetAccountId: number; pairEventId?: number };
   },
   aliasCuenta?: AliasCuenta
 ): { concepto: string; detalle: string } | undefined {
   if (r.naturaleza !== 'movimiento_interno' || r.familia !== 'traspaso') return undefined;
-  const sale = r.sentido ? r.sentido === 'sale' : (r.amount ?? 0) < 0;
+  const sale = saleElTraspaso(r);
   const otra = r.transferMetadata?.targetAccountId;
   const nombre = otra != null ? aliasCuenta?.(otra) : undefined;
   // El "· salida"/"· entrada" que `createTransfer` pega a la descripción sobra
@@ -388,8 +394,8 @@ export function eventoAItem(
             ? `contrato-${e.contratoId}`
             : undefined
         : undefined,
-    categoryKey: e.categoryKey,
-    subtypeKey: e.subtypeKey,
+    familia: e.familia,
+    subtipo: e.subtipo,
     // T3 · a dónde ir a corregir el ciclo o poner fin. `undefined` si no nació
     // de un gasto recurrente.
     gastoRecurrente: rutaDelGastoRecurrente(e) ?? undefined,
@@ -424,7 +430,7 @@ function traspasoDeLaFila(
     sentido?: Sentido;
     amount?: number;
     accountId?: number;
-    transferMetadata?: { targetAccountId: number };
+    transferMetadata?: { targetAccountId: number; pairEventId?: number };
   },
   eventId?: number
 ): { eventId: number; origenId: number; destinoId: number } | undefined {
@@ -432,7 +438,7 @@ function traspasoDeLaFila(
   const propia = r.accountId;
   const otra = r.transferMetadata?.targetAccountId;
   if (propia == null || otra == null) return undefined;
-  const sale = r.sentido ? r.sentido === 'sale' : (r.amount ?? 0) < 0;
+  const sale = saleElTraspaso(r);
   return {
     eventId,
     origenId: sale ? propia : otra,
@@ -454,9 +460,8 @@ export function previsionDeMovimiento(m: Pick<Movement, 'reference'>): number | 
  * 'alquiler', el otro solo la descripción "Renta – inquilino"—, y se miran las
  * tres para no depender de cuál lo creó.
  */
-function pareceRenta(m: Pick<Movement, 'categoryKey' | 'category' | 'description'>): boolean {
-  if (m.categoryKey === 'alquiler') return true;
-  if (m.category?.tipo === 'Alquiler') return true;
+function pareceRenta(m: Pick<Movement, 'familia' | 'description'>): boolean {
+  if (m.familia === 'alquiler') return true;
   return /^renta\b/i.test((m.description ?? '').trim());
 }
 
@@ -477,10 +482,7 @@ function pareceRenta(m: Pick<Movement, 'categoryKey' | 'category' | 'description
 function piezasDeMovimiento(
   m: Pick<
     Movement,
-    | 'categoryKey'
-    | 'subtypeKey'
-    | 'conceptoId'
-    | 'category'
+    | 'subtipo'
     | 'description'
     | 'providerName'
     | 'naturaleza'
@@ -574,8 +576,7 @@ export function movimientoAItem(
     tarjetaId: m.tarjetaId,
     previsionId: previsionDeMovimiento(m),
     importe: m.amount,
-    categoryKey: m.categoryKey,
-    subtypeKey: m.subtypeKey,
-    conceptoId: m.conceptoId,
+    familia: m.familia,
+    subtipo: m.subtipo,
   };
 }

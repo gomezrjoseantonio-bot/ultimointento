@@ -8,19 +8,14 @@
 // un mapeo que se corrige en un sitio y se olvida en el otro.
 // ============================================================================
 
-import { conceptoDesdeClasificacion, conceptoPorId } from '../../../services/conceptos/catalogoConceptos';
 import type { ItemPunteo } from '../../../services/punteo/punteoModel';
 import type { ValoresFicha } from './FichaMovimiento';
 
 /**
  * Rellena la ficha con lo que ya sabe ATLAS · el usuario solo corrige (§4.5).
  *
- * La clasificación se recupera haciendo el camino inverso del catálogo
- * unificado: el registro guarda `categoryKey`, pero la ficha enseña familia y
- * concepto. Si la vuelta no es unívoca —o el gasto es personal, donde la key es
- * de brocha gorda—, `conceptoDesdeClasificacion` devuelve `undefined` y la ficha
- * abre SIN CLASIFICAR, que es la verdad, en vez de con la primera familia del
- * catálogo, que al guardar habría reclasificado a espaldas del usuario.
+ * La clasificación es la del catálogo único (familia + subtipo) tal y como está
+ * persistida: no hay traducción que hacer.
  */
 export function valoresDesdeItem(
   item: ItemPunteo,
@@ -42,21 +37,11 @@ export function valoresDesdeItem(
     };
   }
 
-  // El ámbito lo decide el inmueble del apunte · en personal la clasificación
-  // no es invertible (la key es de brocha gorda) y la ficha abre sin ella.
+  // El ámbito lo decide el inmueble del apunte. La clasificación viaja tal cual
+  // está persistida (familia + subtipo del catálogo único): si no la hay, la
+  // ficha abre SIN CLASIFICAR, que es la verdad, en vez de con la primera
+  // familia del catálogo, que al guardar reclasificaría a espaldas del usuario.
   const inmuebleId = typeof item.activo?.inmuebleId === 'number' ? item.activo.inmuebleId : null;
-  // El concepto FINO guardado (F2) manda sobre la inversión gorda del
-  // `categoryKey`: si el apunte recuerda que era "limpieza" o "gestoría", la
-  // ficha reabre justo ese, en vez de re-derivar uno cualquiera de su familia y
-  // corromperlo al guardar. Solo si no lo hay se recurre a la inversión.
-  const guardado = item.conceptoId ? conceptoPorId(item.conceptoId) : undefined;
-  const clas = guardado
-    ? { familia: guardado.familia, conceptoId: guardado.id }
-    : conceptoDesdeClasificacion(
-        item.categoryKey,
-        item.subtypeKey,
-        inmuebleId != null ? 'inmueble' : 'personal',
-      );
   return {
     tipo: item.importe >= 0 ? 'ingreso' : 'gasto',
     // La ficha edita la DESCRIPCIÓN del movimiento, no el rótulo de la fila.
@@ -71,8 +56,6 @@ export function valoresDesdeItem(
     // Sin esto, corregir un importe borraría la tarjeta: la ficha guarda lo que
     // tiene en pantalla, y lo que no le llega llega vacío.
     tarjetaId: item.tarjetaId ?? null,
-    categoryKey: item.categoryKey ?? null,
-    subtypeKey: item.subtypeKey ?? null,
-    ...(clas ? { familia: clas.familia, subtipo: clas.conceptoId } : {}),
+    ...(item.familia ? { familia: item.familia, subtipo: item.subtipo ?? '' } : {}),
   };
 }

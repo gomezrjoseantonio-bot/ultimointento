@@ -67,9 +67,9 @@ export function getConfianzaStyles(nivel: NivelConfianza): { background: string;
 
 /**
  * BUG-07 · Decisión A: usa treasuryEvents para determinar meses con datos de renta.
- * Filtro: type='income' + (categoryKey IN ['renta','alquiler'] OR sourceType='contrato')
+ * Filtro: naturaleza='ingreso' + (familia='alquiler' OR sourceType='contrato')
  * + status IN ['confirmed','executed'] + año del evento = ejercicio.
- * AMBIGÜEDAD DOCUMENTADA: spec dice categoryKey='renta' pero el catálogo usa 'alquiler';
+ * AMBIGÜEDAD DOCUMENTADA: spec dice 'renta' pero el catálogo único usa la familia 'alquiler';
  * se acepta ambos para garantizar compatibilidad con datos históricos de distinto origen.
  * Ref: docs/CIERRE-DEUDAS-PRE-RESET.md · BUG-07.
  */
@@ -87,16 +87,15 @@ async function calcularMesesConDatos(ejercicio: number): Promise<number> {
 
   // V5.6: Use treasuryEvents for rent income months (replaces rentaMensual)
   // Filter: naturaleza='ingreso', confirmed/executed status, rent-related category, year matches
-  const RENTA_CATEGORY_KEYS = new Set(['renta', 'alquiler', 'renta_inmueble']);
   for (const evt of treasuryEvts as any[]) {
     const evtNaturaleza = String(evt?.naturaleza ?? '').toLowerCase();
     const evtStatus = String(evt?.status ?? '').toLowerCase();
-    const evtCategoryKey = String(evt?.categoryKey ?? '').toLowerCase();
+    const evtFamilia = String(evt?.familia ?? '').toLowerCase();
     const evtSourceType = String(evt?.sourceType ?? '').toLowerCase();
 
     if (evtNaturaleza !== 'ingreso') continue;
     if (evtStatus !== 'confirmed' && evtStatus !== 'executed') continue;
-    const isRentEvent = RENTA_CATEGORY_KEYS.has(evtCategoryKey) || evtSourceType === 'contrato';
+    const isRentEvent = evtFamilia === 'alquiler' || evtSourceType === 'contrato';
     if (!isRentEvent) continue;
 
     // Extract year/month from actualDate (confirmed) or predictedDate

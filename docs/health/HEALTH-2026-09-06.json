@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-09-06",
-  "generatedAt": "2026-09-06T05:51:15.743Z",
+  "generatedAt": "2026-09-06T10:37:49.416Z",
   "git": {
     "branch": "claude/audit-categories-types-scopes-p5966s",
-    "head": "6059a40"
+    "head": "6680ddc"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 28 raíces estrictas · alive 1002 · dead 0 · solo_tests 57 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 28 raíces estrictas · alive 992 · dead 0 · solo_tests 54 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -262,20 +262,20 @@
       "note": null,
       "detail": [
         "3248 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
-        "2183 · src/services/declaracionDistributorService.ts",
+        "2184 · src/services/declaracionDistributorService.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
         "1859 · src/services/dashboardService.ts",
         "1756 · src/services/irpfCalculationService.ts",
         "1557 · src/services/aeatParserService.ts",
-        "1516 · src/App.tsx",
-        "1492 · src/services/treasuryConfirmationService.ts",
-        "1457 · src/services/propertySaleService.ts",
+        "1487 · src/App.tsx",
+        "1455 · src/services/propertySaleService.ts",
         "1446 · src/services/declaracionOnboardingService.ts",
         "1439 · scripts/health.mjs",
-        "1293 · src/modules/horizon/tesoreria/services/treasurySyncService.ts",
+        "1347 · src/services/treasuryConfirmationService.ts",
+        "1292 · src/modules/horizon/tesoreria/services/treasurySyncService.ts",
         "1259 · src/pages/GestionPersonal/wizards/NominaPage.tsx",
-        "1249 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx",
-        "1246 · src/services/ocr/normalize-docai.ts"
+        "1246 · src/services/ocr/normalize-docai.ts",
+        "1244 · src/modules/tesoreria/v6/TesoreriaV6Page.tsx"
       ],
       "calibracion": null
     },
@@ -287,7 +287,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "108 / 404 .tsx sin v5 (consumen v5: 296 · directo o vía .module.css con var(--atlas-v5-*))",
+        "108 / 403 .tsx sin v5 (consumen v5: 295 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",

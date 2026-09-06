@@ -52,7 +52,6 @@ const compromiso = (over: Partial<CompromisoRecurrente> = {}): CompromisoRecurre
     id: 11,
     alias: 'Seguro decesos',
     ambito: 'personal',
-    tipo: 'seguro',
     proveedor: { nombre: 'Segurcaixa Adeslas' },
     numeroContrato: '07085234611',
     patron: { tipo: 'mensualDiaFijo', dia: 2 },
@@ -60,7 +59,7 @@ const compromiso = (over: Partial<CompromisoRecurrente> = {}): CompromisoRecurre
     cuentaCargo: CUENTA,
     conceptoBancario: 'SEGURCAIXA ADESLAS',
     metodoPago: 'domiciliacion',
-    categoria: 'seguros',
+    familia: 'seguros_alarmas',
     estado: 'activo',
     ...over,
   }) as unknown as CompromisoRecurrente;
@@ -78,7 +77,7 @@ describe('E2.4 · recurrentes contra su definición · sin previsión', () => {
         origenId: '11',
         titulo: 'Seguro decesos · Segurcaixa Adeslas',
         como: 'identidad',
-        categoryKey: 'seguros',
+        familia: 'seguros_alarmas',
       },
     ]);
   });
@@ -149,7 +148,7 @@ describe('E2.4 · recurrentes contra su definición · sin previsión', () => {
       conceptoBancario: 'CANAL DE ISABEL II',
       patron: { tipo: 'bimestral', dia: 15, mesInicio: 2 } as unknown as CompromisoRecurrente['patron'],
       importe: { modo: 'variable', importeMedio: 40 } as unknown as CompromisoRecurrente['importe'],
-      categoria: 'suministros',
+      familia: 'suministro',
     });
     // Puede que el patrón bimestral no proyecte · entonces el calendario es
     // neutro y un variable NO cierra solo. Lo que se afirma es lo negativo.
@@ -181,7 +180,7 @@ describe('E2.4 · recurrentes contra su definición · sin previsión', () => {
   });
 
   it('el CUPS de OTRO piso no casa este recibo · el identificador manda', () => {
-    const luzA = compromiso({ id: 21, alias: 'Luz A', cups: 'ES0021000012345678MD', numeroContrato: undefined, proveedor: { nombre: 'Iberdrola' }, conceptoBancario: 'IBERDROLA', importe: { modo: 'variable', importeMedio: 60 } as never, inmuebleId: 4, ambito: 'inmueble', categoria: 'suministros' });
+    const luzA = compromiso({ id: 21, alias: 'Luz A', cups: 'ES0021000012345678MD', numeroContrato: undefined, proveedor: { nombre: 'Iberdrola' }, conceptoBancario: 'IBERDROLA', importe: { modo: 'variable', importeMedio: 60 } as never, inmuebleId: 4, ambito: 'inmueble', familia: 'suministro' });
     const r = recurrentesQueCuadran(
       [mov({ id: 1, amount: -58, description: 'Recibo Iberdrola Clientes CUPS ES0021000098765432ZZ' })],
       [luzA],
@@ -190,12 +189,12 @@ describe('E2.4 · recurrentes contra su definición · sin previsión', () => {
   });
 
   it('un gasto de INMUEBLE cuya categoría no tiene casilla NO se cierra solo', () => {
-    const sinCasilla = compromiso({ id: 31, ambito: 'inmueble', inmuebleId: 4, categoria: 'categoria-inventada-sin-casilla' });
+    const sinCasilla = compromiso({ id: 31, ambito: 'inmueble', inmuebleId: 4, familia: 'otros' });
     expect(
       recurrentesQueCuadran([mov({ id: 1, description: 'Recibo Segurcaixa Adeslas Mandato 07085234611' })], [sinCasilla]),
     ).toEqual([]);
     // El mismo compromiso en PERSONAL sí: no hay fila fiscal que escribir.
-    const personal = compromiso({ id: 32, categoria: 'categoria-inventada-sin-casilla' });
+    const personal = compromiso({ id: 32, familia: 'otros' });
     expect(
       recurrentesQueCuadran([mov({ id: 1, description: 'Recibo Segurcaixa Adeslas Mandato 07085234611' })], [personal]),
     ).toHaveLength(1);
@@ -240,7 +239,7 @@ describe('E2.4 · renta contra el CONTRATO · sin previsión', () => {
         titulo: 'Renta · Miguel Lorenzo Cabanelas',
         como: 'identidad',
         inmuebleId: 4,
-        categoryKey: 'alquiler',
+        familia: 'alquiler',
         renta: { contratoId: 21, inquilino: 'Miguel Lorenzo Cabanelas' },
       },
     ]);

@@ -1,4 +1,5 @@
 import { initDB, Movement, MovementLearningRule } from './db';
+import type { FamiliaId } from './catalogo/catalogoUnico';
 import { contraparteDeBizum } from './bizum';
 import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
 import { claveDeIdentificador, identificadoresDeMovimiento } from './identificadoresDelConcepto';
@@ -292,7 +293,9 @@ export async function cargarAliasContraparte(): Promise<Map<string, Set<string>>
  */
 export async function createOrUpdateRule(params: {
   learnKey: string;
-  categoria: string;
+  /** Lo que la regla aprende · eje 2 del catálogo único. */
+  familia?: FamiliaId;
+  subtipo?: string;
   ambito: 'personal' | 'inmueble';
   inmuebleId?: string;
   movement?: Movement;
@@ -308,7 +311,7 @@ export async function createOrUpdateRule(params: {
 }): Promise<MovementLearningRule> {
   try {
     const db = await initDB();
-    const { learnKey, categoria, ambito, inmuebleId, movement, contraparteConfirmada } = params;
+    const { learnKey, familia, subtipo, ambito, inmuebleId, movement, contraparteConfirmada } = params;
     const resolucion = params.resolucion ?? 'clasificar';
     const cuentaDestinoId = resolucion === 'traspaso' ? params.cuentaDestinoId : undefined;
     const now = new Date().toISOString();
@@ -345,13 +348,15 @@ export async function createOrUpdateRule(params: {
       // la llave de E2.1, dos contratos son dos reglas y esto solo salta cuando
       // de verdad se reclasifica el mismo concepto.
       const cambiaDeOpinion = esCambioDeOpinion(rule, {
-        categoria,
+        familia,
+        subtipo,
         ambito,
         inmuebleId,
         resolucion,
         cuentaDestinoId,
       });
-      rule.categoria = categoria;
+      rule.familia = familia;
+      rule.subtipo = subtipo;
       rule.ambito = ambito;
       rule.inmuebleId = inmuebleId;
       rule.resolucion = resolucion;
@@ -398,7 +403,8 @@ export async function createOrUpdateRule(params: {
         counterpartyPattern: derivedCounterparty ?? '',
         descriptionPattern: derivedDescription ?? '',
         amountSign: derivedAmountSign ?? 'positive',
-        categoria,
+        familia,
+        subtipo,
         ambito,
         inmuebleId,
         source: 'IMPLICIT',
@@ -429,7 +435,8 @@ export async function createOrUpdateRule(params: {
 function esCambioDeOpinion(
   rule: MovementLearningRule,
   nuevo: {
-    categoria: string;
+    familia?: FamiliaId;
+    subtipo?: string;
     ambito: 'personal' | 'inmueble';
     inmuebleId?: string;
     resolucion: 'clasificar' | 'traspaso';
@@ -440,7 +447,8 @@ function esCambioDeOpinion(
   const mismaResolucion = (rule.resolucion ?? 'clasificar') === nuevo.resolucion;
   const mismaCuenta = (rule.cuentaDestinoId ?? null) === (nuevo.cuentaDestinoId ?? null);
   return !(
-    rule.categoria === nuevo.categoria &&
+    rule.familia === nuevo.familia &&
+    (rule.subtipo ?? '') === (nuevo.subtipo ?? '') &&
     rule.ambito === nuevo.ambito &&
     mismoPiso &&
     mismaResolucion &&
@@ -505,7 +513,7 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
         // Apply learned classification
         return {
           ...movement,
-          categoria: rule.categoria,
+          ...(rule.familia ? { familia: rule.familia, subtipo: rule.subtipo } : {}),
           ambito: rule.ambito,
           inmuebleId: rule.inmuebleId,
           statusConciliacion: 'match_automatico' as const,

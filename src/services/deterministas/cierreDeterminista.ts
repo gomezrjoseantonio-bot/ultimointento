@@ -35,7 +35,7 @@ export function movimientoCerrado(m: Movement, o: OrigenDeterminista, ahora: str
   return {
     ...m,
     ...(o.inmuebleId != null ? { inmuebleId: String(o.inmuebleId), ambito: 'inmueble' as const } : {}),
-    ...(o.categoryKey != null ? { categoryKey: o.categoryKey } : {}),
+    ...(o.familia != null ? { familia: o.familia, subtipo: o.subtipo } : {}),
     // El nombre legible convive con el churro del banco, no lo sustituye.
     descripcionPrevision: o.titulo,
     unifiedStatus: 'conciliado',

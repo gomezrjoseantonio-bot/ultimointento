@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GastoInmueble, MejoraInmueble, MuebleInmueble } from '../../../services/db';
-import { CATEGORIA_A_CASILLA } from '../../../services/gastosInmuebleService';
-import type { GastoCategoria } from '../../../services/db';
+import { familiasSugeridas, subtiposDe, type FamiliaId } from '../../../services/catalogo/catalogoUnico';
+import { casillaDe } from '../../../services/fiscal/lenteFiscal';
 import styles from './EditarRegistroInmuebleModal.module.css';
 
 /** Los tres tipos de registro operables desde la vista de Gastos → Registrados. */
@@ -26,17 +26,8 @@ export interface EditarRegistroInmuebleModalProps {
   onGuardar: (updates: Record<string, unknown>) => void;
 }
 
-const CATEGORIAS: Array<{ value: GastoCategoria; label: string }> = [
-  { value: 'ibi', label: 'IBI' },
-  { value: 'comunidad', label: 'Comunidad' },
-  { value: 'seguro', label: 'Seguro' },
-  { value: 'suministro', label: 'Suministro' },
-  { value: 'reparacion', label: 'Reparación' },
-  { value: 'gestion', label: 'Gestión' },
-  { value: 'servicio', label: 'Servicio' },
-  { value: 'intereses', label: 'Intereses' },
-  { value: 'otro', label: 'Otro' },
-];
+// Las familias de GASTO que tienen sentido en un inmueble · catálogo único.
+const FAMILIAS_GASTO = familiasSugeridas('gasto', 'inmueble');
 
 const TIPOS_MEJORA: Array<{ value: MejoraInmueble['tipo']; label: string }> = [
   { value: 'mejora', label: 'Mejora' },
@@ -79,7 +70,8 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
     if (esCrear || !registro) {
       return {
         texto: '',
-        categoria: 'suministro' as GastoCategoria,
+        familia: 'suministro' as FamiliaId,
+        subtipo: '',
         tipoMejora: 'mejora' as MejoraInmueble['tipo'],
         fecha: hoyISO(),
         importe: '',
@@ -90,7 +82,8 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       const g = registro.registro;
       return {
         texto: g.concepto ?? '',
-        categoria: g.categoria,
+        familia: (g.familia ?? 'otros') as FamiliaId,
+        subtipo: g.subtipo ?? '',
         tipoMejora: 'mejora' as MejoraInmueble['tipo'],
         fecha: g.fecha ?? '',
         importe: String(g.importe ?? ''),
@@ -101,7 +94,8 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       const m = registro.registro;
       return {
         texto: m.descripcion ?? '',
-        categoria: 'otro' as GastoCategoria,
+        familia: 'reforma_mejora' as FamiliaId,
+        subtipo: '',
         tipoMejora: m.tipo,
         fecha: m.fecha ?? '',
         importe: String(m.importe ?? ''),
@@ -111,7 +105,8 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
     const mu = registro.registro;
     return {
       texto: mu.descripcion ?? '',
-      categoria: 'otro' as GastoCategoria,
+      familia: 'mobiliario_enseres' as FamiliaId,
+      subtipo: '',
       tipoMejora: 'mejora' as MejoraInmueble['tipo'],
       fecha: mu.fechaAlta ?? '',
       importe: String(mu.importe ?? ''),
@@ -120,7 +115,8 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
   }, [esCrear, registro, tipo]);
 
   const [texto, setTexto] = useState(inicial.texto);
-  const [categoria, setCategoria] = useState<GastoCategoria>(inicial.categoria);
+  const [familia, setFamilia] = useState<FamiliaId>(inicial.familia);
+  const [subtipo, setSubtipo] = useState<string>(inicial.subtipo);
   const [tipoMejora, setTipoMejora] = useState<MejoraInmueble['tipo']>(inicial.tipoMejora);
   const [fecha, setFecha] = useState(inicial.fecha);
   const [importe, setImporte] = useState(inicial.importe);
@@ -149,8 +145,10 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
     if (tipo === 'real') {
       onGuardar({
         concepto: texto.trim(),
-        categoria,
-        casillaAEAT: CATEGORIA_A_CASILLA[categoria],
+        familia,
+        subtipo: subtipo || undefined,
+        // La casilla la pone la lente fiscal leyendo familia + subtipo.
+        casillaAEAT: casillaDe({ familia, subtipo: subtipo || undefined, ambito: 'inmueble' }),
         fecha,
         importe: importeNum,
         ...(ejercicio !== undefined ? { ejercicio } : {}),
@@ -174,7 +172,7 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
       vidaUtil: vidaUtilNum,
       ...(ejercicio !== undefined ? { ejercicio } : {}),
     });
-  }, [valido, fecha, tipo, onGuardar, texto, categoria, importeNum, tipoMejora, vidaUtilNum]);
+  }, [valido, fecha, tipo, onGuardar, texto, familia, subtipo, importeNum, tipoMejora, vidaUtilNum]);
 
   const tituloId = 'editar-registro-titulo';
   const titulo = esCrear ? TITULO_CREAR[tipo] : TITULO_EDITAR[tipo];
@@ -210,15 +208,31 @@ const EditarRegistroInmuebleModal: React.FC<EditarRegistroInmuebleModalProps> = 
 
           {tipo === 'real' && (
             <label className={styles.field}>
-              <span className={styles.label}>Categoría</span>
+              <span className={styles.label}>Familia</span>
               <select
                 className={styles.input}
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value as GastoCategoria)}
+                value={familia}
+                onChange={(e) => {
+                  setFamilia(e.target.value as FamiliaId);
+                  setSubtipo('');
+                }}
               >
-                {CATEGORIAS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
+                {FAMILIAS_GASTO.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {tipo === 'real' && subtiposDe(familia).length > 0 && (
+            <label className={styles.field}>
+              <span className={styles.label}>Subtipo</span>
+              <select className={styles.input} value={subtipo} onChange={(e) => setSubtipo(e.target.value)}>
+                <option value="">— Sin subtipo —</option>
+                {subtiposDe(familia).map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.label}
                   </option>
                 ))}
               </select>

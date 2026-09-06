@@ -55,7 +55,6 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
         amount: 200,
         source: 'manual',
         naturaleza: 'movimiento_interno', familia: 'traspaso',
-        categoryLabel: 'Traspaso · entrada',
         category: { tipo: 'Traspaso' },
         transferMetadata: { targetAccountId: 1 },
         unifiedStatus: 'no_planificado',
@@ -113,7 +112,7 @@ describe('un previsto PUNTEADO · su evento sigue apuntándole y toma el dato re
       9: {
         id: 9, accountId: 42, date: '2026-04-14', amount: -20, description: 'Comunidad',
         source: 'manual', unifiedStatus: 'conciliado', reference: 'treasury_event:700',
-        categoryKey: 'inmueble.comunidad',
+        familia: 'comunidad',
       },
     };
     eventos = {
@@ -132,7 +131,7 @@ describe('un previsto PUNTEADO · su evento sigue apuntándole y toma el dato re
 describe('pares ANTERIORES al corte · el duplicado del import se va', () => {
   beforeEach(() => {
     movimientos = {
-      9: { id: 9, accountId: 42, date: '2026-04-14', amount: -20, description: 'Comunidad', source: 'manual', categoryKey: 'inmueble.comunidad' },
+      9: { id: 9, accountId: 42, date: '2026-04-14', amount: -20, description: 'Comunidad', source: 'manual', familia: 'comunidad' },
       50: { id: 50, accountId: 42, date: '2026-04-15', amount: -20, description: 'RECIBO COMUNIDAD', source: 'import', importBatch: 'lote-viejo' },
     };
     lineas = {
@@ -148,7 +147,7 @@ describe('pares ANTERIORES al corte · el duplicado del import se va', () => {
     );
     expect(id).toBe(9);
     expect(movimientos[50]).toBeUndefined();
-    expect(movimientos[9]).toMatchObject({ date: '2026-04-15', unifiedStatus: 'conciliado', categoryKey: 'inmueble.comunidad' });
+    expect(movimientos[9]).toMatchObject({ date: '2026-04-15', unifiedStatus: 'conciliado', familia: 'comunidad' });
     expect(lineas[500].movementIds).toEqual([9]);
   });
 });

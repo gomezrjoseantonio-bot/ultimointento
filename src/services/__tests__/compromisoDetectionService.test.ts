@@ -73,7 +73,7 @@ function mkMovement(
     naturaleza: 'gasto',
     origin: 'CSV',
     movementState: 'Confirmado',
-    category: { tipo: 'otros' },
+    category: { familia: 'otros' },
     ambito: 'personal',
     statusConciliacion: 'sin_match',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -113,7 +113,7 @@ describe('compromisoDetectionService.detectCompromisos', () => {
     expect(c.patronInferido.tipo).toBe('mensualDiaFijo');
     expect(c.importeInferido.modo).toBe('fijo');
     expect(c.confidence).toBeGreaterThanOrEqual(80);
-    expect(c.propuesta.tipo).toBe('suministro');
+    expect(c.propuesta.familia).toBe('suministro');
     expect(c.propuesta.subtipo).toBe('luz');
     expect(c.propuesta.ambito).toBe('personal');
     expect(c.propuesta.personalDataId).toBe(1);
@@ -148,7 +148,7 @@ describe('compromisoDetectionService.detectCompromisos', () => {
     const c = report.candidatos[0];
     expect(c.variacionInferida.tipo).toBe('manual');
     expect(c.importeInferido.modo).toBe('variable');
-    expect(c.propuesta.tipo).toBe('suscripcion');
+    expect(c.propuesta.familia).toBe('suscripciones');
     expect(c.avisos.some((a) => /sube/.test(a))).toBe(true);
   });
 
@@ -336,15 +336,13 @@ describe('compromisoDetectionService.detectCompromisos', () => {
           ambito: 'personal',
           personalDataId: 1,
           alias: 'Gimnasio',
-          tipo: 'cuota',
           proveedor: { nombre: 'BASIC' },
           patron: { tipo: 'mensualDiaFijo', dia: 5 },
           importe: { modo: 'fijo', importe: 39.95 },
           cuentaCargo: 10,
           conceptoBancario: 'GIMNASIO BASIC FIT MES',
           metodoPago: 'domiciliacion',
-          categoria: 'personal',
-          bolsaPresupuesto: 'deseos',
+          familia: 'otros',
           responsable: 'titular',
           fechaInicio: '2024-01-05',
           estado: 'activo',

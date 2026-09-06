@@ -30,15 +30,13 @@ const compromiso = (over: Partial<CompromisoRecurrente> & { id: number }): Compr
     ambito: 'inmueble',
     inmuebleId: 4,
     alias: 'Luz Tenderina',
-    tipo: 'suministro',
     proveedor: { nombre: 'Iberdrola' },
     patron: { tipo: 'mensualDiaFijo', dia: 12 },
     importe: { modo: 'variable', importeMedio: 100 },
     cuentaCargo: CUENTA,
     conceptoBancario: 'IBERDROLA CLIENTES SAU',
     metodoPago: 'domiciliacion',
-    categoria: 'inmueble.suministros',
-    bolsaPresupuesto: 'inmueble',
+    familia: 'suministro',
     responsable: 'titular',
     fechaInicio: '2025-01-12',
     estado: 'activo',
@@ -300,7 +298,7 @@ describe('E2.3 · reparto, signo y lo que ya no vale', () => {
   it('la caracterización de E1.4a se conserva · Naturgy 56 exacto = 90', () => {
     const c = {
       id: 3, alias: 'Gas Tenderina', ambito: 'inmueble', inmuebleId: 4, cuentaCargo: CUENTA, estado: 'activo',
-      importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, categoria: 'suministros',
+      importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, familia: 'suministro',
     } as unknown as CompromisoRecurrente;
     const r = reconocerRecurrente(mov({ date: '2026-08-15', amount: -56, description: 'RECIBO NATURGY IBERIA SA' }), [c]);
     expect(r?.confianza).toBe(90);

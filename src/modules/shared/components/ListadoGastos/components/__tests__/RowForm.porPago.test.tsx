@@ -52,7 +52,7 @@ const compromiso = (over: Partial<CompromisoRecurrente> = {}) =>
     id: 7, alias: 'IBI', patron: { tipo: 'mensualDiaFijo', dia: 1 },
     importe: { modo: 'fijo', importe: 0 },
     cuentaCargo: 1, conceptoBancario: 'IBI', metodoPago: 'domiciliacion',
-    categoria: 'inmueble.ibi', bolsaPresupuesto: 'inmueble', responsable: 'titular',
+    familia: 'impuestos_tasas', subtipo: 'ibi', responsable: 'titular',
     ambito: 'inmueble', inmuebleId: 1, fechaInicio: '2026-01-01', estado: 'activo',
     createdAt: '', updatedAt: '', ...over,
   }) as CompromisoRecurrente & { id: number };

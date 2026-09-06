@@ -2,6 +2,7 @@
 // Sustituye el stub anterior. Lista las reglas implícitas aprendidas a partir
 // de la conciliación bancaria y permite borrarlas individualmente.
 import React, { useCallback, useEffect, useState } from 'react';
+import { labelClasificacion } from '../../../../services/catalogo/catalogoUnico';
 import toast from 'react-hot-toast';
 import { Trash2 } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
@@ -106,7 +107,7 @@ const AutomatizacionesReglas: React.FC = () => {
                     <td className="py-2 pr-3 text-gray-600">
                       {r.amountSign === 'positive' ? 'Ingreso' : 'Gasto'}
                     </td>
-                    <td className="py-2 pr-3 text-gray-700">{r.categoria}</td>
+                    <td className="py-2 pr-3 text-gray-700">{r.familia ? labelClasificacion(r.familia, r.subtipo) : '—'}</td>
                     <td className="py-2 pr-3 text-gray-600">{r.ambito}</td>
                     {/* El alias aprendido · quién resultó ser el nombre que manda
                         el banco. Se enseña para que no sea magia invisible: si
@@ -149,7 +150,7 @@ const AutomatizacionesReglas: React.FC = () => {
         title="Eliminar regla de aprendizaje"
         message={
           pendingDelete
-            ? `Vas a eliminar la regla "${pendingDelete.counterpartyPattern || pendingDelete.descriptionPattern}" (categoría ${pendingDelete.categoria}, ${pendingDelete.appliedCount} aplicación(es)). Los movimientos ya clasificados conservan su categoría · futuras importaciones no la aplicarán. Esta acción no se puede deshacer.`
+            ? `Vas a eliminar la regla "${pendingDelete.counterpartyPattern || pendingDelete.descriptionPattern}" (${pendingDelete.familia ? labelClasificacion(pendingDelete.familia, pendingDelete.subtipo) : 'sin clasificar'}, ${pendingDelete.appliedCount} aplicación(es)). Los movimientos ya clasificados conservan su categoría · futuras importaciones no la aplicarán. Esta acción no se puede deshacer.`
             : ''
         }
         confirmText="Eliminar"

@@ -19,34 +19,50 @@
 
 import { initDB, Document } from './db';
 import {
-  CONCEPTOS,
-  conceptoPorId,
-  familiaPorId,
-  type Concepto,
+  familiasSugeridas,
+  labelClasificacion,
+  subtiposDe,
   type FamiliaId,
-} from './conceptos/catalogoConceptos';
-import { gastosInmuebleService, CATEGORIA_A_CASILLA } from './gastosInmuebleService';
+} from './catalogo/catalogoUnico';
+import { casillaDe, storeDestinoDe } from './fiscal/lenteFiscal';
+import { gastosInmuebleService } from './gastosInmuebleService';
 import { mueblesInmuebleService } from './mueblesInmuebleService';
 import { listarCompromisos } from './personal/compromisosRecurrentesService';
-import type { GastoCategoria } from './db';
+
+/** Una clasificación del catálogo único · familia + subtipo opcional. */
+export interface Clasificacion {
+  familia: FamiliaId;
+  subtipo?: string;
+}
+const C = (familia: FamiliaId, subtipo?: string): Clasificacion => (subtipo ? { familia, subtipo } : { familia });
+/** `familia` o `familia:subtipo` → clasificación · el id que persiste `metadata`. */
+export function clasificacionDeId(id: string | undefined | null): Clasificacion | undefined {
+  if (!id) return undefined;
+  const [familia, subtipo] = id.split(':');
+  if (!familiasSugeridas('gasto', 'inmueble').concat(familiasSugeridas('gasto', 'personal')).some((f) => f.id === familia)) return undefined;
+  return C(familia as FamiliaId, subtipo || undefined);
+}
+export function idDeClasificacion(c: Clasificacion): string {
+  return c.subtipo ? `${c.familia}:${c.subtipo}` : c.familia;
+}
 
 // ── OCR "tipo_gasto" → concepto del catálogo ─────────────────────────────────
 
-/** Baseline: el tipo_gasto que emite el OCR se traduce a un concepto concreto. */
-const TIPO_GASTO_A_CONCEPTO: Record<string, string> = {
-  electricidad:            'luz',
-  agua:                    'agua',
-  gas:                     'gas',
-  telecomunicaciones:      'telefonia',
-  seguros:                 'seguro_hogar',
-  comunidad:               'comunidad_ordinaria',
-  mantenimiento:           'mantenimiento_integral',
-  servicios_profesionales: 'gestoria',
-  alquiler:                'alquiler_vivienda',
-  transporte:              'transporte',
-  alimentacion:            'supermercado',
-  material_oficina:        'otros_gestion',
-  mobiliario:              'muebles',
+/** Baseline: el tipo_gasto que emite el OCR se traduce a familia + subtipo. */
+const TIPO_GASTO_A_CONCEPTO: Record<string, Clasificacion> = {
+  electricidad:            C('suministro', 'luz'),
+  agua:                    C('suministro', 'agua'),
+  gas:                     C('suministro', 'gas'),
+  telecomunicaciones:      C('suministro', 'telefonia'),
+  seguros:                 C('seguros_alarmas', 'hogar'),
+  comunidad:               C('comunidad', 'cuota_mensual'),
+  mantenimiento:           C('reparacion_mantenimiento', 'otros'),
+  servicios_profesionales: C('gestion', 'gestoria'),
+  alquiler:                C('alquiler_renting', 'vivienda'),
+  transporte:              C('transporte'),
+  alimentacion:            C('supermercado'),
+  material_oficina:        C('gestion', 'otros'),
+  mobiliario:              C('mobiliario_enseres', 'muebles'),
 };
 
 /**
@@ -54,37 +70,37 @@ const TIPO_GASTO_A_CONCEPTO: Record<string, string> = {
  * y el primero que casa gana, así que van de más específico a más genérico.
  * Sólo captura lo que se puede afirmar con confianza a partir del emisor.
  */
-const KEYWORD_A_CONCEPTO: Array<{ re: RegExp; concepto: string }> = [
+const KEYWORD_A_CONCEPTO: Array<{ re: RegExp; concepto: Clasificacion }> = [
   // Tributos
-  { re: /\b(ibi|impuesto sobre bienes|bienes inmuebles)\b/i, concepto: 'ibi' },
-  { re: /\b(basura|residuos|alcantarillado|saneamiento)\b/i, concepto: 'tasa_basuras' },
-  { re: /\blicencia tur[ií]stica\b/i, concepto: 'licencia_turistica' },
+  { re: /\b(ibi|impuesto sobre bienes|bienes inmuebles)\b/i, concepto: C('impuestos_tasas', 'ibi') },
+  { re: /\b(basura|residuos|alcantarillado|saneamiento)\b/i, concepto: C('impuestos_tasas', 'basuras') },
+  { re: /\blicencia tur[ií]stica\b/i, concepto: C('impuestos_tasas', 'licencia_turistica') },
   // Comunidad
-  { re: /\bderrama\b/i, concepto: 'derrama' },
-  { re: /\b(comunidad de propietarios|administrad\w* de fincas|finca\w*)\b/i, concepto: 'comunidad_ordinaria' },
+  { re: /\bderrama\b/i, concepto: C('comunidad', 'derrama') },
+  { re: /\b(comunidad de propietarios|administrad\w* de fincas|finca\w*)\b/i, concepto: C('comunidad', 'cuota_mensual') },
   // Suministros — agua
-  { re: /\b(aqualia|emasesa|emacsa|canal de isabel|aig[üu]es|aguas de|hidrogea|facsa|gestagua|aguas municipal)\b/i, concepto: 'agua' },
+  { re: /\b(aqualia|emasesa|emacsa|canal de isabel|aig[üu]es|aguas de|hidrogea|facsa|gestagua|aguas municipal)\b/i, concepto: C('suministro', 'agua') },
   // Suministros — gas (antes que luz, porque comercializadoras venden ambos)
-  { re: /\b(nedgia|gas natural|redexis|naturgas)\b/i, concepto: 'gas' },
+  { re: /\b(nedgia|gas natural|redexis|naturgas)\b/i, concepto: C('suministro', 'gas') },
   // Suministros — luz
-  { re: /\b(iberdrola|endesa|naturgy|edp|holaluz|totalenergies|curenergia|gana energ|repsol|octopus|som energia|imagina energ|visalia|adph)\b/i, concepto: 'luz' },
+  { re: /\b(iberdrola|endesa|naturgy|edp|holaluz|totalenergies|curenergia|gana energ|repsol|octopus|som energia|imagina energ|visalia|adph)\b/i, concepto: C('suministro', 'luz') },
   // Alarma (antes que telefonía, porque algunas son telecom)
-  { re: /\b(securitas|prosegur|verisure|sector alarm|adt|tyco|alarma)\b/i, concepto: 'alarma' },
+  { re: /\b(securitas|prosegur|verisure|sector alarm|adt|tyco|alarma)\b/i, concepto: C('seguros_alarmas', 'alarma') },
   // Telecomunicaciones
-  { re: /\b(movistar|vodafone|orange|masmovil|m[áa]smovil|yoigo|jazztel|pepephone|lowi|finetwork|digi|o2|simyo|avatel)\b/i, concepto: 'telefonia' },
+  { re: /\b(movistar|vodafone|orange|masmovil|m[áa]smovil|yoigo|jazztel|pepephone|lowi|finetwork|digi|o2|simyo|avatel)\b/i, concepto: C('suministro', 'telefonia') },
   // Seguros
-  { re: /\b(mapfre|axa|allianz|generali|mutua|zurich|l[íi]nea directa|catalana occidente|reale|pelayo|caser|helvetia|santalucia|santaluc[íi]a|seguros|p[óo]liza)\b/i, concepto: 'seguro_hogar' },
+  { re: /\b(mapfre|axa|allianz|generali|mutua|zurich|l[íi]nea directa|catalana occidente|reale|pelayo|caser|helvetia|santalucia|santaluc[íi]a|seguros|p[óo]liza)\b/i, concepto: C('seguros_alarmas', 'hogar') },
   // Gestión
-  { re: /\b(gestor[íi]a|asesor[íi]a|asesoramiento)\b/i, concepto: 'gestoria' },
-  { re: /\b(honorarios|agencia inmobiliaria|gesti[óo]n del alquiler)\b/i, concepto: 'honorarios_agencia' },
+  { re: /\b(gestor[íi]a|asesor[íi]a|asesoramiento)\b/i, concepto: C('gestion', 'gestoria') },
+  { re: /\b(honorarios|agencia inmobiliaria|gesti[óo]n del alquiler)\b/i, concepto: C('gestion', 'otros') },
   // Reparación y conservación
-  { re: /\b(caldera|calefacci[óo]n)\b/i, concepto: 'mantenimiento_caldera' },
-  { re: /\b(fontaner|electricist|pintur|alba[ñn]il|reparaci[óo]n|reforma|manitas)\b/i, concepto: 'otros_reparacion' },
+  { re: /\b(caldera|calefacci[óo]n)\b/i, concepto: C('reparacion_mantenimiento', 'caldera') },
+  { re: /\b(fontaner|electricist|pintur|alba[ñn]il|reparaci[óo]n|reforma|manitas)\b/i, concepto: C('reparacion_mantenimiento', 'otros') },
   // Servicios y explotación
-  { re: /\b(limpieza)\b/i, concepto: 'limpieza' },
-  { re: /\b(lavander[íi]a)\b/i, concepto: 'lavanderia' },
+  { re: /\b(limpieza)\b/i, concepto: C('limpieza', 'integral') },
+  { re: /\b(lavander[íi]a)\b/i, concepto: C('limpieza', 'lavanderia') },
   // Mobiliario
-  { re: /\b(mueble|mobiliario|ikea|conforama|leroy merl[íi]n colch|colch[óo]n|electrodom[ée]stic)\b/i, concepto: 'muebles' },
+  { re: /\b(mueble|mobiliario|ikea|conforama|leroy merl[íi]n colch|colch[óo]n|electrodom[ée]stic)\b/i, concepto: C('mobiliario_enseres', 'muebles') },
 ];
 
 // ── amount parsing ────────────────────────────────────────────────────────────
@@ -159,60 +175,53 @@ export function toIsoDate(fecha?: string): string | undefined {
  * invoice mentions fibra/internet. Returns undefined when nothing is confident —
  * the caller then asks the user instead of inventing a concepto.
  */
-export function detectConceptoId(doc: Document): string | undefined {
+export function detectClasificacion(doc: Document): Clasificacion | undefined {
   const proveedor = ocrValue(doc, 'proveedor') || fieldValue(doc, ['supplier_name']) || '';
   const notas = ocrValue(doc, 'notas') || '';
   const filename = String(doc.filename || '');
   const haystack = `${proveedor} ${notas} ${filename}`;
+  const esInternet = /\b(fibra|internet|adsl)\b/i.test(haystack);
+  const afina = (c: Clasificacion): Clasificacion =>
+    c.familia === 'suministro' && c.subtipo === 'telefonia' && esInternet ? C('suministro', 'internet') : c;
 
   for (const { re, concepto } of KEYWORD_A_CONCEPTO) {
-    if (re.test(haystack)) {
-      if (concepto === 'telefonia' && /\b(fibra|internet|adsl)\b/i.test(haystack)) return 'internet';
-      return concepto;
-    }
+    if (re.test(haystack)) return afina(concepto);
   }
 
   const tipoGasto = (ocrValue(doc, 'tipo_gasto') || '').trim().toLowerCase();
   const byTipo = TIPO_GASTO_A_CONCEPTO[tipoGasto];
-  if (byTipo) {
-    if (byTipo === 'telefonia' && /\b(fibra|internet|adsl)\b/i.test(haystack)) return 'internet';
-    return byTipo;
-  }
+  if (byTipo) return afina(byTipo);
   return undefined;
 }
 
-// ── familia → carpeta / GastoCategoria ────────────────────────────────────────
+/** Compat · el id `familia[:subtipo]` de la clasificación detectada. */
+export function detectConceptoId(doc: Document): string | undefined {
+  const c = detectClasificacion(doc);
+  return c ? idDeClasificacion(c) : undefined;
+}
+
+// ── familia → carpeta ────────────────────────────────────────────────────────
 
 const FAMILIA_A_CARPETA: Partial<Record<FamiliaId, NonNullable<Document['metadata']['carpeta']>>> = {
-  suministros: 'facturas',
-  mobiliario:  'mejoras',
+  suministro:         'facturas',
+  mobiliario_enseres: 'mejoras',
+  reforma_mejora:     'mejoras',
 };
 
 /** El tipo coarse persistido en `metadata.tipo`, para el filtro del Archivo. */
 function tipoParaFamilia(familia?: FamiliaId): NonNullable<Document['metadata']['tipo']> {
-  if (familia === 'mobiliario') return 'Mejora';
+  if (familia === 'mobiliario_enseres' || familia === 'reforma_mejora') return 'Mejora';
   return 'Factura';
 }
-
-const FAMILIA_A_GASTO_CATEGORIA: Partial<Record<FamiliaId, GastoCategoria>> = {
-  tributos:    'ibi',
-  comunidad:   'comunidad',
-  suministros: 'suministro',
-  seguros:     'seguro',
-  gestion:     'gestion',
-  reparacion:  'reparacion',
-  mantenimiento: 'reparacion',
-  limpieza:    'servicio',
-};
 
 // ── classification patch ──────────────────────────────────────────────────────
 
 export interface DocumentClassification {
-  /** Id del concepto del catálogo, o undefined si no se pudo determinar. */
+  /** Id `familia[:subtipo]` de la clasificación, o undefined si no se pudo determinar. */
   conceptoId?: string;
-  concepto?: Concepto;
   familia?: FamiliaId;
-  /** Etiqueta legible (label del concepto o del tipo_gasto). */
+  subtipo?: string;
+  /** Etiqueta legible (la clasificación o el tipo_gasto). */
   label: string;
   proveedor?: string;
   direccion?: string;
@@ -226,16 +235,16 @@ export interface DocumentClassification {
 
 /** Read OCR data off a document and produce a catalog-driven classification. */
 export function classifyDocumentFromOCR(doc: Document): DocumentClassification {
-  const conceptoId = detectConceptoId(doc);
-  const concepto = conceptoPorId(conceptoId);
+  const clas = detectClasificacion(doc);
   const fecha = ocrValue(doc, 'fecha') || fieldValue(doc, ['invoice_date', 'issue_date']);
-  const label = concepto?.label
-    || (ocrValue(doc, 'tipo_gasto') ? String(ocrValue(doc, 'tipo_gasto')) : 'Sin clasificar');
+  const label = clas
+    ? labelClasificacion(clas.familia, clas.subtipo)
+    : (ocrValue(doc, 'tipo_gasto') ? String(ocrValue(doc, 'tipo_gasto')) : 'Sin clasificar');
 
   return {
-    conceptoId,
-    concepto,
-    familia: concepto?.familia,
+    conceptoId: clas ? idDeClasificacion(clas) : undefined,
+    familia: clas?.familia,
+    subtipo: clas?.subtipo,
     label,
     proveedor: ocrValue(doc, 'proveedor') || fieldValue(doc, ['supplier_name']),
     direccion: ocrValue(doc, 'direccion') ||
@@ -260,7 +269,7 @@ export function applyClassificationMetadata(
 ): Document {
   const md = doc.metadata || ({} as Document['metadata']);
   const carpeta = (c.familia && FAMILIA_A_CARPETA[c.familia]) || 'facturas';
-  const isCapex = c.familia === 'mobiliario';
+  const isCapex = c.familia === 'mobiliario_enseres' || c.familia === 'reforma_mejora';
   return {
     ...doc,
     metadata: {
@@ -268,7 +277,7 @@ export function applyClassificationMetadata(
       tipo: tipoParaFamilia(c.familia),
       carpeta,
       categoria: c.label,
-      ...(c.conceptoId ? { concepto: c.conceptoId } : {}),
+      ...(c.familia ? { familia: c.familia, subtipo: c.subtipo } : {}),
       ...(c.proveedor ? { proveedor: c.proveedor, counterpartyName: c.proveedor } : {}),
       ...(c.ejercicio ? { ejercicio: c.ejercicio } : {}),
       financialData: {
@@ -285,15 +294,15 @@ export function applyClassificationMetadata(
   };
 }
 
-/** Replace the concepto of a classification with a chosen catalog id. */
+/** Replace the classification with a chosen `familia[:subtipo]` id. */
 export function withConcepto(base: DocumentClassification, conceptoId: string): DocumentClassification {
-  const chosen = conceptoPorId(conceptoId);
+  const chosen = clasificacionDeId(conceptoId);
   return {
     ...base,
-    conceptoId,
-    concepto: chosen,
+    conceptoId: chosen ? idDeClasificacion(chosen) : undefined,
     familia: chosen?.familia,
-    label: chosen?.label ?? base.label,
+    subtipo: chosen?.subtipo,
+    label: chosen ? labelClasificacion(chosen.familia, chosen.subtipo) : base.label,
   };
 }
 
@@ -304,7 +313,8 @@ const normId = (s?: string): string => (s || '').toUpperCase().replace(/[\s.\-/]
 /** The minimum a compromiso needs to expose for identity matching (testable). */
 export interface CompromisoLike {
   id?: number;
-  concepto?: string;
+  familia?: FamiliaId;
+  subtipo?: string;
   cups?: string;
   numeroContrato?: string;
   proveedor?: { nombre?: string; nif?: string };
@@ -386,7 +396,9 @@ export async function matchCompromisoPrevisto(doc: Document): Promise<PrevistoMa
     compromiso: chosen.compromiso,
     inmuebleId,
     inmuebleAlias,
-    conceptoId: chosen.compromiso.concepto,
+    conceptoId: chosen.compromiso.familia
+      ? idDeClasificacion({ familia: chosen.compromiso.familia, subtipo: chosen.compromiso.subtipo })
+      : undefined,
     matchedBy: chosen.matchedBy,
   };
 }
@@ -419,7 +431,7 @@ async function materializarRegistroInmueble(
   c: DocumentClassification,
   nif?: string,
 ): Promise<void> {
-  if (!c.conceptoId || !c.concepto?.inmueble) return; // sólo conceptos deducibles en inmueble
+  if (!c.familia) return; // sin clasificar no hay registro fiscal que escribir
 
   const ejercicio = c.ejercicio ?? new Date().getFullYear();
   const fecha = toIsoDate(c.fecha) ?? `${ejercicio}-01-01`;
@@ -429,7 +441,7 @@ async function materializarRegistroInmueble(
 
   await limpiarRegistrosPrevios(documentId);
 
-  if (c.familia === 'mobiliario') {
+  if (storeDestinoDe(c.familia) === 'mueblesInmueble') {
     await mueblesInmuebleService.crear({
       inmuebleId, ejercicio,
       descripcion, fechaAlta: fecha,
@@ -442,11 +454,14 @@ async function materializarRegistroInmueble(
     return;
   }
 
-  const categoria = (c.familia && FAMILIA_A_GASTO_CATEGORIA[c.familia]) ?? 'otro';
-  const casillaAEAT = CATEGORIA_A_CASILLA[categoria];
+  // Una reforma se amortiza (tabla de mejoras) · aquí solo nace gasto deducible.
+  if (storeDestinoDe(c.familia) !== 'gastosInmueble') return;
+  const casillaAEAT = casillaDe({ familia: c.familia, subtipo: c.subtipo, ambito: 'inmueble' });
+  if (!casillaAEAT) return; // la familia no deduce en un inmueble · sin fila
   const camposComunes = {
     concepto: c.label,
-    categoria,
+    familia: c.familia,
+    subtipo: c.subtipo,
     casillaAEAT,
     importe,
     fecha,
@@ -454,8 +469,6 @@ async function materializarRegistroInmueble(
     ...(nifProveedor ? { proveedorNIF: nifProveedor } : {}),
     invoiceNumber: c.numeroFactura,
     documentId,
-    categoryKey: c.concepto.inmueble.categoryKey ?? undefined,
-    subtypeKey: c.concepto.inmueble.subtypeKey,
   };
 
   // Si ya existe un gasto PREVISTO de este ejercicio que cuadra (misma casilla,
@@ -535,18 +548,21 @@ export async function assignDocumentToProperty(
   return updated;
 }
 
-/** All catalog concepts selectable for an inmueble, grouped by family (for the UI). */
-export function conceptosInmueblePorFamilia(): Array<{ familia: string; label: string; conceptos: Concepto[] }> {
-  const groups = new Map<FamiliaId, Concepto[]>();
-  for (const c of CONCEPTOS) {
-    if (!c.inmueble || c.oculto) continue;
-    const arr = groups.get(c.familia) ?? [];
-    arr.push(c);
-    groups.set(c.familia, arr);
-  }
-  const out: Array<{ familia: string; label: string; conceptos: Concepto[] }> = [];
-  for (const [familia, conceptos] of groups) {
-    out.push({ familia, label: familiaPorId(familia)?.label ?? familia, conceptos });
-  }
-  return out;
+/** Las clasificaciones elegibles para un gasto de inmueble, por familia (para la UI). */
+export function conceptosInmueblePorFamilia(): Array<{
+  familia: string;
+  label: string;
+  conceptos: Array<{ id: string; label: string }>;
+}> {
+  return familiasSugeridas('gasto', 'inmueble').map((f) => {
+    const subs = subtiposDe(f.id);
+    return {
+      familia: f.id,
+      label: f.label,
+      conceptos:
+        subs.length > 0
+          ? subs.map((s) => ({ id: idDeClasificacion({ familia: f.id, subtipo: s.id }), label: s.label }))
+          : [{ id: f.id, label: f.label }],
+    };
+  });
 }

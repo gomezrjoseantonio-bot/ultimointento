@@ -10,13 +10,15 @@
 // Cada fila que llega a la base viene completa. El catálogo ofrece lo que aún no
 // está dado de alta (el consumidor filtra los ya creados · ver `restarYaDados`).
 
-import { conceptoPorId } from '../../../../services/conceptos/catalogoConceptos';
 import { esCortaEstancia, type SubtipoAlquiler } from '../../../../services/db/types-alquiler';
-import { resolverConcepto } from '../../../../services/conceptos/mapaLegacy';
+import { familiaPorId, subtiposDe, type FamiliaId } from '../../../../services/catalogo/catalogoUnico';
 
-/** Referencia a una entrada del catálogo (tipo + subtipo). */
+/**
+ * Referencia a una entrada del catálogo único · `tipoId` es la familia y
+ * `subtipoId` el subtipo (vacío = la familia sin segundo nivel).
+ */
 export interface ConceptoInmuebleRef {
-  tipoId: string;
+  tipoId: FamiliaId;
   subtipoId: string;
 }
 
@@ -29,34 +31,33 @@ export interface CatalogoModalidad {
 // turístico.
 export type CatalogoKind = 'viviendaCompleta' | 'habitaciones' | 'turistico';
 
-const c = (tipoId: string, subtipoId: string): ConceptoInmuebleRef => ({ tipoId, subtipoId });
+const c = (tipoId: FamiliaId, subtipoId: string): ConceptoInmuebleRef => ({ tipoId, subtipoId });
 
 // ── Conceptos reutilizados ────────────────────────────────────────────────
-const COMUNIDAD = c('comunidad', 'cuota_ordinaria');
+const COMUNIDAD = c('comunidad', 'cuota_mensual');
 const DERRAMAS = c('comunidad', 'derrama');
-const IBI = c('tributos', 'ibi');
-const BASURAS = c('tributos', 'tasa_basuras');
-const LICENCIA_TURISTICA = c('tributos', 'licencia_turistica');
-const SEGURO_HOGAR = c('seguros', 'hogar');
-const SEGURO_IMPAGO = c('seguros', 'impago');
-const GESTION_ALQUILER = c('gestion', 'honorarios_agencia');
+const IBI = c('impuestos_tasas', 'ibi');
+const BASURAS = c('impuestos_tasas', 'basuras');
+const LICENCIA_TURISTICA = c('impuestos_tasas', 'licencia_turistica');
+const SEGURO_HOGAR = c('seguros_alarmas', 'hogar');
+const SEGURO_IMPAGO = c('seguros_alarmas', 'impago');
+const GESTION_ALQUILER = c('gestion', 'otros');
 const COMISION_PLATAFORMAS = c('gestion', 'comision_plataformas');
-const LUZ = c('suministros', 'luz');
-const AGUA = c('suministros', 'agua');
-const GAS = c('suministros', 'gas');
-const INTERNET = c('suministros', 'internet');
-const TELEFONIA = c('suministros', 'telefonia');
-const ALARMA = c('suministros', 'alarma');
-const CALDERA = c('reparacion', 'mantenimiento_caldera');
-const LIMPIEZA_ZONAS = c('servicios', 'limpieza_zonas_comunes');
-const LIMPIEZA_ESTANCIA = c('servicios', 'limpieza_por_estancia');
+const LUZ = c('suministro', 'luz');
+const AGUA = c('suministro', 'agua');
+const GAS = c('suministro', 'gas');
+const INTERNET = c('suministro', 'internet');
+const TELEFONIA = c('suministro', 'telefonia');
+const ALARMA = c('seguros_alarmas', 'alarma');
+const CALDERA = c('reparacion_mantenimiento', 'caldera');
+const LIMPIEZA_ZONAS = c('limpieza', 'zonas_comunes');
+const LIMPIEZA_ESTANCIA = c('limpieza', 'por_estancia');
 // V6 · D3 · `ropa_cama_lavanderia` se desdobló: el servicio recurrente es
 // Lavandería (Servicios y explotación) y el bien duradero es Ropa de cama y
 // enseres (Mobiliario, amortizable). La sugerencia apunta al servicio, que es
 // lo recurrente y lo que tiene sentido proponer de alta.
-const ROPA_CAMA = c('servicios', 'lavanderia');
-const CONSUMIBLES = c('servicios', 'consumibles_bienvenida');
-const OTRO = c('otros', 'personalizado');
+const ROPA_CAMA = c('limpieza', 'lavanderia');
+const OTRO = c('otros', '');
 
 const SUMINISTROS = [LUZ, AGUA, GAS, INTERNET];
 
@@ -81,13 +82,14 @@ const HABITACIONES: CatalogoModalidad = {
 // De los 13 de habitaciones caen 2: seguro de IMPAGO (se cobra por adelantado,
 // no hay inquilino que impague) y limpieza de ZONAS COMUNES (aquí es limpieza
 // por estancia). GESTIÓN del alquiler SE QUEDA (un turístico gestionado por una
-// empresa es de lo más normal). Entran los 5 turísticos. 13 − 2 + 5 = 16.
+// empresa es de lo más normal). Entran los turísticos. Los «consumibles de
+// bienvenida» del catálogo viejo caen en gestión · otros, que ya está.
 const TURISTICO: CatalogoModalidad = {
   precargados: [
     COMUNIDAD, IBI, BASURAS, SEGURO_HOGAR,
     LUZ, AGUA, GAS, INTERNET,
     CALDERA, DERRAMAS, GESTION_ALQUILER,
-    LIMPIEZA_ESTANCIA, ROPA_CAMA, COMISION_PLATAFORMAS, CONSUMIBLES, LICENCIA_TURISTICA,
+    LIMPIEZA_ESTANCIA, ROPA_CAMA, COMISION_PLATAFORMAS, LICENCIA_TURISTICA,
   ],
   disponibles: [ALARMA, OTRO],
 };
@@ -210,9 +212,8 @@ export function restarYaDados(
 
 /** true si la ref resuelve a un concepto del catálogo unificado (guard defensivo). */
 export function refExisteEnCatalogo(r: ConceptoInmuebleRef): boolean {
-  // P8c · se comprueba contra el catálogo vivo (conceptos/), no contra el 4º
-  // catálogo retirado. El subtipoId suele ser ya el id de concepto; si no, se
-  // traduce por el mapa de pares.
-  const id = conceptoPorId(r.subtipoId) ? r.subtipoId : resolverConcepto(r.tipoId, r.subtipoId);
-  return id != null && conceptoPorId(id) != null;
+  const fam = familiaPorId(r.tipoId);
+  if (!fam) return false;
+  if (!r.subtipoId) return true;
+  return subtiposDe(r.tipoId).some((s) => s.id === r.subtipoId);
 }

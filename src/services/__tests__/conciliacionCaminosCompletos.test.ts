@@ -72,7 +72,7 @@ function sembrar(): void {
         mes: 8,
         ambito: 'inmueble',
         inmuebleId: 1,
-        categoryKey: 'suministro_inmueble',
+        familia: 'suministro',
         accountId: 9,
       },
     ],
@@ -84,7 +84,7 @@ function sembrar(): void {
         ejercicio: 2026,
         fecha: '2026-08-27',
         concepto: 'Agua Tenderina',
-        categoria: 'suministro',
+        familia: 'suministro',
         casillaAEAT: '0113',
         importe: 82,
         origen: 'recurrente',
@@ -229,7 +229,7 @@ describe('B2 · D1 · el confirmado se conserva con el aval del banco', () => {
       description: 'Agua Tenderina',
       source: 'manual',
       reference: 'treasury_event:7',
-      categoryKey: 'suministro_inmueble',
+      familia: 'suministro',
       ambito: 'inmueble',
       inmuebleId: '1',
     });
@@ -297,7 +297,7 @@ describe('B2 · D1 · el confirmado se conserva con el aval del banco', () => {
       valueDate: '2026-09-04',
       unifiedStatus: 'conciliado',
       statusConciliacion: 'match_automatico',
-      categoryKey: 'suministro_inmueble',
+      familia: 'suministro',
     });
   });
 

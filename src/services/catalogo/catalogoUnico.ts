@@ -20,11 +20,10 @@
 // encima leyendo (familia · contexto · ámbito) y vive en la capa fiscal, no aquí.
 // Un catálogo que reordena familias no tiene por qué mover la declaración.
 //
-// ENGANCHE FISCAL PENDIENTE (E2.4.1c): la capa fiscal engancha aquí, leyendo
-// familia + subtipo + ámbito. Hasta que exista, un gasto de inmueble nace SIN
-// casilla resuelta por el catálogo. No lleva la palabra-marcador del trinquete
-// a propósito: la deuda está documentada, no escondida, en
-// `docs/VERIFICACION-E2.4.1-preflight-catalogo-unico-2026-09-05.md` §3.3.
+// ENGANCHE FISCAL (E2.4.1c · hecho): la lente vive en `fiscal/lenteFiscal.ts`
+// y lee familia + subtipo + ámbito para decir casilla, tratamiento y tabla de
+// destino. Este fichero no la importa ni la conoce: la dependencia va en un
+// solo sentido (fiscal → catálogo), nunca al revés.
 //
 // ── Ámbito aplicable ───────────────────────────────────────────────────────
 //

@@ -24,7 +24,7 @@
 // ============================================================================
 
 import type { MovementSuggestion, SuggestionAction } from '../../../../services/movementSuggestionService';
-import { CONCEPTOS_BASE } from '../../../../services/conceptos/conceptosBase';
+import { familiaPorId, labelClasificacion, type FamiliaId } from '../../../../services/catalogo/catalogoUnico';
 
 /**
  * E1.5 · lo que este traductor necesita de una sugerencia · vale la de un
@@ -55,22 +55,10 @@ export interface Propuesta {
   seRecuerda: boolean;
 }
 
-/**
- * De la clave interna al nombre que el usuario usa.
- *
- * Se busca por las dos patas del concepto —la de inmueble y la de personal—
- * porque una misma clave puede llegar por cualquiera de las dos. Devuelve `null`
- * cuando no está en el catálogo: la alternativa era enseñar la clave cruda, que
- * es exactamente la jerga que el brief prohíbe.
- */
-export function etiquetaDeCategoria(categoryKey: string | null | undefined): string | null {
-  if (!categoryKey) return null;
-  const clave = categoryKey.trim();
-  if (!clave) return null;
-  const concepto = CONCEPTOS_BASE.find(
-    (c) => c.inmueble?.categoryKey === clave || c.personal?.categoria === clave,
-  );
-  return concepto?.label ?? null;
+/** De la clasificación al nombre que el usuario usa · `null` si no la hay. */
+export function etiquetaDeCategoria(familia: FamiliaId | string | null | undefined, subtipo?: string | null): string | null {
+  if (!familia || !familiaPorId(familia)) return null;
+  return labelClasificacion(familia as FamiliaId, subtipo);
 }
 
 /** La sugerencia que manda · la de más confianza, y a igualdad la primera. */
@@ -106,11 +94,11 @@ function titularDe(action: SuggestionAction): string {
     case 'assign_to_contract':
       return 'Parece la renta de un inquilino';
     case 'mark_personal_expense': {
-      const etiqueta = etiquetaDeCategoria(action.categoryKey);
+      const etiqueta = etiquetaDeCategoria(action.familia, action.subtipo);
       return etiqueta ? `Parece un gasto tuyo · ${etiqueta.toLowerCase()}` : 'Parece un gasto tuyo, no de un piso';
     }
     case 'create_treasury_event': {
-      const etiqueta = etiquetaDeCategoria(action.categoryKey);
+      const etiqueta = etiquetaDeCategoria(action.familia, action.subtipo);
       if (action.ambito === 'personal') {
         return etiqueta ? `Parece ${etiqueta.toLowerCase()}, tuyo` : 'Parece un gasto tuyo, no de un piso';
       }

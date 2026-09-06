@@ -33,7 +33,8 @@ import type { Movement } from './db';
 import { createTransfer } from './treasuryTransferService';
 import type { GastoInmueble, MejoraInmueble } from './db/types-inmuebles';
 import { aceptaCierre, camposDeCierre } from './cierreLineaInmueble';
-import { resolveCasillaAEAT, resolveGastoCategoria } from './treasuryConfirmationService';
+import { casillaDe } from './fiscal/lenteFiscal';
+import type { FamiliaId } from './catalogo/catalogoUnico';
 import { deriveCategoryFromMovement, feedLearningRule } from './aplicarSugerencia';
 import { naturalezaPorSigno } from './catalogo/catalogoUnico';
 
@@ -45,10 +46,9 @@ export interface AltaMovimiento {
   fecha: string;
   cuentaId: number | null;
   inmuebleId?: number | null;
-  categoryKey?: string | null;
-  subtypeKey?: string | null;
-  /** Concepto fino del catálogo unificado · el subtipo concreto (F2). */
-  conceptoId?: string | null;
+  /** Clasificación del catálogo único · `null` limpia, `undefined` no toca. */
+  familia?: FamiliaId | null;
+  subtipo?: string | null;
   /** La derrama que el usuario marcó como mejora (§4.5 · D3). */
   esMejora?: boolean;
   /** Solo en transferencia · `null` = externa. */
@@ -172,14 +172,12 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
     movementState: 'Confirmado',
     state: 'pending',
     status: 'pendiente',
-    category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
     tags: [],
     isAutoTagged: false,
     ambito: v.inmuebleId != null ? 'inmueble' : 'personal',
     statusConciliacion: 'sin_match',
-    ...(v.categoryKey ? { categoryKey: v.categoryKey } : {}),
-    ...(v.subtypeKey ? { subtypeKey: v.subtypeKey } : {}),
-    ...(v.conceptoId ? { conceptoId: v.conceptoId } : {}),
+    ...(v.familia ? { familia: v.familia } : {}),
+    ...(v.subtipo ? { subtipo: v.subtipo } : {}),
     ...(v.inmuebleId != null ? { inmuebleId: String(v.inmuebleId) } : {}),
     ...(v.tarjetaId != null ? { tarjetaId: v.tarjetaId } : {}),
     // Una compra con tarjeta de crédito no mueve la cuenta hasta el recibo · se
@@ -250,9 +248,9 @@ export async function mejoraDesdeMovimiento(params: {
     await db.put('movements', {
       ...movimiento,
       description: params.concepto || movimiento.description,
-      // Sin key de gasto: lo que se deduce es la amortización, no el pago.
-      categoryKey: undefined,
-      subtypeKey: undefined,
+      // Es una reforma: lo que se deduce es la amortización, no el pago.
+      familia: 'reforma_mejora',
+      subtipo: undefined,
       inmuebleId: String(params.inmuebleId),
       ambito: 'inmueble',
       updatedAt: ahora,
@@ -371,11 +369,9 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     // dice el método de pago, no un tipo aparte (E2.4.1b).
     naturaleza: naturalezaPorSigno(importe),
     ...(v.tipo === 'transferencia' ? { paymentMethod: 'transferencia' as const } : {}),
-    category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
     ambito: v.inmuebleId != null ? 'inmueble' : 'personal',
-    categoryKey: v.categoryKey ?? undefined,
-    subtypeKey: v.subtypeKey ?? undefined,
-    conceptoId: v.conceptoId ?? undefined,
+    familia: v.familia ?? undefined,
+    subtipo: v.subtipo ?? undefined,
     inmuebleId: v.inmuebleId != null ? String(v.inmuebleId) : undefined,
     // `undefined` NO borra: quien edite la ficha sin conocer la tarjeta —una
     // pantalla vieja, un flujo que no la pregunta— dejaría el movimiento sin
@@ -464,8 +460,9 @@ export async function gastoDesdeMovimiento(params: {
   importe: number;
   /** Fecha de CARGO · la que fija el ejercicio y contra la que mide el techo. */
   fecha: string;
-  categoryKey?: string | null;
-  subtypeKey?: string | null;
+  /** `null` limpia · `undefined` no toca (misma convención que la ficha). */
+  familia?: FamiliaId | null;
+  subtipo?: string | null;
   /**
    * Clave `recurrente-<compromiso>-<año>-<mes>` cuando la línea se clasifica
    * como un gasto recurrente. Sin ella no se busca fila previa.
@@ -488,12 +485,8 @@ export async function gastoDesdeMovimiento(params: {
     const clasificado = {
       ...movimiento,
       description: params.concepto || movimiento.description,
-      ...(params.categoryKey !== undefined
-        ? { categoryKey: params.categoryKey ?? undefined }
-        : {}),
-      ...(params.subtypeKey !== undefined
-        ? { subtypeKey: params.subtypeKey ?? undefined }
-        : {}),
+      ...(params.familia !== undefined ? { familia: params.familia ?? undefined } : {}),
+      ...(params.subtipo !== undefined ? { subtipo: params.subtipo ?? undefined } : {}),
       // `undefined` NO toca lo que hubiera; `null` limpia (la ficha usa esa misma
       // convención para categoría y subtipo).
       ...(params.inmuebleId !== undefined
@@ -510,7 +503,7 @@ export async function gastoDesdeMovimiento(params: {
     // escribió en la ficha: la regla tiene que casar con lo que traerá el
     // próximo extracto. Si lo que hace es reclasificar un movimiento que una
     // regla ya había resuelto, `createOrUpdateRule` lo cuenta como corrección.
-    if (params.categoryKey) {
+    if (params.familia) {
       await feedLearningRule(
         { ...clasificado, description: movimiento.description, counterparty: movimiento.counterparty },
         deriveCategoryFromMovement({
@@ -524,8 +517,13 @@ export async function gastoDesdeMovimiento(params: {
   if (params.inmuebleId == null) return { resultado: 'sin_inmueble' };
   if (fecha > hoy) return { resultado: 'fecha_futura' };
 
-  // Sin casilla NO se guarda · ver regla 3.
-  const casillaAEAT = resolveCasillaAEAT(params.categoryKey ?? undefined);
+  // Sin casilla NO se guarda · ver regla 3. La casilla la pone la lente fiscal
+  // leyendo familia + subtipo en ámbito inmueble.
+  const casillaAEAT = casillaDe({
+    familia: params.familia ?? undefined,
+    subtipo: params.subtipo ?? undefined,
+    ambito: 'inmueble',
+  });
   if (!casillaAEAT) return { resultado: 'falta_casilla' };
 
   // Mina M6 · aquí va el id del MOVIMIENTO, nunca el de la línea.
@@ -563,12 +561,11 @@ export async function gastoDesdeMovimiento(params: {
   const linea = {
     inmuebleId: params.inmuebleId,
     concepto: params.concepto,
-    categoria: resolveGastoCategoria(params.categoryKey ?? undefined),
+    familia: params.familia ?? undefined,
+    subtipo: params.subtipo ?? undefined,
     casillaAEAT,
     // Nace de Tesorería, como el resto de lo que inyecta la conciliación.
     origen: 'tesoreria' as const,
-    ...(params.categoryKey ? { categoryKey: params.categoryKey } : {}),
-    ...(params.subtypeKey ? { subtypeKey: params.subtypeKey } : {}),
     ...cierre,
     createdAt: ahora,
     updatedAt: ahora,
@@ -611,22 +608,22 @@ export const AVISO_GASTO_FISCAL: Partial<
  */
 export async function origenIdRecurrenteDelGasto(
   inmuebleId: number | null | undefined,
-  categoryKey: string | null | undefined,
+  familia: FamiliaId | null | undefined,
   fecha: string,
 ): Promise<string | undefined> {
-  if (inmuebleId == null || !categoryKey) return undefined;
+  if (inmuebleId == null || !familia) return undefined;
   const db = await initDB();
   const compromisos = (((await db.getAll('compromisosRecurrentes')) ?? []) as Array<{
     id?: number;
     inmuebleId?: number;
-    categoria?: string;
+    familia?: string;
     estado?: string;
   }>).filter(
     (c) =>
       c.id != null &&
       c.estado === 'activo' &&
       c.inmuebleId === inmuebleId &&
-      c.categoria === categoryKey,
+      c.familia === familia,
   );
   const c = compromisos[0];
   if (!c?.id) return undefined;

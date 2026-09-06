@@ -11,7 +11,7 @@
 // (regla de oro #1).
 // ============================================================================
 
-import type { MetodoPago } from '../services/catalogo/catalogoUnico';
+import type { FamiliaId, MetodoPago } from '../services/catalogo/catalogoUnico';
 
 // ─── Patrones de calendario (sección 2.1) ──────────────────────────────────
 
@@ -76,78 +76,17 @@ export type PatronVariacion =
   | { tipo: 'aniversarioContrato'; mesAniversario: number; porcentajeAnual: number }
   | { tipo: 'manual' };
 
-// ─── Tipos y categorías ────────────────────────────────────────────────────
+// ─── Clasificación · los 4 ejes del catálogo único (E2.4.1c) ───────────────
 //
-// Restricción importante: la cuota de hipoteca · renta de alquiler · IBI ·
-// comunidad y seguro de la vivienda HABITUAL NO existen como tipos válidos.
-// Esos compromisos se derivan automáticamente de `viviendaHabitual` (sección
-// 6, regla de oro #2).
-
-export type TipoCompromiso =
-  | 'suministro'    // luz · gas · agua · internet · móvil
-  | 'suscripcion'   // streaming · prensa · software
-  | 'seguro'        // hogar (NO vivienda habitual) · vida · salud · coche · otros
-  | 'cuota'         // gimnasio · colegio profesional · ONG · membresía
-  | 'comunidad'     // SOLO si NO es vivienda habitual ni inmueble de inversión (raro)
-  | 'impuesto'      // SOLO si NO es vivienda habitual ni inmueble de inversión (raro)
-  | 'otros';
-
-// Subtipos sugeridos para `suministro` (categoryCatalog futuro):
-//   'luz' | 'gas' | 'agua' | 'internet' | 'movil' | 'tv'
-
-// ─── Categorías de gasto (sección 4) ────────────────────────────────────────
+// Un compromiso recurrente es SIEMPRE un gasto (naturaleza fija); su categoría
+// es `familia` + `subtipo` del catálogo único; el método es `metodoPago`; el
+// ámbito es `ambito` + `inmuebleId`. Los árboles viejos (`TipoCompromiso`,
+// `CategoriaGastoCompromiso`, el concepto unificado y su proyección) y la bolsa
+// 50/30/20 se retiraron: la fiscalidad la pone la lente (`fiscal/lenteFiscal`)
+// leyendo familia + subtipo + ámbito, no un campo guardado.
 //
-// Identificadores canónicos. La asignación a la bolsa 50/30/20 va aparte en
-// `bolsaPresupuesto` para permitir reasignación sin tocar la categoría.
-
-export type CategoriaGastoCompromiso =
-  // Necesidades (50%)
-  | 'vivienda.alquiler'
-  | 'vivienda.hipoteca'
-  | 'vivienda.suministros'
-  | 'vivienda.comunidad'
-  | 'vivienda.ibi'
-  | 'vivienda.seguros'
-  | 'alimentacion'
-  | 'transporte'
-  | 'salud'
-  | 'educacion'
-  // Deseos (30%)
-  | 'ocio'
-  | 'viajes'
-  | 'suscripciones'
-  | 'personal'
-  | 'regalos'
-  | 'tecnologia'
-  // Ahorro+inversión (20%)
-  | 'ahorro.aporteFondo'
-  | 'ahorro.aportePension'
-  | 'ahorro.amortizacionExtra'
-  | 'ahorro.cuentaTarget'
-  | 'ahorro.cajaLiquida'
-  // Obligaciones fiscales (NO entran en 50/30/20)
-  | 'obligaciones.irpfPagar'
-  | 'obligaciones.irpfFraccionamiento'
-  | 'obligaciones.m130'
-  | 'obligaciones.reta'
-  | 'obligaciones.cuotasProf'
-  | 'obligaciones.multas'
-  | 'obligaciones.donaciones'
-  // Inmueble (cuando ambito='inmueble')
-  | 'inmueble.opex'
-  | 'inmueble.suministros'
-  | 'inmueble.ibi'
-  | 'inmueble.comunidad'
-  | 'inmueble.seguros'
-  | 'inmueble.gestionAlquiler'
-  | 'inmueble.otros';
-
-export type BolsaPresupuesto =
-  | 'necesidades'
-  | 'deseos'
-  | 'ahorroInversion'
-  | 'obligaciones'
-  | 'inmueble'; // ambito='inmueble' no entra en 50/30/20 personal
+// Restricción que sigue: la cuota de hipoteca NO se crea como compromiso · la
+// genera Financiación (`prestamo_hipoteca` es de los eventos, no de aquí).
 
 export type ResponsableCompromiso = 'titular' | 'pareja' | 'hogarCompartido';
 // El método de pago es el eje 3 del catálogo único (E2.4.1): un solo
@@ -162,24 +101,6 @@ export type EstadoCompromiso = 'activo' | 'preparado' | 'baja';
 // Motivo de baja estructurado (sección 2.4). `cambioProveedor` BLOQUEA la
 // reactivación (el viejo queda de baja para siempre y se crea uno nuevo).
 export type MotivoBaja = 'cambioProveedor' | 'yaNoAplica' | 'finContrato' | 'otro';
-
-// Familia fiscal (§3.2 · cómo cuenta el gasto en la previsión de impuestos). NO
-// se pregunta: se DERIVA del concepto del catálogo. Sólo se guarda cuando el
-// concepto es una excepción que pregunta (derrama · «Otro»), en el único campo
-// opcional `familiaFiscalManual`. Ver utils/fiscalidadConcepto.
-export type FamiliaFiscal =
-  | 'comunidad'
-  | 'ibi_tasas'
-  | 'seguros'
-  | 'suministros'
-  | 'reparaciones_conservacion'
-  | 'servicios_profesionales'
-  | 'intereses_financiacion'
-  | 'mejora'
-  // Mobiliario y enseres · casilla 0117. No es «mejora»: la mejora amortiza al
-  // 3 % sobre el valor del inmueble y el mobiliario al 10 % en diez años.
-  | 'amortizacion_muebles'
-  | 'no_deducible';
 
 // Reparto de un mismo recibo entre varios inmuebles (sección 2.7 · embebido, no
 // store aparte · decisión Jose). Se guarda el importe COMPLETO del recibo en el
@@ -212,8 +133,6 @@ export interface CompromisoRecurrente {
 
   // Identificación
   alias: string;
-  tipo: TipoCompromiso;
-  subtipo?: string; // 'luz' | 'gas' | 'agua' | 'internet' | 'movil' | ...
 
   proveedor: {
     nombre: string;
@@ -238,11 +157,6 @@ export interface CompromisoRecurrente {
   // contra la fecha prevista.
   margenGraciaDias?: number;
 
-  // Familia fiscal ELEGIDA A MANO · SÓLO para conceptos que preguntan (derrama:
-  // conservación vs mejora · «Otro»: sin catálogo que lo diga). La familia normal
-  // se deriva del concepto y NO se persiste. Ausente = usa la del catálogo.
-  familiaFiscalManual?: FamiliaFiscal;
-
   // Importe (sección 2.2)
   importe: ImporteEvento;
 
@@ -266,31 +180,15 @@ export interface CompromisoRecurrente {
    */
   tarjetaId?: number;
 
-  // Categorización
-  /**
-   * QUÉ es este gasto · id del catálogo unificado (`services/conceptos`).
-   *
-   * Es el único campo de clasificación que se elige. `categoria`,
-   * `bolsaPresupuesto` y `tipo` se DERIVAN de él según el ámbito
-   * (`proyectar(concepto, ambito)`) y se siguen guardando por retrocompatibilidad
-   * con todo lo que hoy los lee.
-   *
-   * Sustituye al par (`tipoFamilia`, `subtipo`), que se conserva mientras quede
-   * código leyéndolo. Ausente = registro anterior a la unificación que la
-   * migración no supo traducir; hay que revisarlo a mano, no adivinarlo.
-   *
-   * Campo opcional sin índice · no mueve `DB_VERSION`.
-   */
-  concepto?: string;
-  categoria: string; // normalizado a "familia.subfamilia" en T38; retrocompatible con CategoriaGastoCompromiso legacy
-  // Fase 3 vivienda habitual · SOLO relevante en ámbito personal con categoria
-  // 'vivienda.alquiler': marca si este alquiler es el de la vivienda habitual
-  // del titular (alimenta la deducción autonómica por alquiler). Semántica
-  // default-true: `undefined` cuenta como vivienda habitual; `false` explícito
-  // la excluye (alquiler de otra cosa: trastero, segunda vivienda…).
+  // Categorización · eje 2 del catálogo único · ausente = sin clasificar.
+  familia?: FamiliaId;
+  subtipo?: string;
+  // Fase 3 vivienda habitual · SOLO relevante en ámbito personal con familia
+  // `alquiler_renting` · `vivienda`: marca si este alquiler es el de la vivienda
+  // habitual del titular (alimenta la deducción autonómica por alquiler).
+  // Semántica default-true: `undefined` cuenta como vivienda habitual; `false`
+  // explícito la excluye (alquiler de otra cosa: trastero, segunda vivienda…).
   esViviendaHabitual?: boolean;
-  bolsaPresupuesto: BolsaPresupuesto;
-  tipoFamilia?: string; // T38: familia real ('vivienda' | 'suministros' | 'dia_a_dia' | 'suscripciones' | 'seguros_cuotas' | 'otros' | 'tributos' | 'comunidad' | 'seguros' | 'gestion' | 'reparacion')
   responsable: ResponsableCompromiso;
   porcentajeTitular?: number; // 0-100 · si hogar compartido y % no es 50/50
 

@@ -82,7 +82,7 @@ async function reglaPara(
     counterpartyPattern: '',
     descriptionPattern: 'adeudo comunidad propietarios tenderina contrato',
     amountSign: 'negative',
-    categoria: 'comunidad_inmueble',
+    familia: 'comunidad',
     ambito: 'inmueble',
     inmuebleId: '4',
     source: 'IMPLICIT',
@@ -119,13 +119,13 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
       concepto: 'Comunidad Tenderina',
       importe: -150,
       fecha: '2026-08-20',
-      categoryKey: 'comunidad_inmueble',
+      familia: 'comunidad',
     });
     expect(r.resultado).toBe('creada');
 
     const [regla] = await reglas();
     expect(regla).toMatchObject({
-      categoria: 'comunidad_inmueble',
+      familia: 'comunidad',
       ambito: 'inmueble',
       inmuebleId: '4',
       resolucion: 'clasificar',
@@ -144,10 +144,10 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
       concepto: 'Netflix',
       importe: -12.99,
       fecha: '2026-08-20',
-      categoryKey: 'ocio',
+      familia: 'ocio',
     });
     const [regla] = await reglas();
-    expect(regla).toMatchObject({ categoria: 'ocio', ambito: 'personal' });
+    expect(regla).toMatchObject({ familia: 'ocio', ambito: 'personal' });
     expect(regla.inmuebleId).toBeUndefined();
   });
 
@@ -160,7 +160,7 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
     expect(regla).toMatchObject({
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
-      categoria: 'traspaso',
+      familia: 'traspaso',
       ambito: 'personal',
       appliedCount: 1,
     });
@@ -181,13 +181,13 @@ describe('E2.2 · A · aprender de todos los gestos', () => {
           titulo: 'Cuota 7/240 · Unicaja',
           como: 'fecha_importe',
           inmuebleId: 4,
-          categoryKey: 'vivienda.hipoteca',
+          familia: 'prestamo_hipoteca',
         },
       ],
     });
 
     const [regla] = await reglas();
-    expect(regla).toMatchObject({ categoria: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: '4' });
+    expect(regla).toMatchObject({ familia: 'prestamo_hipoteca', ambito: 'inmueble', inmuebleId: '4' });
     expect((await linea(lineaId)).estado).toBe('resuelta');
   });
 
@@ -233,7 +233,7 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
     const m = movementDesdeLinea(await linea(lineaId));
     await createOrUpdateRule({
       learnKey: buildLearnKey(m),
-      categoria: 'comunidad_inmueble',
+      familia: 'comunidad',
       ambito: 'inmueble',
       inmuebleId: '4',
       movement: m,
@@ -250,8 +250,8 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
     expect(
       puedeResolverSola({ appliedCount: 5, ambito: 'inmueble', categoria: 'una_categoria_sin_casilla' })
     ).toBe(false);
-    expect(puedeResolverSola({ appliedCount: 5, ambito: 'inmueble', categoria: 'comunidad_inmueble' })).toBe(true);
-    expect(puedeResolverSola({ appliedCount: 5, ambito: 'personal', categoria: 'ocio' })).toBe(true);
+    expect(puedeResolverSola({ appliedCount: 5, ambito: 'inmueble', familia: 'comunidad' })).toBe(true);
+    expect(puedeResolverSola({ appliedCount: 5, ambito: 'personal', familia: 'ocio' })).toBe(true);
     expect(puedeResolverSola({ appliedCount: 5, ambito: 'personal', categoria: 'x', resolucion: 'traspaso' })).toBe(false);
     expect(
       puedeResolverSola({ appliedCount: 5, ambito: 'personal', categoria: 'x', resolucion: 'traspaso', cuentaDestinoId: 7 })
@@ -263,7 +263,7 @@ describe('E2.2 · B · umbral · propone hasta N, luego resuelve sola', () => {
     await reglaPara(lineaId, 1, {
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
-      categoria: 'traspaso',
+      familia: 'traspaso',
       ambito: 'personal',
       inmuebleId: undefined,
     });
@@ -293,7 +293,7 @@ describe('E2.2 · B · corregir una regla la devuelve a proponer', () => {
 
     const r = await createOrUpdateRule({
       learnKey: buildLearnKey(m),
-      categoria: 'comunidad_inmueble',
+      familia: 'comunidad',
       ambito: 'inmueble',
       inmuebleId: '7', // antes era el 4
       movement: m,
@@ -308,7 +308,7 @@ describe('E2.2 · B · corregir una regla la devuelve a proponer', () => {
     const m = movementDesdeLinea(await linea(lineaId));
     const r = await createOrUpdateRule({
       learnKey: buildLearnKey(m),
-      categoria: 'comunidad_inmueble',
+      familia: 'comunidad',
       ambito: 'inmueble',
       inmuebleId: '4',
       movement: m,
@@ -349,7 +349,7 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
     expect(movs[0]).toMatchObject({
       accountId: CUENTA,
       amount: -150,
-      categoryKey: 'comunidad_inmueble',
+      familia: 'comunidad',
       inmuebleId: '4',
       ambito: 'inmueble',
       statusConciliacion: 'match_automatico',
@@ -413,7 +413,7 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
     const regla = await reglaPara(lineaId, APLICACIONES_PARA_RESOLVER_SOLA, {
       resolucion: 'traspaso',
       cuentaDestinoId: EFECTIVO,
-      categoria: 'traspaso',
+      familia: 'traspaso',
       ambito: 'personal',
       inmuebleId: undefined,
     });
@@ -453,7 +453,7 @@ describe('E2.2 · lo auto-resuelto es RECLASIFICABLE en la sesión · y reclasif
       concepto: 'Comunidad Uría',
       importe: -150,
       fecha: '2026-08-20',
-      categoryKey: 'comunidad_inmueble',
+      familia: 'comunidad',
     });
     // Al Guardar, la línea va como `creados` (NO en `resueltasPorRegla`) y la
     // regla desmentida viaja en `reglasCorregidas`.
@@ -466,7 +466,7 @@ describe('E2.2 · lo auto-resuelto es RECLASIFICABLE en la sesión · y reclasif
 
     const movs = await movimientos();
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ inmuebleId: '7', categoryKey: 'comunidad_inmueble' });
+    expect(movs[0]).toMatchObject({ inmuebleId: '7', familia: 'comunidad' });
     expect(((await (await db()).getAll('gastosInmueble')) ?? []) as unknown[]).toHaveLength(1);
 
     const [r] = await reglas();

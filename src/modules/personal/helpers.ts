@@ -95,48 +95,9 @@ export const computeCompromisoMonthly = (c: CompromisoRecurrente): number => {
 // mismo mes. La FUENTE ÚNICA es ahora `importeCompromisoEnMes` /
 // `importeCompromisoEnFecha` en `services/personal/compromisosRecurrentesService`.
 
-/**
- * Reparto canónico de categorías → bolsa 50/30/20 según prefijo.
- */
-export const bolsaForCategoria = (
-  categoria: string,
-): 'necesidades' | 'deseos' | 'ahorroInversion' | 'obligaciones' | 'inmueble' => {
-  if (categoria.startsWith('vivienda.')) return 'necesidades';
-  if (categoria.startsWith('ahorro.')) return 'ahorroInversion';
-  if (categoria.startsWith('obligaciones.')) return 'obligaciones';
-  if (categoria.startsWith('inmueble.')) return 'inmueble';
-  // Necesidades sin prefijo · alimentacion · transporte · salud · educacion
-  if (
-    categoria === 'alimentacion' ||
-    categoria === 'transporte' ||
-    categoria === 'salud' ||
-    categoria === 'educacion'
-  ) {
-    return 'necesidades';
-  }
-  // Deseos
-  if (
-    categoria === 'ocio' ||
-    categoria === 'viajes' ||
-    categoria === 'suscripciones' ||
-    categoria === 'personal' ||
-    categoria === 'regalos' ||
-    categoria === 'tecnologia'
-  ) {
-    return 'deseos';
-  }
-  return 'necesidades';
-};
-
-/**
- * Devuelve la "familia" de la categoría · útil para colorear donut.
- */
-export const familiaForCategoria = (
-  categoria: string,
-): string => {
-  const prefix = categoria.split('.')[0];
-  return prefix; // 'vivienda' · 'ahorro' · 'obligaciones' · 'inmueble' · 'alimentacion' · etc.
-};
+// `bolsaForCategoria` y `familiaForCategoria` RETIRADAS en E2.4.1c: la bolsa
+// 50/30/20 no existe (DEFINITIVO · principio 7) y la familia es un campo del
+// compromiso, no algo que se deduzca de un prefijo.
 
 /**
  * Día seguro del mes · clamp al último día disponible.

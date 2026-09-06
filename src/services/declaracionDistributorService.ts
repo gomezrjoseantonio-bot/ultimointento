@@ -11,7 +11,8 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria, MejoraInmueble } from './db';
+import { clasificacionDeCasilla } from './fiscal/lenteFiscal';
+import type { Property, EjercicioFiscalCoord, AeatVersion, Document, VinculoAccesorio as VinculoAccesorioDB, MejoraInmueble } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { baseAmortizableEjercicioService } from './baseAmortizableEjercicioService';
 import { sincronizarArrastreImportado } from './carryForwardService';
@@ -1810,19 +1811,20 @@ async function escribirFiscalSummaries(
     }
 
     // ── Write to gastosInmueble con origen xml_aeat ──
-    const GASTOS_DECL: { campo: keyof typeof inm.gastos; casilla: string; categoria: GastoCategoria }[] = [
-      { campo: 'interesesFinanciacion', casilla: '0105', categoria: 'intereses' },
+    // La familia del catálogo la pone la lente inversa (casilla → familia).
+    const GASTOS_DECL: { campo: keyof typeof inm.gastos; casilla: string }[] = [
+      { campo: 'interesesFinanciacion', casilla: '0105' },
       // BUG-1: casilla 0106 es el importe APLICADO en el ejercicio tras el tope
       // (C_INTGRCEA), no el bruto antes del tope (C_GRCEA). Usar gastosAplicados.
-      { campo: 'gastosAplicados', casilla: '0106', categoria: 'reparacion' },
-      { campo: 'comunidad', casilla: '0109', categoria: 'comunidad' },
-      { campo: 'serviciosTerceros', casilla: '0112', categoria: 'gestion' },
-      { campo: 'suministros', casilla: '0113', categoria: 'suministro' },
-      { campo: 'seguros', casilla: '0114', categoria: 'seguro' },
-      { campo: 'ibiTasas', casilla: '0115', categoria: 'ibi' },
-      { campo: 'amortizacionMobiliario', casilla: '0117', categoria: 'otro' },
+      { campo: 'gastosAplicados', casilla: '0106' },
+      { campo: 'comunidad', casilla: '0109' },
+      { campo: 'serviciosTerceros', casilla: '0112' },
+      { campo: 'suministros', casilla: '0113' },
+      { campo: 'seguros', casilla: '0114' },
+      { campo: 'ibiTasas', casilla: '0115' },
+      { campo: 'amortizacionMobiliario', casilla: '0117' },
     ];
-    for (const { campo, casilla, categoria } of GASTOS_DECL) {
+    for (const { campo, casilla } of GASTOS_DECL) {
       const importe = (inm.gastos as any)[campo] || 0;
       if (importe <= 0) continue;
       // Para casilla 0106 guardamos explícitamente importeBruto (C_GRCEA) — el coste
@@ -1836,7 +1838,7 @@ async function escribirFiscalSummaries(
         ejercicio: decl.meta.ejercicio,
         fecha: `${decl.meta.ejercicio}-12-31`,
         concepto: `Declaración AEAT ${decl.meta.ejercicio}`,
-        categoria,
+        ...clasificacionDeCasilla(casilla),
         casillaAEAT: casilla as any,
         importe,
         ...(typeof importeBruto === 'number' ? { importeBruto } : {}),
@@ -1873,7 +1875,6 @@ async function escribirFiscalSummaries(
         ejercicio: decl.meta.ejercicio,
         fecha: `${decl.meta.ejercicio}-12-31`,
         concepto,
-        categoria: 'otro',
         casillaAEAT: casilla,
         importe,
         origen: 'xml_aeat',

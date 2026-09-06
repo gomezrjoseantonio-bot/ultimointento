@@ -9,11 +9,9 @@ import {
   Account,
   initDB,
 } from '../../services/db';
-import {
-  getOpexCategories,
-  SUMINISTRO_SUBTYPES,
-  type CategoryDef,
-} from '../../services/categoryCatalog';
+import { familiasSugeridas, subtiposDe, type Familia, type FamiliaId } from '../../services/catalogo/catalogoUnico';
+import { casillaDe } from '../../services/fiscal/lenteFiscal';
+import { ICONO_FAMILIA } from '../../modules/shared/components/ListadoGastos/utils/catalogoTipoGasto';
 
 interface OpexRuleFormProps {
   propertyId: number;
@@ -22,29 +20,31 @@ interface OpexRuleFormProps {
   onCancel: () => void;
 }
 
-// PR5-HOTFIX v2 · las 6 categorías de OPEX vienen del catálogo canónico.
-// Las opciones previas "Impuesto", "Gestión", "Otro" genéricas se eliminan;
-// IBI y Basuras (ambas del catálogo) se persisten con `categoria: 'impuesto'`
-// para no romper la fiscalidad existente, pero con `categoryKey` distinto.
-const OPEX_CATEGORY_OPTIONS: CategoryDef[] = getOpexCategories();
+// E2.4.1c · las familias de GASTO de un inmueble vienen del catálogo único. Lo
+// que se amortiza (reforma · mobiliario) o lo pone el cuadro (préstamo) no es
+// una regla OPEX.
+const OPEX_FAMILIAS: Familia[] = familiasSugeridas('gasto', 'inmueble').filter(
+  (f) => !['reforma_mejora', 'mobiliario_enseres', 'prestamo_hipoteca'].includes(f.id),
+);
 
 /**
- * Mapea un `categoryKey` del catálogo al enum interno `OpexCategory` usado
- * por OpexRule. Mantiene retrocompatibilidad con datos existentes.
+ * Traduce la familia del catálogo al enum legacy `OpexCategory` de la fachada
+ * `OpexRule`. La familia es la verdad; el enum se conserva para los lectores viejos.
  */
-function categoryKeyToOpexCategoria(categoryKey: string): OpexCategory {
-  switch (categoryKey) {
-    case 'comunidad_inmueble':
+function familiaToOpexCategoria(familia: FamiliaId, subtipo?: string): OpexCategory {
+  switch (familia) {
+    case 'comunidad':
       return 'comunidad';
-    case 'seguro_inmueble':
-      return 'seguro';
-    case 'suministro_inmueble':
+    case 'seguros_alarmas':
+      return subtipo === 'alarma' ? 'servicio' : 'seguro';
+    case 'suministro':
       return 'suministro';
-    case 'ibi_inmueble':
-    case 'basuras_inmueble':
+    case 'impuestos_tasas':
       return 'impuesto';
-    case 'servicio_inmueble':
+    case 'limpieza':
       return 'servicio';
+    case 'gestion':
+      return 'gestion';
     default:
       return 'otro';
   }
@@ -110,17 +110,17 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleCategoryCardClick = (cat: CategoryDef) => {
+  const handleCategoryCardClick = (fam: Familia) => {
     setForm((prev) => ({
       ...prev,
-      categoryKey: cat.key,
-      categoria: categoryKeyToOpexCategoria(cat.key),
-      // Auto-rellenar casilla AEAT si el catálogo la provee y aún no hay una.
-      casillaAEAT: prev.casillaAEAT || cat.casillaAEAT,
-      // Al cambiar categoría, resetear sub-tipo.
-      subtypeKey: cat.hasSubtype ? prev.subtypeKey : undefined,
+      familia: fam.id,
+      // Al cambiar familia, resetear sub-tipo.
+      subtipo: undefined,
+      categoria: familiaToOpexCategoria(fam.id),
+      // La casilla la pone la lente fiscal si aún no hay una a mano.
+      casillaAEAT: prev.casillaAEAT || casillaDe({ familia: fam.id, ambito: 'inmueble' }),
       // Auto-rellenar concepto si está vacío.
-      concepto: prev.concepto?.trim() ? prev.concepto : cat.label,
+      concepto: prev.concepto?.trim() ? prev.concepto : fam.label,
     }));
   };
 
@@ -147,7 +147,8 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
     'w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue';
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
 
-  const selectedCategory = OPEX_CATEGORY_OPTIONS.find((c) => c.key === form.categoryKey);
+  const selectedCategory = OPEX_FAMILIAS.find((f) => f.id === form.familia);
+  const subtiposSel = form.familia ? subtiposDe(form.familia) : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60">
@@ -181,13 +182,13 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
           <div>
             <label className={labelClass}>Categoría</label>
             <div className="grid grid-cols-3 gap-1.5">
-              {OPEX_CATEGORY_OPTIONS.map((cat) => {
-                const Icon = cat.icon;
-                const isActive = form.categoryKey === cat.key;
+              {OPEX_FAMILIAS.map((cat) => {
+                const Icon = ICONO_FAMILIA[cat.id] ?? Minus;
+                const isActive = form.familia === cat.id;
                 return (
                   <button
                     type="button"
-                    key={cat.key}
+                    key={cat.id}
                     onClick={() => handleCategoryCardClick(cat)}
                     className={`flex flex-col items-center gap-1 px-2 py-2 text-xs rounded-md border transition-colors ${
                       isActive
@@ -203,19 +204,19 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
             </div>
           </div>
 
-          {/* Sub-tipo de suministro · solo si categoría = suministro_inmueble */}
-          {selectedCategory?.hasSubtype && (
+          {/* Sub-tipo · solo si la familia tiene segundo nivel · opcional */}
+          {selectedCategory && subtiposSel.length > 0 && (
             <div>
-              <label className={labelClass}>Tipo de suministro</label>
+              <label className={labelClass}>Concreta (opcional)</label>
               <div className="grid grid-cols-4 gap-1.5">
-                {SUMINISTRO_SUBTYPES.map((st) => {
-                  const Icon = st.icon;
-                  const isActive = form.subtypeKey === st.key;
+                {subtiposSel.map((st) => {
+                  const Icon = Minus;
+                  const isActive = form.subtipo === st.id;
                   return (
                     <button
                       type="button"
-                      key={st.key}
-                      onClick={() => handleChange('subtypeKey', st.key)}
+                      key={st.id}
+                      onClick={() => handleChange('subtipo', isActive ? undefined : st.id)}
                       className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded-md border transition-colors ${
                         isActive
                           ? 'bg-atlas-blue/10 border-atlas-blue text-atlas-blue'

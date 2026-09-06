@@ -12,7 +12,7 @@ import type { TipoGasto } from '../../TipoGastoSelector';
 import type { Account } from '../../../../../services/db';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import { crearCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
-import { conceptoPorId } from '../../../../../services/conceptos/catalogoConceptos';
+import type { FamiliaId } from '../../../../../services/catalogo/catalogoUnico';
 import { mesesToPatron } from '../utils/rejillaMeses';
 import {
 
@@ -69,21 +69,16 @@ function matchCuenta(texto: string, accounts: Account[]): number {
   return hit?.id ?? accounts[0]?.id ?? 0;
 }
 
-/** Casa el concepto del Excel contra el catálogo (por label) para heredar familia/categoría. */
+/** Casa el concepto del Excel contra el catálogo (por label) para heredar familia + subtipo. */
 function matchConcepto(
   label: string,
   catalog: TipoGasto[],
-): { tipoId: string; subtipoId: string; tipoCompromiso: string; categoria: string } | null {
+): { familia: FamiliaId; subtipo?: string } | null {
   const l = label.toLowerCase().trim();
   for (const tipo of catalog) {
     for (const sub of tipo.subtipos) {
       if (l.includes(sub.label.toLowerCase()) || sub.label.toLowerCase().includes(l)) {
-        return {
-          tipoId: tipo.id,
-          subtipoId: sub.id,
-          tipoCompromiso: (sub as { tipoCompromiso?: string }).tipoCompromiso ?? 'otros',
-          categoria: (sub as { categoria?: string }).categoria ?? 'otros',
-        };
+        return { familia: tipo.id as FamiliaId, subtipo: sub.id || undefined };
       }
     }
   }
@@ -183,12 +178,9 @@ const ImportarGastosModal: React.FC<ImportarGastosModalProps> = ({
           inmuebleId: mode === 'inmueble' ? inmuebleId : undefined,
           personalDataId: mode === 'personal' ? 1 : undefined,
           alias: l.conceptoRaw,
-          // El matcher devuelve el id de concepto UNIFICADO en `subtipoId`: se
-          // guarda como `concepto` canónico para que agrupe como el resto.
-          concepto: concepto && conceptoPorId(concepto.subtipoId) ? concepto.subtipoId : undefined,
-          tipo: concepto?.tipoCompromiso ?? 'otros',
-          subtipo: concepto?.subtipoId,
-          tipoFamilia: concepto?.tipoId ?? 'otros',
+          // Sin match se queda SIN clasificar · no se adivina una familia.
+          familia: concepto?.familia,
+          subtipo: concepto?.subtipo,
           proveedor: { nombre: l.proveedor || '' },
           cups: l.cups || undefined,
           patron: mesesToPatron(l.meses.length ? l.meses : [1], 1),
@@ -199,8 +191,6 @@ const ImportarGastosModal: React.FC<ImportarGastosModalProps> = ({
           cuentaCargo: cuentaParaElMetodo('domiciliacion', accounts, l.cuentaId) ?? 0,
           conceptoBancario: '',
           metodoPago: 'domiciliacion',
-          categoria: concepto?.categoria ?? 'otros',
-          bolsaPresupuesto: mode === 'inmueble' ? 'inmueble' : 'necesidades',
           responsable: 'titular',
           fechaInicio: now,
           estado: 'preparado',

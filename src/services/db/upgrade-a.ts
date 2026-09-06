@@ -318,10 +318,18 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
         if (!db.objectStoreNames.contains('movementLearningRules')) {
           const learningRulesStore = db.createObjectStore('movementLearningRules', { keyPath: 'id', autoIncrement: true });
           learningRulesStore.createIndex('learnKey', 'learnKey', { unique: true });
-          learningRulesStore.createIndex('categoria', 'categoria', { unique: false });
+          learningRulesStore.createIndex('familia', 'familia', { unique: false });
           learningRulesStore.createIndex('ambito', 'ambito', { unique: false });
           learningRulesStore.createIndex('createdAt', 'createdAt', { unique: false });
           learningRulesStore.createIndex('appliedCount', 'appliedCount', { unique: false });
+        } else if (oldVersion < 94) {
+          // V94 (E2.4.1c): la regla aprende `familia` del catálogo único, no
+          // la `categoria` del árbol viejo. Regla A: sin reescribir registros.
+          const learningRulesStore = transaction.objectStore('movementLearningRules');
+          if (learningRulesStore.indexNames.contains('categoria' as never)) {
+            learningRulesStore.deleteIndex('categoria' as never);
+          }
+          ensureIndex(learningRulesStore, 'familia', 'familia', { unique: false });
         }
 
         // learningLogs: ELIMINADO en V64 (sub-tarea 5) — no se crea en DBs frescas
@@ -595,11 +603,20 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           ensureIndex(compromisosStore, 'ambito', 'ambito', { unique: false });
           ensureIndex(compromisosStore, 'personalDataId', 'personalDataId', { unique: false });
           ensureIndex(compromisosStore, 'inmuebleId', 'inmuebleId', { unique: false });
-          ensureIndex(compromisosStore, 'tipo', 'tipo', { unique: false });
-          ensureIndex(compromisosStore, 'categoria', 'categoria', { unique: false });
+          ensureIndex(compromisosStore, 'familia', 'familia', { unique: false });
           ensureIndex(compromisosStore, 'cuentaCargo', 'cuentaCargo', { unique: false });
           ensureIndex(compromisosStore, 'estado', 'estado', { unique: false });
           ensureIndex(compromisosStore, 'fechaInicio', 'fechaInicio', { unique: false });
+        } else if (oldVersion < 94) {
+          // V94 (E2.4.1c): fuera `tipo` y `categoria` (árbol B retirado · el
+          // compromiso lleva familia/subtipo del catálogo único). Regla A.
+          const compromisosStore = transaction.objectStore('compromisosRecurrentes');
+          for (const viejo of ['tipo', 'categoria']) {
+            if (compromisosStore.indexNames.contains(viejo as never)) {
+              compromisosStore.deleteIndex(viejo as never);
+            }
+          }
+          ensureIndex(compromisosStore, 'familia', 'familia', { unique: false });
         }
 
         if (!db.objectStoreNames.contains('viviendaHabitual')) {

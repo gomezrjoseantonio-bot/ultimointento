@@ -253,7 +253,7 @@ export async function buscarApunte(termino: string): Promise<ApunteEncontrado[]>
 
   const eventos = ((await db.getAll('treasuryEvents')) ?? []) as TreasuryEvent[];
   for (const ev of eventos) {
-    if (!coincide(termino, ev.description, ev.proveedor, ev.providerName, ev.counterparty, ev.categoryLabel))
+    if (!coincide(termino, ev.description, ev.proveedor, ev.providerName, ev.counterparty, ev.familia))
       continue;
     const { pantalla, porQue } = pantallaDelEvento(ev);
     out.push({
@@ -288,7 +288,7 @@ export async function buscarApunte(termino: string): Promise<ApunteEncontrado[]>
 
   const gastos = ((await db.getAll('gastosInmueble')) ?? []) as GastoInmueble[];
   for (const g of gastos) {
-    if (!coincide(termino, g.concepto, g.proveedorNombre, g.categoryKey, g.subtypeKey)) continue;
+    if (!coincide(termino, g.concepto, g.proveedorNombre, g.familia, g.subtipo)) continue;
     out.push({
       store: 'gastosInmueble',
       id: g.id as number,

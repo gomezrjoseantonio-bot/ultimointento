@@ -20,14 +20,14 @@
 // ============================================================================
 
 import type { MovementLearningRule } from './db';
-import { resolveCasillaAEAT } from './treasuryConfirmationService';
+import { casillaDe } from './fiscal/lenteFiscal';
 
 /** Aplicaciones sin corrección a partir de las cuales la regla resuelve sola. */
 export const APLICACIONES_PARA_RESOLVER_SOLA = 3;
 
 type ReglaMinima = Pick<
   MovementLearningRule,
-  'appliedCount' | 'ambito' | 'categoria' | 'resolucion' | 'cuentaDestinoId'
+  'appliedCount' | 'ambito' | 'familia' | 'subtipo' | 'resolucion' | 'cuentaDestinoId'
 >;
 
 /** ¿Se ha ganado la confianza? · `appliedCount` ya descuenta las correcciones. */
@@ -47,6 +47,6 @@ export function tieneConfianza(rule: Pick<MovementLearningRule, 'appliedCount'>)
 export function puedeResolverSola(rule: ReglaMinima): boolean {
   if (!tieneConfianza(rule)) return false;
   if (rule.resolucion === 'traspaso') return rule.cuentaDestinoId != null;
-  if (rule.ambito === 'inmueble') return !!resolveCasillaAEAT(rule.categoria);
-  return !!rule.categoria;
+  if (rule.ambito === 'inmueble') return !!casillaDe({ familia: rule.familia, subtipo: rule.subtipo, ambito: 'inmueble' });
+  return !!rule.familia;
 }

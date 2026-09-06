@@ -48,7 +48,7 @@ async function seedArrastres() {
 
   const generatedId = await db.add('arrastresIRPF', {
     ejercicioOrigen: EJERCICIO,
-    tipo: 'otros',
+    familia: 'otros',
     importeOriginal: 100,
     importePendiente: 100,
     aplicaciones: [],
@@ -59,7 +59,7 @@ async function seedArrastres() {
 
   const appliedId = await db.add('arrastresIRPF', {
     ejercicioOrigen: EJERCICIO - 1,
-    tipo: 'otros',
+    familia: 'otros',
     importeOriginal: 90,
     importePendiente: 0,
     aplicaciones: [{ ejercicio: EJERCICIO, importe: 90, fecha: now }],
@@ -155,7 +155,7 @@ describe('snapshotDeclaracionService', () => {
         minimosPersonales: { total: 5550 },
         liquidacion: { cuotaIntegra: 2200, cuotaLiquida: 2050, deduccionesDobleImposicion: 150 },
       },
-      arrastresGenerados: [{ tipo: 'otros', ejercicioOrigen: EJERCICIO - 1, importePendiente: 340 }],
+      arrastresGenerados: [{ familia: 'otros', ejercicioOrigen: EJERCICIO - 1, importePendiente: 340 }],
     });
 
     expect(snapshot.origen).toBe('importacion_manual');

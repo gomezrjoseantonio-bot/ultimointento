@@ -94,12 +94,17 @@ const eventBelongsToCategoria = (
   event: TreasuryEvent,
   categoria: Categoria,
 ): boolean => {
-  const label = (event.categoryLabel ?? '').toLowerCase();
-  if (categoria === 'reparacion') return label.includes('repar');
-  if (categoria === 'mejora') return label.includes('mejora');
-  if (categoria === 'mobiliario')
-    return label.includes('mobiliario') || label.includes('muebles');
+  if (categoria === 'reparacion') return event.familia === 'reparacion_mantenimiento';
+  if (categoria === 'mejora') return event.familia === 'reforma_mejora';
+  if (categoria === 'mobiliario') return event.familia === 'mobiliario_enseres';
   return false;
+};
+
+/** La familia del catálogo único que corresponde a cada pestaña. */
+const FAMILIA_DE_CATEGORIA: Record<Categoria, 'reparacion_mantenimiento' | 'reforma_mejora' | 'mobiliario_enseres'> = {
+  reparacion: 'reparacion_mantenimiento',
+  mejora: 'reforma_mejora',
+  mobiliario: 'mobiliario_enseres',
 };
 
 interface Props {
@@ -871,7 +876,7 @@ interface CreateExpensePrevisionInput {
 }
 
 // PR3 · Arquitectura unificada: una nueva reparación/mejora/mobiliario nace
-// como treasuryEvent predicted con ambito=INMUEBLE + categoryLabel. El
+// como treasuryEvent predicted con ambito=inmueble + familia del catálogo. El
 // movement real y la línea en gastos/mejoras/muebles se crean sólo al
 // puntear (ver treasuryConfirmationService.confirmTreasuryEvent).
 async function createExpensePrevision(
@@ -891,7 +896,7 @@ async function createExpensePrevision(
       status: 'predicted',
       ambito: 'inmueble',
       inmuebleId: input.propertyId,
-      categoryLabel: config.tipoCategory,
+      familia: FAMILIA_DE_CATEGORIA[input.categoria],
       counterparty: input.proveedorNIF,
       createdAt: now,
       updatedAt: now,

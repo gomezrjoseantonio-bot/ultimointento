@@ -238,7 +238,7 @@ describe('las etiquetas de tipo hablan el idioma de la aplicación', () => {
     expect(origenDeEvento({ sourceType: 'gasto_recurrente', naturaleza: 'gasto' })).toBe('Recibo');
     // Salvo que sea de suministros, que tiene nombre propio.
     expect(
-      origenDeEvento({ sourceType: 'gasto_recurrente', naturaleza: 'gasto', categoryKey: 'suministros.luz' })
+      origenDeEvento({ sourceType: 'gasto_recurrente', naturaleza: 'gasto', familia: 'suministro', subtipo: 'luz' })
     ).toBe('Suministro');
   });
 });
@@ -343,7 +343,7 @@ describe('un Bizum dice QUIÉN, no cómo', () => {
   // vez de "Bizum": la persona arriba, lo que es (según tú) debajo. Antes se
   // perdía y "definías y no lo veías".
   it('clasificado, el subtítulo enseña la clasificación, no "Bizum"', () => {
-    const it = bizum({ id: 3, categoryKey: 'suministro_inmueble', subtypeKey: 'gas' });
+    const it = bizum({ id: 3, familia: 'suministro', subtipo: 'gas' });
     expect(it.concepto).toBe('Adnan Parwez');
     expect(it.detalle).toBe('Gas');
   });
@@ -368,8 +368,8 @@ describe('P6 · la clasificación se ve aunque haya pagador o sea externa', () =
       statusConciliacion: 'sin_match',
       createdAt: '',
       updatedAt: '',
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'gas',
+      familia: 'suministro',
+      subtipo: 'gas',
       ...over,
     }) as Movement & { id: number };
 
@@ -387,7 +387,7 @@ describe('P6 · la clasificación se ve aunque haya pagador o sea externa', () =
 
   it('sin clasificar, la transferencia externa sigue diciendo "Transferencia externa"', () => {
     const it = movimientoAItem(
-      base({ id: 3, paymentMethod: 'transferencia', categoryKey: undefined, subtypeKey: undefined })
+      base({ id: 3, paymentMethod: 'transferencia', familia: undefined, subtipo: undefined })
     );
     expect(it.detalle).toBe('Transferencia externa');
   });
@@ -420,8 +420,8 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
       statusConciliacion: 'sin_match',
       createdAt: '',
       updatedAt: '',
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'gas',
+      familia: 'suministro',
+      subtipo: 'gas',
       ...over,
     }) as Movement & { id: number };
 
@@ -452,15 +452,14 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
     expect(movimientoAItem(gasto({ id: 3 })).origen).toBe('Suministro');
   });
 
-  // F2 · el concepto FINO manda: "Limpieza" y "Gestoría" colapsan las dos en la
-  // categoría `servicio_inmueble`. Sin guardar el concepto, la fila decía
-  // "Servicios" para las dos; con él, cada una dice lo suyo.
-  it('con concepto fino guardado, enseña el subtipo concreto, no la categoría gorda', () => {
+  // El subtipo manda sobre la familia: entre "Gestión" y "Gestoría", lo que
+  // distingue esa fila de las otras es la gestoría. Sin subtipo, la familia.
+  it('con subtipo guardado, enseña el subtipo concreto, no la familia a secas', () => {
     const limpieza = movimientoAItem(
-      gasto({ id: 8, description: 'Recibo', categoryKey: 'servicio_inmueble', subtypeKey: undefined, conceptoId: 'limpieza' })
+      gasto({ id: 8, description: 'Recibo', familia: 'limpieza', subtipo: undefined })
     );
     const gestoria = movimientoAItem(
-      gasto({ id: 9, description: 'Recibo', categoryKey: 'servicio_inmueble', subtypeKey: undefined, conceptoId: 'gestoria' })
+      gasto({ id: 9, description: 'Recibo', familia: 'gestion', subtipo: 'gestoria' })
     );
     expect(limpieza.detalle).toBe('Limpieza');
     expect(gestoria.detalle).toBe('Gestoría');
@@ -468,7 +467,7 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
 
   it('sin clasificar sigue siendo un gasto a secas', () => {
     const it = movimientoAItem(
-      gasto({ id: 4, categoryKey: undefined, subtypeKey: undefined, description: 'Compra' })
+      gasto({ id: 4, familia: undefined, subtipo: undefined, description: 'Compra' })
     );
     expect(it.origen).toBe('Gasto');
     expect(it.concepto).toBe('Compra');
@@ -483,8 +482,8 @@ describe('un gasto anotado a mano enseña su clasificación', () => {
         id: 6,
         naturaleza: 'ingreso',
         amount: 400,
-        categoryKey: 'otros_ingresos',
-        subtypeKey: undefined,
+        familia: 'otros_ingresos',
+        subtipo: undefined,
       })
     );
     expect(it.origen).toBe(origenDeEvento({ sourceType: 'otros_ingresos', naturaleza: 'ingreso' }));

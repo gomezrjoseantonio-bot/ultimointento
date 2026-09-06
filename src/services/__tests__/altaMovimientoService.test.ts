@@ -67,10 +67,10 @@ describe('una mejora NO se guarda como gasto', () => {
       ...base,
       esMejora: true,
       inmuebleId: 7,
-      categoryKey: 'comunidad_inmueble',
+      familia: 'comunidad',
     });
 
-    expect(mejoras[0].categoryKey).toBeUndefined();
+    expect(mejoras[0].familia).toBeUndefined();
   });
 
   it('se registra como mejora, no como reparación · eso es lo que se preguntó', async () => {
@@ -110,7 +110,7 @@ describe('una mejora NO se guarda como gasto', () => {
 describe('la mejora que viene de un extracto', () => {
   beforeEach(() => {
     movements = [
-      { id: 5, description: 'TRANSFERENCIA COMUNIDAD', amount: -300, categoryKey: 'comunidad_inmueble', subtypeKey: 'x', ambito: 'personal' },
+      { id: 5, description: 'TRANSFERENCIA COMUNIDAD', amount: -300, familia: 'comunidad', subtipo: 'x', ambito: 'personal' },
     ];
     (initDB as jest.Mock).mockResolvedValue({
       get: async (_s: string, id: number) => movements.find((m) => m.id === id),
@@ -139,7 +139,7 @@ describe('la mejora que viene de un extracto', () => {
     expect(movements).toHaveLength(1);
   });
 
-  it('pero pierde la key de gasto · lo que se deduce es la amortización', async () => {
+  it('y queda clasificado como reforma · lo que se deduce es la amortización', async () => {
     await mejoraDesdeMovimiento({
       movementId: 5,
       inmuebleId: 7,
@@ -148,8 +148,8 @@ describe('la mejora que viene de un extracto', () => {
       fecha: '2026-08-01',
     });
 
-    expect(movements[0].categoryKey).toBeUndefined();
-    expect(movements[0].subtypeKey).toBeUndefined();
+    expect(movements[0].familia).toBe('reforma_mejora');
+    expect(movements[0].subtipo).toBeUndefined();
     expect(movements[0].ambito).toBe('inmueble');
   });
 
@@ -191,14 +191,14 @@ describe('el alta normal', () => {
   it('guarda la clasificación cuando la hay', async () => {
     await altaMovimiento({
       ...base,
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'luz',
+      familia: 'suministro',
+      subtipo: 'luz',
       inmuebleId: 7,
     });
 
     expect(movements[0]).toMatchObject({
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'luz',
+      familia: 'suministro',
+      subtipo: 'luz',
       inmuebleId: '7',
       ambito: 'inmueble',
     });

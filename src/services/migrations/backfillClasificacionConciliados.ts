@@ -4,13 +4,12 @@
 //
 // La herencia de clasificación (el apunte del banco toma la familia/concepto de
 // la previsión con la que cuadra) se cableó DESPUÉS de que muchos apuntes ya
-// estuvieran conciliados. Esos quedaron "mudos": sin `categoryKey` ni
-// `conceptoId`, así que la fila no enseña de qué son, aunque su previsión SÍ lo
+// estuvieran conciliados. Esos quedaron "mudos": sin `familia`, así que la fila no enseña de qué son, aunque su previsión SÍ lo
 // supiera. Esta migración los rellena desde su previsión.
 //
 // ── Qué toca y qué no ──────────────────────────────────────────────────────
 //
-// SOLO los apuntes MUDOS (sin `categoryKey` ni `conceptoId`) que tienen una
+// SOLO los apuntes MUDOS (sin `familia`) que tienen una
 // previsión detrás con clasificación. Un apunte ya clasificado NO se toca —no se
 // pisa lo que el usuario puso—; uno sin previsión (un cargo suelto que nadie
 // clasificó) tampoco —no se inventa nada—.
@@ -36,8 +35,8 @@ export interface ResultadoBackfillClasificacion {
 }
 
 /** Un apunte está MUDO si no lleva ni categoría ni concepto fino. */
-export function estaMudo(m: Pick<Movement, 'categoryKey' | 'conceptoId'>): boolean {
-  return !m.categoryKey && !m.conceptoId;
+export function estaMudo(m: Pick<Movement, 'familia'>): boolean {
+  return !m.familia;
 }
 
 /**
@@ -48,13 +47,14 @@ export function estaMudo(m: Pick<Movement, 'categoryKey' | 'conceptoId'>): boole
 export function parcheDeClasificacion(m: Movement, ev: TreasuryEvent): Partial<Movement> {
   if (!estaMudo(m)) return {};
   const parche: Partial<Movement> = {};
-  if (ev.categoryKey && !m.categoryKey) parche.categoryKey = ev.categoryKey;
-  if (ev.subtypeKey && !m.subtypeKey) parche.subtypeKey = ev.subtypeKey;
-  if (ev.conceptoId && !m.conceptoId) parche.conceptoId = ev.conceptoId;
+  if (ev.familia && !m.familia) {
+    parche.familia = ev.familia;
+    if (ev.subtipo) parche.subtipo = ev.subtipo;
+  }
   // Ámbito e inmueble ayudan a la vista por inmueble · se rellenan solo si el
   // apunte no los tiene (el `PERSONAL` de un mudo es el valor por defecto, no una
   // elección), y solo cuando de verdad heredamos una clasificación.
-  if (parche.categoryKey || parche.conceptoId) {
+  if (parche.familia) {
     if (ev.ambito && (!m.ambito || m.ambito === 'personal')) parche.ambito = ev.ambito;
     if (ev.inmuebleId != null && m.inmuebleId == null) parche.inmuebleId = String(ev.inmuebleId);
   }

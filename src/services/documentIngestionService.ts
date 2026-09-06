@@ -11,6 +11,7 @@
 import { initDB, Document, Gasto, AEATFiscalType } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { AEAT_CLASSIFICATION_MAP } from './aeatClassificationService';
+import { clasificacionDeCasilla } from './fiscal/lenteFiscal';
 import { telemetry } from './telemetryService';
 import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
 import { FLAGS } from '../config/flags';
@@ -170,7 +171,7 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
     ejercicio: new Date(gasto.fecha_emision).getFullYear(),
     fecha: gasto.fecha_emision,
     concepto: gasto.contraparte_nombre || 'Documento ingresado',
-    categoria: ({'0105':'intereses','0106':'reparacion','0109':'comunidad','0112':'gestion','0113':'suministro','0114':'seguro','0115':'ibi','0117':'otro'} as any)[box] || 'otro',
+    ...clasificacionDeCasilla(box),
     casillaAEAT: box,
     importe: gasto.total,
     origen: 'tesoreria',
@@ -417,7 +418,7 @@ async function processTaxOrOtherDocumentation(document: Document): Promise<Docum
         ejercicio: new Date(gasto.fecha_emision).getFullYear(),
         fecha: gasto.fecha_emision,
         concepto: gasto.contraparte_nombre || 'Documentación fiscal',
-        categoria: ({'0105':'intereses','0106':'reparacion','0109':'comunidad','0112':'gestion','0113':'suministro','0114':'seguro','0115':'ibi','0117':'otro'} as any)[box2] || 'otro',
+        ...clasificacionDeCasilla(box2),
         casillaAEAT: box2,
         importe: gasto.total,
         origen: 'tesoreria',
