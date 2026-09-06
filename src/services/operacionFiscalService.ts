@@ -2,7 +2,8 @@
 // Mantiene los mismos nombres de métodos públicos para no romper importadores
 // Pendiente eliminar en fase de limpieza final
 
-import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type GastoInmueble, type GastoCategoria } from './db';
+import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type GastoInmueble } from './db';
+import { clasificacionDeCasilla } from './fiscal/lenteFiscal';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import { OPEX_CATEGORY_TO_AEAT_BOX } from './aeatClassificationService';
 import { prestamosService } from './prestamosService';
@@ -26,15 +27,6 @@ export function mesDeISO(iso: string): number {
 }
 
 // ── Mapping helpers ──
-
-function mapCasillaToCategoria(casilla: string): GastoCategoria {
-  const map: Record<string, GastoCategoria> = {
-    '0105': 'intereses', '0106': 'reparacion', '0109': 'comunidad',
-    '0112': 'gestion', '0113': 'suministro', '0114': 'seguro',
-    '0115': 'ibi', '0117': 'otro',
-  };
-  return map[casilla] || 'otro';
-}
 
 export function mapBoxToFiscalType(box: AEATBox): AEATFiscalType {
   // 0129/0130/0131 (mejoras, base amort. inmueble, amort. inmueble) no tienen
@@ -92,7 +84,8 @@ export async function crearOperacionFiscal(
     ejercicio,
     fecha: input.fecha,
     concepto: input.concepto || '',
-    categoria: mapCasillaToCategoria(input.casillaAEAT),
+    // Lo que entra por casilla se etiqueta con el catálogo por la lente inversa.
+    ...clasificacionDeCasilla(input.casillaAEAT),
     casillaAEAT: input.casillaAEAT as any,
     importe: input.total || 0,
     origen: input.origen === 'recurrente' ? 'recurrente' :
@@ -119,7 +112,9 @@ export async function actualizarOperacionFiscal(
   if (updates.concepto != null) mappedUpdates.concepto = updates.concepto;
   if (updates.casillaAEAT != null) {
     mappedUpdates.casillaAEAT = updates.casillaAEAT as any;
-    mappedUpdates.categoria = mapCasillaToCategoria(updates.casillaAEAT);
+    const clas = clasificacionDeCasilla(updates.casillaAEAT);
+    mappedUpdates.familia = clas?.familia;
+    mappedUpdates.subtipo = clas?.subtipo;
   }
   if (updates.total != null) mappedUpdates.importe = updates.total;
   if (updates.proveedorNIF !== undefined) mappedUpdates.proveedorNIF = updates.proveedorNIF;
@@ -338,7 +333,8 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
         ejercicio,
         fecha: fechaOp,
         concepto: conceptoOp,
-        categoria: mapCasillaToCategoria(casillaAEAT),
+        familia: c.familia ?? clasificacionDeCasilla(casillaAEAT)?.familia,
+        subtipo: c.subtipo,
         casillaAEAT: casillaAEAT as any,
         importe,
         origen: 'recurrente',
@@ -393,7 +389,7 @@ export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejerc
         ejercicio,
         fecha: periodo.fechaCargo,
         concepto: conceptoInt,
-        categoria: 'intereses',
+        familia: 'prestamo_hipoteca',
         casillaAEAT: '0105',
         importe: interesProporcion,
         origen: 'prestamo',

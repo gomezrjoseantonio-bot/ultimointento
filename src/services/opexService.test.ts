@@ -85,7 +85,7 @@ function buildOpexRule(overrides: Partial<OpexRule> = {}): OpexRule {
     id: undefined,
     propertyId: 42,
     accountId: 7,
-    categoria: 'comunidad',
+    familia: 'comunidad',
     concepto: 'Comunidad de propietarios',
     importeEstimado: 80,
     frecuencia: 'mensual',
@@ -107,15 +107,13 @@ function seedCompromisoInmueble(overrides: Partial<CompromisoRecurrente> = {}): 
     ambito: 'inmueble',
     inmuebleId: 42,
     alias: 'Test compromiso',
-    tipo: 'comunidad',
     proveedor: { nombre: 'Admin SL', nif: 'B11111111' },
     patron: { tipo: 'mensualDiaFijo', dia: 5 },
     importe: { modo: 'fijo', importe: 80 },
     cuentaCargo: 7,
     conceptoBancario: 'ADMIN SL',
     metodoPago: 'domiciliacion',
-    categoria: 'inmueble.comunidad',
-    bolsaPresupuesto: 'inmueble',
+    familia: 'comunidad',
     responsable: 'titular',
     fechaInicio: '2026-01-01',
     estado: 'activo',
@@ -135,25 +133,23 @@ beforeEach(() => {
 
 describe('opexService · CRUD delega en compromisosRecurrentes', () => {
   it('§2.6 #1 · getOpexRulesForProperty devuelve OpexRule[] con 3 compromisos activos del inmueble', async () => {
-    seedCompromisoInmueble({ inmuebleId: 42, alias: 'Comunidad', tipo: 'comunidad', categoria: 'inmueble.comunidad' });
+    seedCompromisoInmueble({ inmuebleId: 42, alias: 'Comunidad', familia: 'comunidad' });
     seedCompromisoInmueble({
       inmuebleId: 42,
       alias: 'Seguro hogar',
-      tipo: 'seguro',
-      categoria: 'inmueble.seguros',
+      familia: 'seguros_alarmas',
       patron: { tipo: 'anualMesesConcretos', mesesPago: [3], diaPago: 10 },
       importe: { modo: 'fijo', importe: 240 },
     });
     seedCompromisoInmueble({
       inmuebleId: 42,
       alias: 'IBI',
-      tipo: 'impuesto',
-      categoria: 'inmueble.ibi',
+      familia: 'impuestos_tasas', subtipo: 'ibi',
       patron: { tipo: 'anualMesesConcretos', mesesPago: [10], diaPago: 5 },
       importe: { modo: 'fijo', importe: 320 },
     });
     // Otro inmueble · NO debe aparecer
-    seedCompromisoInmueble({ inmuebleId: 99, alias: 'Otro', tipo: 'comunidad', categoria: 'inmueble.comunidad' });
+    seedCompromisoInmueble({ inmuebleId: 99, alias: 'Otro', familia: 'comunidad' });
 
     const { getOpexRulesForProperty } = await import('./opexService');
     const rules = await getOpexRulesForProperty(42);
@@ -185,13 +181,13 @@ describe('opexService · CRUD delega en compromisosRecurrentes', () => {
   });
 
   it('§2.6 #3 · saveOpexRule con id existente actualiza el CompromisoRecurrente', async () => {
-    const seeded = seedCompromisoInmueble({ alias: 'Original', tipo: 'comunidad', categoria: 'inmueble.comunidad' });
+    const seeded = seedCompromisoInmueble({ alias: 'Original', familia: 'comunidad' });
     const { saveOpexRule, getOpexRulesForProperty } = await import('./opexService');
 
     const update = buildOpexRule({
       id: seeded.id,
       concepto: 'Actualizado',
-      categoria: 'comunidad',
+      familia: 'comunidad',
       importeEstimado: 150,
     });
     const guardada = await saveOpexRule(update);
@@ -240,7 +236,7 @@ describe('opexService · mapping bidireccional idempotente', () => {
     const original = buildOpexRule({
       id: undefined,
       propertyId: 42,
-      categoria: 'suministro',
+      familia: 'suministro',
       concepto: 'Luz',
       importeEstimado: 65,
       frecuencia: 'bimestral',
@@ -351,15 +347,13 @@ describe('operacionFiscalService.generarOperacionesDesdeRecurrentes · cadena re
       ambito: 'inmueble',
       inmuebleId: 42,
       alias: 'IBI',
-      tipo: 'impuesto',
-      categoria: 'inmueble.ibi',
+      familia: 'impuestos_tasas', subtipo: 'ibi',
       proveedor: { nombre: 'Ayuntamiento' },
       patron: { tipo: 'anualMesesConcretos', mesesPago: [10], diaPago: 5 },
       importe: { modo: 'fijo', importe: 320 },
       cuentaCargo: 7,
       conceptoBancario: 'AYTO IBI',
       metodoPago: 'domiciliacion',
-      bolsaPresupuesto: 'inmueble',
       responsable: 'titular',
       fechaInicio: '2026-01-01',
       estado: 'activo',

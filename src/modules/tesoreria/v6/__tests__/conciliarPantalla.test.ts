@@ -43,7 +43,7 @@ const regla = (over: Partial<MovementLearningRule> = {}): MovementLearningRule =
   counterpartyPattern: 'EMILIO CARRERA',
   descriptionPattern: '',
   amountSign: 'positive',
-  categoria: 'comunidad_inmueble',
+  familia: 'comunidad',
   ambito: 'inmueble',
   source: 'IMPLICIT',
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -53,8 +53,9 @@ const regla = (over: Partial<MovementLearningRule> = {}): MovementLearningRule =
 });
 
 describe('sin jerga · el usuario nunca lee el nombre interno de un campo', () => {
-  it('traduce el categoryKey a la palabra del catálogo', () => {
-    expect(etiquetaDeCategoria('comunidad_inmueble')).toBe('Comunidad');
+  it('traduce la familia a la palabra del catálogo', () => {
+    expect(etiquetaDeCategoria('comunidad')).toBe('Comunidad');
+    expect(etiquetaDeCategoria('suministro', 'luz')).toBe('Suministro · Luz');
   });
 
   it('prefiere callarse a enseñar la clave cruda cuando no la conoce', () => {
@@ -63,8 +64,8 @@ describe('sin jerga · el usuario nunca lee el nombre interno de un campo', () =
 
   it('ninguna frase de la tarjeta lleva casilla de la AEAT ni clave con guion bajo', () => {
     const casos: MovementSuggestion[][] = [
-      [sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', categoryKey: 'comunidad_inmueble' } })],
-      [sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', categoryKey: 'comunidad_inmueble', sourceType: 'gasto' } })],
+      [sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', familia: 'comunidad' } })],
+      [sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', familia: 'comunidad', sourceType: 'gasto' } })],
       [sug({ via: 'heuristica', confidence: 60, action: { kind: 'assign_to_contract' } })],
       [],
     ];
@@ -85,7 +86,7 @@ describe('la tarjeta no promete lo que no cumple', () => {
   it('una regla aprendida sí se recuerda', () => {
     expect(
       propuestaDeLinea([
-        sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', categoryKey: 'comunidad_inmueble' } }),
+        sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', familia: 'comunidad' } }),
       ]).seRecuerda,
     ).toBe(true);
   });
@@ -99,7 +100,7 @@ describe('la tarjeta no promete lo que no cumple', () => {
   it('el recurrente pide confirmación, no propone a ciegas', () => {
     expect(
       propuestaDeLinea([
-        sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', categoryKey: 'comunidad_inmueble', sourceType: 'gasto' } }),
+        sug({ via: 'compromiso_recurrente', confidence: 75, action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', familia: 'comunidad', sourceType: 'gasto' } }),
       ]).tono,
     ).toBe('confirma');
   });
@@ -146,7 +147,7 @@ describe('personal · solo por lo que el usuario enseñó', () => {
   it('una regla aprendida que dice personal cuenta', () => {
     expect(
       esPersonalReconocido([
-        sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', categoryKey: 'x' } }),
+        sug({ via: 'learning_rule', confidence: 85, action: { kind: 'mark_personal_expense', familia: 'x' } }),
       ]),
     ).toBe(true);
   });
@@ -154,7 +155,7 @@ describe('personal · solo por lo que el usuario enseñó', () => {
   it('la heurística de Amazon NO cuenta · nadie ha decidido nada', () => {
     expect(
       esPersonalReconocido([
-        sug({ via: 'heuristica', confidence: 50, action: { kind: 'mark_personal_expense', categoryKey: 'tecnologia' } }),
+        sug({ via: 'heuristica', confidence: 50, action: { kind: 'mark_personal_expense', familia: 'compra_online' } }),
       ]),
     ).toBe(false);
   });

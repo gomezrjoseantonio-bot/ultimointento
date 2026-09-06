@@ -1,14 +1,13 @@
-// PR5 · Requisitos documentales por categoría
+// PR5 · Requisitos documentales por clasificación
 //
-// PR5-HOTFIX v2 · actualizado para usar `categoryKey` del catálogo canónico.
-// Mantiene compatibilidad con datos previos que solo tengan `categoryLabel`
-// gracias a `inferCategoryFromLegacyLabel` en categoryCatalog.
+// E2.4.1c · los defaults se deciden por la FAMILIA del catálogo único (y la
+// naturaleza para lo que no lleva familia), no por una key del árbol viejo.
 //
 // Nota: el nombre `documentClassificationService.ts` ya estaba ocupado por un servicio
 // distinto (ML · clasificación OCR). Este módulo cubre los defaults de factura y
 // justificante bancario en la pantalla de Conciliación.
 
-import { resolveCategoryFromRecord } from './categoryCatalog';
+import { familiaPorId, type FamiliaId, type Naturaleza } from './catalogo/catalogoUnico';
 
 export type DocRequirement = 'requerido' | 'no_aplica' | 'opcional';
 
@@ -19,73 +18,65 @@ export interface CategoryDocDefaults {
 
 const DEFAULT_FALLBACK: CategoryDocDefaults = { factura: 'opcional', justificante: 'opcional' };
 
-// Defaults por `key` del catálogo canónico.
-const DEFAULTS_BY_KEY: Record<string, CategoryDocDefaults> = {
+const REQUERIDOS: CategoryDocDefaults = { factura: 'requerido', justificante: 'requerido' };
+const SOLO_JUSTIFICANTE: CategoryDocDefaults = { factura: 'no_aplica', justificante: 'requerido' };
+const NADA: CategoryDocDefaults = { factura: 'no_aplica', justificante: 'no_aplica' };
+
+// Defaults por familia del catálogo único.
+const DEFAULTS_POR_FAMILIA: Partial<Record<FamiliaId, CategoryDocDefaults>> = {
   // ── Ingresos ────────────────────────────────────────
-  alquiler:              { factura: 'requerido',  justificante: 'requerido' },
-  otros_ingresos:        { factura: 'opcional',   justificante: 'requerido' },
-
-  // ── Gastos de inmueble deducibles ───────────────────
-  reparacion_inmueble:   { factura: 'requerido',  justificante: 'requerido' },
-  mejora_inmueble:       { factura: 'requerido',  justificante: 'requerido' },
-  mobiliario_inmueble:   { factura: 'requerido',  justificante: 'requerido' },
-  comunidad_inmueble:    { factura: 'requerido',  justificante: 'requerido' },
-  seguro_inmueble:       { factura: 'requerido',  justificante: 'requerido' },
-  suministro_inmueble:   { factura: 'requerido',  justificante: 'requerido' },
-  ibi_inmueble:          { factura: 'requerido',  justificante: 'requerido' },
-  basuras_inmueble:      { factura: 'requerido',  justificante: 'requerido' },
-  servicio_inmueble:     { factura: 'requerido',  justificante: 'requerido' },
-  otros_inmueble:        { factura: 'opcional',   justificante: 'requerido' },
-
-  // ── Gasto personal ──────────────────────────────────
-  gasto_personal:        { factura: 'no_aplica',  justificante: 'opcional' },
-
-  // Un traspaso interno no lleva factura ni justificante · lo decide su
-  // naturaleza (`movimiento_interno`), no una key: ver `computeDocFlags`.
+  alquiler:        REQUERIDOS,
+  otros_ingresos:  { factura: 'opcional', justificante: 'requerido' },
+  nomina:          SOLO_JUSTIFICANTE,
+  pension:         SOLO_JUSTIFICANTE,
+  // ── Gastos de inmueble deducibles · factura y justificante ──
+  reparacion_mantenimiento: REQUERIDOS,
+  reforma_mejora:           REQUERIDOS,
+  mobiliario_enseres:       REQUERIDOS,
+  comunidad:                REQUERIDOS,
+  seguros_alarmas:          REQUERIDOS,
+  suministro:               REQUERIDOS,
+  impuestos_tasas:          REQUERIDOS,
+  gestion:                  REQUERIDOS,
+  limpieza:                 REQUERIDOS,
+  // ── Financiación · el banco no factura ──
+  prestamo_hipoteca:        SOLO_JUSTIFICANTE,
+  comisiones_bancarias:     SOLO_JUSTIFICANTE,
+  // ── Interno · ni factura ni justificante ──
+  traspaso:                 NADA,
+  aportacion:               NADA,
+  disposicion_prestamo:     SOLO_JUSTIFICANTE,
+  fianza:                   SOLO_JUSTIFICANTE,
 };
 
-// Defaults por `label` legado — solo para datos antiguos donde no existe
-// `categoryKey`. Se usa como fallback tras `resolveCategoryFromRecord`.
-const LEGACY_LABEL_FALLBACKS: Record<string, CategoryDocDefaults> = {
-  'Financiación':          { factura: 'no_aplica',  justificante: 'requerido' },
-  'Hipoteca':              { factura: 'no_aplica',  justificante: 'requerido' },
-  'Nómina':                { factura: 'no_aplica',  justificante: 'requerido' },
-  'Traspaso interno':      { factura: 'no_aplica',  justificante: 'no_aplica' },
-};
+export interface ClasificacionDoc {
+  familia?: FamiliaId | string | null;
+  naturaleza?: Naturaleza | null;
+  ambito?: 'personal' | 'inmueble' | null;
+}
 
-/**
- * Devuelve los defaults documentales para una categoría dada. Acepta tanto
- * `categoryKey` (nuevo) como `categoryLabel` (legado).
- */
-export function getDocDefaultsForCategory(
-  categoryLabelOrKey: string | undefined | null,
-): CategoryDocDefaults {
-  if (!categoryLabelOrKey) return DEFAULT_FALLBACK;
-  const trimmed = categoryLabelOrKey.trim();
-  if (!trimmed) return DEFAULT_FALLBACK;
-
-  // Match directo por key (caso común en datos nuevos).
-  if (DEFAULTS_BY_KEY[trimmed]) return DEFAULTS_BY_KEY[trimmed];
-
-  // Resolver via catálogo (infiere desde label legado).
-  const def = resolveCategoryFromRecord({ categoryLabel: trimmed });
-  if (def && DEFAULTS_BY_KEY[def.key]) return DEFAULTS_BY_KEY[def.key];
-
-  // Fallback por label legado fuera del catálogo (financiación / nómina / traspaso).
-  if (LEGACY_LABEL_FALLBACKS[trimmed]) return LEGACY_LABEL_FALLBACKS[trimmed];
-
+/** Devuelve los defaults documentales para una clasificación. */
+export function getDocDefaultsForCategory(c: ClasificacionDoc | string | undefined | null): CategoryDocDefaults {
+  const clas: ClasificacionDoc = typeof c === 'string' ? { familia: c } : (c ?? {});
+  if (clas.naturaleza === 'movimiento_interno' && !clas.familia) return NADA;
+  const familia = clas.familia && familiaPorId(clas.familia) ? (clas.familia as FamiliaId) : undefined;
+  if (familia && DEFAULTS_POR_FAMILIA[familia]) return DEFAULTS_POR_FAMILIA[familia]!;
+  // Un gasto personal no se declara · sin factura que exigir.
+  if (clas.naturaleza === 'gasto' && clas.ambito === 'personal') {
+    return { factura: 'no_aplica', justificante: 'opcional' };
+  }
   return DEFAULT_FALLBACK;
 }
 
 /**
  * Devuelve las flags `*NoAplica` a aplicar por defecto al crear o recategorizar un movimiento,
- * en función de su categoría.
+ * en función de su clasificación.
  */
-export function computeDocFlags(categoryLabelOrKey: string | undefined | null): {
+export function computeDocFlags(c: ClasificacionDoc | string | undefined | null): {
   facturaNoAplica: boolean;
   justificanteNoAplica: boolean;
 } {
-  const d = getDocDefaultsForCategory(categoryLabelOrKey);
+  const d = getDocDefaultsForCategory(c);
   return {
     facturaNoAplica: d.factura === 'no_aplica',
     justificanteNoAplica: d.justificante === 'no_aplica',
@@ -97,13 +88,13 @@ export function computeDocFlags(categoryLabelOrKey: string | undefined | null): 
  * para pintar el conjunto de iconos en la fila de Conciliación.
  */
 export function computeDocStatus(
-  categoryLabelOrKey: string | undefined | null,
+  c: ClasificacionDoc | string | undefined | null,
   hasFactura: boolean,
   facturaNoAplica: boolean,
   hasJustificante: boolean,
   justificanteNoAplica: boolean,
 ): 'complete' | 'incomplete' {
-  const d = getDocDefaultsForCategory(categoryLabelOrKey);
+  const d = getDocDefaultsForCategory(c);
   const facturaOk = d.factura !== 'requerido' || hasFactura || facturaNoAplica;
   const justificanteOk = d.justificante !== 'requerido' || hasJustificante || justificanteNoAplica;
   return (facturaOk && justificanteOk) ? 'complete' : 'incomplete';

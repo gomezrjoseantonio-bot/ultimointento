@@ -51,7 +51,7 @@ describe('useRegistrosInmueble · alta', () => {
     await act(async () => {
       await result.current.crear({
         concepto: 'Luz',
-        categoria: 'suministro',
+        familia: 'suministro',
         casillaAEAT: '0113',
         fecha: '2026-02-01',
         importe: 60,

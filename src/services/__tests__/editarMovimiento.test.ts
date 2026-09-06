@@ -34,8 +34,8 @@ const anotado = (over: Partial<Movement> = {}): Movement =>
     category: { tipo: 'Gastos' },
     ambito: 'inmueble',
     statusConciliacion: 'sin_match',
-    categoryKey: 'suministro_inmueble',
-    subtypeKey: 'gas',
+    familia: 'suministro',
+    subtipo: 'gas',
     inmuebleId: '4',
     createdAt: '',
     updatedAt: '',
@@ -59,8 +59,8 @@ const correccion = {
   fecha: '2026-08-04',
   cuentaId: 1,
   inmuebleId: 7,
-  categoryKey: 'suministro_inmueble',
-  subtypeKey: 'luz',
+  familia: 'suministro',
+  subtipo: 'luz',
 };
 
 describe('qué se puede tocar', () => {
@@ -92,7 +92,7 @@ describe('corregir lo anotado', () => {
     expect(m?.amount).toBe(-52);
     expect(m?.date).toBe('2026-08-04');
     expect(m?.inmuebleId).toBe('7');
-    expect(m?.subtypeKey).toBe('luz');
+    expect(m?.subtipo).toBe('luz');
   });
 
   // Reclasificar a algo sin variante tiene que BORRAR la anterior, no dejarla
@@ -100,10 +100,10 @@ describe('corregir lo anotado', () => {
   it('reclasificar a algo sin variante limpia la anterior', async () => {
     const id = await guardar(anotado());
 
-    await editarMovimiento(id, { ...correccion, subtypeKey: null, inmuebleId: null });
+    await editarMovimiento(id, { ...correccion, subtipo: null, inmuebleId: null });
 
     const m = await leer(id);
-    expect(m?.subtypeKey).toBeUndefined();
+    expect(m?.subtipo).toBeUndefined();
     expect(m?.inmuebleId).toBeUndefined();
     expect(m?.ambito).toBe('personal');
   });
@@ -116,7 +116,6 @@ describe('corregir lo anotado', () => {
     const m = await leer(id);
     expect(m?.amount).toBe(300);
     expect(m?.naturaleza).toBe('ingreso');
-    expect(m?.category).toEqual({ tipo: 'Ingresos' });
   });
 
   // Una transferencia externa sale en negativo como cualquier cargo, así que

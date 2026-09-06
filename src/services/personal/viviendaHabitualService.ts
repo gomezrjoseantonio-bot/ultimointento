@@ -52,11 +52,12 @@ export async function borrarEventosFuturosVivienda(viviendaId: number): Promise<
       (ev.sourceType === 'gasto_recurrente' ||
         ev.sourceType === 'contrato' ||
         ev.sourceType === 'hipoteca') &&
-      (ev.categoryKey === 'vivienda.alquiler' ||
-        ev.categoryKey === 'vivienda.hipoteca' ||
-        ev.categoryKey === 'vivienda.comunidad' ||
-        ev.categoryKey === 'vivienda.ibi' ||
-        ev.categoryKey === 'vivienda.seguros');
+      ev.ambito === 'personal' &&
+      (ev.familia === 'alquiler_renting' ||
+        ev.familia === 'prestamo_hipoteca' ||
+        ev.familia === 'comunidad' ||
+        ev.familia === 'impuestos_tasas' ||
+        ev.familia === 'seguros_alarmas');
     if (esViviendaDerivado && ev.status === 'predicted') {
       await cursor.delete();
     }

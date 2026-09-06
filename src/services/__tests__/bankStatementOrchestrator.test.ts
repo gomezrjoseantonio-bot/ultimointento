@@ -295,7 +295,7 @@ beforeEach(() => {
             kind: 'create_treasury_event',
             naturaleza: 'gasto',
             ambito: 'inmueble',
-            categoryKey: 'inmueble.suministros',
+            familia: 'suministro',
             sourceType: 'gasto',
           },
         },
@@ -412,8 +412,8 @@ describe('bankStatementOrchestrator', () => {
     );
     nextLineaId = 5;
     stores.treasuryEvents.push(
-      { id: 1000, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta 1', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
-      { id: 1001, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta 2', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1000, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta 1', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', familia: 'alquiler', createdAt: '', updatedAt: '' },
+      { id: 1001, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta 2', sourceType: 'contract', status: 'predicted', accountId: 42, ambito: 'inmueble', familia: 'alquiler', createdAt: '', updatedAt: '' },
     );
     const saldoAntes = saldo42();
     expect(redondea(saldoAntes)).toBe(redondea(380 + 380 - 45.23 - 32.99));
@@ -459,7 +459,7 @@ describe('bankStatementOrchestrator', () => {
     // (categoría + ámbito). El texto del banco se conserva.
     expect(m1.unifiedStatus).toBe('conciliado');
     expect(m2.unifiedStatus).toBe('conciliado');
-    expect(m1.categoryKey).toBe('inmueble.alquiler');
+    expect(m1.familia).toBe('alquiler');
     expect(m1.ambito).toBe('inmueble');
 
     // El saldo no se mueve al resolver: el dinero ya estaba en el banco.
@@ -487,7 +487,7 @@ describe('bankStatementOrchestrator', () => {
       movementState: 'Confirmado',
       statusConciliacion: 'sin_match',
       ambito: 'personal',
-      categoryKey: 'personal.efectivo',
+      familia: 'otros',
       updatedAt: '',
       createdAt: '',
     } as any);
@@ -512,7 +512,7 @@ describe('bankStatementOrchestrator', () => {
       unifiedStatus: 'conciliado',
       movementState: 'Conciliado',
       statusConciliacion: 'match_automatico',
-      categoryKey: 'personal.efectivo',
+      familia: 'otros',
       ambito: 'personal',
       // Lo suyo se queda · lo del banco lo aporta el banco.
       description: 'Sacar del cajero',
@@ -554,7 +554,7 @@ describe('bankStatementOrchestrator', () => {
       unifiedStatus: 'conciliado',
       movementState: 'Conciliado',
       reference: 'treasury_event:700',
-      categoryKey: 'inmueble.comunidad',
+      familia: 'comunidad',
       updatedAt: '',
       createdAt: '',
     } as any);
@@ -891,7 +891,7 @@ describe('E1.3 · retomar un lote a medias', () => {
       concepto: 'Luz Tenderina',
       importe: gastoL.importe,
       fecha: gastoL.fechaOperacion,
-      categoryKey: 'inmueble.suministros',
+      familia: 'suministro',
       hoy: '2026-09-04',
     });
     expect(gasto.resultado).toBe('creada');
@@ -906,7 +906,7 @@ describe('E1.3 · retomar un lote a medias', () => {
     const db = await initDB();
     const { movement: recurrenteMov } = await materializarLinea(db as never, recurrenteL.id, NOW, 'a_mano');
     stores.gastosInmueble.push({
-      id: 900, inmuebleId: 4, ejercicio: 2026, fecha: recurrenteMov.date, concepto: 'Comunidad', categoria: 'comunidad',
+      id: 900, inmuebleId: 4, ejercicio: 2026, fecha: recurrenteMov.date, concepto: 'Comunidad', familia: 'comunidad',
       casillaAEAT: '0109', importe: 45.23, origen: 'recurrente', origenId: 'recurrente-7-2026-4',
       estado: 'confirmado', estadoTesoreria: 'confirmed', movimientoId: String(recurrenteMov.id), fechaValor: recurrenteMov.date,
       cuentaBancaria: '42', createdAt: '', updatedAt: '',
@@ -916,7 +916,7 @@ describe('E1.3 · retomar un lote a medias', () => {
     expect(stores.movements.every((m) => m.importBatch === res.importBatchId)).toBe(true);
     // Y una ficha de OTRO movimiento, ajena al lote · no se toca.
     stores.movements.push({ id: 5000, accountId: 42, date: '2026-03-01', amount: -80, description: 'otro', source: 'manual' } as any);
-    stores.gastosInmueble.push({ id: 901, inmuebleId: 4, ejercicio: 2026, fecha: '2026-03-01', concepto: 'Ajeno', categoria: 'suministro', casillaAEAT: '0113', importe: 80, origen: 'tesoreria', estado: 'confirmado', movimientoId: '5000', createdAt: '', updatedAt: '' });
+    stores.gastosInmueble.push({ id: 901, inmuebleId: 4, ejercicio: 2026, fecha: '2026-03-01', concepto: 'Ajeno', familia: 'suministro', casillaAEAT: '0113', importe: 80, origen: 'tesoreria', estado: 'confirmado', movimientoId: '5000', createdAt: '', updatedAt: '' });
     stores.mejorasInmueble.push({ id: 902, inmuebleId: 4, ejercicio: 2026, descripcion: 'Ajena', tipo: 'mejora', importe: 80, fecha: '2026-03-01', movimientoId: 5000, createdAt: '', updatedAt: '' });
     expect(stores.gastosInmueble).toHaveLength(3);
     expect(stores.mejorasInmueble).toHaveLength(2);
@@ -968,7 +968,7 @@ describe('E1.5 · el corte · saldo y minas', () => {
       concepto: 'Luz',
       importe: linea.importe,
       fecha: linea.fechaOperacion,
-      categoryKey: 'inmueble.suministros',
+      familia: 'suministro',
       hoy: '2026-09-04',
     });
 
@@ -993,7 +993,7 @@ describe('E1.5 · el corte · saldo y minas', () => {
     // Repetir sobre la misma línea no hace nacer otro movimiento.
     await gastoDesdeMovimiento({
       lineaId: linea.id, inmuebleId: 4, concepto: 'Luz', importe: linea.importe,
-      fecha: linea.fechaOperacion, categoryKey: 'inmueble.suministros', hoy: '2026-09-04',
+      fecha: linea.fechaOperacion, familia: 'suministro', hoy: '2026-09-04',
     });
     expect(stores.movements).toHaveLength(1);
     expect(redondea(saldo42())).toBe(SALDO_LOTE);
@@ -1081,7 +1081,7 @@ describe('E1.5 · el corte · saldo y minas', () => {
     );
     nextLineaId = 3;
     stores.treasuryEvents.push(
-      { id: 1000, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta', sourceType: 'contract', status: 'predicted', accountId: 42, categoryKey: 'inmueble.alquiler', createdAt: '', updatedAt: '' },
+      { id: 1000, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-04-22', description: 'Renta', sourceType: 'contract', status: 'predicted', accountId: 42, familia: 'alquiler', createdAt: '', updatedAt: '' },
     );
     const saldoAntes = saldo42();
     const origen = { fuente: 'prestamo' as any, origenId: 'p-1', piezaId: '7', titulo: 'Cuota 7/240', como: 'importe_y_dia' as any };

@@ -124,9 +124,8 @@ export async function confirmDecisions(
     // (`hashMovement` dedupica por él) y el nombre de la previsión va aparte.
     const conciliado: Movement = {
       ...movement,
-      ...(event.categoryKey != null ? { categoryKey: event.categoryKey } : {}),
-      ...(event.subtypeKey != null ? { subtypeKey: event.subtypeKey } : {}),
-      ...(event.conceptoId != null ? { conceptoId: event.conceptoId } : {}),
+      ...(event.familia != null ? { familia: event.familia } : {}),
+      ...(event.subtipo != null ? { subtipo: event.subtipo } : {}),
       ...(event.ambito != null ? { ambito: event.ambito } : {}),
       ...(event.inmuebleId != null ? { inmuebleId: String(event.inmuebleId) } : {}),
       ...(event.description ? { descripcionPrevision: event.description } : {}),
@@ -273,14 +272,15 @@ async function resolverPorRegla(
   } else {
     const inmuebleId =
       rule.ambito === 'inmueble' && rule.inmuebleId ? Number(rule.inmuebleId) : null;
-    const origenIdRecurrente = await origenIdRecurrenteDelGasto(inmuebleId, rule.categoria, linea.fechaOperacion);
+    const origenIdRecurrente = await origenIdRecurrenteDelGasto(inmuebleId, rule.familia, linea.fechaOperacion);
     const r = await gastoDesdeMovimiento({
       lineaId,
       inmuebleId,
       concepto: linea.conceptoLiteral,
       importe: linea.importe,
       fecha: linea.fechaOperacion,
-      categoryKey: rule.categoria,
+      familia: rule.familia,
+      subtipo: rule.subtipo,
       origenIdRecurrente,
     });
     // Sin casilla la ficha se quedaría abierta pidiéndola; en automático no hay

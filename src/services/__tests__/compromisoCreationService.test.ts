@@ -30,7 +30,6 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
       ambito: 'personal',
       personalDataId: 1,
       alias: 'Suministro Iberdrola',
-      tipo: 'suministro',
       subtipo: 'luz',
       proveedor: { nombre: 'IBERDROLA' },
       patron: { tipo: 'mensualDiaFijo', dia: 5 },
@@ -39,8 +38,7 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
       cuentaCargo: 10,
       conceptoBancario: 'IBERDROLA CLIENTES SAU',
       metodoPago: 'domiciliacion',
-      categoria: 'vivienda.suministros',
-      bolsaPresupuesto: 'necesidades',
+      familia: 'suministro',
       responsable: 'titular',
       fechaInicio: '2025-01-05',
       estado: 'activo',
@@ -94,10 +92,8 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
         propuesta: {
           conceptoBancario: 'NETFLIX INTERNATIONAL',
           alias: 'Netflix',
-          tipo: 'suscripcion',
           subtipo: undefined,
-          categoria: 'suscripciones',
-          bolsaPresupuesto: 'deseos',
+          familia: 'suscripciones',
           proveedor: { nombre: 'NETFLIX' },
           importe: { modo: 'fijo', importe: 14.99 },
         },
@@ -107,10 +103,8 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
         propuesta: {
           conceptoBancario: 'GIMNASIO BASIC FIT',
           alias: 'Gimnasio',
-          tipo: 'cuota',
           subtipo: undefined,
-          categoria: 'personal',
-          bolsaPresupuesto: 'deseos',
+          familia: 'otros',
           proveedor: { nombre: 'BASIC' },
           importe: { modo: 'fijo', importe: 39.95 },
         },
@@ -149,10 +143,8 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
         propuesta: {
           conceptoBancario: 'NETFLIX INTERNATIONAL',
           alias: 'Netflix',
-          tipo: 'suscripcion',
           subtipo: undefined,
-          categoria: 'suscripciones',
-          bolsaPresupuesto: 'deseos',
+          familia: 'suscripciones',
           proveedor: { nombre: 'NETFLIX' },
           importe: { modo: 'fijo', importe: 14.99 },
         },
@@ -182,15 +174,14 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
   });
 
   // ── Test 4 ────────────────────────────────────────────────────────────
-  it('4. candidato con override de categoria · respetado', async () => {
+  it('4. candidato con override de familia · respetado', async () => {
     await seedPersonalData();
     const { createCompromisosFromCandidatos } = await import('../compromisoCreationService');
 
     const cand = mkCandidato({ id: 'cand:10:IBE2' });
     const overrides = new Map<string, Partial<CompromisoRecurrente>>();
     overrides.set('cand:10:IBE2', {
-      categoria: 'inmueble.suministros',
-      bolsaPresupuesto: 'inmueble',
+      familia: 'suministro',
     });
 
     const result = await createCompromisosFromCandidatos([cand], {
@@ -198,8 +189,7 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
     });
 
     expect(result.creados).toHaveLength(1);
-    expect(result.creados[0].categoria).toBe('inmueble.suministros');
-    expect(result.creados[0].bolsaPresupuesto).toBe('inmueble');
+    expect(result.creados[0].familia).toBe('suministro');
   });
 
   // ── Test 5 ────────────────────────────────────────────────────────────
@@ -235,10 +225,8 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
         propuesta: {
           conceptoBancario: 'NETFLIX INTERNATIONAL',
           alias: 'Netflix',
-          tipo: 'suscripcion',
           subtipo: undefined,
-          categoria: 'suscripciones',
-          bolsaPresupuesto: 'deseos',
+          familia: 'suscripciones',
           proveedor: { nombre: 'NETFLIX' },
           importe: { modo: 'fijo', importe: 14.99 },
         },
@@ -270,10 +258,8 @@ describe('compromisoCreationService.createCompromisosFromCandidatos', () => {
         propuesta: {
           conceptoBancario: 'NETFLIX INTERNATIONAL',
           alias: 'Netflix',
-          tipo: 'suscripcion',
           subtipo: undefined,
-          categoria: 'suscripciones',
-          bolsaPresupuesto: 'deseos',
+          familia: 'suscripciones',
           proveedor: { nombre: 'NETFLIX' },
           importe: { modo: 'fijo', importe: 14.99 },
         },

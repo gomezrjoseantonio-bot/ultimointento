@@ -107,7 +107,6 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
     alias: 'Comunidad Tenderina',
     ambito: 'inmueble',
     inmuebleId: 4,
-    tipo: 'comunidad',
     proveedor: { nombre: 'Comunidad Propietarios Tenderina' },
     numeroContrato: '07085234611',
     patron: { tipo: 'mensualDiaFijo', dia: 2 },
@@ -115,7 +114,7 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
     cuentaCargo: SANTANDER,
     conceptoBancario: 'COMUNIDAD PROPIETARIOS TENDERINA',
     metodoPago: 'domiciliacion',
-    categoria: 'comunidad_inmueble',
+    familia: 'comunidad',
     estado: 'activo',
   };
 
@@ -131,7 +130,7 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
     expect(movs[0]).toMatchObject({
       accountId: SANTANDER,
       amount: -24.9,
-      categoryKey: 'comunidad_inmueble',
+      familia: 'comunidad',
       inmuebleId: '4',
       ambito: 'inmueble',
       unifiedStatus: 'conciliado',
@@ -149,7 +148,7 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
     // Y enseña · E2.2: la próxima línea igual llega con esto aprendido.
     const reglas = await todos<MovementLearningRule>('movementLearningRules');
     expect(reglas).toHaveLength(1);
-    expect(reglas[0]).toMatchObject({ categoria: 'comunidad_inmueble', ambito: 'inmueble', inmuebleId: '4' });
+    expect(reglas[0]).toMatchObject({ familia: 'comunidad', ambito: 'inmueble', inmuebleId: '4' });
   });
 
   it('es IDEMPOTENTE · guardar dos veces no duplica el movimiento ni la fila fiscal', async () => {
@@ -180,12 +179,12 @@ describe('E2.4 · recurrente · nace el movimiento clasificado y su fila fiscal 
   });
 
   it('un recurrente PERSONAL clasifica el movimiento sin fila fiscal', async () => {
-    await sembrar('compromisosRecurrentes', [{ ...decesos, id: 12, ambito: 'personal', inmuebleId: undefined, alias: 'Seguro decesos', categoria: 'seguros' }]);
+    await sembrar('compromisosRecurrentes', [{ ...decesos, id: 12, ambito: 'personal', inmuebleId: undefined, alias: 'Seguro decesos', familia: 'seguros_alarmas' }]);
     const id = await nuevaLinea({ conceptoLiteral: 'Recibo Comunidad Propietarios Tenderina Mandato 07085234611' });
     await reconocerYGuardar([id]);
     const movs = await todos<Movement>('movements');
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ categoryKey: 'seguros', unifiedStatus: 'conciliado' });
+    expect(movs[0]).toMatchObject({ familia: 'seguros_alarmas', unifiedStatus: 'conciliado' });
     expect(movs[0].inmuebleId).toBeUndefined();
     expect(await todos('gastosInmueble')).toEqual([]);
   });
@@ -217,7 +216,7 @@ describe('E2.4 · renta · el cobro del contrato queda registrado, sin fabricar 
 
     const movs = await todos<Movement>('movements');
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ amount: 650, categoryKey: 'alquiler', ambito: 'inmueble', inmuebleId: '4', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Renta · Miguel Lorenzo Cabanelas' });
+    expect(movs[0]).toMatchObject({ amount: 650, familia: 'alquiler', ambito: 'inmueble', inmuebleId: '4', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Renta · Miguel Lorenzo Cabanelas' });
     const eventos = await todos<TreasuryEvent>('treasuryEvents');
     expect(eventos).toHaveLength(1);
     expect(eventos[0]).toMatchObject({
@@ -339,8 +338,8 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
 
 describe('E2.4 · lo que cuadra con una previsión NO pasa por aquí', () => {
   it('un cuadre con previsto (bloque 1) manda sobre el reconocimiento (bloque 2) de la misma línea', async () => {
-    await sembrar('compromisosRecurrentes', [{ id: 11, alias: 'Seguro decesos', ambito: 'personal', tipo: 'seguro', proveedor: { nombre: 'Segurcaixa' }, numeroContrato: '07085234611', patron: { tipo: 'mensualDiaFijo', dia: 2 }, importe: { modo: 'fijo', importe: 24.9 }, cuentaCargo: SANTANDER, conceptoBancario: 'SEGURCAIXA', metodoPago: 'domiciliacion', categoria: 'seguros', estado: 'activo' }]);
-    await sembrar('treasuryEvents', [{ id: 800, naturaleza: 'gasto', amount: 24.9, predictedDate: '2026-08-02', description: 'Seguro decesos', sourceType: 'gasto_recurrente', sourceId: 11, accountId: SANTANDER, status: 'predicted', categoryKey: 'seguros', createdAt: AHORA, updatedAt: AHORA }]);
+    await sembrar('compromisosRecurrentes', [{ id: 11, alias: 'Seguro decesos', ambito: 'personal', proveedor: { nombre: 'Segurcaixa' }, numeroContrato: '07085234611', patron: { tipo: 'mensualDiaFijo', dia: 2 }, importe: { modo: 'fijo', importe: 24.9 }, cuentaCargo: SANTANDER, conceptoBancario: 'SEGURCAIXA', metodoPago: 'domiciliacion', familia: 'seguros_alarmas', estado: 'activo' }]);
+    await sembrar('treasuryEvents', [{ id: 800, naturaleza: 'gasto', amount: 24.9, predictedDate: '2026-08-02', description: 'Seguro decesos', sourceType: 'gasto_recurrente', sourceId: 11, accountId: SANTANDER, status: 'predicted', familia: 'seguros_alarmas', createdAt: AHORA, updatedAt: AHORA }]);
     const id = await nuevaLinea({ fechaOperacion: '2026-08-02', conceptoLiteral: 'Recibo Segurcaixa Adeslas Mandato 07085234611' });
     const r = await reconocerDeterministasDeLineas([await linea(id)]);
     expect(r.origenes.has(id)).toBe(true);

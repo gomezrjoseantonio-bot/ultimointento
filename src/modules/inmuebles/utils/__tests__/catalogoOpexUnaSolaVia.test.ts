@@ -5,7 +5,7 @@
 // Había dos caminos que respondían a la misma pregunta —«¿qué gastos le
 // sugiero a este inmueble?»— y no coincidían:
 //
-//   · la ficha del inmueble leía la MODALIDAD DEL CONTRATO → 16 conceptos
+//   · la ficha del inmueble leía la MODALIDAD DEL CONTRATO → 15 conceptos
 //   · el modal de siembra leía el MODO DE EXPLOTACIÓN      →  7 conceptos
 //
 // El modo había perdido el subtipo por el camino (`explotacionDesdeLegacy`
@@ -116,39 +116,38 @@ describe('formaDeUnidad · los dos vocabularios de forma dicen lo mismo', () => 
 // ─── el catálogo, que es lo que importa ──────────────────────────────────────
 
 describe('catalogoDelInmueble · el subtipo sale del contrato, no del modo', () => {
-  it('MEDIA estancia recupera sus 16 conceptos · el modo decía «completo» y eran 7', () => {
+  it('MEDIA estancia recupera sus 15 conceptos · el modo decía «completo» y eran 7', () => {
     const cat = catalogoDelInmueble([contrato({ modalidad: 'media_estancia' })], 'completo', HOY);
-    expect(cat.precargados).toHaveLength(16);
+    expect(cat.precargados).toHaveLength(15);
   });
 
   it('CORTA estancia, igual', () => {
     const cat = catalogoDelInmueble([contrato({ modalidad: 'corta_estancia' })], 'completo', HOY);
-    expect(cat.precargados).toHaveLength(16);
+    expect(cat.precargados).toHaveLength(15);
   });
 
-  it('los cinco que no aparecían ni entre los disponibles vuelven a estar', () => {
+  it('los que no aparecían ni entre los disponibles vuelven a estar', () => {
     const cat = catalogoDelInmueble([contrato({ modalidad: 'media_estancia' })], 'completo', HOY);
     const dentro = claves(cat.precargados);
     expect(dentro).toEqual(
       expect.arrayContaining([
-        'servicios:limpieza_por_estancia',
-        'servicios:lavanderia',
+        'limpieza:por_estancia',
+        'limpieza:lavanderia',
         'gestion:comision_plataformas',
-        'servicios:consumibles_bienvenida',
-        'tributos:licencia_turistica',
+        'impuestos_tasas:licencia_turistica',
       ]),
     );
   });
 
   it('y el seguro de impago deja de sugerirse donde no hay impago posible', () => {
     const cat = catalogoDelInmueble([contrato({ modalidad: 'media_estancia' })], 'completo', HOY);
-    expect(claves(cat.precargados)).not.toContain('seguros:impago');
+    expect(claves(cat.precargados)).not.toContain('seguros_alarmas:impago');
   });
 
   it('la LARGA estancia no cambia · 7 en vivienda completa', () => {
     const cat = catalogoDelInmueble([contrato({ modalidad: 'larga_estancia' })], 'completo', HOY);
     expect(cat.precargados).toHaveLength(7);
-    expect(claves(cat.precargados)).toContain('seguros:impago');
+    expect(claves(cat.precargados)).toContain('seguros_alarmas:impago');
   });
 
   it('la LARGA por habitaciones tampoco · 13', () => {
@@ -159,7 +158,7 @@ describe('catalogoDelInmueble · el subtipo sale del contrato, no del modo', () 
   it('sin contratos todavía, el modo sigue siendo la única pista', () => {
     expect(catalogoDelInmueble([], 'completo', HOY).precargados).toHaveLength(7);
     expect(catalogoDelInmueble([], 'habitaciones', HOY).precargados).toHaveLength(13);
-    expect(catalogoDelInmueble([], 'turistico', HOY).precargados).toHaveLength(16);
+    expect(catalogoDelInmueble([], 'turistico', HOY).precargados).toHaveLength(15);
   });
 
   it('el contrato manda sobre el modo cuando discrepan · el modo no sabe de subtipos', () => {

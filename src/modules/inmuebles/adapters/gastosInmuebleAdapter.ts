@@ -21,14 +21,11 @@ export interface GastoInmuebleVisual {
   fecha: string;
   descripcion: string;
   estado?: string;
-  concepto?: string;
-  categoryKey?: string;
-  categoria?: string;
+  /** Clasificación del catálogo único · familia + subtipo opcional. */
+  familia?: string;
+  subtipo?: string;
   /** Casilla del Modelo 100 cuando la fila procede de una declaración AEAT. */
   casillaAEAT?: string;
-  subtipo?: string;
-  tipoFamilia?: string;
-  familiaFiscalManual?: CompromisoRecurrente['familiaFiscalManual'];
   grupoVisual: GrupoVisualInmueble;
   importePrevisto?: number;
   importeReal?: number;
@@ -81,11 +78,8 @@ export function adaptarCompromisoRecurrenteAGastoVisual(
     fecha: compromiso.fechaInicio,
     descripcion: compromiso.alias,
     estado: compromiso.estado,
-    concepto: compromiso.concepto,
-    categoria: compromiso.categoria,
+    familia: compromiso.familia,
     subtipo: compromiso.subtipo,
-    tipoFamilia: compromiso.tipoFamilia,
-    familiaFiscalManual: compromiso.familiaFiscalManual,
     grupoVisual: clasificarCompromisoRecurrenteInmueble(compromiso),
     importePrevisto: importePrevistoDesdeCompromiso(compromiso.importe),
     importeReal: undefined,
@@ -95,8 +89,8 @@ export function adaptarCompromisoRecurrenteAGastoVisual(
 export function adaptarGastoRealAGastoVisual(gasto: GastoInmueble): GastoInmuebleVisual {
   const grupoBase = clasificarGastoVisualInmueble({
     ambito: 'inmueble',
-    categoryKey: gasto.categoryKey,
-    categoria: gasto.categoria,
+    familia: gasto.familia,
+    subtipo: gasto.subtipo,
   });
   // La amortización del mobiliario (casilla 0117) es el coste ANUAL de los
   // muebles: se muestra en el grupo Mobiliario, no en «Otros».
@@ -112,8 +106,8 @@ export function adaptarGastoRealAGastoVisual(gasto: GastoInmueble): GastoInmuebl
     fecha: gasto.fecha,
     descripcion: gasto.concepto,
     estado: gasto.estado,
-    categoryKey: gasto.categoryKey,
-    categoria: gasto.categoria,
+    familia: gasto.familia,
+    subtipo: gasto.subtipo,
     casillaAEAT: gasto.casillaAEAT,
     grupoVisual,
     importePrevisto: undefined,
@@ -131,10 +125,10 @@ export function adaptarMejoraAGastoVisual(mejora: MejoraInmueble): GastoInmueble
     fecha: mejora.fecha,
     descripcion: mejora.descripcion,
     estado: undefined,
-    categoryKey: mejora.categoryKey,
+    familia: 'reforma_mejora',
     grupoVisual: clasificarGastoVisualInmueble({
       ambito: 'inmueble',
-      categoryKey: mejora.categoryKey,
+      familia: 'reforma_mejora',
       esRegistroMejora: true,
     }),
     importePrevisto: undefined,
@@ -171,10 +165,10 @@ export function adaptarMuebleAGastoVisual(mueble: MuebleInmueble): GastoInmueble
     fecha: mueble.fechaAlta,
     descripcion: mueble.descripcion,
     estado: mueble.activo ? 'activo' : 'baja',
-    categoryKey: mueble.categoryKey,
+    familia: 'mobiliario_enseres',
     grupoVisual: clasificarGastoVisualInmueble({
       ambito: 'inmueble',
-      categoryKey: mueble.categoryKey,
+      familia: 'mobiliario_enseres',
       esRegistroMobiliario: true,
     }),
     importePrevisto: undefined,

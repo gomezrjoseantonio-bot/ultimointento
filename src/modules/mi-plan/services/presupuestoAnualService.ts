@@ -32,7 +32,6 @@ import { autonomoService } from '../../../services/autonomoService';
 import { calcularNetoMesNomina } from '../../../services/nominaCalculoService';
 import { calcularNetoMesAutonomo } from '../../../services/autonomoCalculoService';
 import { listarCompromisos, importeCompromisoEnMes } from '../../../services/personal/compromisosRecurrentesService';
-import { bolsaForCategoria } from '../../personal/helpers';
 import { initDB } from '../../../services/db';
 import type { TreasuryEvent, Movement } from '../../../services/db';
 import { calculateTotalInitialCash } from '../../../services/accountBalanceService';
@@ -40,7 +39,7 @@ import { conSigno, sentidoDe } from '../../../services/catalogo/catalogoUnico';
 
 export type GrupoKey =
   | 'nomina' | 'autonomo' | 'alquileres'   // ENTRA
-  | 'hogar' | 'inmuebles' | 'deuda' | 'impuestos' | 'deseos'; // SALE
+  | 'hogar' | 'inmuebles' | 'deuda' | 'impuestos'; // SALE
 
 export type Signo = 'entra' | 'sale';
 
@@ -126,15 +125,14 @@ const LABELS: Record<GrupoKey, string> = {
   nomina: 'Nómina',
   autonomo: 'Actividad de autónomo',
   alquileres: 'Alquileres',
-  hogar: 'Hogar y familia',
+  hogar: 'Gastos personales',
   inmuebles: 'Tus inmuebles',
   deuda: 'Deuda',
   impuestos: 'Impuestos',
-  deseos: 'Deseos',
 };
 const ORDEN: GrupoKey[] = [
   'nomina', 'autonomo', 'alquileres',
-  'hogar', 'inmuebles', 'deuda', 'impuestos', 'deseos',
+  'hogar', 'inmuebles', 'deuda', 'impuestos',
 ];
 const ENTRA: GrupoKey[] = ['nomina', 'autonomo', 'alquileres'];
 
@@ -143,31 +141,26 @@ const emptyMeses = (): CeldaGrupo[] =>
   Array.from({ length: MESES }, () => ({ previsto: 0, real: null as number | null, desglose: [] }));
 
 /** ¿Una cuota/compromiso pertenece SOLO a Deuda? (regla 2) */
-function esDeuda(c: { prestamoId?: unknown; categoria?: string }): boolean {
+function esDeuda(c: { prestamoId?: unknown; familia?: string }): boolean {
   if (c.prestamoId != null && c.prestamoId !== 0 && c.prestamoId !== '') return true;
-  if (typeof c.categoria === 'string' && c.categoria.toLowerCase().includes('hipoteca')) return true;
+  if (c.familia === 'prestamo_hipoteca') return true;
   return false;
 }
 
-// ── Mapeo bolsa/ámbito → grupo (sección 4.4 · ámbito manda · decisión 3) ──
+// ── Mapeo familia/ámbito → grupo (sección 4.4 · ámbito manda · decisión 3) ──
+//
+// E2.4.1c · la bolsa 50/30/20 no existe (DEFINITIVO · principio 7): el gasto
+// personal va entero a «Gastos personales» salvo los impuestos y la deuda, que
+// tienen grupo propio. No hay reparto necesidades/deseos.
 function grupoDeGastoReal(ev: {
   ambito?: 'personal' | 'inmueble';
-  bolsaPresupuesto?: string;
-  categoria?: string;
+  familia?: string;
   prestamoId?: unknown;
 }): GrupoKey | 'residuo' {
   if (esDeuda(ev)) return 'deuda';
   if (ev.ambito === 'inmueble') return 'inmuebles';        // ámbito manda (decisión 3)
-  const bolsa = ev.bolsaPresupuesto
-    ?? (ev.categoria ? bolsaForCategoria(ev.categoria) : undefined);
-  switch (bolsa) {
-    case 'necesidades': return 'hogar';
-    case 'deseos': return 'deseos';
-    case 'inmueble': return 'inmuebles';
-    case 'obligaciones': return 'impuestos';
-    // ahorroInversion no es un grupo (sección 1) → residuo visible
-    default: return 'residuo';
-  }
+  if (ev.familia === 'impuestos_tasas' || ev.familia === 'multas') return 'impuestos';
+  return 'hogar';
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -237,7 +230,7 @@ async function buildPrevisto(
     const inmCell = g.get('inmuebles')![i];
     inmCell.previsto = round2(-Math.abs(r.gastos.gastosOperativos));
     inmCell.desglose = (r.gastos.opexDesglose ?? [])
-      .filter((it) => !esDeuda({ categoria: (it as { concepto?: string }).concepto }))
+      .filter((it) => !/hipoteca|pr[ée]stamo/i.test(String((it as { concepto?: string }).concepto ?? '')))
       .map((it) => ({
         concepto: (it as { concepto?: string }).concepto ?? 'Gasto inmueble',
         importe: round2(-Math.abs((it as { importe?: number }).importe ?? 0)),
@@ -255,18 +248,14 @@ async function buildPrevisto(
     g.get('impuestos')![i].previsto = round2(-Math.abs(r.gastos.irpf));
   }
 
-  // SALE · Hogar y familia + Deseos · desde compromisos personales, split por
-  // bolsa, con exclusión de Deuda (regla 2). El motor suma gastosPersonales pero
-  // no separa bolsa; aquí se re-deriva por compromiso.
+  // SALE · Gastos personales · desde compromisos personales, con exclusión de
+  // Deuda (regla 2) e impuestos (tienen su grupo). Sin bolsa 50/30/20 (E2.4.1c).
   const persComp = await listarCompromisos({ ambito: 'personal', soloActivos: true });
   const comprVacios = persComp.length === 0;
   for (const c of persComp) {
-    if (esDeuda(c as { prestamoId?: unknown; categoria?: string })) continue; // solo Deuda
-    const bolsa = (c as { bolsaPresupuesto?: string }).bolsaPresupuesto
-      ?? bolsaForCategoria((c as { categoria?: string }).categoria ?? '');
-    const destino: GrupoKey | null =
-      bolsa === 'necesidades' ? 'hogar' : bolsa === 'deseos' ? 'deseos' : null;
-    if (!destino) continue; // obligaciones/ahorro personal no son Hogar/Deseos
+    if (esDeuda(c)) continue; // solo Deuda
+    const destino = grupoDeGastoReal({ ambito: 'personal', familia: c.familia });
+    if (destino !== 'hogar') continue;
     const cells = g.get(destino)!;
     for (let i = 0; i < MESES; i++) {
       const imp = importeCompromisoEnMes(c, year, i);
@@ -374,7 +363,7 @@ export async function buildReal(year: number): Promise<RealMes[]> {
 
   const usados = new Set<number>(); // movements ya atribuidos vía evento
 
-  // 1) Previsiones ejecutadas · el grupo sale de la bolsa/ámbito del evento
+  // 1) Previsiones ejecutadas · el grupo sale de la familia/ámbito del evento
   for (const ev of allEvents) {
     if (ev.status !== 'executed') continue;
     if ((ev.año ?? null) !== year) continue;
@@ -390,7 +379,7 @@ export async function buildReal(year: number): Promise<RealMes[]> {
     }
   }
 
-  // 2) Movimientos conciliados SIN evento asociado · inferir bolsa por categoría
+  // 2) Movimientos conciliados SIN evento asociado · el grupo por familia
   for (const mv of allMovs) {
     if (mv.unifiedStatus !== 'conciliado') continue;
     // El saldo de apertura NO es un flujo · es el stock de partida. Contarlo aquí
@@ -404,10 +393,7 @@ export async function buildReal(year: number): Promise<RealMes[]> {
     if (amount >= 0) {
       add(i, grupoDeIngresoRealMovimiento(mv), amount);
     } else {
-      const grp = grupoDeGastoReal({
-        ambito: (mv as { ambito?: 'personal' | 'inmueble' }).ambito,
-        categoria: (mv as { categoria?: string }).categoria,
-      });
+      const grp = grupoDeGastoReal({ ambito: mv.ambito, familia: mv.familia });
       add(i, grp, amount);
     }
   }
@@ -416,10 +402,9 @@ export async function buildReal(year: number): Promise<RealMes[]> {
 }
 
 function grupoDeIngresoRealMovimiento(mv: Movement): GrupoKey | 'residuo' {
-  const cat = String((mv as { categoria?: string }).categoria ?? '').toLowerCase();
-  if (cat.includes('nomina') || cat.includes('nómina')) return 'nomina';
-  if (cat.includes('autonomo') || cat.includes('autónomo')) return 'autonomo';
-  if (cat.includes('alquiler') || cat.includes('renta')) return 'alquileres';
+  if (mv.familia === 'nomina' || mv.familia === 'pension') return 'nomina';
+  if (mv.familia === 'autonomo') return 'autonomo';
+  if (mv.familia === 'alquiler') return 'alquileres';
   return 'residuo';
 }
 
@@ -631,7 +616,7 @@ async function overrideDesdeFoto(
 
 // ── Motivo de vacío por grupo (regla 1 · criterio 9). Nunca cero mudo ──
 function motivoVacio(key: GrupoKey): { motivo: string } {
-  if (key === 'hogar' || key === 'deseos') return { motivo: 'Sin compromisos recurrentes registrados' };
+  if (key === 'hogar') return { motivo: 'Sin compromisos recurrentes registrados' };
   if (key === 'inmuebles') return { motivo: 'Sin gastos de inmueble registrados' };
   if (key === 'alquileres') return { motivo: 'Sin inmuebles ni contratos' };
   if (key === 'impuestos') return { motivo: 'Sin previsión de impuestos calculable' };

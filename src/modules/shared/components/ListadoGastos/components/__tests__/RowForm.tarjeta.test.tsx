@@ -57,7 +57,6 @@ const compromiso = (over: Partial<CompromisoRecurrente> = {}) =>
     conceptoBancario: 'CARREFOUR',
     metodoPago: 'domiciliacion',
     categoria: 'dia_a_dia.compra',
-    bolsaPresupuesto: 'necesidades',
     responsable: 'titular',
     ambito: 'personal',
     fechaInicio: '2026-01-01',

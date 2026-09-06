@@ -350,7 +350,7 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
         counterpartyPattern: 'IBERDROLA',
         descriptionPattern: 'LUZ',
         amountSign: 'negative',
-        categoria: 'suministro',
+        familia: 'suministro',
         ambito: 'inmueble',
         source: 'IMPLICIT',
         createdAt: new Date().toISOString(),

@@ -60,7 +60,7 @@ const claveSerie = (e: TreasuryEvent): string => {
   const quien = (e.providerName ?? e.counterparty ?? e.description ?? '').trim().toLowerCase();
   const cuanto = Math.round(Math.abs(e.actualAmount ?? e.amount) * 100);
   const donde = e.inmuebleId ?? '';
-  const que = e.categoryKey ?? e.sourceType ?? '';
+  const que = e.familia ?? e.sourceType ?? '';
   return `${quien}|${cuanto}|${donde}|${que}`;
 };
 

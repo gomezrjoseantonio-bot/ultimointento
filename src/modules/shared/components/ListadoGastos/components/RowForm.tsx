@@ -13,7 +13,6 @@ import type {
   ImporteEvento,
   PatronRecurrente,
   PatronVariacion,
-  FamiliaFiscal,
   RepartoInmueble,
 } from '../../../../../types/compromisosRecurrentes';
 import type { Account } from '../../../../../services/db';
@@ -39,7 +38,7 @@ import {
   MESES_CORTOS,
   type CargoDraft,
 } from '../utils/cargosPorPago';
-import { fiscalidadDeConcepto, FAMILIAS_FISCALES } from '../utils/fiscalidadConcepto';
+import { fiscalidadDe } from '../../../../../services/fiscal/lenteFiscal';
 import RepartoEditor, { repartoCuadra, type InmuebleOpcion } from './RepartoEditor';
 import CargosEditor from './CargosEditor';
 import {
@@ -64,13 +63,11 @@ import {
   btnGold,
 } from './RowForm.styles';
 import {
-  conceptoPorId,
-  conceptosDe,
-  familiasDeAmbito,
-  proyectar,
-} from '../../../../../services/conceptos/catalogoConceptos';
-import type { ProyeccionPersonal } from '../../../../../services/conceptos/catalogoConceptos';
-import { parLegacyDe, resolverConcepto } from '../../../../../services/conceptos/mapaLegacy';
+  familiasSugeridas,
+  labelClasificacion,
+  subtiposDe,
+  type FamiliaId,
+} from '../../../../../services/catalogo/catalogoUnico';
 
 interface RowFormProps {
   compromiso: CompromisoRecurrente & { id: number };
@@ -83,7 +80,6 @@ interface RowFormProps {
 type SubeCadaAnio = 'no' | 'ipc' | 'contrato';
 
 // Opciones que ofrece la excepción de la derrama (§3 · conservación vs mejora).
-const DERRAMA_OPCIONES: FamiliaFiscal[] = ['reparaciones_conservacion', 'mejora'];
 
 // Los medios y sus rótulos salen del catálogo único (eje 3) · `labelMetodo` es
 // el único sitio donde un método de pago tiene nombre, para que no haya dos
@@ -141,34 +137,25 @@ function variacionInicial(v?: PatronVariacion): SubeCadaAnio {
   if (v?.tipo === 'aniversarioContrato') return 'contrato';
   return 'no';
 }
-function labelFamilia(id: FamiliaFiscal): string {
-  return FAMILIAS_FISCALES.find((f) => f.id === id)?.label ?? id;
-}
 
 const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDisponibles, onSaved }) => {
-  // QUÉ es este gasto · el único campo de clasificación que se elige. De él se
-  // derivan familia, categoría, bolsa y fiscalidad. Hasta ahora la ficha de
-  // edición NO lo mostraba: se podía cambiar el importe y la cuenta, pero no
-  // arreglar un gasto mal clasificado, que es exactamente lo que le pasaba al
-  // seguro de vida. Si el registro es anterior a la unificación se traduce su
-  // par legacy para nacer relleno.
-  const conceptoInicial =
-    (c.concepto && conceptoPorId(c.concepto) ? c.concepto : null) ??
-    resolverConcepto(c.tipoFamilia, c.subtipo) ??
-    '';
-  const [concepto, setConcepto] = useState<string>(conceptoInicial);
-  const familias = useMemo(() => familiasDeAmbito(c.ambito), [c.ambito]);
-  const conceptoDefActual = conceptoPorId(concepto);
+  // QUÉ es este gasto · familia + subtipo del catálogo único (E2.4.1c). Es lo
+  // único que se elige; la fiscalidad la deriva la lente. Un registro anterior
+  // al catálogo único (Regla A · sin familia) abre SIN CLASIFICAR y se elige.
+  const [familia, setFamilia] = useState<FamiliaId | ''>(c.familia ?? '');
+  const [subtipo, setSubtipo] = useState<string>(c.subtipo ?? '');
+  const familias = useMemo(() => familiasSugeridas('gasto', c.ambito), [c.ambito]);
+  const subtipos = useMemo(() => (familia ? subtiposDe(familia) : []), [familia]);
+  const labelActual = familia ? labelClasificacion(familia, subtipo || undefined) : undefined;
 
   const [alias, setAlias] = useState(c.alias === 'Nuevo gasto' ? '' : c.alias);
   // Un alias que repite el nombre del concepto no dice nada · se enseña vacío,
   // con el del concepto de marcador. Lo que se GUARDA no cambia.
-  const aliasVisible = alias === conceptoDefActual?.label ? '' : alias;
+  const aliasVisible = alias === labelActual ? '' : alias;
   const [proveedor, setProveedor] = useState(c.proveedor?.nombre ?? '');
   const [nif, setNif] = useState(c.proveedor?.nif ?? '');
   const [cups, setCups] = useState(c.cups ?? '');
   const [numeroContrato, setNumeroContrato] = useState(c.numeroContrato ?? '');
-  const [familiaManual, setFamiliaManual] = useState<FamiliaFiscal | ''>(c.familiaFiscalManual ?? '');
   const [medio, setMedio] = useState<MetodoPago>(c.metodoPago);
   const [cuentaCargo, setCuentaCargo] = useState<number>(c.cuentaCargo);
   // §3 · «Tarjeta» no dice de dónde sale el dinero, dice con QUÉ se paga. Sin
@@ -236,7 +223,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
   // habitual? (alimenta la deducción autonómica). Default-true. Se mira el
   // concepto elegido AHORA, no la categoría guardada: si acabas de cambiarlo a
   // «Alquiler», la casilla tiene que aparecer sin recargar.
-  const esAlquilerPersonal = c.ambito === 'personal' && concepto === 'alquiler_vivienda';
+  const esAlquilerPersonal = c.ambito === 'personal' && familia === 'alquiler_renting' && subtipo === 'vivienda';
   const [esVH, setEsVH] = useState<boolean>(c.esViviendaHabitual !== false);
   const [saving, setSaving] = useState(false);
 
@@ -260,11 +247,10 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
 
   const mesAncla = useMemo(() => (meses.length ? Math.min(...meses) : new Date().getMonth() + 1), [meses]);
   const estadoLabel = c.estado === 'activo' ? 'Activo · se proyecta' : c.estado === 'preparado' ? 'Preparado · aún no se proyecta' : 'Dado de baja';
-  // Fiscalidad DERIVADA del concepto (informativa · no se pregunta salvo
-  // excepción). Se recalcula con el concepto ELEGIDO, no con el guardado: la
-  // frase tiene que decir la verdad antes de guardar, no después.
-  const fisc = fiscalidadDeConcepto(concepto || undefined, undefined, familiaManual || undefined);
-  const opcionesExcepcion = fisc.esDerrama ? DERRAMA_OPCIONES : FAMILIAS_FISCALES.map((f) => f.id);
+  // Fiscalidad DERIVADA por la lente (informativa · nunca se pregunta). Se
+  // recalcula con la familia ELEGIDA, no con la guardada: la frase tiene que
+  // decir la verdad antes de guardar, no después.
+  const fisc = fiscalidadDe({ familia: familia || undefined, subtipo: subtipo || undefined, ambito: c.ambito });
 
   const handleSave = async () => {
     if (saving) return;
@@ -338,36 +324,14 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       // así es lo normal, no un descuido: caer al proveedor renombraba el gasto
       // a «Iberdrola», y sin proveedor lo dejaba en «Gasto recurrente».
       const nombre =
-        alias.trim() || conceptoDefActual?.label || proveedor.trim() || 'Gasto recurrente';
+        alias.trim() || labelActual || proveedor.trim() || 'Gasto recurrente';
 
-      // La clasificación se guarda DERIVADA del concepto elegido, nunca a mano:
-      // `categoria`, `bolsaPresupuesto` y `tipo` salen de la proyección del
-      // concepto en este ámbito. Antes la ficha ni los mandaba, así que un gasto
-      // mal clasificado se quedaba mal clasificado por mucho que se editara.
-      const proyeccion = proyectar(concepto, c.ambito);
-      const conceptoDef = conceptoPorId(concepto);
-      // `tipoFamilia`/`subtipo` van también: siguen siendo la clave con la que
-      // las listas agrupan. Sin arrastrarlas, mover un gasto de familia lo
-      // dejaría listado bajo la anterior.
-      //
-      // Y se escriben SIEMPRE, incluso vacías. Las cinco combinaciones que
-      // estrena la unificación no tienen par legacy, y dejar ahí el del
-      // concepto viejo es peor que no tener ninguno: la lista seguiría
-      // agrupando por él. Sin par, la familia se deduce del concepto
-      // (`groupingHelpers`), que es la fuente buena.
-      const par = parLegacyDe(concepto, c.ambito);
-      const clasificacion: Partial<CompromisoRecurrente> =
-        proyeccion && conceptoDef
-          ? {
-              concepto,
-              categoria: proyeccion.categoria,
-              tipo: conceptoDef.tipoCompromiso,
-              bolsaPresupuesto:
-                c.ambito === 'personal' ? (proyeccion as ProyeccionPersonal).bolsa : 'inmueble',
-              tipoFamilia: par?.tipoFamilia,
-              subtipo: par?.subtipo,
-            }
-          : {};
+      // La clasificación es la familia + subtipo elegidos · nada más se deriva ni
+      // se guarda (la casilla la pone la lente al leer). Sin familia elegida no
+      // se toca lo que hubiera.
+      const clasificacion: Partial<CompromisoRecurrente> = familia
+        ? { familia, subtipo: subtipo || undefined }
+        : {};
 
       const payload: Partial<Omit<CompromisoRecurrente, 'id' | 'createdAt'>> = {
         ...clasificacion,
@@ -378,10 +342,6 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
         proveedor: { ...c.proveedor, nombre: proveedor.trim(), nif: nif.trim() || undefined },
         cups: cups.trim() || undefined,
         numeroContrato: numeroContrato.trim() || undefined,
-        // La familia fiscal normal NO se persiste (se deriva del concepto). Se
-        // conserva la elección manual: la de la excepción que pregunta (derrama ·
-        // «Otro») y la que fija el alta (seguro de vida vinculado → financiación).
-        familiaFiscalManual: familiaManual || undefined,
         metodoPago: medio,
         cuentaCargo,
         // Solo tiene sentido con «Tarjeta» · en cualquier otro medio se limpia,
@@ -425,33 +385,37 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
       {/* ── Quién lo cobra ── */}
       <div style={dtit}>Quién lo cobra</div>
       <div style={dgrid}>
-        {/* QUÉ es · lo único que se elige. UN campo, no dos: la familia no es
-            una decisión aparte, es dónde vive el concepto, así que va como
-            cabecera de grupo. Con dos desplegables la ficha pedía «Alquiler» en
-            Familia y «Alquiler» en Qué es, que es preguntar dos veces lo mismo.
-            La lista sale filtrada por el ámbito de este gasto: no se puede
-            elegir algo que aquí no sepa clasificarse. */}
+        {/* QUÉ es · familia + subtipo del catálogo único. La lista sale
+            SUGERIDA por el ámbito de este gasto (no se ofrece «supermercado» a
+            un piso); el subtipo es opcional y solo aparece cuando la familia lo
+            tiene. */}
         <Field label="Qué es">
           <select
             style={inp}
-            value={concepto}
+            value={familia}
             onChange={(e) => {
-              setConcepto(e.target.value);
-              // Una elección fiscal manual pertenecía al concepto anterior ·
-              // arrastrarla haría que el gasto nuevo contase como el viejo.
-              setFamiliaManual('');
+              setFamilia(e.target.value as FamiliaId | '');
+              setSubtipo('');
             }}
           >
-            {conceptoInicial === '' && <option value="">— Sin clasificar —</option>}
+            {(familia === '' || !familias.some((f) => f.id === familia)) && (
+              <option value={familia}>{familia ? labelClasificacion(familia) : '— Sin clasificar —'}</option>
+            )}
             {familias.map((f) => (
-              <optgroup key={f.id} label={f.label}>
-                {conceptosDe(f.id, c.ambito).map((x) => (
-                  <option key={x.id} value={x.id}>{x.label}</option>
-                ))}
-              </optgroup>
+              <option key={f.id} value={f.id}>{f.label}</option>
             ))}
           </select>
         </Field>
+        {subtipos.length > 0 && (
+          <Field label="Concreta" hint="Opcional">
+            <select style={inp} value={subtipo} onChange={(e) => setSubtipo(e.target.value)}>
+              <option value="">— Sin concretar —</option>
+              {subtipos.map((st) => (
+                <option key={st.id} value={st.id}>{st.label}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         {/* El nombre sale VACÍO cuando no añade nada · el concepto ya se llama
             así. Sólo se escribe para distinguir dos iguales («Alquiler Pozuelo»
             y «Alquiler Madrid»), y si se deja en blanco se guarda el del
@@ -461,7 +425,7 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
             style={inp}
             value={aliasVisible}
             onChange={(e) => setAlias(e.target.value)}
-            placeholder={conceptoDefActual?.label ?? 'Luz, comunidad, seguro…'}
+            placeholder={labelActual ?? 'Luz, comunidad, seguro…'}
           />
         </Field>
         <Field label="Proveedor" hint="Quién lo cobra · el nombre que sale en el banco">
@@ -489,23 +453,11 @@ const RowForm: React.FC<RowFormProps> = ({ compromiso: c, accounts, inmueblesDis
             </div>
           </div>
         )}
-        {/* Fiscalidad: informativa (derivada) salvo la excepción que pregunta */}
-        {fisc.pregunta ? (
-          <Field
-            label={fisc.esDerrama ? 'La derrama · ¿conservación o mejora?' : 'Cómo cuenta fiscalmente'}
-            hint={fisc.esDerrama ? 'Conservación arregla lo que ya había · mejora añade algo nuevo (lo dice el acta)' : 'Este concepto no lo trae el catálogo · dinos cómo cuenta'}
-          >
-            <select style={inp} value={familiaManual} onChange={(e) => setFamiliaManual(e.target.value as FamiliaFiscal | '')}>
-              <option value="">— Elegir —</option>
-              {opcionesExcepcion.map((id) => <option key={id} value={id}>{labelFamilia(id)}</option>)}
-            </select>
-          </Field>
-        ) : (
-          <div style={{ minWidth: 0 }}>
-            <label style={lab}>Cómo cuenta fiscalmente</label>
-            <div style={fiscalInfo}>{fisc.frase}</div>
-          </div>
-        )}
+        {/* Fiscalidad: informativa · la deriva la lente de familia + subtipo + ámbito */}
+        <div style={{ minWidth: 0 }}>
+          <label style={lab}>Cómo cuenta fiscalmente</label>
+          <div style={fiscalInfo}>{fisc.frase}</div>
+        </div>
       </div>
       <div style={dgrid2}>
         <Field label="CUPS · para luz y gas" hint="Con el CUPS, ATLAS cuadra la factura aunque cambies de compañía">

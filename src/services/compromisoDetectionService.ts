@@ -22,10 +22,8 @@ import type {
   PatronRecurrente,
   ImporteEvento,
   PatronVariacion,
-  TipoCompromiso,
-  CategoriaGastoCompromiso,
-  BolsaPresupuesto,
 } from '../types/compromisosRecurrentes';
+import type { FamiliaId } from './catalogo/catalogoUnico';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 
 // ─── Defaults · spec §2.3 ──────────────────────────────────────────────────
@@ -39,44 +37,45 @@ const DEFAULT_TOLERANCIA_DIA_MES = 3;
 const MIN_CONFIDENCE = 60;
 
 // Proveedores españoles reconocidos · suma score +5 (spec §2.3 fase 5)
-const PROVEEDORES_RECONOCIDOS: Record<string, { tipo: TipoCompromiso; subtipo?: string }> = {
-  IBERDROLA: { tipo: 'suministro', subtipo: 'luz' },
-  ENDESA: { tipo: 'suministro', subtipo: 'luz' },
-  NATURGY: { tipo: 'suministro', subtipo: 'gas' },
-  REPSOL: { tipo: 'suministro', subtipo: 'gas' },
-  HOLALUZ: { tipo: 'suministro', subtipo: 'luz' },
-  SOMENERGIA: { tipo: 'suministro', subtipo: 'luz' },
-  EDP: { tipo: 'suministro', subtipo: 'luz' },
-  AQUALIA: { tipo: 'suministro', subtipo: 'agua' },
-  CANAL: { tipo: 'suministro', subtipo: 'agua' },
-  MOVISTAR: { tipo: 'suministro', subtipo: 'movil' },
-  ORANGE: { tipo: 'suministro', subtipo: 'movil' },
-  VODAFONE: { tipo: 'suministro', subtipo: 'movil' },
-  YOIGO: { tipo: 'suministro', subtipo: 'movil' },
-  PEPEPHONE: { tipo: 'suministro', subtipo: 'movil' },
-  MASMOVIL: { tipo: 'suministro', subtipo: 'movil' },
-  DIGI: { tipo: 'suministro', subtipo: 'movil' },
-  NETFLIX: { tipo: 'suscripcion' },
-  SPOTIFY: { tipo: 'suscripcion' },
-  HBO: { tipo: 'suscripcion' },
-  DISNEY: { tipo: 'suscripcion' },
-  AMAZON: { tipo: 'suscripcion' },
-  PRIME: { tipo: 'suscripcion' },
-  APPLE: { tipo: 'suscripcion' },
-  GOOGLE: { tipo: 'suscripcion' },
-  YOUTUBE: { tipo: 'suscripcion' },
-  MAPFRE: { tipo: 'seguro' },
-  ALLIANZ: { tipo: 'seguro' },
-  MUTUA: { tipo: 'seguro' },
-  AXA: { tipo: 'seguro' },
-  GENERALI: { tipo: 'seguro' },
-  LINEADIRECTA: { tipo: 'seguro' },
-  REALE: { tipo: 'seguro' },
-  PELAYO: { tipo: 'seguro' },
-  SANITAS: { tipo: 'seguro' },
-  ADESLAS: { tipo: 'seguro' },
-  ASISA: { tipo: 'seguro' },
-  DKV: { tipo: 'seguro' },
+/** Clasificación del catálogo único que se sabe por el proveedor. */
+const PROVEEDORES_RECONOCIDOS: Record<string, { familia: FamiliaId; subtipo?: string }> = {
+  IBERDROLA: { familia: 'suministro', subtipo: 'luz' },
+  ENDESA: { familia: 'suministro', subtipo: 'luz' },
+  NATURGY: { familia: 'suministro', subtipo: 'gas' },
+  REPSOL: { familia: 'suministro', subtipo: 'gas' },
+  HOLALUZ: { familia: 'suministro', subtipo: 'luz' },
+  SOMENERGIA: { familia: 'suministro', subtipo: 'luz' },
+  EDP: { familia: 'suministro', subtipo: 'luz' },
+  AQUALIA: { familia: 'suministro', subtipo: 'agua' },
+  CANAL: { familia: 'suministro', subtipo: 'agua' },
+  MOVISTAR: { familia: 'suministro', subtipo: 'telefonia' },
+  ORANGE: { familia: 'suministro', subtipo: 'telefonia' },
+  VODAFONE: { familia: 'suministro', subtipo: 'telefonia' },
+  YOIGO: { familia: 'suministro', subtipo: 'telefonia' },
+  PEPEPHONE: { familia: 'suministro', subtipo: 'telefonia' },
+  MASMOVIL: { familia: 'suministro', subtipo: 'telefonia' },
+  DIGI: { familia: 'suministro', subtipo: 'telefonia' },
+  NETFLIX: { familia: 'suscripciones' },
+  SPOTIFY: { familia: 'suscripciones' },
+  HBO: { familia: 'suscripciones' },
+  DISNEY: { familia: 'suscripciones' },
+  AMAZON: { familia: 'suscripciones' },
+  PRIME: { familia: 'suscripciones' },
+  APPLE: { familia: 'suscripciones' },
+  GOOGLE: { familia: 'suscripciones' },
+  YOUTUBE: { familia: 'suscripciones' },
+  MAPFRE: { familia: 'seguros_alarmas' },
+  ALLIANZ: { familia: 'seguros_alarmas' },
+  MUTUA: { familia: 'seguros_alarmas' },
+  AXA: { familia: 'seguros_alarmas' },
+  GENERALI: { familia: 'seguros_alarmas' },
+  LINEADIRECTA: { familia: 'seguros_alarmas' },
+  REALE: { familia: 'seguros_alarmas' },
+  PELAYO: { familia: 'seguros_alarmas' },
+  SANITAS: { familia: 'seguros_alarmas' },
+  ADESLAS: { familia: 'seguros_alarmas' },
+  ASISA: { familia: 'seguros_alarmas' },
+  DKV: { familia: 'seguros_alarmas' },
 };
 
 // Tokens que sugieren relación con vivienda habitual o inmueble cuando no
@@ -586,9 +585,9 @@ function matchCompromisoExistente(
   });
 }
 
-function inferTipoFromConcepto(
+function inferClasificacionFromConcepto(
   tokens: string[],
-): { tipo: TipoCompromiso; subtipo?: string; proveedorReconocido: boolean } {
+): { familia?: FamiliaId; subtipo?: string; proveedorReconocido: boolean } {
   for (const t of tokens) {
     if (PROVEEDORES_RECONOCIDOS[t]) {
       return { ...PROVEEDORES_RECONOCIDOS[t], proveedorReconocido: true };
@@ -597,34 +596,13 @@ function inferTipoFromConcepto(
   // fallback heurísticas suaves
   const tokenSet = new Set(tokens);
   if (TOKENS_COMUNIDAD.some((t) => tokenSet.has(t))) {
-    return { tipo: 'comunidad', proveedorReconocido: false };
+    return { familia: 'comunidad', proveedorReconocido: false };
   }
   if (TOKENS_IBI.some((t) => tokenSet.has(t))) {
-    return { tipo: 'impuesto', proveedorReconocido: false };
+    return { familia: 'impuestos_tasas', subtipo: 'ibi', proveedorReconocido: false };
   }
-  return { tipo: 'otros', proveedorReconocido: false };
-}
-
-function categoriaFromTipo(
-  tipo: TipoCompromiso,
-): { categoria: CategoriaGastoCompromiso; bolsa: BolsaPresupuesto } {
-  switch (tipo) {
-    case 'suministro':
-      return { categoria: 'vivienda.suministros', bolsa: 'necesidades' };
-    case 'suscripcion':
-      return { categoria: 'suscripciones', bolsa: 'deseos' };
-    case 'seguro':
-      return { categoria: 'vivienda.seguros', bolsa: 'necesidades' };
-    case 'cuota':
-      return { categoria: 'personal', bolsa: 'deseos' };
-    case 'comunidad':
-      return { categoria: 'vivienda.comunidad', bolsa: 'necesidades' };
-    case 'impuesto':
-      return { categoria: 'vivienda.ibi', bolsa: 'necesidades' };
-    case 'otros':
-    default:
-      return { categoria: 'personal', bolsa: 'deseos' };
-  }
+  // Sin pista no se adivina · el candidato nace sin clasificar y se elige a mano.
+  return { proveedorReconocido: false };
 }
 
 interface ScoreCalculo {
@@ -680,9 +658,9 @@ function aliasFromConcepto(concepto: string): string {
   // Si es proveedor reconocido · prefijar con tipo legible
   const meta = PROVEEDORES_RECONOCIDOS[main];
   if (meta) {
-    if (meta.tipo === 'suministro') return `Suministro ${formatted}`;
-    if (meta.tipo === 'suscripcion') return `Suscripción ${formatted}`;
-    if (meta.tipo === 'seguro') return `Seguro ${formatted}`;
+    if (meta.familia === 'suministro') return `Suministro ${formatted}`;
+    if (meta.familia === 'suscripciones') return `Suscripción ${formatted}`;
+    if (meta.familia === 'seguros_alarmas') return `Seguro ${formatted}`;
   }
   return formatted;
 }
@@ -698,8 +676,7 @@ function buildPropuesta(
   const sorted = [...cluster].sort((a, b) => a.fecha.localeCompare(b.fecha));
   const first = sorted[0];
   const tokens = tokensFromConcepto(conceptoNormalizado);
-  const tipoInf = inferTipoFromConcepto(tokens);
-  const cat = categoriaFromTipo(tipoInf.tipo);
+  const clasInf = inferClasificacionFromConcepto(tokens);
   const proveedorNombre =
     tokens.find((t) => PROVEEDORES_RECONOCIDOS[t]) ?? tokens[0] ?? 'Sin nombre';
 
@@ -707,8 +684,8 @@ function buildPropuesta(
     ambito: 'personal',
     personalDataId,
     alias: aliasFromConcepto(conceptoNormalizado),
-    tipo: tipoInf.tipo,
-    subtipo: tipoInf.subtipo,
+    familia: clasInf.familia,
+    subtipo: clasInf.subtipo,
     proveedor: { nombre: proveedorNombre },
     patron,
     importe,
@@ -716,8 +693,6 @@ function buildPropuesta(
     cuentaCargo: first.accountId,
     conceptoBancario: first.descripcionRaw,
     metodoPago: 'domiciliacion',
-    categoria: cat.categoria,
-    bolsaPresupuesto: cat.bolsa,
     responsable: 'titular',
     fechaInicio: first.fecha.slice(0, 10),
     estado: 'activo',
@@ -859,7 +834,7 @@ export async function detectCompromisos(
     }
 
     // Tipo + scoring
-    const tipoInf = inferTipoFromConcepto(tokens);
+    const tipoInf = inferClasificacionFromConcepto(tokens);
     const score = calcularScore(
       cluster,
       temporal,

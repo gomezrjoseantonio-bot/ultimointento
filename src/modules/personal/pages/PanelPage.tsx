@@ -9,7 +9,6 @@ import {
   computeAutonomoNetoPorMes,
   computeCompromisoMonthly,
   computeNominaNetoPorMes,
-  familiaForCategoria,
   safeDayOfMonth,
 } from '../helpers';
 import { importeCompromisoEnMes } from '../../../services/personal/compromisosRecurrentesService';
@@ -60,7 +59,7 @@ const computeGastoPorFamilia = (
     .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
     .forEach((c) => {
       const monthly = computeCompromisoMonthly(c);
-      const fam = c.categoria ? familiaForCategoria(c.categoria) : 'otros';
+      const fam = c.familia ?? 'otros';
       map.set(fam, (map.get(fam) ?? 0) + monthly);
     });
   return map;

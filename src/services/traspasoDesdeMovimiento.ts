@@ -102,8 +102,6 @@ export async function convertirEnTraspaso(
     state: 'pending',
     status: 'pendiente',
     statusConciliacion: 'sin_match',
-    categoryLabel: 'Traspaso · entrada',
-    category: { tipo: 'Traspaso' },
     // La otra cuenta · en la entrada es la de ORIGEN, que es de donde vino.
     transferMetadata: { targetAccountId: movimiento.accountId },
     // La huella del extracto es del cargo, no de esta: heredarla haría que al
@@ -128,10 +126,6 @@ export async function convertirEnTraspaso(
     ...movimiento,
     naturaleza: 'movimiento_interno',
     familia: 'traspaso',
-    categoryLabel: 'Traspaso · salida',
-    // Un traspaso no es gasto ni ingreso · quien suma los KPIs mira esta key
-    // (`isTransferKey`) para dejarlo fuera, y la categoría vieja lo colaba.
-    category: { tipo: 'Traspaso' },
     transferMetadata: { targetAccountId: cuentaDestinoId, pairMovementId: movementIdDestino },
     updatedAt: ahora,
   });
@@ -142,7 +136,7 @@ export async function convertirEnTraspaso(
   // deshacer un traspaso que ya está escrito.
   await feedLearningRule(
     movimiento,
-    { categoria: 'traspaso', ambito: 'personal' },
+    { familia: 'traspaso', ambito: 'personal' },
     undefined,
     { tipo: 'traspaso', cuentaDestinoId }
   );
@@ -201,8 +195,6 @@ function comoPataDe(
     ...m,
     naturaleza: 'movimiento_interno',
     familia: 'traspaso',
-    categoryLabel: sentido === 'salida' ? 'Traspaso · salida' : 'Traspaso · entrada',
-    category: { tipo: 'Traspaso' },
     ...conMetadata,
     updatedAt: ahora,
   } as unknown as Movement;
@@ -248,8 +240,6 @@ export async function convertirEnEntradaDeTraspaso(
     state: 'pending',
     status: 'pendiente',
     statusConciliacion: 'sin_match',
-    categoryLabel: 'Traspaso · salida',
-    category: { tipo: 'Traspaso' },
     transferMetadata: { targetAccountId: movimiento.accountId },
     reference: undefined,
     documentIds: undefined,

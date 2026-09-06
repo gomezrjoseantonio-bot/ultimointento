@@ -506,7 +506,6 @@ class CuentasService {
           isOpeningBalance: true,
           unifiedStatus: 'conciliado',
           source: 'manual',
-          category: { tipo: 'Saldo Inicial' },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };

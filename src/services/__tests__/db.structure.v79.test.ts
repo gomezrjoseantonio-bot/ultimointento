@@ -25,7 +25,7 @@ const EXPECTED_STORES: Record<string, string[]> = {
   baseAmortizableEjercicio: ['ejercicio', 'inmueble-ejercicio', 'inmuebleId', 'origen'],
   benchmarksReferencia: ['codigo', 'tipo', 'ultimaActualizacion'],
   botesAnualesSinIdentificar: ['estado', 'inmuebleId', 'inmuebleId-año'],
-  compromisosRecurrentes: ['ambito', 'categoria', 'cuentaCargo', 'estado', 'fechaInicio', 'inmuebleId', 'personalDataId', 'tipo'],
+  compromisosRecurrentes: ['ambito', 'cuentaCargo', 'estado', 'familia', 'fechaInicio', 'inmuebleId', 'personalDataId'],
   contracts: ['propertyId'],
   deudasFiscales: ['ejercicio', 'estado', 'modelo', 'notificada'],
   documents: ['entityId', 'entityType', 'type'],
@@ -44,7 +44,7 @@ const EXPECTED_STORES: Record<string, string[]> = {
   // V91 · E1.1 · la línea del banco persistida (db.ts · upgrade-a.ts).
   lineasExtracto: ['accountId', 'estado', 'hashLinea', 'importBatchId'],
   mejorasInmueble: ['ejercicio', 'inmueble-ejercicio', 'inmuebleId', 'movimientoId', 'treasuryEventId'],
-  movementLearningRules: ['ambito', 'appliedCount', 'categoria', 'createdAt', 'learnKey'],
+  movementLearningRules: ['ambito', 'appliedCount', 'createdAt', 'familia', 'learnKey'],
   // V87 · VOCABULARIO §3 · la tarjeta deja de ser una cuenta.
   tarjetas: ['activa', 'cuentaLiquidacionId', 'origen'],
   // V92 · E1.6 · `duplicate-key` retirado (nunca tuvo lector).

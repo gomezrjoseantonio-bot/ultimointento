@@ -965,15 +965,14 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         amount: simulation.grossProceeds,
         predictedDate: input.saleDate,
         description: `Cobro venta ${propLabel}`,
-        categoryLabel: 'Venta inmueble',
         ...baseMeta,
       },
       ...saleExpenseBreakdown.map((expense) => ({
         naturaleza: 'gasto' as const,
+        familia: 'gestion' as const,
         amount: expense.amount,
         predictedDate: input.saleDate,
         description: expense.description,
-        categoryLabel: 'Gasto venta inmueble',
         ...baseMeta,
       })),
       ...(simulation.totalLoanSettlement > 0
@@ -983,7 +982,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
             amount: simulation.totalLoanSettlement,
             predictedDate: input.saleDate,
             description: `Cancelación deuda ${propLabel}`,
-            categoryLabel: 'Cancelación préstamo',
             ...baseMeta,
           }]
         : []),

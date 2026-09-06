@@ -7,12 +7,11 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import type { TipoGasto } from '../../TipoGastoSelector';
 
+/** Lo elegido en el picker · familia + subtipo (vacío = sin subtipo) del catálogo único. */
 export interface ConceptoElegido {
   tipoId: string;
   subtipoId: string;
   label: string;
-  tipoCompromiso: string;
-  categoria: string;
 }
 
 interface ConceptoPickerModalProps {
@@ -32,7 +31,7 @@ const ConceptoPickerModal: React.FC<ConceptoPickerModalProps> = ({ catalog, suge
       <div role="dialog" aria-modal="true" aria-label="Elegir concepto del gasto" style={modal}>
         <div style={title}>¿Qué gasto añades?</div>
         <p style={hint}>
-          Elige el concepto · la fila nace con su nombre y su familia fiscal ya puestos.
+          Elige el concepto · la fila nace con su nombre y su familia ya puestos.
           {haySugeridos ? ' Los resaltados son los habituales para la modalidad de este inmueble.' : ''}
         </p>
         <div style={scroll}>
@@ -48,15 +47,7 @@ const ConceptoPickerModal: React.FC<ConceptoPickerModalProps> = ({ catalog, suge
                       type="button"
                       style={esSugerido ? chipSugerido : chip}
                       onClick={() =>
-                        onPick({
-                          tipoId: tipo.id,
-                          subtipoId: sub.id,
-                          label: sub.label,
-                          // Los subtipos de inmueble/personal llevan tipoCompromiso y
-                          // categoria; el tipo genérico no los expone, se leen sueltos.
-                          tipoCompromiso: (sub as { tipoCompromiso?: string }).tipoCompromiso ?? 'otros',
-                          categoria: (sub as { categoria?: string }).categoria ?? 'otros',
-                        })
+                        onPick({ tipoId: tipo.id, subtipoId: sub.id, label: sub.label })
                       }
                     >
                       {esSugerido && <Star size={11} strokeWidth={2} style={{ marginRight: 5, verticalAlign: '-1px' }} />}

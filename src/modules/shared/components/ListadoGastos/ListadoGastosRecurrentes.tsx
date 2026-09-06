@@ -14,7 +14,7 @@ import { cuentasService } from '../../../../services/cuentasService';
 import { cuentaParaElMetodo } from '../../../../services/cuentasPorMetodoPago';
 import { initDB } from '../../../../services/db';
 import type { Account, TreasuryEvent } from '../../../../services/db';
-import type { CompromisoRecurrente, MotivoBaja, FamiliaFiscal } from '../../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente, MotivoBaja } from '../../../../types/compromisosRecurrentes';
 import {
   crearCompromiso,
   pasarAPreparado,
@@ -38,9 +38,7 @@ import ConceptoPickerModal, { type ConceptoElegido } from './components/Concepto
 import SeguroVidaModal from './components/SeguroVidaModal';
 import CopiarGastosModal from './components/CopiarGastosModal';
 import ImportarGastosModal from './components/ImportarGastosModal';
-import { conceptoPorId, proyectar } from '../../../../services/conceptos/catalogoConceptos';
-import type { Ambito, ProyeccionPersonal } from '../../../../services/conceptos/catalogoConceptos';
-import { resolverConcepto, parLegacyDe } from '../../../../services/conceptos/mapaLegacy';
+import { labelClasificacion, type Ambito, type FamiliaId } from '../../../../services/catalogo/catalogoUnico';
 import { catalogoTipoGasto } from './utils/catalogoTipoGasto';
 
 const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
@@ -68,19 +66,10 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     [catalog, ambitoCatalogo],
   );
 
-  // Los "habituales" (sugeridos por la modalidad) llegan como pares legacy
-  // `{tipoId, subtipoId}`; el picker los compara contra `familia:concepto`
-  // unificados, así que se traducen aquí una vez.
-  const sugeridosUnificados = useMemo(() => {
-    if (!conceptosSugeridos?.length) return conceptosSugeridos;
-    return conceptosSugeridos
-      .map((s) => {
-        const id = resolverConcepto(s.tipoId, s.subtipoId);
-        const c = conceptoPorId(id);
-        return c ? { tipoId: c.familia as string, subtipoId: c.id } : null;
-      })
-      .filter((x): x is { tipoId: string; subtipoId: string } => x != null);
-  }, [conceptosSugeridos]);
+  // Los "habituales" (sugeridos por la modalidad) llegan como pares
+  // `{tipoId: familia, subtipoId: subtipo}` del catálogo único · el picker los
+  // compara tal cual.
+  const sugeridosUnificados = conceptosSugeridos;
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   useEffect(() => {
@@ -197,12 +186,13 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   }, [accounts]);
 
   // Crea el gasto desde un concepto del catálogo. `forzarPersonal` lo manda a
-  // gastos personales (seguro de vida NO vinculado a la hipoteca · §4).
-  // `familiaFiscalManual` fija la familia (seguro de vida vinculado → financiación).
+  // gastos personales (seguro de vida NO vinculado a la hipoteca · §4). La
+  // fiscalidad no se guarda: la lente la deriva de familia + subtipo + ámbito
+  // (un seguro de vida en un inmueble cuenta como financiación · lenteFiscal).
   const crearGasto = useCallback(
     async (
       concepto: ConceptoElegido,
-      opts?: { forzarPersonal?: boolean; familiaFiscalManual?: FamiliaFiscal },
+      opts?: { forzarPersonal?: boolean },
     ) => {
       const personal = opts?.forzarPersonal || mode === 'personal';
       // `cuentaCargo` no puede ser 0 (la validación lo rechaza) · las cuentas se
@@ -223,39 +213,24 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       // `categoria: 'inmueble.seguros'` y bolsa `necesidades` a pelo. Un gasto
       // personal con categoría de inmueble no aparece en ninguna pantalla.
       const ambito: Ambito = personal ? 'personal' : 'inmueble';
-      // El picker ya emite el id de concepto UNIFICADO en `subtipoId`. Se acepta
-      // el par legacy por si viniera de un catálogo viejo (`resolverConcepto`).
-      const idConcepto = conceptoPorId(concepto.subtipoId)
-        ? concepto.subtipoId
-        : resolverConcepto(concepto.tipoId, concepto.subtipoId);
-      const def = conceptoPorId(idConcepto);
-      const proyeccion = proyectar(idConcepto, ambito);
-      // El par legacy (familia, subtipo) se sigue guardando porque hay código que
-      // lo lee (bloques de modalidad, listas viejas); se deriva del id canónico.
-      const par = parLegacyDe(idConcepto, ambito);
+      const familia = concepto.tipoId as FamiliaId;
+      const subtipo = concepto.subtipoId || undefined;
       const skeleton = {
         ambito,
         inmuebleId: personal ? undefined : inmuebleId,
         personalDataId: personal ? 1 : undefined,
-        alias: def?.label ?? concepto.label,
-        concepto: proyeccion ? idConcepto : undefined,
-        tipo: def?.tipoCompromiso ?? concepto.tipoCompromiso,
-        subtipo: par?.subtipo ?? concepto.subtipoId,
-        tipoFamilia: par?.tipoFamilia ?? concepto.tipoId,
+        alias: labelClasificacion(familia, subtipo),
+        familia,
+        subtipo,
         proveedor: { nombre: '' },
         patron: { tipo: 'mensualDiaFijo', dia: 1 },
         importe: { modo: 'fijo', importe: 0 },
         cuentaCargo: cuenta,
         conceptoBancario: '',
         metodoPago: 'domiciliacion',
-        categoria: proyeccion?.categoria ?? concepto.categoria,
-        bolsaPresupuesto: personal
-          ? ((proyeccion as ProyeccionPersonal | undefined)?.bolsa ?? 'necesidades')
-          : 'inmueble',
         responsable: 'titular',
         fechaInicio: now.toISOString().slice(0, 10),
         estado: 'preparado',
-        familiaFiscalManual: opts?.familiaFiscalManual,
       } as unknown as Omit<CompromisoRecurrente, 'id' | 'createdAt' | 'updatedAt'>;
       const creado = await crearCompromiso(skeleton);
       onReload?.();
@@ -272,12 +247,12 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       // Seguro de vida en inmueble (§4): si el inmueble tiene hipoteca, pregunta
       // obligatoria de vinculación; si no la tiene, no hay financiación posible →
       // va a personal y no es deducible.
-      const esVida = mode === 'inmueble' && concepto.tipoId === 'seguros' && concepto.subtipoId === 'vida';
+      const esVida = mode === 'inmueble' && concepto.tipoId === 'seguros_alarmas' && concepto.subtipoId === 'vida';
       if (esVida) {
         if (financiacionAnual != null) {
           setSeguroVidaConcepto(concepto);
         } else {
-          void crearGasto(concepto, { forzarPersonal: true, familiaFiscalManual: 'no_deducible' })
+          void crearGasto(concepto, { forzarPersonal: true })
             .then(() => showToastV5('Seguro de vida guardado en tus gastos personales · no es deducible del inmueble', 'info'))
             .catch((err) => showToastV5(`No se pudo crear: ${err instanceof Error ? err.message : String(err)}`, 'error'));
         }
@@ -542,14 +517,14 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           onVinculado={() => {
             const concepto = seguroVidaConcepto;
             setSeguroVidaConcepto(null);
-            void crearGasto(concepto, { familiaFiscalManual: 'intereses_financiacion' })
+            void crearGasto(concepto)
               .then(() => showToastV5('Seguro de vida vinculado a la hipoteca · cuenta como financiación', 'success'))
               .catch((err) => showToastV5(`No se pudo crear: ${err instanceof Error ? err.message : String(err)}`, 'error'));
           }}
           onNoVinculado={() => {
             const concepto = seguroVidaConcepto;
             setSeguroVidaConcepto(null);
-            void crearGasto(concepto, { forzarPersonal: true, familiaFiscalManual: 'no_deducible' })
+            void crearGasto(concepto, { forzarPersonal: true })
               .then(() => showToastV5('Seguro de vida guardado en tus gastos personales · no es deducible del inmueble', 'info'))
               .catch((err) => showToastV5(`No se pudo crear: ${err instanceof Error ? err.message : String(err)}`, 'error'));
           }}

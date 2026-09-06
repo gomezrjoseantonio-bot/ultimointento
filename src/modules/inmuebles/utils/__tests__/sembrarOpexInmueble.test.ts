@@ -11,30 +11,32 @@ import { catalogoSugeridoPorModalidad } from '../../wizards/utils/catalogoModali
 
 describe('refDeCompromiso', () => {
   it('extrae la ref de catálogo del compromiso', () => {
-    expect(refDeCompromiso({ tipoFamilia: 'tributos', subtipo: 'ibi' })).toEqual({
-      tipoId: 'tributos',
+    expect(refDeCompromiso({ familia: 'impuestos_tasas', subtipo: 'ibi' })).toEqual({
+      tipoId: 'impuestos_tasas',
       subtipoId: 'ibi',
     });
   });
-  it('null si falta la familia o el subtipo', () => {
-    expect(refDeCompromiso({ tipoFamilia: 'tributos', subtipo: undefined })).toBeNull();
-    expect(refDeCompromiso({ tipoFamilia: undefined, subtipo: 'ibi' })).toBeNull();
+  it('sin subtipo la ref lleva subtipo vacío · null si falta la familia', () => {
+    expect(refDeCompromiso({ familia: 'comunidad', subtipo: undefined })).toEqual({ tipoId: 'comunidad', subtipoId: '' });
+    expect(refDeCompromiso({ familia: undefined, subtipo: 'ibi' })).toBeNull();
   });
 });
 
 describe('etiquetaConcepto', () => {
   it('devuelve la etiqueta del catálogo', () => {
-    expect(etiquetaConcepto({ tipoId: 'tributos', subtipoId: 'ibi' })).toBe('IBI');
+    expect(etiquetaConcepto({ tipoId: 'impuestos_tasas', subtipoId: 'ibi' })).toBe('Impuestos y tasas · IBI');
+    expect(etiquetaConcepto({ tipoId: 'comunidad', subtipoId: '' })).toBe('Comunidad');
   });
 });
 
 describe('periodicidadPorDefecto', () => {
   it('lo anual es anual, el resto mensual', () => {
-    expect(periodicidadPorDefecto({ tipoId: 'tributos', subtipoId: 'ibi' })).toBe('anual');
-    expect(periodicidadPorDefecto({ tipoId: 'tributos', subtipoId: 'tasa_basuras' })).toBe('anual');
-    expect(periodicidadPorDefecto({ tipoId: 'seguros', subtipoId: 'hogar' })).toBe('anual');
-    expect(periodicidadPorDefecto({ tipoId: 'comunidad', subtipoId: 'cuota_ordinaria' })).toBe('mensual');
-    expect(periodicidadPorDefecto({ tipoId: 'suministros', subtipoId: 'luz' })).toBe('mensual');
+    expect(periodicidadPorDefecto({ tipoId: 'impuestos_tasas', subtipoId: 'ibi' })).toBe('anual');
+    expect(periodicidadPorDefecto({ tipoId: 'impuestos_tasas', subtipoId: 'basuras' })).toBe('anual');
+    expect(periodicidadPorDefecto({ tipoId: 'seguros_alarmas', subtipoId: 'hogar' })).toBe('anual');
+    expect(periodicidadPorDefecto({ tipoId: 'seguros_alarmas', subtipoId: 'alarma' })).toBe('mensual');
+    expect(periodicidadPorDefecto({ tipoId: 'comunidad', subtipoId: 'cuota_mensual' })).toBe('mensual');
+    expect(periodicidadPorDefecto({ tipoId: 'suministro', subtipoId: 'luz' })).toBe('mensual');
   });
 });
 
@@ -50,25 +52,27 @@ describe('construirSkeletonOpex', () => {
   const base = { inmuebleId: 7, cuentaCargo: 3, periodicidad: 'mensual' as const, fechaInicio: '2026-08-20' };
 
   it('nace activo con importe > 0 y de ámbito inmueble', () => {
-    const s = construirSkeletonOpex({ tipoId: 'comunidad', subtipoId: 'cuota_ordinaria' }, { ...base, importe: 60 });
+    const s = construirSkeletonOpex({ tipoId: 'comunidad', subtipoId: 'cuota_mensual' }, { ...base, importe: 60 });
     expect(s.ambito).toBe('inmueble');
     expect(s.inmuebleId).toBe(7);
     expect(s.cuentaCargo).toBe(3);
     expect(s.estado).toBe('activo');
     expect(s.importe).toEqual({ modo: 'fijo', importe: 60 });
     expect(s.patron).toEqual({ tipo: 'mensualDiaFijo', dia: 1 });
-    expect(s.categoria).toContain('inmueble');
+    expect(s.familia).toBe('comunidad');
+    expect(s.subtipo).toBe('cuota_mensual');
+    expect(s.alias).toBe('Comunidad · Cuota mensual');
     expect(s.fechaInicio).toBe('2026-08-20');
   });
 
   it('nace preparado sin importe (no genera previsión)', () => {
-    const s = construirSkeletonOpex({ tipoId: 'tributos', subtipoId: 'ibi' }, { ...base, importe: 0 });
+    const s = construirSkeletonOpex({ tipoId: 'impuestos_tasas', subtipoId: 'ibi' }, { ...base, importe: 0 });
     expect(s.estado).toBe('preparado');
     expect(s.importe).toEqual({ modo: 'fijo', importe: 0 });
   });
 
   // Dedup correcto: el compromiso que nace de un concepto sugerido debe volver a
-  // dar la MISMA ref de catálogo (tipoFamilia/subtipo), o `restarYaDados` no lo
+  // dar la MISMA ref de catálogo (familia/subtipo), o `restarYaDados` no lo
   // filtraría y re-sembrar duplicaría. Se comprueba sobre TODOS los precargados.
   it('round-trip: cada precargado vuelve a su propia ref (dedup seguro)', () => {
     const modalidades = [
@@ -79,7 +83,7 @@ describe('construirSkeletonOpex', () => {
     for (const cat of modalidades) {
       for (const ref of cat.precargados) {
         const s = construirSkeletonOpex(ref, { ...base, importe: 10 });
-        expect({ tipoId: s.tipoFamilia, subtipoId: s.subtipo }).toEqual(ref);
+        expect(refDeCompromiso(s)).toEqual(ref);
       }
     }
   });

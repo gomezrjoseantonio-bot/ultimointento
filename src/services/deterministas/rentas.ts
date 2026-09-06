@@ -104,7 +104,7 @@ export function rentasQueCuadran(movimientos: Movement[], contratos: Contract[])
         titulo: tituloDeRenta(c),
         como: porNombre ? 'identidad' : 'definicion',
         inmuebleId: Number(c.inmuebleId),
-        categoryKey: 'alquiler',
+        familia: 'alquiler',
         renta: { contratoId: c.id as number, inquilino: nombreDelInquilino(c) },
       });
     }

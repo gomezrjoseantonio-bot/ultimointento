@@ -326,7 +326,8 @@ async function reforzarLearning(sug: Sugerencia, override?: AmbitoRecurrente): P
         : undefined;
     await createOrUpdateRule({
       learnKey: mov ? buildLearnKey(mov) : `onboarding:${cand.conceptoNormalizado}`,
-      categoria: cand.propuesta.categoria || 'otros',
+      familia: cand.propuesta.familia,
+      subtipo: cand.propuesta.subtipo,
       ambito: ambitoEfectivo,
       inmuebleId: inmuebleIdEfectivo != null ? String(inmuebleIdEfectivo) : undefined,
       movement: mov,
@@ -390,7 +391,6 @@ export async function confirmarSugerencia(
         ambito: 'inmueble',
         inmuebleId: ambito.inmuebleId,
         personalDataId: undefined,
-        bolsaPresupuesto: 'inmueble',
       };
       options = { ajustesPorCandidato: new Map([[sug.candidato.id, override]]) };
     }

@@ -32,7 +32,7 @@ const linea = (over: Partial<GastoInmueble> = {}): GastoInmueble =>
     ejercicio: 2026,
     fecha: '2026-03-15',
     concepto: 'Comunidad',
-    categoria: 'comunidad',
+    familia: 'comunidad',
     casillaAEAT: '0109',
     importe: 60,
     origen: 'recurrente',

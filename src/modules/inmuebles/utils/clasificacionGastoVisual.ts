@@ -1,20 +1,12 @@
-import type { CompromisoRecurrente, FamiliaFiscal } from '../../../types/compromisosRecurrentes';
-import {
-  conceptoPorId,
-  type Ambito,
-  type FamiliaId,
-  type ProyeccionInmueble,
-} from '../../../services/conceptos/catalogoConceptos';
-import {
-  resolverConcepto,
-  resolverConceptoPorSubtipoUnico,
-} from '../../../services/conceptos/mapaLegacy';
+import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
+import type { Ambito, FamiliaId } from '../../../services/catalogo/catalogoUnico';
 
 /**
  * Clasificación visual patrimonial de Inmuebles.
  *
  * Es SOLO de presentación para agrupar gasto operativo/patrimonial en UI.
- * No crea un catálogo nuevo ni altera la clasificación fiscal persistida.
+ * No crea un catálogo nuevo ni altera la clasificación fiscal persistida: lee
+ * la familia del catálogo único (E2.4.1c) y la reparte en cuatro grupos.
  */
 export type GrupoVisualInmueble =
   | 'mantener'
@@ -25,105 +17,32 @@ export type GrupoVisualInmueble =
 
 export interface ClasificacionVisualInmuebleInput {
   ambito?: Ambito;
-  concepto?: string | null;
-  categoryKey?: string | null;
-  categoria?: string | null;
-  tipoFamilia?: string | null;
+  familia?: FamiliaId | string | null;
   subtipo?: string | null;
-  familiaFiscalManual?: FamiliaFiscal;
   esRegistroMejora?: boolean;
   esRegistroMobiliario?: boolean;
 }
 
-const FAMILIAS_MANTENER = new Set<FamiliaId>(['tributos', 'comunidad', 'seguros', 'reparacion', 'mantenimiento']);
-const FAMILIAS_EXPLOTAR = new Set<FamiliaId>(['suministros', 'alarma', 'gestion', 'limpieza']);
-
-const CATEGORY_KEYS_MANTENER = new Set([
-  'ibi_inmueble',
-  'basuras_inmueble',
-  'tributo_inmueble',
-  'comunidad_inmueble',
-  'seguro_inmueble',
-  'reparacion_inmueble',
+const FAMILIAS_MANTENER = new Set<string>([
+  'impuestos_tasas',
+  'comunidad',
+  'seguros_alarmas',
+  'reparacion_mantenimiento',
+  'prestamo_hipoteca',
 ]);
-
-const CATEGORY_KEYS_EXPLOTAR = new Set(['suministro_inmueble', 'servicio_inmueble']);
-
-function resolverConceptoInmuebleSeguro(
-  input: Pick<ClasificacionVisualInmuebleInput, 'concepto' | 'tipoFamilia' | 'subtipo'>,
-): string | undefined {
-  if (input.concepto && conceptoPorId(input.concepto)) return input.concepto;
-
-  if (input.tipoFamilia && input.subtipo) {
-    const legacy = resolverConcepto(input.tipoFamilia, input.subtipo);
-    if (legacy) return legacy;
-  }
-
-  if (!input.tipoFamilia && input.subtipo) {
-    const legacyUnico = resolverConceptoPorSubtipoUnico(input.subtipo, 'inmueble');
-    if (legacyUnico) return legacyUnico;
-  }
-
-  return undefined;
-}
-
-function clasificarFamiliaLegacy(tipoFamilia: string | null | undefined): GrupoVisualInmueble {
-  switch (tipoFamilia) {
-    case 'tributos':
-    case 'comunidad':
-    case 'seguros':
-    case 'reparacion':
-      return 'mantener';
-    case 'suministros':
-    case 'gestion':
-    case 'servicios':
-      return 'explotar';
-    case 'mobiliario':
-      return 'mobiliario';
-    default:
-      return 'sin_clasificar';
-  }
-}
-
-function clasificarFamiliaFiscalManual(familiaFiscalManual: FamiliaFiscal | undefined): GrupoVisualInmueble {
-  if (familiaFiscalManual === 'mejora') return 'mejorar';
-  if (familiaFiscalManual === 'amortizacion_muebles') return 'mobiliario';
-  return 'sin_clasificar';
-}
+const FAMILIAS_EXPLOTAR = new Set<string>(['suministro', 'gestion', 'limpieza', 'comisiones_bancarias']);
 
 export function clasificarGastoVisualInmueble(
   input: ClasificacionVisualInmuebleInput,
 ): GrupoVisualInmueble {
-  if (input.esRegistroMejora || input.categoryKey === 'mejora_inmueble') return 'mejorar';
-  if (input.esRegistroMobiliario || input.categoryKey === 'mobiliario_inmueble') return 'mobiliario';
-
-  const porFamiliaFiscal = clasificarFamiliaFiscalManual(input.familiaFiscalManual);
-  if (porFamiliaFiscal !== 'sin_clasificar') return porFamiliaFiscal;
-
+  if (input.esRegistroMejora || input.familia === 'reforma_mejora') return 'mejorar';
+  if (input.esRegistroMobiliario || input.familia === 'mobiliario_enseres') return 'mobiliario';
   if (input.ambito && input.ambito !== 'inmueble') return 'sin_clasificar';
-
-  const conceptoId = resolverConceptoInmuebleSeguro(input);
-  const concepto = conceptoId ? conceptoPorId(conceptoId) : undefined;
-  const proyeccionInmueble: ProyeccionInmueble | undefined = concepto?.inmueble;
-
-  if (concepto?.familia === 'mobiliario') return 'mobiliario';
-
-  if (concepto && FAMILIAS_MANTENER.has(concepto.familia)) return 'mantener';
-  if (concepto && FAMILIAS_EXPLOTAR.has(concepto.familia)) return 'explotar';
-
-  if (input.categoryKey && CATEGORY_KEYS_MANTENER.has(input.categoryKey)) return 'mantener';
-  if (input.categoryKey && CATEGORY_KEYS_EXPLOTAR.has(input.categoryKey)) return 'explotar';
-
-  if (proyeccionInmueble?.categoryKey && CATEGORY_KEYS_MANTENER.has(proyeccionInmueble.categoryKey)) {
-    return 'mantener';
-  }
-  if (proyeccionInmueble?.categoryKey && CATEGORY_KEYS_EXPLOTAR.has(proyeccionInmueble.categoryKey)) {
-    return 'explotar';
-  }
-
-  const legacy = clasificarFamiliaLegacy(input.tipoFamilia);
-  if (legacy !== 'sin_clasificar') return legacy;
-
+  if (!input.familia) return 'sin_clasificar';
+  // La alarma es un servicio de explotación, aunque viva con los seguros.
+  if (input.familia === 'seguros_alarmas' && input.subtipo === 'alarma') return 'explotar';
+  if (FAMILIAS_MANTENER.has(input.familia)) return 'mantener';
+  if (FAMILIAS_EXPLOTAR.has(input.familia)) return 'explotar';
   return 'sin_clasificar';
 }
 
@@ -141,14 +60,9 @@ export function clasificarCompromisoRecurrenteInmueble(
   compromiso: CompromisoRecurrente,
 ): GrupoVisualInmueble {
   if (!esCompromisoRecurrenteDeInmueble(compromiso)) return 'sin_clasificar';
-
   return clasificarGastoVisualInmueble({
     ambito: 'inmueble',
-    concepto: compromiso.concepto,
-    categoryKey: undefined,
-    categoria: compromiso.categoria,
-    tipoFamilia: compromiso.tipoFamilia,
+    familia: compromiso.familia,
     subtipo: compromiso.subtipo,
-    familiaFiscalManual: compromiso.familiaFiscalManual,
   });
 }

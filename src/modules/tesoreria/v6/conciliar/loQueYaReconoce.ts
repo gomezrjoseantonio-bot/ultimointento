@@ -15,7 +15,7 @@
 // ============================================================================
 
 import type { MovementLearningRule } from '../../../../services/db/types-movimientos';
-import { etiquetaDeCategoria } from './propuestaDeLinea';
+import { labelClasificacion } from '../../../../services/catalogo/catalogoUnico';
 
 export interface CosaReconocida {
   id: number | undefined;
@@ -49,7 +49,7 @@ export function quienDeLaRegla(r: MovementLearningRule): string {
 
 /** En qué se convierte · la categoría en cristiano, con el piso si lo hay. */
 export function enQueDeLaRegla(r: MovementLearningRule, aliasInmueble?: string): string {
-  const que = etiquetaDeCategoria(r.categoria) ?? r.categoria;
+  const que = r.familia ? labelClasificacion(r.familia, r.subtipo) : 'sin clasificar';
   if (r.ambito === 'personal') return `${que} · tuyo`;
   return aliasInmueble ? `${que} de ${aliasInmueble}` : que;
 }

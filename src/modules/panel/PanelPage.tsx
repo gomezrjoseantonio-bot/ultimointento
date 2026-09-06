@@ -476,7 +476,7 @@ const PanelPage: React.FC = () => {
     // el mismo movimiento distinto aquí y en Tesorería.
     const nombrar = (ev: TreasuryEvent): Pick<FlujoRow, 'concepto' | 'detalle' | 'inmueble'> => {
       if (ev.id == null) {
-        return { concepto: ev.description || ev.proveedor || ev.categoryLabel || 'Movimiento previsto' };
+        return { concepto: ev.description || ev.proveedor || 'Movimiento previsto' };
       }
       const it = eventoAItem(ev as TreasuryEvent & { id: number }, aliasInmueble);
       return { concepto: it.concepto, detalle: it.detalle, inmueble: it.activo?.alias };

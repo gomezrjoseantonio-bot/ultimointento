@@ -40,8 +40,8 @@ const AGUA: GuardadoFicha = {
   fecha: '2026-06-25',
   cuentaId: 1,
   inmuebleId: undefined,
-  categoryKey: 'suministros.agua',
-  subtypeKey: null,
+  familia: 'suministro',
+  subtipo: 'agua',
   esMejora: false,
 } as unknown as GuardadoFicha;
 
@@ -73,7 +73,7 @@ describe('el concepto se comparte, el dinero no', () => {
   it('y todas comparten el concepto, la casilla y de quién es', () => {
     for (const v of valoresPorLinea(AGUA, RECIBOS)) {
       expect(v.concepto).toBe('Agua');
-      expect(v.categoryKey).toBe('suministros.agua');
+      expect(v.familia).toBe('suministro');
       expect(v.inmuebleId).toBeUndefined();
       expect(v.esMejora).toBe(false);
     }

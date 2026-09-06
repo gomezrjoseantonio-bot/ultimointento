@@ -35,6 +35,8 @@
 // un camino AÑADIDO para lo que él no puede ver, no una reescritura.
 // ============================================================================
 
+import type { FamiliaId } from '../catalogo/catalogoUnico';
+
 /**
  * De qué libro del usuario sale este reconocimiento.
  *
@@ -105,7 +107,9 @@ export interface OrigenDeterminista {
   desglose?: DesgloseFiscal;
   /** Atribución, cuando el origen la sabe · un préstamo conoce su inmueble. */
   inmuebleId?: number;
-  categoryKey?: string;
+  /** Clasificación del catálogo único que el origen ya sabe. */
+  familia?: FamiliaId;
+  subtipo?: string;
   /**
    * E2.4 · solo `fuente: 'traspaso'` · de qué lado está esta línea y con qué
    * cuenta propia va. Sin `cuentaContrariaId` se sabe que es un traspaso (el

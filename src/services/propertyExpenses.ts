@@ -1,6 +1,7 @@
 import { initDB } from './db';
 import type { Gasto } from './db';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
+import { casillaDe } from './fiscal/lenteFiscal';
 import type {
   PropertyExpense,
   PropertyExpenseDiagnostics,
@@ -90,20 +91,13 @@ const isWithinLastYear = (isoDate?: string): boolean => {
 };
 
 /**
- * Recover original categoria + casillaAEAT from notas (stored by opexService V5.4+).
+ * Categoría y casilla de un compromiso · la familia del catálogo único y la
+ * casilla que le pone la lente fiscal (E2.4.1c).
  */
-const getCompromisoCategoryExtras = (c: CompromisoRecurrente): { categoria: string; casillaAEAT?: string } => {
-  try {
-    if (c.notas) {
-      const extras = JSON.parse(c.notas) as { _opexCategoria?: string; _opexCasillaAEAT?: string };
-      return {
-        categoria: extras._opexCategoria ?? c.categoria,
-        casillaAEAT: extras._opexCasillaAEAT,
-      };
-    }
-  } catch { /* ignore */ }
-  return { categoria: c.categoria };
-};
+const getCompromisoCategoryExtras = (c: CompromisoRecurrente): { categoria: string; casillaAEAT?: string } => ({
+  categoria: c.familia ?? 'otros',
+  casillaAEAT: casillaDe({ familia: c.familia, subtipo: c.subtipo, ambito: 'inmueble' }),
+});
 
 const mapCompromiso = (c: CompromisoRecurrente): PropertyExpense => {
   const freq = getCompromisoFrequency(c);

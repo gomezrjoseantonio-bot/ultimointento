@@ -10,7 +10,7 @@ const gasto = (over: Partial<GastoInmueble> = {}): GastoInmueble => ({
   fecha: '2026-03-01',
   concepto: 'Agua',
   importe: 45,
-  categoria: 'suministro',
+  familia: 'suministro',
   casillaAEAT: '0113',
   estado: 'confirmado',
   ejercicio: 2026,
@@ -35,7 +35,7 @@ const mueble = (over: Partial<MuebleInmueble> = {}): MuebleInmueble => ({
 });
 
 describe('EditarRegistroInmuebleModal', () => {
-  it('edita un gasto real: recalcula casillaAEAT al cambiar la categoría y ejercicio desde la fecha', () => {
+  it('edita un gasto real: la lente recalcula casillaAEAT al cambiar la familia · ejercicio desde la fecha', () => {
     const onGuardar = jest.fn();
     render(
       <EditarRegistroInmuebleModal
@@ -46,16 +46,18 @@ describe('EditarRegistroInmuebleModal', () => {
     );
 
     fireEvent.change(screen.getByDisplayValue('Agua'), { target: { value: 'IBI 2026' } });
-    // categoria suministro → ibi (casilla 0115)
+    // familia suministro → impuestos_tasas · ibi (casilla 0115 · la pone la lente)
     const select = screen.getByDisplayValue('Suministro');
-    fireEvent.change(select, { target: { value: 'ibi' } });
+    fireEvent.change(select, { target: { value: 'impuestos_tasas' } });
+    fireEvent.change(screen.getByDisplayValue('— Sin subtipo —'), { target: { value: 'ibi' } });
     fireEvent.change(screen.getByDisplayValue('45'), { target: { value: '320' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/i }));
 
     expect(onGuardar).toHaveBeenCalledWith({
       concepto: 'IBI 2026',
-      categoria: 'ibi',
+      familia: 'impuestos_tasas',
+      subtipo: 'ibi',
       casillaAEAT: '0115',
       fecha: '2026-03-01',
       importe: 320,
@@ -97,7 +99,7 @@ describe('EditarRegistroInmuebleModal', () => {
     expect(screen.getByRole('button', { name: /Guardar cambios/i })).toBeDisabled();
   });
 
-  it('modo crear: título "Añadir gasto" y payload con categoría/casilla por defecto', () => {
+  it('modo crear: título "Añadir gasto" y payload con familia por defecto · casilla de la lente', () => {
     const onGuardar = jest.fn();
     render(
       <EditarRegistroInmuebleModal
@@ -113,9 +115,9 @@ describe('EditarRegistroInmuebleModal', () => {
     fireEvent.change(screen.getByLabelText('Importe (€)'), { target: { value: '60' } });
     fireEvent.click(screen.getByRole('button', { name: 'Añadir' }));
 
-    // categoria por defecto 'suministro' → casilla 0113; fecha/ejercicio del día actual.
+    // familia por defecto 'suministro' → casilla 0113 (lente); fecha/ejercicio del día actual.
     expect(onGuardar).toHaveBeenCalledWith(
-      expect.objectContaining({ concepto: 'Luz', categoria: 'suministro', casillaAEAT: '0113', importe: 60 }),
+      expect.objectContaining({ concepto: 'Luz', familia: 'suministro', casillaAEAT: '0113', importe: 60 }),
     );
     const payload = onGuardar.mock.calls[0][0];
     expect(payload.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/);

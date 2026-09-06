@@ -506,15 +506,15 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       // escribía el `Movement`: el gasto quedaba impecable en Tesorería y no existía
       // para la declaración. Lo escribe `gastoDesdeMovimiento`.
       try {
-        const origenIdRecurrente = await origenIdRecurrenteDelGasto(v.inmuebleId, v.categoryKey, v.fecha);
+        const origenIdRecurrente = await origenIdRecurrenteDelGasto(v.inmuebleId, v.familiaPersistir, v.fecha);
         const r = await gastoDesdeMovimiento({
           lineaId: linea.lineaId,
           inmuebleId: v.inmuebleId,
           concepto: v.concepto,
           importe: v.importe,
           fecha: v.fecha,
-          categoryKey: v.categoryKey,
-          subtypeKey: v.subtypeKey,
+          familia: v.familiaPersistir,
+          subtipo: v.subtipoPersistir,
           origenIdRecurrente,
         });
         // Sin casilla no se guarda la fila y la ficha sigue abierta; con fecha

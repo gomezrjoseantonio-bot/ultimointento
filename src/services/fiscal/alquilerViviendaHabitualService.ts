@@ -31,11 +31,12 @@ const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /** ¿Es este compromiso el alquiler de la vivienda habitual del titular? */
 export function esCompromisoAlquilerVH(
-  c: Pick<CompromisoRecurrente, 'ambito' | 'categoria' | 'esViviendaHabitual' | 'estado'>,
+  c: Pick<CompromisoRecurrente, 'ambito' | 'familia' | 'subtipo' | 'esViviendaHabitual' | 'estado'>,
 ): boolean {
   return (
     c.ambito === 'personal' &&
-    c.categoria === 'vivienda.alquiler' &&
+    c.familia === 'alquiler_renting' &&
+    c.subtipo === 'vivienda' &&
     c.esViviendaHabitual !== false &&
     c.estado === 'activo'
   );

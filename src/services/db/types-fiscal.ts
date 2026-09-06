@@ -4,6 +4,7 @@
 
 import type { AEATFiscalType } from './types-contratos';
 import type { DeclaracionCompleta } from '../../types/declaracionCompleta';
+import type { FamiliaId } from '../catalogo/catalogoUnico';
 
 export type GastoEstado = 'completo' | 'incompleto' | 'pagado';
 export type GastoDestino = 'personal' | 'inmueble_id';
@@ -356,11 +357,10 @@ export interface OpexRule {
   // usa un número de cuenta/contrato fijo en cada factura).
   invoiceNumber?: string;
   activo: boolean;
-  // PR5-HOTFIX v2: identificador canónico del catálogo de categorías
-  // (src/services/categoryCatalog.ts). Cuando `categoryKey === 'suministro_inmueble'`
-  // se acompaña de `subtypeKey` (luz/agua/gas/internet).
-  categoryKey?: string;
-  subtypeKey?: string;
+  // Clasificación del catálogo único (E2.4.1c) · `categoria` (OpexCategory) es
+  // la vista legacy de esta fachada; la verdad es familia + subtipo.
+  familia?: FamiliaId;
+  subtipo?: string;
   createdAt: string;
   updatedAt: string;
 }

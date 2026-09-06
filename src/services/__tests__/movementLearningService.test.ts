@@ -143,11 +143,11 @@ describe('Treasury Learning Engine', () => {
     test('should allow manual rule creation via service API', async () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 'test-key-123',
-        categoria: 'TRANSPORTE',
+        familia: 'transporte',
         ambito: 'personal'
       });
 
-      expect(rule.categoria).toBe('TRANSPORTE');
+      expect(rule.familia).toBe('transporte');
       expect(rule.ambito).toBe('personal');
       expect(rule.source).toBe('IMPLICIT');
     });
@@ -318,7 +318,7 @@ describe('Treasury Learning Engine', () => {
     test('B1 · creación arranca appliedCount en 1 (no 0)', async () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-b1-new',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
 
@@ -329,17 +329,17 @@ describe('Treasury Learning Engine', () => {
     test('B1 · upsert sobre regla existente incrementa appliedCount', async () => {
       await learningService.createOrUpdateRule({
         learnKey: 't16-b1-existing',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
       const second = await learningService.createOrUpdateRule({
         learnKey: 't16-b1-existing',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
       const third = await learningService.createOrUpdateRule({
         learnKey: 't16-b1-existing',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
 
@@ -372,7 +372,7 @@ describe('Treasury Learning Engine', () => {
 
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-b2-with-movement',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
         movement,
       });
@@ -386,7 +386,7 @@ describe('Treasury Learning Engine', () => {
     test('B2 · sin movimiento, los patrones quedan en defaults (compat)', async () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-b2-no-movement',
-        categoria: 'TRANSPORTE',
+        familia: 'transporte',
         ambito: 'personal',
       });
 
@@ -399,7 +399,7 @@ describe('Treasury Learning Engine', () => {
       // Primera creación sin movimiento → patrones vacíos.
       await learningService.createOrUpdateRule({
         learnKey: 't16-b2-backfill',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
       const movement = createTestMovement({
@@ -411,7 +411,7 @@ describe('Treasury Learning Engine', () => {
 
       const updated = await learningService.createOrUpdateRule({
         learnKey: 't16-b2-backfill',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
         movement,
       });
@@ -440,14 +440,14 @@ describe('Treasury Learning Engine', () => {
 
       const reglaA = await learningService.createOrUpdateRule({
         learnKey: buildLearnKey(pisoA),
-        categoria: 'inmueble.suministros',
+        familia: 'suministro',
         ambito: 'inmueble',
         inmuebleId: '4',
         movement: pisoA,
       });
       const reglaB = await learningService.createOrUpdateRule({
         learnKey: buildLearnKey(pisoB),
-        categoria: 'inmueble.suministros',
+        familia: 'suministro',
         ambito: 'inmueble',
         inmuebleId: '7',
         movement: pisoB,
@@ -479,10 +479,10 @@ describe('Treasury Learning Engine', () => {
       });
 
       const primera = await learningService.createOrUpdateRule({
-        learnKey: buildLearnKey(julio), categoria: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: '2', movement: julio,
+        learnKey: buildLearnKey(julio), familia: 'prestamo_hipoteca', ambito: 'inmueble', inmuebleId: '2', movement: julio,
       });
       const segunda = await learningService.createOrUpdateRule({
-        learnKey: buildLearnKey(agosto), categoria: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: '2', movement: agosto,
+        learnKey: buildLearnKey(agosto), familia: 'prestamo_hipoteca', ambito: 'inmueble', inmuebleId: '2', movement: agosto,
       });
 
       expect(segunda.id).toBe(primera.id);
@@ -493,7 +493,7 @@ describe('Treasury Learning Engine', () => {
     test('sin identificador la regla no lleva `identificadores`', async () => {
       const m = createTestMovement({ description: 'NETFLIX.COM', counterparty: 'NETFLIX' });
       const regla = await learningService.createOrUpdateRule({
-        learnKey: buildLearnKey(m), categoria: 'ocio', ambito: 'personal', movement: m,
+        learnKey: buildLearnKey(m), familia: 'ocio', ambito: 'personal', movement: m,
       });
       expect(regla.identificadores).toBeUndefined();
     });
@@ -503,7 +503,7 @@ describe('Treasury Learning Engine', () => {
     test('creación · history queda undefined en el objeto persistido', async () => {
       const rule = await learningService.createOrUpdateRule({
         learnKey: 't16-cleanup-no-history-new',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
 
@@ -521,12 +521,12 @@ describe('Treasury Learning Engine', () => {
     test('upsert · una regla creada en este PR no acumula entries al actualizar', async () => {
       await learningService.createOrUpdateRule({
         learnKey: 't16-cleanup-no-history-upsert',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
       const updated = await learningService.createOrUpdateRule({
         learnKey: 't16-cleanup-no-history-upsert',
-        categoria: 'SUMINISTROS',
+        familia: 'suministro',
         ambito: 'personal',
       });
 

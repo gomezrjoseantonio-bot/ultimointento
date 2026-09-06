@@ -1,7 +1,7 @@
 // Homogeneización (B) · el alta de conciliación usa el MISMO catálogo unificado
 // que la ficha de Tesorería V6: el gasto se clasifica con Familia → Concepto
-// (no con tarjetas gruesas), el ingreso mantiene sus conceptos propios, y la
-// persistencia (`categoryKey`/`subtypeKey`) sale de la misma proyección.
+// (familia + subtipo del catálogo único), el ingreso mantiene sus familias
+// propias, y se persiste exactamente eso · la casilla la pone la lente al leer.
 
 import React from 'react';
 import '@testing-library/jest-dom';
@@ -66,39 +66,41 @@ describe('el gasto se clasifica con el catálogo unificado', () => {
     fireEvent.click(screen.getByRole('button', { name: /Personal/ }));
 
     const familia = screen.getByLabelText('Familia');
-    expect(familia).toHaveTextContent('Alquiler');
-    expect(familia).toHaveTextContent('Cuotas');
+    expect(familia).toHaveTextContent('Alquiler y renting');
     expect(familia).toHaveTextContent('Suscripciones');
-    expect(familia).toHaveTextContent('Día a día');
+    expect(familia).toHaveTextContent('Supermercado');
+    // La primera familia (comunidad) tiene subtipos · el concepto se ofrece.
     expect(screen.getByLabelText('Concepto del gasto')).toBeInTheDocument();
   });
 
-  it('un gasto personal persiste la macro-categoría personal (sin casilla)', async () => {
+  it('un gasto personal persiste su familia · sin subtipo si no lo tiene, y sin casilla', async () => {
     render(<AddMovementModal {...base} />);
     fireEvent.click(screen.getByRole('button', { name: /Personal/ }));
-    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'dia_a_dia' } });
-    fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'supermercado' } });
+    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'supermercado' } });
+    expect(screen.queryByLabelText('Concepto del gasto')).not.toBeInTheDocument();
     importe('40');
     fireEvent.click(screen.getByRole('button', { name: 'Crear previsión' }));
 
     await waitFor(() => expect(mockDbAdd).toHaveBeenCalled());
     const payload = mockDbAdd.mock.calls[0][1] as any;
     expect(payload.naturaleza).toBe('gasto');
-    expect(payload.categoryKey).toBe('gasto_personal_dia_dia');
-    expect(payload.subtypeKey).toBeUndefined();
+    expect(payload.familia).toBe('supermercado');
+    expect(payload.subtipo).toBeUndefined();
+    expect(payload.ambito).toBe('personal');
+    expect('casillaAEAT' in payload).toBe(false);
   });
 
-  it('un gasto de inmueble persiste la key fiscal + subtipo del concepto', async () => {
+  it('un gasto de inmueble persiste familia + subtipo del catálogo', async () => {
     render(<AddMovementModal {...base} prefill={{ tipo: 'gasto', ambito: 'inmueble', inmuebleId: 7 }} />);
-    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'suministros' } });
+    fireEvent.change(screen.getByLabelText('Familia'), { target: { value: 'suministro' } });
     fireEvent.change(screen.getByLabelText('Concepto del gasto'), { target: { value: 'luz' } });
     importe('74,09');
     fireEvent.click(screen.getByRole('button', { name: 'Crear previsión' }));
 
     await waitFor(() => expect(mockDbAdd).toHaveBeenCalled());
     const payload = mockDbAdd.mock.calls[0][1] as any;
-    expect(payload.categoryKey).toBe('suministro_inmueble');
-    expect(payload.subtypeKey).toBe('luz');
+    expect(payload.familia).toBe('suministro');
+    expect(payload.subtipo).toBe('luz');
     expect(payload.ambito).toBe('inmueble');
     expect(payload.inmuebleId).toBe(7);
   });
@@ -115,8 +117,9 @@ describe('restricción OPEX (recurrentes de inmueble)', () => {
   it('la familia se limita a las de gasto corriente · sin mobiliario amortizable', () => {
     render(<AddMovementModal {...opexProps} />);
     const familia = screen.getByLabelText('Familia');
-    expect(familia).toHaveTextContent('Suministros');
+    expect(familia).toHaveTextContent('Suministro');
     expect(familia).not.toHaveTextContent('Mobiliario y enseres');
+    expect(familia).not.toHaveTextContent('Reforma y mejora');
   });
 });
 

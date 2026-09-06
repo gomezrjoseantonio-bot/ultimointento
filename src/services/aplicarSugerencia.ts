@@ -15,6 +15,7 @@
 // ============================================================================
 
 import type { Movement, TreasuryEvent } from './db';
+import type { FamiliaId } from './catalogo/catalogoUnico';
 import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
 
 /**
@@ -25,16 +26,18 @@ import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
  * propuesta aceptada.
  */
 export interface DerivedCategory {
-  categoria: string;
+  familia: FamiliaId;
+  subtipo?: string;
   ambito: 'personal' | 'inmueble';
   inmuebleId?: string;
 }
 
 export function deriveCategoryFromEvent(event: TreasuryEvent): DerivedCategory | null {
-  const categoria = event.categoryKey ?? event.categoryLabel;
-  if (!categoria) return null;
+  const familia = event.familia;
+  if (!familia) return null;
   return {
-    categoria,
+    familia,
+    subtipo: event.subtipo,
     ambito: event.ambito ?? 'personal',
     inmuebleId: event.inmuebleId != null ? String(event.inmuebleId) : undefined,
   };
@@ -46,11 +49,12 @@ export function deriveCategoryFromEvent(event: TreasuryEvent): DerivedCategory |
  * categoría no hay nada que aprender (`null`).
  */
 export function deriveCategoryFromMovement(m: Movement): DerivedCategory | null {
-  const categoria = m.categoryKey;
-  if (!categoria) return null;
+  const familia = m.familia;
+  if (!familia) return null;
   const inmuebleId = m.inmuebleId != null && m.inmuebleId !== '' ? String(m.inmuebleId) : undefined;
   return {
-    categoria,
+    familia,
+    subtipo: m.subtipo,
     ambito: m.ambito ?? (inmuebleId ? 'inmueble' : 'personal'),
     inmuebleId,
   };
@@ -76,7 +80,8 @@ export async function feedLearningRule(
     // movimientoId al history[] (B2 + B8 del audit T16).
     await createOrUpdateRule({
       learnKey,
-      categoria: derived.categoria,
+      familia: derived.familia,
+      subtipo: derived.subtipo,
       ambito: derived.ambito,
       inmuebleId: derived.inmuebleId,
       movement,

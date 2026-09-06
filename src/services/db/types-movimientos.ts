@@ -3,7 +3,6 @@
 // importan del barril ./types (import de tipos · ciclo permitido en TS).
 
 import type { ArrastresEjercicio, DeclaracionInmueble, DeclaracionIRPF, OrigenDeclaracion } from '../../types/fiscal';
-import type { BolsaPresupuesto } from '../../types/compromisosRecurrentes';
 // Eje 3 del catálogo único (E2.4.1) · cómo se pagó o se cobró, NO qué se pagó.
 import type { Ambito, FamiliaId, MetodoPago, Naturaleza, Sentido } from '../catalogo/catalogoUnico';
 
@@ -80,11 +79,6 @@ export interface Movement {
   source: MovementSource;   // import|manual|inbox
   plan_match_id?: string;   // ID of budget item this matches
   property_id?: string;     // property ID if applicable
-  category: {               // hierarchical category
-    tipo: string;           // e.g., "Suministros"
-    subtipo?: string;       // e.g., "Luz"
-  };
-  
   // `is_transfer` / `transfer_group_id` (H8): RETIRADOS en E2.4.1 · sin escritor
   // en src/ y un único lector que ya miraba `transferMetadata`. La neutralidad
   // de un traspaso la dirá la naturaleza `movimiento_interno` del catálogo único.
@@ -136,7 +130,6 @@ export interface Movement {
   changeReason?: 'user_ok' | 'inline_edit_amount' | 'inline_edit_date' | 'bulk_ok' | 'manual_edit';
   
   // V1.1: Treasury extension fields for auto-reclassification and learning
-  categoria?: string; // Category assigned automatically or manually
   ambito: Ambito; // Eje 4 del catálogo único · minúsculas (default 'personal')
   inmuebleId?: string; // Required if ambito='inmueble'
   /** Denormalized alias del inmueble vinculado (para display sin join). */
@@ -170,15 +163,7 @@ export interface Movement {
   justificanteId?: number;
   justificanteNoAplica?: boolean;
 
-  // PR5-HOTFIX v2: categoría canónica + sub-tipo + metadatos de traspaso
-  // (mismo esquema que TreasuryEvent para propagación 1:1).
-  categoryKey?: string;
-  subtypeKey?: string;
-  // Concepto FINO del catálogo unificado (`conceptos/`), el que eligió el usuario
-  // (p.ej. "limpieza" vs "gestoría", que colapsan las dos en categoryKey
-  // `servicio_inmueble`). Se guarda para que la fila enseñe el subtipo concreto y
-  // sobreviva al conciliar. No lleva fiscalidad: la casilla se deriva aparte.
-  conceptoId?: string;
+  // Metadatos de traspaso (mismo esquema que TreasuryEvent para propagación 1:1).
   transferMetadata?: {
     targetAccountId: number;
     pairEventId?: number;
@@ -343,9 +328,6 @@ export interface TreasuryEvent {
   actualDate?: string;
   actualAmount?: number;
   movementId?: number; // Link to actual bank movement
-  // V81 (TAREA CC · Bloque B.4): bolsa 50/30/20 copiada desde el CompromisoRecurrente
-  // que generó el evento · permite agrupar el gasto real por necesidades/deseos/ahorro.
-  bolsaPresupuesto?: BolsaPresupuesto;
   // Loan installment reference (for hipoteca / prestamo events)
   prestamoId?: string;
   numeroCuota?: number;
@@ -364,25 +346,6 @@ export interface TreasuryEvent {
    */
   proveedor?: string;
 
-  categoryLabel?: string;         // e.g. "Reparación inmueble" | "Mejora inmueble" | "Mobiliario inmueble" | "Gasto recurrente" | etc.
-  // PR5-HOTFIX v2: identificador canónico del catálogo de categorías
-  // (src/services/categoryCatalog.ts). Reemplaza el uso ambiguo de
-  // `categoryLabel` en toda la UI nueva. `categoryLabel` se mantiene por
-  // compatibilidad con datos previos.
-  categoryKey?: string;
-  // Sub-tipo para categorías con variantes (p. ej. Suministro → luz/agua/gas/internet).
-  subtypeKey?: string;
-  // Concepto FINO del catálogo unificado (F2b) · viaja al movimiento al confirmar
-  // la previsión, para que la fila enseñe el subtipo concreto.
-  conceptoId?: string;
-  /**
-   * PR-C1 · sub-clasificador de gastos personales reutilizando el
-   * vocabulario de `compromisosRecurrentes.tipoFamilia`. Opcional.
-   * Valores convencionales: 'vivienda' | 'suministros' | 'dia_a_dia' |
-   * 'suscripciones' | 'seguros_cuotas' | 'otros' | 'tributos' |
-   * 'comunidad' | 'seguros' | 'gestion' | 'reparacion'.
-   */
-  tipoFamilia?: string;
   /**
    * PR-C1 · marca de gasto/ingreso esporádico introducido manualmente
    * por el cliente desde el modal de alta. Default `true` cuando
@@ -426,7 +389,9 @@ export interface MovementLearningRule {
   counterpartyPattern: string; // Normalized counterparty
   descriptionPattern: string; // Description pattern 
   amountSign: 'positive' | 'negative'; // Income or expense
-  categoria: string;
+  /** Lo que la regla aprendió · eje 2 del catálogo único (E2.4.1c). */
+  familia?: FamiliaId;
+  subtipo?: string;
   ambito: Ambito;
   inmuebleId?: string;
   source: 'IMPLICIT'; // Reserved for future 'EXPLICIT'

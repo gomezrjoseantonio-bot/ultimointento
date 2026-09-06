@@ -302,7 +302,7 @@ describe('el signo manda primero · vía B (reglas aprendidas)', () => {
       counterpartyPattern: 'orange',
       descriptionPattern: 'abono nomina orange',
       amountSign: 'negative',
-      categoria: 'suministros',
+      familia: 'suministro',
       ambito: 'personal',
       source: 'IMPLICIT',
       createdAt: new Date().toISOString(),

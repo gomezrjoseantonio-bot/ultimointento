@@ -31,7 +31,7 @@ const compromiso = (over: Partial<CompromisoRecurrente> = {}) =>
     id: 7, alias: 'Alarma', patron: { tipo: 'mensualDiaFijo', dia: 5 },
     importe: { modo: 'fijo', importe: 30 },
     cuentaCargo: 1, conceptoBancario: 'ALARMA', metodoPago: 'domiciliacion',
-    categoria: 'personal.suscripciones', bolsaPresupuesto: 'deseos', responsable: 'titular',
+    familia: 'suscripciones', responsable: 'titular',
     ambito: 'personal', fechaInicio: '2026-01-01', estado: 'activo',
     createdAt: '', updatedAt: '', ...over,
   }) as CompromisoRecurrente & { id: number };

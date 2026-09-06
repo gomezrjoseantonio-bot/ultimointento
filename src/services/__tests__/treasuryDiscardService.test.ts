@@ -74,14 +74,14 @@ describe('§4.5 · el parche de clasificación (ampliación aditiva)', () => {
   it('guarda categoryKey, subtypeKey e inmueble sin tocar lo demás', async () => {
     const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
     await updateTreasuryEventFields(1, {
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'luz',
+      familia: 'suministro',
+      subtipo: 'luz',
       inmuebleId: 7,
     });
 
     expect(eventos[0]).toMatchObject({
-      categoryKey: 'suministro_inmueble',
-      subtypeKey: 'luz',
+      familia: 'suministro',
+      subtipo: 'luz',
       inmuebleId: 7,
       // lo que no viene en el parche se queda como estaba
       amount: 100,
@@ -92,26 +92,26 @@ describe('§4.5 · el parche de clasificación (ampliación aditiva)', () => {
   it('inmuebleId null lo desvincula, y undefined no lo toca', async () => {
     const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
     await updateTreasuryEventFields(1, { inmuebleId: 7 });
-    await updateTreasuryEventFields(1, { categoryKey: 'otros_inmueble' });
+    await updateTreasuryEventFields(1, { familia: 'otros' });
     expect(eventos[0].inmuebleId).toBe(7); // undefined = no tocar
 
     await updateTreasuryEventFields(1, { inmuebleId: null });
     expect(eventos[0].inmuebleId).toBeUndefined();
   });
 
-  it('categoryKey null limpia la clasificación · no deja restos fiscales', async () => {
+  it('familia null limpia la clasificación · no deja restos fiscales', async () => {
     const { updateTreasuryEventFields } = await import('../treasuryConfirmationService');
     await updateTreasuryEventFields(1, {
-      categoryKey: 'comunidad_inmueble',
-      subtypeKey: 'luz',
+      familia: 'comunidad',
+      subtipo: 'luz',
     });
-    expect(eventos[0].categoryKey).toBe('comunidad_inmueble');
+    expect(eventos[0].familia).toBe('comunidad');
 
     // El caso real: una derrama que resulta ser MEJORA no puede quedarse con la
     // key de gasto anterior · se amortiza, no se deduce.
-    await updateTreasuryEventFields(1, { categoryKey: null, subtypeKey: null });
-    expect(eventos[0].categoryKey).toBeUndefined();
-    expect(eventos[0].subtypeKey).toBeUndefined();
+    await updateTreasuryEventFields(1, { familia: null, subtipo: null });
+    expect(eventos[0].familia).toBeUndefined();
+    expect(eventos[0].subtipo).toBeUndefined();
   });
 });
 

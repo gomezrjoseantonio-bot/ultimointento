@@ -86,7 +86,7 @@ const Row: React.FC<RowProps> = ({ candidato }) => {
           <div className={styles.muted}>{candidato.conceptoNormalizado}</div>
         </td>
         <td>
-          <span className={styles.chip}>{candidato.propuesta.tipo}</span>
+          <span className={styles.chip}>{candidato.propuesta.familia ?? 'sin clasificar'}</span>
           {candidato.propuesta.subtipo && (
             <span className={styles.chip}>{candidato.propuesta.subtipo}</span>
           )}

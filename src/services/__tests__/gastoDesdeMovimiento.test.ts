@@ -55,7 +55,7 @@ const base = (movementId: number) => ({
   concepto: 'Fontanero',
   importe: -240.5,
   fecha: '2026-08-05',
-  categoryKey: 'inmueble.reparacion_conservacion',
+  familia: 'reparacion_mantenimiento',
   hoy: HOY,
 });
 
@@ -77,7 +77,7 @@ describe('B19 · un recurrente sin match no duplica el gasto', () => {
       ejercicio: 2026,
       fecha: '2026-08-01',
       concepto: 'Agua — Agosto',
-      categoria: 'suministros',
+      familia: 'suministro',
       casillaAEAT: '0115',
       importe: 50,
       origen: 'recurrente',
@@ -190,7 +190,7 @@ describe('crea la fila fiscal del gasto descubierto', () => {
     const m = (await db.get('movements', movementId)) as Movement;
     expect(m.inmuebleId).toBe(String(INMUEBLE));
     expect(m.ambito).toBe('inmueble');
-    expect(m.categoryKey).toBe('inmueble.reparacion_conservacion');
+    expect(m.familia).toBe('reparacion_mantenimiento');
   });
 });
 
@@ -203,7 +203,7 @@ describe('sin casilla no se guarda · el flujo pide elegir', () => {
 
     const r = await gastoDesdeMovimiento({
       ...base(movementId),
-      categoryKey: 'no.existe.esta.categoria',
+      familia: 'no.existe.esta.categoria',
     });
 
     expect(r.resultado).toBe<ResultadoGastoFiscal['resultado']>('falta_casilla');
@@ -213,7 +213,7 @@ describe('sin casilla no se guarda · el flujo pide elegir', () => {
   it('sin categoría tampoco', async () => {
     const movementId = await guardarMovimiento();
 
-    const r = await gastoDesdeMovimiento({ ...base(movementId), categoryKey: undefined });
+    const r = await gastoDesdeMovimiento({ ...base(movementId), familia: undefined });
 
     expect(r.resultado).toBe<ResultadoGastoFiscal['resultado']>('falta_casilla');
     expect(await lineas()).toHaveLength(0);
@@ -285,8 +285,7 @@ describe('origenIdRecurrenteDelGasto', () => {
       cuentaCargo: 1,
       conceptoBancario: 'AQUALIA',
       metodoPago: 'domiciliacion',
-      categoria: 'inmueble.suministros',
-      bolsaPresupuesto: 'necesidades',
+      familia: 'suministro',
       responsable: 'titular',
       fechaInicio: '2019-01-01',
       estado: 'activo',
@@ -303,7 +302,7 @@ describe('origenIdRecurrenteDelGasto', () => {
 
   it('da la clave del mes del cargo', async () => {
     const id = await sembrarCompromiso();
-    expect(await origenIdRecurrenteDelGasto(INMUEBLE, 'inmueble.suministros', '2026-08-12'))
+    expect(await origenIdRecurrenteDelGasto(INMUEBLE, 'suministro', '2026-08-12'))
       .toBe(`recurrente-${id}-2026-8`);
   });
 
@@ -321,7 +320,7 @@ describe('origenIdRecurrenteDelGasto', () => {
 
   it('un compromiso de baja no manda', async () => {
     await sembrarCompromiso({ estado: 'baja' });
-    expect(await origenIdRecurrenteDelGasto(INMUEBLE, 'inmueble.suministros', '2026-08-12'))
+    expect(await origenIdRecurrenteDelGasto(INMUEBLE, 'suministro', '2026-08-12'))
       .toBeUndefined();
   });
 });

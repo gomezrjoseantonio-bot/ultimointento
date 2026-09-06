@@ -26,10 +26,8 @@
 import { sinMarcaDeDescarte } from './descarteDePrevision';
 import { initDB } from './db';
 import type { TreasuryEvent, Movement } from './db';
-import {
-  resolveCategoryFromRecord,
-  type CategoryDef,
-} from './categoryCatalog';
+import { casillaDe, storeDestinoDe } from './fiscal/lenteFiscal';
+import type { FamiliaId } from './catalogo/catalogoUnico';
 import { recalculateAccountBalance } from './treasuryEventsService';
 import { camposDeCierre, buscarLineaDelEvento } from './cierreLineaInmueble';
 import { conSigno } from './catalogo/catalogoUnico';
@@ -84,127 +82,19 @@ const ALL_LINE_STORES: CategoriaStoreName[] = [
   'mueblesInmueble',
 ];
 
-const normalize = (value: string): string =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
 /**
- * Mapea un event (vía `categoryKey` del catálogo, con fallback a
- * `categoryLabel` legado) al store de líneas de inmueble correspondiente.
- * Devuelve null si la categoría no genera línea (ingresos, gastos personales,
- * traspasos…).
+ * En qué tabla de líneas de inmueble nace un previsto al confirmarse, o `null`
+ * si no genera línea (ingresos, gastos personales, traspasos, sin clasificar).
  *
- * PR5-HOTFIX v2: fuente única de verdad en `categoryCatalog.ts`.
+ * Lo decide la lente fiscal por la familia del catálogo único (E2.4.1c): una
+ * reforma se amortiza (`mejorasInmueble`), el mobiliario también
+ * (`mueblesInmueble`), el resto es gasto (`gastosInmueble`).
  */
-export function categoryLabelToStoreName(
-  labelOrKey?: string,
-): CategoriaStoreName | null {
-  if (!labelOrKey) return null;
-
-  // Match directo por key del catálogo.
-  const def = resolveCategoryFromRecord({ categoryLabel: labelOrKey, categoryKey: labelOrKey });
-  if (def?.storeName) return def.storeName;
-
-  // Fallback para strings legados sin correspondencia en el catálogo: mantén
-  // el heurístico antiguo para no romper datos existentes.
-  const n = normalize(labelOrKey);
-  if (n.includes('reparacion')) return 'gastosInmueble';
-  if (n.includes('mejora')) return 'mejorasInmueble';
-  if (n.includes('mobiliario') || n.includes('muebles')) return 'mueblesInmueble';
-  if (
-    n.includes('recurrente') ||
-    n.includes('ibi') ||
-    n.includes('comunidad') ||
-    n.includes('seguro') ||
-    n.includes('suministro') ||
-    n.includes('tribut') ||
-    n.includes('basura') ||
-    n.includes('servicio')
-  ) {
-    return 'gastosInmueble';
-  }
-  return null;
-}
-
-/**
- * Resuelve la casilla AEAT para una línea de gasto a partir del catálogo,
- * con fallback a heurístico sobre el label legado.
- */
-export function resolveCasillaAEAT(labelOrKey?: string): string | undefined {
-  if (!labelOrKey) return undefined;
-  const def = resolveCategoryFromRecord({ categoryLabel: labelOrKey, categoryKey: labelOrKey });
-  if (def?.casillaAEAT) return def.casillaAEAT;
-
-  const n = normalize(labelOrKey);
-  if (n.includes('reparacion')) return '0106';
-  if (n.includes('comunidad')) return '0109';
-  if (n.includes('seguro')) return '0114';
-  if (n.includes('ibi') || n.includes('tribut') || n.includes('basura')) return '0115';
-  if (n.includes('suministro')) return '0113';
-  // 0112 «servicios personales» · la 0108 es el arrastre de la 0107, no un gasto.
-  if (n.includes('servicio')) return '0112';
-  if (n.includes('mobiliario') || n.includes('muebles')) return '0117';
-  return undefined;
-}
-
-/**
- * Resuelve el CategoryDef efectivo de un event (preferencia: categoryKey →
- * categoryLabel legado). Mantiene alineación con el catálogo canónico.
- */
-function resolveEventCategory(event: TreasuryEvent): CategoryDef | undefined {
-  return resolveCategoryFromRecord({
-    categoryKey: event.categoryKey,
-    categoryLabel: event.categoryLabel,
-  });
-}
-
-/**
- * Deriva el valor de `GastoInmueble.categoria` (enum interno de fiscalidad)
- * a partir de la categoría canónica del event.
- *
- * Acepta tres formas de entrada:
- *   - `TreasuryEvent`: caso principal, resuelve vía `categoryKey`/`categoryLabel`.
- *   - `string`: `categoryLabel` o `categoryKey` suelto, usado por los flujos
- *     que editan el movimiento sin recargar el TreasuryEvent completo
- *     (p. ej. `updateConfirmedMovement` de PR5.6).
- *   - `undefined`: devuelve `'otro'` como default seguro.
- */
-export function resolveGastoCategoria(input: TreasuryEvent | string | undefined): string {
-  if (!input) return 'otro';
-
-  const def =
-    typeof input === 'string'
-      ? resolveCategoryFromRecord({ categoryLabel: input, categoryKey: input })
-      : resolveEventCategory(input);
-
-  if (def) {
-    // Los keys canónicos terminan en "_inmueble" para gastos de inmueble.
-    // Quitamos el sufijo y mapeamos al enum fiscal `GastoCategoria`.
-    const base = def.key.replace(/_inmueble$/, '');
-    // Mapeo directo a valores válidos del enum `GastoCategoria`:
-    //   'ibi' | 'comunidad' | 'seguro' | 'suministro' | 'reparacion' |
-    //   'gestion' | 'servicio' | 'intereses' | 'otro'
-    if (['reparacion', 'comunidad', 'seguro', 'ibi', 'suministro', 'servicio'].includes(base)) {
-      return base;
-    }
-    // basuras → 'otro' (no hay enum específico), otros → 'otro', mobiliario
-    // no pasa por aquí (su store es mueblesInmueble).
-    return 'otro';
-  }
-
-  // Fallback heurístico sobre el label legado.
-  const label = typeof input === 'string' ? input : (input.categoryLabel ?? '');
-  const n = normalize(label);
-  if (n.includes('reparacion')) return 'reparacion';
-  if (n.includes('comunidad')) return 'comunidad';
-  if (n.includes('seguro')) return 'seguro';
-  if (n.includes('ibi') || n.includes('tribut')) return 'ibi';
-  if (n.includes('suministro')) return 'suministro';
-  if (n.includes('servicio')) return 'servicio';
-  if (n.includes('gestion')) return 'gestion';
-  return 'otro';
+function storeDeLineaInmueble(event: TreasuryEvent): CategoriaStoreName | null {
+  if (event.naturaleza !== 'gasto') return null;
+  if (event.ambito !== 'inmueble' || event.inmuebleId == null) return null;
+  if (!event.familia) return null;
+  return storeDestinoDe(event.familia);
 }
 
 // `findLineByTreasuryEventId` vivía aquí y buscaba SOLO por `treasuryEventId`.
@@ -263,9 +153,6 @@ function buildMovementPayload({
     status: 'conciliado',
     unifiedStatus: 'conciliado',
     source: 'manual',
-    category: {
-      tipo: event.categoryLabel ?? 'Otros',
-    },
     naturaleza: event.naturaleza,
     familia: event.familia,
     subtipo: event.subtipo,
@@ -275,12 +162,6 @@ function buildMovementPayload({
     inmuebleId: event.inmuebleId != null ? String(event.inmuebleId) : undefined,
     statusConciliacion: 'match_manual',
     tags: ['treasury_confirmation'],
-    // PR5-HOTFIX v2: propagar categoría canónica + sub-tipo + metadatos de traspaso
-    categoryKey: event.categoryKey,
-    subtypeKey: event.subtypeKey,
-    // F2b · el concepto fino de la previsión viaja al movimiento al confirmar,
-    // igual que categoryKey/subtypeKey, para que la fila enseñe el subtipo.
-    conceptoId: event.conceptoId,
     transferMetadata: event.transferMetadata,
     createdAt: now,
     updatedAt: now,
@@ -312,25 +193,10 @@ export async function confirmTreasuryEvent(
   }
 
   const now = new Date().toISOString();
-  // PR5-HOTFIX v2 · Resuelve la categoría canónica del event. Preferimos
-  // `categoryKey`; si no existe (datos previos o events generados por
-  // servicios que aún no lo rellenan), inferimos desde `categoryLabel`.
-  const categoryDef = resolveEventCategory(existingEvent);
-
   // Traspasos internos NO generan línea de inmueble nunca (son movimientos
-  // espejo entre cuentas propias).
-  const esTransfer = existingEvent.naturaleza === 'movimiento_interno';
-
-  const esLineaInmueble =
-    !esTransfer &&
-    existingEvent.ambito === 'inmueble' &&
-    (!!categoryDef?.storeName || !!existingEvent.categoryLabel);
-
-  // El store se deriva del catálogo; si no hay key canónica, fallback al
-  // heurístico sobre el label legado.
-  const lineaStore: CategoriaStoreName | null = esLineaInmueble
-    ? (categoryDef?.storeName ?? categoryLabelToStoreName(existingEvent.categoryLabel))
-    : null;
+  // espejo entre cuentas propias) · `storeDeLineaInmueble` ya los excluye por
+  // naturaleza. El store lo decide la lente fiscal por la familia.
+  const lineaStore: CategoriaStoreName | null = storeDeLineaInmueble(existingEvent);
 
   const stores: string[] = ['treasuryEvents', 'movements'];
   if (lineaStore) stores.push(lineaStore);
@@ -384,13 +250,13 @@ export async function confirmTreasuryEvent(
       const linea = {
         inmuebleId: existingEvent.inmuebleId,
         concepto: finalDescription,
-        // Categoría derivada del catálogo canónico (con fallback a heurístico
-        // sobre el label legado para no perder la clasificación fiscal).
-        categoria: resolveGastoCategoria(existingEvent),
-        casillaAEAT:
-          categoryDef?.casillaAEAT
-          ?? resolveCasillaAEAT(existingEvent.categoryKey ?? existingEvent.categoryLabel)
-          ?? '0106',
+        // Clasificación del catálogo único · la casilla la pone la lente fiscal
+        // (familia + subtipo + ámbito). Sin casilla resuelta, la línea nace sin
+        // ella: nada cae a la 0106 por defecto (una casilla adivinada es un error
+        // en la declaración que nadie ve).
+        familia: existingEvent.familia,
+        subtipo: existingEvent.subtipo,
+        casillaAEAT: casillaDe({ familia: existingEvent.familia, subtipo: existingEvent.subtipo, ambito: 'inmueble' }),
         // origen: 'tesoreria' alinea con el resto de servicios que inyectan
         // desde Conciliación (ver propertyExpenses.test y fiscal services).
         origen: 'tesoreria' as const,
@@ -411,9 +277,6 @@ export async function confirmTreasuryEvent(
           },
           eventId,
         ),
-        // PR5-HOTFIX v2: identificador canónico + sub-tipo
-        categoryKey: existingEvent.categoryKey ?? categoryDef?.key,
-        subtypeKey: existingEvent.subtypeKey,
         createdAt: existingLine?.createdAt ?? now,
         updatedAt: now,
       };
@@ -441,8 +304,6 @@ export async function confirmTreasuryEvent(
         movimientoId: String(movementId),
         treasuryEventId: eventId,
         estadoTesoreria: 'confirmed' as const,
-        // PR5-HOTFIX v2: identificador canónico
-        categoryKey: existingEvent.categoryKey ?? categoryDef?.key,
         createdAt: existingLine?.createdAt ?? now,
         updatedAt: now,
       };
@@ -471,8 +332,6 @@ export async function confirmTreasuryEvent(
         movimientoId: String(movementId),
         treasuryEventId: eventId,
         estadoTesoreria: 'confirmed' as const,
-        // PR5-HOTFIX v2: identificador canónico
-        categoryKey: existingEvent.categoryKey ?? categoryDef?.key,
         createdAt: existingLine?.createdAt ?? now,
         updatedAt: now,
       };
@@ -802,7 +661,9 @@ export interface UpdateConfirmedUpdates {
   providerNif?: string;
   invoiceNumber?: string;
   notes?: string;
-  categoryLabel?: string;
+  /** Reclasificar · familia + subtipo del catálogo único. */
+  familia?: FamiliaId;
+  subtipo?: string;
   ambito?: 'personal' | 'inmueble';
   inmuebleId?: number;
   facturaId?: number;
@@ -927,8 +788,8 @@ export async function deleteTreasuryEventCompletely(
  * (gastosInmueble usa `concepto/fecha`, mejoras/muebles usan `descripcion`
  * y `fecha`/`fechaAlta` respectivamente).
  *
- * NOTA sobre migración entre stores: si `categoryLabel` cambia a una categoría
- * que apuntaría a un store distinto (ej. Reparación → Mejora), la línea
+ * NOTA sobre migración entre stores: si la familia cambia a una que apuntaría
+ * a un store distinto (ej. Reparación → Reforma), la línea
  * existente NO se migra entre stores. Solo se actualizan sus campos. El
  * usuario debe eliminar y recrear el movimiento para un cambio de tipo.
  */
@@ -982,7 +843,8 @@ export async function updateConfirmedMovement(
       updates.notes !== undefined
         ? updates.notes || undefined
         : event.notes,
-    categoryLabel: updates.categoryLabel ?? event.categoryLabel,
+    familia: updates.familia ?? event.familia,
+    subtipo: updates.familia ? updates.subtipo : (updates.subtipo ?? event.subtipo),
     ambito: updates.ambito ?? event.ambito,
     inmuebleId:
       updates.ambito === 'personal'
@@ -1047,9 +909,8 @@ export async function updateConfirmedMovement(
             : movement.invoiceNumber,
         ambito: updates.ambito ?? movement.ambito,
         inmuebleId: nextInmuebleId,
-        category: updates.categoryLabel
-          ? { ...movement.category, tipo: updates.categoryLabel }
-          : movement.category,
+        familia: updatedEvent.familia,
+        subtipo: updatedEvent.subtipo,
         facturaId:
           updates.facturaId !== undefined
             ? updates.facturaId
@@ -1125,11 +986,10 @@ export async function updateConfirmedMovement(
           ? Number(String(newDate).slice(0, 4))
           : linea.ejercicio,
         concepto: updates.description ?? linea.concepto,
-        categoria: updates.categoryLabel
-          ? resolveGastoCategoria(updates.categoryLabel)
-          : linea.categoria,
-        casillaAEAT: updates.categoryLabel
-          ? resolveCasillaAEAT(updates.categoryLabel) ?? linea.casillaAEAT
+        familia: updatedEvent.familia,
+        subtipo: updatedEvent.subtipo,
+        casillaAEAT: updates.familia
+          ? casillaDe({ familia: updatedEvent.familia, subtipo: updatedEvent.subtipo, ambito: 'inmueble' }) ?? linea.casillaAEAT
           : linea.casillaAEAT,
       });
     } else if (storeName === 'mejorasInmueble') {
@@ -1310,24 +1170,18 @@ export interface TreasuryEventPatch {
   predictedDate?: string;
   accountId?: number | null;
   // Tesorería V6 · §4.5 · clasificación editable desde la ficha de movimiento.
-  // Ampliación ADITIVA: todos opcionales, así que ningún llamador previo cambia
-  // de comportamiento. `categoryKey` es lo que alimenta el tratamiento fiscal,
-  // y hasta ahora no había forma de corregirlo sin reescribir el evento a mano.
-  // `null` = limpiar el campo, igual que en `accountId`/`inmuebleId`. Hace
-  // falta de verdad: una derrama que resulta ser mejora NO puede quedarse con
-  // la key de gasto anterior, y reclasificar a un concepto sin variante tiene
-  // que poder borrar el `subtypeKey` viejo. Sin esto, reclasificar dejaría
-  // restos de la clasificación fiscal previa.
-  categoryKey?: string | null;
-  subtypeKey?: string | null;
-  /** F2b · concepto fino del catálogo unificado · `null` = limpiar. */
-  conceptoId?: string | null;
+  // `familia`/`subtipo` del catálogo único alimentan el tratamiento fiscal (la
+  // lente). `null` = limpiar el campo, igual que en `accountId`/`inmuebleId`:
+  // reclasificar a una familia sin subtipo tiene que poder borrar el subtipo
+  // viejo, sin dejar restos de la clasificación previa.
+  familia?: FamiliaId | null;
+  subtipo?: string | null;
   inmuebleId?: number | null;
 }
 
 /**
  * Aplica un parche de campos editables (importe, fecha prevista, cuenta y —desde
- * Tesorería V6 §4.5— la clasificación: categoryKey, subtypeKey e inmueble) sobre
+ * Tesorería V6 §4.5— la clasificación: familia, subtipo e inmueble) sobre
  * un treasuryEvent que aún NO ha sido ejecutado (status !== 'executed').
  * Lanza un Error si el evento no existe o ya está ejecutado.
  */
@@ -1355,20 +1209,15 @@ export async function updateTreasuryEventFields(
         ? { accountId: undefined }
         : { accountId: patch.accountId }
       : {}),
-    ...(patch.categoryKey !== undefined
-      ? patch.categoryKey === null
-        ? { categoryKey: undefined }
-        : { categoryKey: patch.categoryKey }
+    ...(patch.familia !== undefined
+      ? patch.familia === null
+        ? { familia: undefined }
+        : { familia: patch.familia }
       : {}),
-    ...(patch.subtypeKey !== undefined
-      ? patch.subtypeKey === null
-        ? { subtypeKey: undefined }
-        : { subtypeKey: patch.subtypeKey }
-      : {}),
-    ...(patch.conceptoId !== undefined
-      ? patch.conceptoId === null
-        ? { conceptoId: undefined }
-        : { conceptoId: patch.conceptoId }
+    ...(patch.subtipo !== undefined
+      ? patch.subtipo === null
+        ? { subtipo: undefined }
+        : { subtipo: patch.subtipo }
       : {}),
     ...(patch.inmuebleId !== undefined
       ? patch.inmuebleId === null

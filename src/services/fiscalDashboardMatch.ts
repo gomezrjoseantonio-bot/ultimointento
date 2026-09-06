@@ -29,7 +29,7 @@ export const EXPECTED_FISCAL_CATEGORIES: ExpectedCategory[] = [
     label: 'Comunidad',
     match: (ctx) =>
       ctx.rules.some((r) => r.activo && r.categoria === 'comunidad') ||
-      ctx.gastos.some((g) => g.casillaAEAT === '0109' || g.categoria === 'comunidad'),
+      ctx.gastos.some((g) => g.casillaAEAT === '0109' || g.familia === 'comunidad'),
   },
   {
     key: 'ibi',
@@ -39,21 +39,21 @@ export const EXPECTED_FISCAL_CATEGORIES: ExpectedCategory[] = [
         (r) =>
           r.activo && r.categoria === 'impuesto' && r.concepto.toLowerCase().includes('ibi'),
       ) ||
-      ctx.gastos.some((g) => g.casillaAEAT === '0115' || g.categoria === 'ibi'),
+      ctx.gastos.some((g) => g.casillaAEAT === '0115' || g.familia === 'impuestos_tasas'),
   },
   {
     key: 'seguro',
     label: 'Seguro',
     match: (ctx) =>
       ctx.rules.some((r) => r.activo && r.categoria === 'seguro') ||
-      ctx.gastos.some((g) => g.casillaAEAT === '0114' || g.categoria === 'seguro'),
+      ctx.gastos.some((g) => g.casillaAEAT === '0114' || g.familia === 'seguros_alarmas'),
   },
   {
     key: 'suministros',
     label: 'Suministros',
     match: (ctx) =>
       ctx.rules.some((r) => r.activo && r.categoria === 'suministro') ||
-      ctx.gastos.some((g) => g.casillaAEAT === '0113' || g.categoria === 'suministro'),
+      ctx.gastos.some((g) => g.casillaAEAT === '0113' || g.familia === 'suministro'),
   },
   { key: 'amortizacion', label: 'Amortización', match: () => true, alwaysRegistered: true },
   {
@@ -67,7 +67,7 @@ export const EXPECTED_FISCAL_CATEGORIES: ExpectedCategory[] = [
             r.concepto.toLowerCase().includes('interés') ||
             r.concepto.toLowerCase().includes('interes')),
       ) ||
-      ctx.gastos.some((g) => g.casillaAEAT === '0105' || g.categoria === 'intereses') ||
+      ctx.gastos.some((g) => g.casillaAEAT === '0105' || g.familia === 'prestamo_hipoteca') ||
       ctx.hasActiveLoan,
   },
   {
@@ -80,7 +80,7 @@ export const EXPECTED_FISCAL_CATEGORIES: ExpectedCategory[] = [
           (r.concepto.toLowerCase().includes('reparac') ||
             r.concepto.toLowerCase().includes('conservac')),
       ) ||
-      ctx.gastos.some((g) => g.casillaAEAT === '0106' || g.categoria === 'reparacion') ||
+      ctx.gastos.some((g) => g.casillaAEAT === '0106' || g.familia === 'reparacion_mantenimiento') ||
       ctx.hasReparacionMejora,
   },
 ];

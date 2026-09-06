@@ -169,10 +169,8 @@ export interface ItemPunteo {
    * que la ficha de §4.5 pueda abrir con la clasificación REAL del registro en
    * vez de con la primera del catálogo. `undefined` = sin clasificar.
    */
-  categoryKey?: string;
-  subtypeKey?: string;
-  /** Concepto fino guardado (F2) · para reabrir la ficha en el subtipo exacto. */
-  conceptoId?: string;
+  familia?: string;
+  subtipo?: string;
   /**
    * T3 · ruta de la ficha del gasto recurrente que emitió esta previsión.
    *

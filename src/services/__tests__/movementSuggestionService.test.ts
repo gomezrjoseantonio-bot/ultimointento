@@ -172,7 +172,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     expect(heuristic!.action.kind).toBe('create_treasury_event');
     if (heuristic!.action.kind === 'create_treasury_event') {
       expect(heuristic!.action.ambito).toBe('inmueble');
-      expect(heuristic!.action.categoryKey).toBe('inmueble.suministros');
+      expect(heuristic!.action.familia).toBe('suministro');
     }
   });
 
@@ -224,7 +224,6 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           ambito: 'inmueble',
           inmuebleId: 7,
           alias: 'Suministro luz inmueble Calle Mayor',
-          tipo: 'suministro',
           subtipo: 'luz',
           proveedor: { nombre: 'Iberdrola' },
           patron: { tipo: 'mensualDiaFijo', dia: 22 },
@@ -232,8 +231,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           cuentaCargo: 42,
           conceptoBancario: 'IBERDROLA CLIENTES SA',
           metodoPago: 'domiciliacion',
-          categoria: 'inmueble.suministros',
-          bolsaPresupuesto: 'inmueble',
+          familia: 'suministro',
           responsable: 'titular',
           fechaInicio: '2025-01-01',
           estado: 'activo',
@@ -270,7 +268,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           counterpartyPattern: 'iberdrola',
           descriptionPattern: 'recibo iberdrola',
           amountSign: 'negative',
-          categoria: 'inmueble.suministros',
+          familia: 'suministro',
           ambito: 'inmueble',
           source: 'IMPLICIT',
           createdAt: '2026-04-22T00:00:00.000Z',
@@ -308,7 +306,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           counterpartyPattern: 'iberdrola',
           descriptionPattern: 'recibo iberdrola clientes sau contrato',
           amountSign: 'negative',
-          categoria: 'inmueble.suministros',
+          familia: 'suministro',
           ambito: 'inmueble',
           inmuebleId: '4',
           source: 'IMPLICIT',
@@ -333,7 +331,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     (buildLearnKeyV1 as jest.Mock).mockReturnValue('hash:v1-ambigua');
     const regla = (id: number, learnKey: string, inmuebleId: string): MovementLearningRule => ({
       id, learnKey, counterpartyPattern: 'iberdrola', descriptionPattern: 'recibo iberdrola', amountSign: 'negative',
-      categoria: 'inmueble.suministros', ambito: 'inmueble', inmuebleId, source: 'IMPLICIT',
+      familia: 'suministro', ambito: 'inmueble', inmuebleId, source: 'IMPLICIT',
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-04-22T00:00:00.000Z', appliedCount: 1,
     } as MovementLearningRule);
     const stores: FakeStores = {
@@ -360,7 +358,7 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
           counterpartyPattern: '',
           descriptionPattern: 'retirada cajero servired',
           amountSign: 'negative',
-          categoria: 'traspaso',
+          familia: 'traspaso',
           ambito: 'personal',
           source: 'IMPLICIT',
           createdAt: '2026-01-01T00:00:00.000Z',

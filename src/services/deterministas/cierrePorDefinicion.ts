@@ -75,7 +75,8 @@ async function cerrarRecurrente(o: OrigenDeterminista, m: Movement): Promise<boo
     concepto: m.description,
     importe: m.amount,
     fecha: m.date,
-    categoryKey: o.categoryKey ?? null,
+    familia: o.familia ?? null,
+    subtipo: o.subtipo ?? null,
     ...(Number.isFinite(compromisoId) && compromisoId > 0
       ? { origenIdRecurrente: claveOrigenRecurrente(compromisoId, m.date) }
       : {}),
@@ -149,7 +150,6 @@ async function cerrarRenta(db: Base, o: OrigenDeterminista, m: Movement, ahora: 
       // fabricada (#1821/#1824): apunta al movimiento real y con su importe.
       const cobro: Omit<TreasuryEvent, 'id'> = {
         naturaleza: 'ingreso',
-        familia: 'alquiler',
         amount: Math.abs(m.amount),
         predictedDate: m.date,
         description: `Renta – ${renta.inquilino}`,
@@ -159,7 +159,8 @@ async function cerrarRenta(db: Base, o: OrigenDeterminista, m: Movement, ahora: 
         contratoId: renta.contratoId,
         accountId: m.accountId,
         ...(o.inmuebleId != null && o.inmuebleId > 0 ? { inmuebleId: o.inmuebleId } : {}),
-        categoryKey: o.categoryKey ?? 'alquiler',
+        familia: o.familia ?? 'alquiler',
+        subtipo: o.subtipo,
         ambito: 'inmueble',
         generadoPor: 'user',
         createdAt: ahora,
@@ -171,7 +172,8 @@ async function cerrarRenta(db: Base, o: OrigenDeterminista, m: Movement, ahora: 
 
   await db.put('movements', {
     ...m,
-    categoryKey: o.categoryKey ?? 'alquiler',
+    familia: o.familia ?? 'alquiler',
+    subtipo: o.subtipo,
     ambito: 'inmueble',
     ...(o.inmuebleId != null ? { inmuebleId: String(o.inmuebleId) } : {}),
     updatedAt: ahora,
@@ -222,7 +224,7 @@ export async function aplicarPorDefinicion(
   // Ya clasificado pero sin conciliar: el Guardar anterior escribió la fila /
   // el cobro / la pata y falló justo antes de la huella. No se repite lo
   // escrito (segunda fila fiscal, segunda pata); solo falta la huella.
-  const yaAplicado = !nuevo && !!movement.categoryKey;
+  const yaAplicado = !nuevo && !!movement.familia;
   if (!yaAplicado) {
     let cerrado = false;
     if (o.fuente === 'recurrente') cerrado = await cerrarRecurrente(o, movement);

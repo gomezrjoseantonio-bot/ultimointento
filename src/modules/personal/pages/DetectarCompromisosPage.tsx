@@ -37,51 +37,22 @@ import type {
   CandidatoCompromiso,
   DetectionReport,
 } from '../../../services/compromisoDetectionService';
-import type {
-  CategoriaGastoCompromiso,
-  CompromisoRecurrente,
-  ResponsableCompromiso,
-  TipoCompromiso,
-} from '../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente, ResponsableCompromiso } from '../../../types/compromisosRecurrentes';
+import {
+  familiasSugeridas,
+  labelClasificacion,
+  subtiposDe,
+  type FamiliaId,
+} from '../../../services/catalogo/catalogoUnico';
 
 // ─── Constantes ────────────────────────────────────────────────────────────
 
-const TIPO_FILTROS: Array<{ value: TipoCompromiso | 'todos'; label: string }> = [
+/** Familias de GASTO personal del catálogo único · filtro y edición. */
+const FAMILIAS_EDITABLES = familiasSugeridas('gasto', 'personal');
+const TIPO_FILTROS: Array<{ value: FamiliaId | 'todos' | 'sin_clasificar'; label: string }> = [
   { value: 'todos', label: 'Todos' },
-  { value: 'suministro', label: 'Suministros' },
-  { value: 'suscripcion', label: 'Suscripciones' },
-  { value: 'seguro', label: 'Seguros' },
-  { value: 'cuota', label: 'Cuotas' },
-  { value: 'comunidad', label: 'Comunidad' },
-  { value: 'impuesto', label: 'Impuesto' },
-  { value: 'otros', label: 'Otros' },
-];
-
-const TIPOS_EDITABLES: TipoCompromiso[] = [
-  'suministro',
-  'suscripcion',
-  'seguro',
-  'cuota',
-  'comunidad',
-  'impuesto',
-  'otros',
-];
-
-const CATEGORIAS_EDITABLES: CategoriaGastoCompromiso[] = [
-  'vivienda.suministros',
-  'vivienda.comunidad',
-  'vivienda.ibi',
-  'vivienda.seguros',
-  'alimentacion',
-  'transporte',
-  'salud',
-  'educacion',
-  'ocio',
-  'viajes',
-  'suscripciones',
-  'personal',
-  'regalos',
-  'tecnologia',
+  ...FAMILIAS_EDITABLES.map((f) => ({ value: f.id as FamiliaId | 'todos' | 'sin_clasificar', label: f.label })),
+  { value: 'sin_clasificar', label: 'Sin clasificar' },
 ];
 
 const RESPONSABLES: ResponsableCompromiso[] = ['titular', 'pareja', 'hogarCompartido'];
@@ -141,9 +112,9 @@ function scoreTone(confidence: number): 'pos' | 'gold' | 'neg' {
   return 'neg';
 }
 
-function tipoToPillVariant(tipo: TipoCompromiso): 'pos' | 'gold' | 'gris' {
-  if (tipo === 'suministro' || tipo === 'comunidad' || tipo === 'impuesto') return 'gold';
-  if (tipo === 'seguro' || tipo === 'cuota') return 'pos';
+function familiaToPillVariant(familia: FamiliaId | undefined): 'pos' | 'gold' | 'gris' {
+  if (familia === 'suministro' || familia === 'comunidad' || familia === 'impuestos_tasas') return 'gold';
+  if (familia === 'seguros_alarmas' || familia === 'suscripciones') return 'pos';
   return 'gris';
 }
 
@@ -151,9 +122,8 @@ function tipoToPillVariant(tipo: TipoCompromiso): 'pos' | 'gold' | 'gris' {
 
 interface OverrideValues {
   alias?: string;
-  tipo?: TipoCompromiso;
+  familia?: FamiliaId;
   subtipo?: string;
-  categoria?: string;
   responsable?: ResponsableCompromiso;
   proveedorNombre?: string;
 }
@@ -172,11 +142,8 @@ interface EditModalProps {
 const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCancel }) => {
   const baseProp = candidato.propuesta;
   const [alias, setAlias] = useState(current.alias ?? baseProp.alias);
-  const [tipo, setTipo] = useState<TipoCompromiso>(current.tipo ?? baseProp.tipo);
+  const [familia, setFamilia] = useState<FamiliaId | ''>(current.familia ?? baseProp.familia ?? '');
   const [subtipo, setSubtipo] = useState(current.subtipo ?? baseProp.subtipo ?? '');
-  const [categoria, setCategoria] = useState<string>(
-    current.categoria ?? baseProp.categoria ?? '',
-  );
   const [responsable, setResponsable] = useState<ResponsableCompromiso>(
     current.responsable ?? baseProp.responsable,
   );
@@ -199,9 +166,8 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
     e.preventDefault();
     onSave({
       alias: alias.trim(),
-      tipo,
+      familia: familia || undefined,
       subtipo: subtipo.trim() || undefined,
-      categoria,
       responsable,
       proveedorNombre: proveedorNombre.trim(),
     });
@@ -274,42 +240,36 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
           />
         </Field>
 
-        <Field label="Tipo">
+        <Field label="Familia">
           <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value as TipoCompromiso)}
+            value={familia}
+            onChange={(e) => {
+              setFamilia(e.target.value as FamiliaId | '');
+              setSubtipo('');
+            }}
             style={inputStyle}
           >
-            {TIPOS_EDITABLES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            <option value="">— Sin clasificar —</option>
+            {FAMILIAS_EDITABLES.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
               </option>
             ))}
           </select>
         </Field>
 
-        <Field label="Subtipo (opcional · ej · luz · gas · agua · móvil · internet)">
-          <input
-            type="text"
-            value={subtipo}
-            onChange={(e) => setSubtipo(e.target.value)}
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field label="Categoría">
-          <select
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-            style={inputStyle}
-          >
-            {CATEGORIAS_EDITABLES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {familia && subtiposDe(familia).length > 0 && (
+          <Field label="Subtipo (opcional)">
+            <select value={subtipo} onChange={(e) => setSubtipo(e.target.value)} style={inputStyle}>
+              <option value="">— Sin subtipo —</option>
+              {subtiposDe(familia).map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
 
         <Field label="Responsable">
           <select
@@ -440,7 +400,8 @@ const CandidatoCard: React.FC<CandidatoCardProps> = ({
   const [showOcurrencias, setShowOcurrencias] = useState(false);
   const baseProp = candidato.propuesta;
   const alias = override?.alias ?? baseProp.alias;
-  const tipo = override?.tipo ?? baseProp.tipo;
+  const familia = override?.familia ?? baseProp.familia;
+  const subtipo = override?.subtipo ?? baseProp.subtipo;
   const proveedor = override?.proveedorNombre ?? baseProp.proveedor.nombre;
   const importeInfo = importeToValue(candidato.importeInferido);
 
@@ -473,8 +434,8 @@ const CandidatoCard: React.FC<CandidatoCardProps> = ({
             }}
           >
             <strong style={{ fontSize: 14, color: 'var(--atlas-v5-ink)' }}>{alias}</strong>
-            <Pill variant={tipoToPillVariant(tipo)} asTag>
-              {tipo}
+            <Pill variant={familiaToPillVariant(familia)} asTag>
+              {familia ? labelClasificacion(familia, subtipo) : 'sin clasificar'}
             </Pill>
             <span
               style={{
@@ -629,7 +590,7 @@ const DetectarCompromisosPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterTipo, setFilterTipo] = useState<TipoCompromiso | 'todos'>('todos');
+  const [filterTipo, setFilterTipo] = useState<FamiliaId | 'todos' | 'sin_clasificar'>('todos');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [discarded, setDiscarded] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<OverridesMap>(new Map());
@@ -675,8 +636,9 @@ const DetectarCompromisosPage: React.FC = () => {
     return report.candidatos.filter((c) => {
       if (discarded.has(c.id)) return false;
       if (filterTipo === 'todos') return true;
-      const tipo = overrides.get(c.id)?.tipo ?? c.propuesta.tipo;
-      return tipo === filterTipo;
+      const familia = overrides.get(c.id)?.familia ?? c.propuesta.familia;
+      if (filterTipo === 'sin_clasificar') return !familia;
+      return familia === filterTipo;
     });
   }, [report, discarded, filterTipo, overrides]);
 
@@ -728,9 +690,8 @@ const DetectarCompromisosPage: React.FC = () => {
       if (!ov) continue;
       const partial: Partial<CompromisoRecurrente> = {};
       if (ov.alias !== undefined) partial.alias = ov.alias;
-      if (ov.tipo !== undefined) partial.tipo = ov.tipo;
+      if (ov.familia !== undefined) partial.familia = ov.familia;
       if (ov.subtipo !== undefined) partial.subtipo = ov.subtipo;
-      if (ov.categoria !== undefined) partial.categoria = ov.categoria;
       if (ov.responsable !== undefined) partial.responsable = ov.responsable;
       if (ov.proveedorNombre !== undefined) partial.proveedor = { nombre: ov.proveedorNombre };
       out.set(id, partial);

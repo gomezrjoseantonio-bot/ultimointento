@@ -5,7 +5,7 @@
 import type { AEATFiscalType, AEATBox } from './types-contratos';
 import type { SubtipoAlquiler } from './types-alquiler';
 import type { TipoActivo } from '../../types/tipoActivo';
-import type { MetodoPago } from '../catalogo/catalogoUnico';
+import type { FamiliaId, MetodoPago } from '../catalogo/catalogoUnico';
 
 
 export interface Property {
@@ -434,10 +434,6 @@ export interface MobiliarioActivo {
 
 // ── Nuevos tipos unificados para capa de gastos ──
 
-export type GastoCategoria =
-  'ibi' | 'comunidad' | 'seguro' | 'suministro' |
-  'reparacion' | 'gestion' | 'servicio' | 'intereses' | 'otro';
-
 export type GastoOrigen =
   'xml_aeat' | 'prestamo' | 'recurrente' | 'tesoreria' | 'manual';
 
@@ -497,8 +493,18 @@ export interface GastoInmueble {
    */
   fechaValor?: string;
   concepto: string;
-  categoria: GastoCategoria;
-  casillaAEAT: AEATBox;
+  /**
+   * Clasificación · eje 2 del catálogo único (E2.4.1c). Ausente en lo que
+   * entra por casilla (una declaración importada) o aún sin clasificar.
+   */
+  familia?: FamiliaId;
+  subtipo?: string;
+  /**
+   * Casilla del Modelo 100. La pone la lente fiscal (`fiscal/lenteFiscal`) al
+   * nacer la línea leyendo familia + subtipo + ámbito; viene directa cuando el
+   * gasto entra por la declaración. Ausente = sin casilla resuelta todavía.
+   */
+  casillaAEAT?: AEATBox;
   importe: number;
   importeBruto?: number;
   origen: GastoOrigen;
@@ -521,9 +527,6 @@ export interface GastoInmueble {
   facturaNoAplica?: boolean;
   justificanteId?: number;
   justificanteNoAplica?: boolean;
-  // PR5-HOTFIX v2: identificador canónico del catálogo + sub-tipo
-  categoryKey?: string;
-  subtypeKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -550,8 +553,6 @@ export interface MejoraInmueble {
   facturaNoAplica?: boolean;
   justificanteId?: number;
   justificanteNoAplica?: boolean;
-  // PR5-HOTFIX v2: identificador canónico del catálogo
-  categoryKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -580,8 +581,6 @@ export interface MuebleInmueble {
   facturaNoAplica?: boolean;
   justificanteId?: number;
   justificanteNoAplica?: boolean;
-  // PR5-HOTFIX v2: identificador canónico del catálogo
-  categoryKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -727,8 +726,9 @@ export interface Document {
     tipo?: 'Factura' | 'Contrato' | 'Mejora' | 'Extracto bancario' | 'Otros'
       | 'fiscal' | 'contrato' | 'bancario' | 'otro';
     categoria?: string;
-    /** Concepto del catálogo unificado (id, p.ej. 'luz', 'ibi', 'seguro_hogar'). */
-    concepto?: string;
+    /** Clasificación del catálogo único (E2.4.1c) · familia + subtipo opcional. */
+    familia?: string;
+    subtipo?: string;
     destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
     /** Estado de la cola de la bandeja de entrada (pendiente · procesado · error). */

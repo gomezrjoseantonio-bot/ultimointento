@@ -62,7 +62,6 @@ export async function createTransfer(
     accountId: params.originAccountId,
     status: 'predicted',
     ambito: 'personal',
-    categoryLabel: 'Traspaso · salida',
     transferMetadata: { targetAccountId: params.targetAccountId },
     createdAt: now,
     updatedAt: now,
@@ -81,7 +80,6 @@ export async function createTransfer(
     accountId: params.targetAccountId,
     status: 'predicted',
     ambito: 'personal',
-    categoryLabel: 'Traspaso · entrada',
     transferMetadata: {
       targetAccountId: params.originAccountId,
       pairEventId: originEventId,

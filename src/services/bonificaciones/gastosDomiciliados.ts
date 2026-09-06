@@ -100,7 +100,7 @@ export function segurosDomiciliados(
   anio: number
 ): GastoDomiciliado[] {
   return compromisos
-    .filter((c) => c.tipo === 'seguro' && esDomiciliado(c) && esActivoRecurrente(c))
+    .filter((c) => c.familia === 'seguros_alarmas' && c.subtipo !== 'alarma' && esDomiciliado(c) && esActivoRecurrente(c))
     .map((c) => ({
       cuentaId: c.cuentaCargo,
       alias: c.alias,

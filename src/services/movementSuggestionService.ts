@@ -52,7 +52,7 @@ import { nivelDeCoincidencia } from './coincidenciaNombre';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { movimientosDesdeLineas, sugerenciasPorLinea, type SugerenciaPorLinea } from './lineaComoMovimiento';
-import type { Naturaleza } from './catalogo/catalogoUnico';
+import { labelClasificacion, type FamiliaId, type Naturaleza } from './catalogo/catalogoUnico';
 
 export type SuggestionVia = 'compromiso_recurrente' | 'learning_rule' | 'heuristica';
 
@@ -62,12 +62,13 @@ export type SuggestionAction =
       naturaleza: Naturaleza;
       ambito: 'personal' | 'inmueble';
       inmuebleId?: number;
-      categoryKey?: string;
+      familia?: FamiliaId;
+      subtipo?: string;
       sourceType: TreasuryEvent['sourceType'];
       sourceId?: number | string;
     }
   | { kind: 'assign_to_contract'; contractId?: number }
-  | { kind: 'mark_personal_expense'; categoryKey: string }
+  | { kind: 'mark_personal_expense'; familia?: FamiliaId; subtipo?: string }
   /** E2.2 · una regla aprendida de un traspaso · la línea es la salida hacia `cuentaDestinoId`. */
   | { kind: 'transfer'; cuentaDestinoId: number }
   | { kind: 'ignore' };
@@ -230,7 +231,8 @@ function suggestFromCompromiso(
       naturaleza: 'gasto',
       ambito,
       inmuebleId: r.inmuebleId,
-      categoryKey: c.categoria,
+      familia: c.familia,
+      subtipo: c.subtipo,
       sourceType: 'gasto_recurrente',
       sourceId: c.id,
     },
@@ -323,13 +325,14 @@ function suggestFromLearningRule(
     rule.resolucion === 'traspaso' && rule.cuentaDestinoId != null
       ? { kind: 'transfer', cuentaDestinoId: rule.cuentaDestinoId }
       : rule.ambito === 'personal'
-      ? { kind: 'mark_personal_expense', categoryKey: rule.categoria }
+      ? { kind: 'mark_personal_expense', familia: rule.familia, subtipo: rule.subtipo }
       : {
           kind: 'create_treasury_event',
           naturaleza: rule.amountSign === 'positive' ? 'ingreso' : 'gasto',
           ambito: 'inmueble',
           inmuebleId: rule.inmuebleId ? Number(rule.inmuebleId) : undefined,
-          categoryKey: rule.categoria,
+          familia: rule.familia,
+          subtipo: rule.subtipo,
           // Keep sourceType aligned with the event type so downstream flows
           // that branch on income vs gasto stay consistent.
           sourceType: rule.amountSign === 'positive' ? 'ingreso' : 'gasto',
@@ -341,8 +344,8 @@ function suggestFromLearningRule(
     confidence,
     description:
       applied > 0
-        ? `Regla aprendida (${applied} aplicaciones previas) → ${rule.categoria}`
-        : `Regla aprendida sin aplicaciones previas → ${rule.categoria}`,
+        ? `Regla aprendida (${applied} aplicaciones previas) → ${rule.familia ? labelClasificacion(rule.familia, rule.subtipo) : 'sin clasificar'}`
+        : `Regla aprendida sin aplicaciones previas → ${rule.familia ? labelClasificacion(rule.familia, rule.subtipo) : 'sin clasificar'}`,
     action,
     // E2.2 · `resuelveSola` · la regla se ha ganado la confianza y puede
     // ejecutarse sin preguntar. La pantalla lo lee de aquí y no de la regla:
@@ -408,7 +411,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
         kind: 'create_treasury_event',
         naturaleza: 'gasto',
         ambito: 'inmueble',
-        categoryKey: 'inmueble.suministros',
+        familia: 'suministro',
         sourceType: 'gasto',
       },
     }),
@@ -423,7 +426,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
         kind: 'create_treasury_event',
         naturaleza: 'gasto',
         ambito: 'inmueble',
-        categoryKey: 'vivienda.hipoteca',
+        familia: 'prestamo_hipoteca',
         sourceType: 'prestamo',
       },
     }),
@@ -439,7 +442,8 @@ const HEURISTIC_RULES: HeuristicRule[] = [
         kind: 'create_treasury_event',
         naturaleza: 'gasto',
         ambito: 'inmueble',
-        categoryKey: 'inmueble.ibi',
+        familia: 'impuestos_tasas',
+        subtipo: 'ibi',
         sourceType: 'gasto',
       },
     }),
@@ -454,7 +458,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
         kind: 'create_treasury_event',
         naturaleza: 'gasto',
         ambito: 'inmueble',
-        categoryKey: 'inmueble.comunidad',
+        familia: 'comunidad',
         sourceType: 'gasto',
       },
     }),
@@ -525,7 +529,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
       description: 'Compra online (Amazon / AliExpress) · proponer marcar como gasto personal',
       action: {
         kind: 'mark_personal_expense',
-        categoryKey: 'tecnologia',
+        familia: 'compra_online',
       },
     }),
   },

@@ -26,7 +26,7 @@ const punteado = (over: Partial<Movement> = {}): Movement =>
     source: 'manual',
     unifiedStatus: 'conciliado',
     reference: 'treasury_event:700',
-    categoryKey: 'inmueble.comunidad',
+    familia: 'comunidad',
     ...over,
   }) as Movement;
 
@@ -87,7 +87,7 @@ describe('reconciliar duplicados existentes', () => {
     expect(putMov.id).toBe(9);
     expect(putMov.unifiedStatus).toBe('conciliado');
     expect(putMov.statusConciliacion).toBe('match_automatico');
-    expect(putMov.categoryKey).toBe('inmueble.comunidad');
+    expect(putMov.familia).toBe('comunidad');
     expect(putMov.date).toBe('2026-08-15');
     expect(putMov.amount).toBe(-98.44);
     // El evento sigue apuntando al confirmado · solo toma el dato real.

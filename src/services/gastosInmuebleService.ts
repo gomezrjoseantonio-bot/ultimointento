@@ -1,21 +1,10 @@
-import { initDB, GastoInmueble, GastoCategoria, type AEATBox } from './db';
+import { initDB, GastoInmueble } from './db';
 import { updateLineaInmueble, deleteLineaInmueble } from './lineasInmuebleService';
 import { getRentalDaysForYear } from './aeatAmortizationService';
 import { sumaDeducidaPorCasilla, esBisiesto } from './gastoDeducible';
 
-// Mapa categoria → casillaAEAT · tipado como `AEATBox` y no como `string` para
-// que una casilla que no exista no llegue muda a la declaración.
-export const CATEGORIA_A_CASILLA: Record<GastoCategoria, AEATBox> = {
-  intereses:  '0105',
-  reparacion: '0106',
-  comunidad:  '0109',
-  gestion:    '0112',
-  servicio:   '0112',
-  suministro: '0113',
-  seguro:     '0114',
-  ibi:        '0115',
-  otro:       '0106',
-};
+// `CATEGORIA_A_CASILLA` (árbol E → casilla) RETIRADO en E2.4.1c: la casilla la
+// pone la lente fiscal (`fiscal/lenteFiscal.casillaDe`) leyendo familia + subtipo.
 
 export const gastosInmuebleService = {
   async add(gasto: Omit<GastoInmueble, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {

@@ -27,7 +27,7 @@ import type { Movement } from '../db';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import type { OrigenDeterminista } from './tipos';
 import { reconocerRecurrente, type RecurrenteReconocido } from '../recurrentes/reconocerRecurrente';
-import { resolveCasillaAEAT } from '../treasuryConfirmationService';
+import { casillaDe } from '../fiscal/lenteFiscal';
 import { identificadoresDeMovimiento, normalizarIdentificador } from '../identificadoresDelConcepto';
 
 /**
@@ -80,9 +80,9 @@ export function tituloDeRecurrente(c: CompromisoRecurrente): string {
 
 /** Un gasto de inmueble necesita casilla para que nazca su fila fiscal. */
 function puedeCerrarse(c: CompromisoRecurrente): boolean {
-  if (!c.categoria) return false;
+  if (!c.familia) return false;
   if (c.ambito === 'inmueble' || c.inmuebleId != null || (c.reparto?.length ?? 0) > 0) {
-    return !!resolveCasillaAEAT(c.categoria);
+    return !!casillaDe({ familia: c.familia, subtipo: c.subtipo, ambito: 'inmueble' });
   }
   return true;
 }
@@ -117,7 +117,8 @@ export function recurrentesQueCuadran(
       origenId: String(c.id),
       titulo: tituloDeRecurrente(c),
       como: r.porIdentidad === 'cups' || r.porIdentidad === 'numeroContrato' ? 'identidad' : 'definicion',
-      categoryKey: c.categoria,
+      familia: c.familia,
+      subtipo: c.subtipo,
       ...(r.inmuebleId != null ? { inmuebleId: r.inmuebleId } : {}),
     });
   }

@@ -44,14 +44,14 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
     await db.add('treasuryEvents', ev({
       naturaleza: 'gasto', ambito: 'inmueble', mes: 3, amount: 312, description: 'Comunidad',
     }));
-    // Gasto personal · bolsa necesidades → Hogar y familia.
+    // Gasto personal → Gastos personales (sin bolsa · E2.4.1c).
     await db.add('treasuryEvents', ev({
-      naturaleza: 'gasto', bolsaPresupuesto: 'necesidades', mes: 3, amount: 3445, description: 'Vivienda',
+      naturaleza: 'gasto', mes: 3, amount: 3445, description: 'Vivienda', familia: 'alquiler_renting',
     }));
-    // Movimiento conciliado SIN evento · categoría transporte → necesidades → Hogar.
+    // Movimiento conciliado SIN evento · familia transporte → Gastos personales.
     await db.add('movements', {
       id: 991, amount: -85, date: '2026-03-14', unifiedStatus: 'conciliado',
-      categoria: 'transporte', description: 'Gasolina (no planificado)',
+      familia: 'transporte', description: 'Gasolina (no planificado)',
     } as any);
 
     const real = await buildReal(2026);
@@ -67,22 +67,32 @@ describe('presupuestoAnualService · agregador de real por grupo (sección 4.3)'
     expect(neto).toBe(430 - 312 - 3530); // -3412
   });
 
-  it('lo no clasificable (ahorro/sin categoría) va al residuo VISIBLE, no a un grupo', async () => {
+  it('un gasto personal sin familia cuenta en Gastos personales · no hay bolsa que lo reparta', async () => {
     const db = await initDB();
     await db.add('treasuryEvents', ev({
-      naturaleza: 'gasto', bolsaPresupuesto: 'ahorroInversion', mes: 3, amount: 500, description: 'Aportación fondo',
+      naturaleza: 'gasto', mes: 3, amount: 500, description: 'Gasto suelto',
     }));
     const real = await buildReal(2026);
     const m = real[MAR];
-    expect(m.porGrupo.size).toBe(0);
-    expect(m.residuo).toBe(-500);
+    expect(m.porGrupo.get('hogar')).toBe(-500);
+    expect(m.residuo).toBe(0);
+  });
+
+  it('los impuestos personales van a su grupo, no a Gastos personales', async () => {
+    const db = await initDB();
+    await db.add('treasuryEvents', ev({
+      naturaleza: 'gasto', mes: 3, amount: 200, description: 'IBI casa', familia: 'impuestos_tasas',
+    }));
+    const real = await buildReal(2026);
+    const m = real[MAR];
+    expect(m.porGrupo.get('impuestos')).toBe(-200);
+    expect(m.porGrupo.get('hogar')).toBeUndefined();
   });
 
   it('una cuota con prestamoId va SOLO a Deuda (regla 2)', async () => {
     const db = await initDB();
     await db.add('treasuryEvents', ev({
-      naturaleza: 'gasto', ambito: 'inmueble', prestamoId: '7', mes: 3, amount: 620,
-      bolsaPresupuesto: 'inmueble', description: 'Cuota hipoteca',
+      naturaleza: 'gasto', ambito: 'inmueble', prestamoId: '7', mes: 3, amount: 620, description: 'Cuota hipoteca',
     }));
     const real = await buildReal(2026);
     const m = real[MAR];
@@ -164,7 +174,7 @@ describe('presupuestoAnualService · el ancla y el recorte (modelo temporal)', (
     // Mismo movimiento anterior al ancla (marzo): primero pendiente, luego punteado.
     const mov = (estado: string) => ({
       id: 501, accountId: 1, amount: -300, date: '2999-03-10',
-      unifiedStatus: estado, categoria: 'transporte', description: 'Gasto marzo',
+      unifiedStatus: estado, familia: 'transporte', description: 'Gasto marzo',
     });
     await db.add('movements', mov('pendiente') as any);
     const antes = await buildPresupuestoAnual(2999);
@@ -221,7 +231,7 @@ describe('presupuestoAnualService · reconciliación por grupo y mes (sección 1
     // Un ingreso conciliado de nómina en marzo · ningún otro grupo conciliado.
     await db.add('movements', {
       id: 601, accountId: 1, amount: 3000, date: '2999-03-10',
-      unifiedStatus: 'conciliado', categoria: 'nomina', description: 'Nómina marzo',
+      unifiedStatus: 'conciliado', familia: 'nomina', description: 'Nómina marzo',
     } as any);
     const p = await buildPresupuestoAnual(2999);
     const nomina = p.grupos.find((g) => g.key === 'nomina')!;

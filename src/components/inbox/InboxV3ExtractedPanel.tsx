@@ -4,10 +4,10 @@ import { confirmLink, CandidatoMatch } from '../../services/documentMatchingServ
 import { initDB, Property } from '../../services/db';
 import {
   classifyDocumentFromOCR,
+  withConcepto,
   assignDocumentToProperty,
   conceptosInmueblePorFamilia,
 } from '../../services/documentAutoClassifyService';
-import { conceptoPorId } from '../../services/conceptos/catalogoConceptos';
 import toast from 'react-hot-toast';
 
 interface InboxV3ExtractedPanelProps {
@@ -159,7 +159,9 @@ const ManualAssignmentForm: React.FC<{
     document?.metadata?.entityId ?? document?.metadata?.suggestedEntityId ?? '',
   );
   const [conceptoId, setConceptoId] = useState<string>(
-    document?.metadata?.concepto ?? classification?.conceptoId ?? '',
+    (document?.metadata?.familia
+      ? `${document.metadata.familia}${document.metadata.subtipo ? `:${document.metadata.subtipo}` : ''}`
+      : undefined) ?? classification?.conceptoId ?? '',
   );
   const [ejercicio, setEjercicio] = useState(classification?.ejercicio ?? new Date().getFullYear());
   const [assigning, setAssigning] = useState(false);
@@ -174,16 +176,8 @@ const ManualAssignmentForm: React.FC<{
     if (!document?.id || !classification) return;
     setAssigning(true);
     try {
-      // La clasificación del OCR, con el concepto que el usuario confirma/corrige.
-      const chosen = conceptoPorId(conceptoId);
-      const c = {
-        ...classification,
-        conceptoId,
-        concepto: chosen,
-        familia: chosen?.familia,
-        label: chosen?.label ?? classification.label,
-        ejercicio,
-      };
+      // La clasificación del OCR, con la familia/subtipo que el usuario confirma/corrige.
+      const c = { ...withConcepto(classification, conceptoId), ejercicio };
 
       // Vincula el documento al inmueble y materializa el gasto/mueble con su
       // casilla AEAT (o el mueble amortizable si es mobiliario).

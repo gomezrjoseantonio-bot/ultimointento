@@ -431,29 +431,10 @@ export async function puedeCrearCompromiso(
   // La hipoteca sigue sin poder crearse como compromiso (TipoCompromiso no la
   // incluye · la cuota la genera Financiación).
 
-  // 3. Si es inmueble, validar que no choque con `gastosInmueble` reales
-  //    Esta validación es laxa · los gastos reales viven en otro store y
-  //    el OPEX/compromiso es la previsión. Solo bloqueamos categorías
-  //    explícitamente personales.
-  if (nuevo.ambito === 'inmueble') {
-    const categoriasNoPermitidas: Array<typeof nuevo.categoria> = [
-      'ahorro.aporteFondo',
-      'ahorro.aportePension',
-      'ahorro.amortizacionExtra',
-      'ahorro.cuentaTarget',
-      'ahorro.cajaLiquida',
-      'obligaciones.irpfPagar',
-      'obligaciones.irpfFraccionamiento',
-      'obligaciones.m130',
-      'obligaciones.reta',
-    ];
-    if (nuevo.categoria && categoriasNoPermitidas.includes(nuevo.categoria)) {
-      return {
-        ok: false,
-        motivo: `Categoría ${nuevo.categoria} no aplica a ambito=inmueble`,
-      };
-    }
-  }
+  // 3. (E2.4.1c) Las categorías «personales por definición» del árbol viejo
+  //    (ahorro.*, obligaciones.*) ya no existen: la familia del catálogo único
+  //    vale en los dos ámbitos (el ámbito no agrupa las familias · DEFINITIVO
+  //    principio 5), así que aquí no hay nada que bloquear.
 
   return { ok: true };
 }
@@ -642,14 +623,11 @@ export function generarEventosDesdeCompromiso(
       accountId: cuentaDelGasto,
       paymentMethod: compromiso.metodoPago,
       status: 'predicted',
-      // V81 (TAREA CC · Bloque B.4): la bolsa 50/30/20 viaja al evento para poder
-      // agrupar el gasto real por necesidades/deseos/ahorro.
-      bolsaPresupuesto: compromiso.bolsaPresupuesto,
       ambito: compromiso.ambito,
       inmuebleId: compromiso.ambito === 'inmueble' ? compromiso.inmuebleId : undefined,
-      categoryLabel: compromiso.alias,
-      categoryKey: compromiso.categoria,
-      subtypeKey: compromiso.subtipo,
+      // La clasificación del compromiso viaja al previsto (eje 2 · catálogo único).
+      familia: compromiso.familia,
+      subtipo: compromiso.subtipo,
       providerName: compromiso.proveedor.nombre,
       providerNif: compromiso.proveedor.nif,
       counterparty: compromiso.conceptoBancario,
