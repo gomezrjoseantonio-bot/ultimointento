@@ -19,6 +19,19 @@ export interface BankProfile {
     thousand: string;
   };
   dateHints?: ('excel-serial' | 'dd/mm/yyyy' | 'dd-mm-yyyy' | 'yyyy-mm-dd')[];
+  /**
+   * E2.4.2 · PISTAS del perfil · documentan lo que trae cada banco. El lector
+   * de cabecera (`extractoHeaderService`) y el importador (`bankParser`) son
+   * genéricos: encuentran el IBAN, las series de Excel y las columnas de
+   * referencia sin mirar el perfil. Esto dice DÓNDE está cada cosa en ese
+   * banco para quien tenga que depurar un fichero nuevo.
+   */
+  /** Etiqueta de la fila de cabecera que lleva el IBAN («Cuenta:», «Número de cuenta:»). */
+  ibanHeader?: string[];
+  /** Columnas propias del banco que NO se leen (categorías inventadas por ING/Unicaja). */
+  ignoreColumns?: string[];
+  /** Columnas de identificador ADEMÁS de «referencia» (Sabadell «Referencia 2», ING «Comentario», Revolut «Type»). */
+  extraReference?: string[];
   sheetNameHint?: string;
   minScore: number;
   useCargoAbono?: boolean; // Flag to indicate if bank uses separate cargo/abono columns

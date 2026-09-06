@@ -1,6 +1,6 @@
 // ATLAS HOTFIX: Robust Bank Statement Parser - XLS/XLSX/CSV with header detection and fallback
 import { ParsedMovement, SheetInfo, HeaderDetectionResult, BankParseResult } from '../../../types/bankProfiles';
-import { columnaDeReferencia } from '../../../services/importador/columnaDeReferencia';
+import { columnaDeReferencia, columnasDeReferencia } from '../../../services/importador/columnaDeReferencia';
 import { bankProfilesService } from '../../../services/bankProfilesService';
 import { telemetry, qaChecklist } from '../../../services/telemetryService';
 import { parseEsNumber } from '../../../utils/numberUtils';
@@ -416,10 +416,17 @@ export class BankParserService {
 
     console.log(`CSV delimiter detected: "${bestDelimiter}" (score: ${maxScore})`);
     
-    return XLSX.read(text, { 
-      type: 'string', 
+    // E2.4.2 · `raw: true` · las celdas se quedan TAL CUAL las escribió el
+    // banco. Con la inferencia de tipos la librería leía «01/09/2026» como el 9
+    // de enero (m/d) y lo volvía a escribir «1/9/26», que solo salía bien por
+    // simetría; y «2026-08-28 10:15:00» (Revolut) se convertía en «8/28/26»,
+    // que el lector español rechazaba y la fila entera desaparecía. Los
+    // importes se leen igual de bien como texto (`parseEsNumber` entiende
+    // «-540.00», «1.500,00» y «1,000.00»).
+    return XLSX.read(text, {
+      type: 'string',
       FS: bestDelimiter,
-      raw: false // Enable type inference for better number parsing
+      raw: true,
     });
   }
 
@@ -567,6 +574,19 @@ export class BankParserService {
           );
           if (rescatada !== undefined) normalizedDetectedColumns.reference = rescatada;
         }
+        // E2.4.2 · el banco puede traer MÁS de una columna con identificador
+        // (Sabadell: «Referencia 1» = NIF del emisor, «Referencia 2» = CUPS o nº
+        // de contrato · ING: «Comentario» · Revolut: «Type»). La segunda y
+        // siguientes iban al vacío y con ellas el dato que identifica el piso.
+        // Se guardan aparte (`reference2`, `reference3`) y al leer la fila se
+        // juntan en `reference`, que es lo que el extractor E2.1 mira.
+        const extras = columnasDeReferencia(
+          normalizedRow,
+          Object.values(normalizedDetectedColumns),
+          (t) => this.normalizeText(t),
+        );
+        if (extras[0] !== undefined) normalizedDetectedColumns.reference2 = extras[0];
+        if (extras[1] !== undefined) normalizedDetectedColumns.reference3 = extras[1];
 
         return {
           headerRow: row,
@@ -719,7 +739,14 @@ export class BankParserService {
     const valueDateStr = columns.valueDate !== undefined ? rowData[columns.valueDate]?.trim() : undefined;
     const valueDate = valueDateStr ? this.parseSpanishDate(valueDateStr) : undefined;
     const balance = columns.balance !== undefined ? this.importeDe(rowData, numericRow, columns.balance) : undefined;
-    const reference = columns.reference !== undefined ? rowData[columns.reference]?.trim() : undefined;
+    // E2.4.2 · todas las columnas de referencia, juntas y sin vacíos. El
+    // separador « · » no aparece en un identificador, así que el extractor
+    // (E2.1) las lee como piezas distintas.
+    const referencias = [columns.reference, columns.reference2, columns.reference3]
+      .filter((c): c is number => c !== undefined)
+      .map((c) => rowData[c]?.trim())
+      .filter((v): v is string => !!v);
+    const reference = referencias.length > 0 ? referencias.join(' · ') : undefined;
     const counterparty = columns.counterparty !== undefined ? rowData[columns.counterparty]?.trim() : undefined;
     const currency = columns.currency !== undefined ? rowData[columns.currency]?.trim() : undefined;
     
@@ -761,9 +788,28 @@ export class BankParserService {
    */
   private parseSpanishDate(dateStr: string): Date | null {
     if (!dateStr) return null;
-    
+
+    // E2.4.2 · una SERIE de Excel («46265») · Unicaja exporta la fecha como
+    // número de días desde 1899-12-30 y la celda llega sin formato. Antes la
+    // fila entera caía a `sin_fecha` y el motor no veía nada de ese banco.
+    const serie = dateStr.trim();
+    if (/^\d{5}$/.test(serie)) {
+      const n = Number(serie);
+      // 1970-01-01 = 25569 · 2100-01-01 = 73051 · fuera de eso no es una fecha.
+      if (n >= 25569 && n <= 73051) {
+        const base = new Date(1899, 11, 30);
+        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
+        return d;
+      }
+      return null;
+    }
+
+    // E2.4.2 · una FECHA-HORA («2026-08-28 10:15:00» · Revolut) · solo cuenta el
+    // día. Sin esto la hora se pegaba a la fecha al limpiar y no casaba nada.
+    const soloFecha = serie.split(/[ T]/)[0] ?? serie;
+
     // Clean the date string
-    const cleaned = dateStr.trim().replace(/[^\d/\-.]/g, '');
+    const cleaned = soloFecha.replace(/[^\d/\-.]/g, '');
     
     // Try common Spanish formats
     const formats = [

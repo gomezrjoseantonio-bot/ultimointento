@@ -1,0 +1,190 @@
+// E2.4.2 · las diez reglas duras · cada una fija un bug real de 4.000 líneas.
+
+import { clasificarLinea, type ContextoClasificacion } from '../clasificarLinea';
+import { metodoDelConcepto } from '../metodoDelConcepto';
+import { tienePalabra } from '../palabras';
+import type { Movement } from '../../db';
+
+const ctx = (over: Partial<ContextoClasificacion> = {}): ContextoClasificacion => ({
+  cuentas: [
+    { id: 1, iban: 'ES6100490052632210412715', status: 'ACTIVE' },
+    { id: 2, iban: 'ES6021037003520030084437', status: 'ACTIVE' },
+  ],
+  tarjetas: [],
+  nombresTitular: ['Nombre Apellido Apellido'],
+  ...over,
+});
+
+const mov = (description: string, amount: number, over: Partial<Movement> = {}): Movement =>
+  ({ id: 1, accountId: 1, date: '2026-09-01', amount, description, naturaleza: amount >= 0 ? 'ingreso' : 'gasto', ambito: 'personal', ...over }) as Movement;
+
+describe('regla 1 · palabra ENTERA, nunca substring', () => {
+  it('«once» no está en «concepto» · «gas» no está en «gasto»', () => {
+    expect(tienePalabra('PAGO CONCEPTO ALGO', 'ONCE')).toBe(false);
+    expect(tienePalabra('CUPON ONCE SEMANAL', 'ONCE')).toBe(true);
+    expect(tienePalabra('GASTO VARIOS', 'GAS')).toBe(false);
+    expect(tienePalabra('GAS VISALIA', 'GAS')).toBe(true);
+    expect(tienePalabra('PILOTO AUTOMATICO', 'LOTO')).toBe(false);
+  });
+  it('tolera el recorte del banco a partir de cinco letras', () => {
+    expect(tienePalabra('ELECTRICIDAD IBERDROLA COMERCIALIZA', 'IBERDROLA COMERCIALIZACION')).toBe(true);
+  });
+  it('un concepto con «once» no se clasifica como la ONCE', () => {
+    const c = clasificarLinea(mov('PAGO CONCEPTO 123456 MATERIAL', -20), ctx());
+    expect(c.familia).toBeUndefined();
+  });
+});
+
+describe('regla 2 · el signo manda sobre la palabra', () => {
+  it('«ABONO POR DOMICILIACIÓN» en positivo es una bonificación, no un recibo', () => {
+    const c = clasificarLinea(mov('ABONO POR DOMICILIACIÓN DE RECIBOS', 19.46), ctx());
+    expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBe('otros_ingresos');
+  });
+  it('«TRANSFERENCIA CURENERGÍA» en positivo es la devolución de la comercializadora', () => {
+    const c = clasificarLinea(mov('TRANSFERENCIA CURENERGIA SAU', 31.2), ctx());
+    expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBe('otros_ingresos');
+    expect(c.motivos.join(' ')).toMatch(/devolución de un suministro/);
+  });
+  it('una regla aprendida que dice «gasto» sobre un abono no se aplica', () => {
+    const c = clasificarLinea(
+      mov('BIZUM DE ALGUIEN', 50),
+      ctx({ sugerencias: [{ via: 'learning_rule', confidence: 90, description: '', action: { kind: 'mark_personal_expense', familia: 'supermercado' } }] }),
+    );
+    expect(c.familia).toBeUndefined();
+    expect(c.naturaleza).toBe('ingreso');
+  });
+});
+
+describe('regla 3 · concepto explícito gana sobre nombre propio · nómina yo→yo', () => {
+  it('«Transferencia a favor de [yo] concepto nómina» es un traspaso, no un ingreso', () => {
+    const c = clasificarLinea(mov('Transferencia A Favor De Nombre Apellido Apellido Concepto Nomina', -800), ctx());
+    expect(c.naturaleza).toBe('movimiento_interno');
+    expect(c.familia).toBe('traspaso');
+    expect(c.sentido).toBe('sale');
+  });
+  it('la nómina de la empresa sigue siendo nómina', () => {
+    const c = clasificarLinea(mov('Transferencia De Empresa Ejemplo Sa, Concepto Nomina', 3928), ctx());
+    expect(c).toMatchObject({ naturaleza: 'ingreso', familia: 'nomina', metodo: 'transferencia' });
+    expect(c.origen.familia).toBe('concepto');
+  });
+});
+
+describe('regla 4 · el método nunca es «otro» si el banco da señal', () => {
+  it.each([
+    ['Liquidacion Periodica Prestamo 0049 0052 143 0005465', 'domiciliacion'],
+    ['PRESTAMOS ADEUDO CUOTA N.8078716546', 'domiciliacion'],
+    ['LIQUIDACION DE LAS TARJETAS DE CREDITO', 'domiciliacion'],
+    ['PRESTAMOS ABONO DISPOSICIÓN N.8078782349', 'transferencia'],
+    ['Recibo Segurcaixa Adeslas Nº Recibo 07085234611', 'domiciliacion'],
+    ['Bizum A Favor De Persona Ejemplo Uno', 'bizum'],
+    ['Pago Movil En Mercadona, Oviedo, Tarj. :*9623', 'tarjeta'],
+    ['Emision De Cheque Bancario N.  A0176477', 'cheque'],
+    ['RETIRADA EFECTIVO CAJERO 1234', 'efectivo'],
+    ['REMUN. MES CTA ONLINE', 'cargo_abono_banco'],
+    ['Transferencia recibida de Feebbo Solutions', 'transferencia'],
+  ])('%s → %s', (texto, metodo) => {
+    expect(metodoDelConcepto(texto)).toBe(metodo);
+  });
+  it('Revolut lo dice en la columna Type · llega como referencia', () => {
+    expect(metodoDelConcepto('Botemania', 'CARD_PAYMENT')).toBe('tarjeta');
+    expect(metodoDelConcepto('Recarga de *4437', 'TOPUP')).toBe('transferencia');
+    expect(metodoDelConcepto('To Binance', 'TRANSFER')).toBe('transferencia');
+  });
+  it('sin señal no se inventa', () => {
+    expect(metodoDelConcepto('Botemania')).toBeUndefined();
+  });
+});
+
+describe('regla 5 · «préstamo» son tres cosas', () => {
+  it('la cuota · gasto · prestamo_hipoteca · cargo entero', () => {
+    const c = clasificarLinea(mov('PRESTAMOS ADEUDO CUOTA N.8078716546', -241.6), ctx());
+    expect(c).toMatchObject({ naturaleza: 'gasto', familia: 'prestamo_hipoteca', metodo: 'domiciliacion' });
+  });
+  it('la liquidación de la tarjeta NO es préstamo', () => {
+    const c = clasificarLinea(mov('LIQUIDACION DE LAS TARJETAS DE CREDITO', -320), ctx());
+    expect(c.familia).toBeUndefined();
+    expect(c.metodo).toBe('domiciliacion');
+  });
+  it('la disposición · capital que entra · movimiento interno', () => {
+    const c = clasificarLinea(mov('PRESTAMOS ABONO DISPOSICIÓN N.8078782349', 16500), ctx());
+    expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'disposicion_prestamo', sentido: 'entra' });
+  });
+  it('la hipoteca de ING', () => {
+    const c = clasificarLinea(mov('Cargo cuota de Hipoteca ING Direct', -540), ctx());
+    expect(c.familia).toBe('prestamo_hipoteca');
+  });
+});
+
+describe('regla 6 · el agregador es opaco', () => {
+  it('«Compra Revolut**0940*» con la tarjeta 0940 registrada es una recarga propia · traspaso', () => {
+    const c = clasificarLinea(
+      mov('Compra Revolut**0940*, Dublin, Tarjeta 5489010341469623, Comision 0,00', -30),
+      ctx({ tarjetas: [{ id: 5, ultimosCuatro: '0940', activa: true }] }),
+    );
+    expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_tarjeta', sentido: 'sale' });
+    expect(c.origen.familia).toBe('identificador');
+  });
+  it('sin la tarjeta registrada no se inventa · gasto por tarjeta sin familia', () => {
+    const c = clasificarLinea(mov('Pago en Revolut**0940*', -30), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBeUndefined();
+    expect(c.metodo).toBe('tarjeta');
+  });
+  it('desde Revolut · «Recarga de *4437» · los cuatro últimos de un IBAN propio · traspaso que entra', () => {
+    const c = clasificarLinea(mov('Recarga de *4437', 30, { accountId: 9, reference: 'TOPUP' }), ctx());
+    expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', sentido: 'entra' });
+  });
+  it('el bazar es «compra online» sin saber qué se compró', () => {
+    const c = clasificarLinea(mov('COMPRA AMAZON EU SARL', -42), ctx());
+    expect(c.familia).toBe('compra_online');
+    expect(c.subtipo).toBeUndefined();
+  });
+});
+
+describe('regla 7 · «Compra Bizum [comercio]» ≠ «Bizum a favor de [persona]»', () => {
+  it('el comercio manda · Renfe es transporte', () => {
+    const c = clasificarLinea(mov('Compra Bizum Renfe Viajeros', -45.6), ctx());
+    expect(c).toMatchObject({ familia: 'transporte', subtipo: 'transporte_publico', metodo: 'bizum' });
+  });
+  it('a una persona sin concepto · personal por defecto, sin familia', () => {
+    const c = clasificarLinea(mov('Bizum A Favor De Persona Ejemplo Uno Concepto Sin Concepto', -15), ctx());
+    expect(c.familia).toBeUndefined();
+    expect(c.metodo).toBe('bizum');
+    expect(c.ambito).toBe('personal');
+    expect(c.origen.ambito).toBe('defecto');
+  });
+});
+
+describe('regla 8 · ATLAS no inventa', () => {
+  it('«Apple» a secas es un gasto por tarjeta sin familia', () => {
+    const c = clasificarLinea(mov('Apple', -9.99, { reference: 'CARD_PAYMENT' }), ctx());
+    expect(c.familia).toBeUndefined();
+    expect(c.metodo).toBe('tarjeta');
+  });
+  it('«Ahorros Septiembre» no se adivina como traspaso ni como gasto de nada', () => {
+    const c = clasificarLinea(mov('Ahorros Septiembre', -500), ctx());
+    expect(c.familia).toBeUndefined();
+    expect(c.naturaleza).toBe('gasto');
+  });
+});
+
+describe('regla 10 · lo interno y lo del piso', () => {
+  it('la devolución de la fianza es movimiento interno', () => {
+    const c = clasificarLinea(mov('Devolución fianza HAB2 ACV32', -380), ctx());
+    expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'fianza', subtipo: 'devuelve', sentido: 'sale' });
+  });
+  it('honorarios de la venta · gestión', () => {
+    const c = clasificarLinea(mov('HONORARIOS INTERMEDIACION VTA', -2117.5), ctx());
+    expect(c).toMatchObject({ familia: 'gestion', subtipo: 'otros' });
+  });
+  it('la remuneración de la cuenta es rendimiento · interés', () => {
+    const c = clasificarLinea(mov('REMUN. MES CTA ONLINE', 10.21), ctx());
+    expect(c).toMatchObject({ naturaleza: 'ingreso', familia: 'rendimiento', subtipo: 'interes' });
+  });
+  it('una transferencia a un exchange es aportación a inversión', () => {
+    const c = clasificarLinea(mov('To Binance', -200, { reference: 'TRANSFER' }), ctx());
+    expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'aportacion', subtipo: 'inversion' });
+  });
+});

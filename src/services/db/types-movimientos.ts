@@ -3,6 +3,7 @@
 // importan del barril ./types (import de tipos · ciclo permitido en TS).
 
 import type { ArrastresEjercicio, DeclaracionInmueble, DeclaracionIRPF, OrigenDeclaracion } from '../../types/fiscal';
+import type { OrigenPorEje } from '../clasificacion/tipos';
 // Eje 3 del catálogo único (E2.4.1) · cómo se pagó o se cobró, NO qué se pagó.
 import type { Ambito, FamiliaId, MetodoPago, Naturaleza, Sentido } from '../catalogo/catalogoUnico';
 
@@ -132,6 +133,13 @@ export interface Movement {
   // V1.1: Treasury extension fields for auto-reclassification and learning
   ambito: Ambito; // Eje 4 del catálogo único · minúsculas (default 'personal')
   inmuebleId?: string; // Required if ambito='inmueble'
+  /**
+   * E2.4.2 · de dónde salió cada eje cuando lo puso el MOTOR al nacer el
+   * movimiento desde su línea (aprendida · identificador · concepto ·
+   * recurrencia · defecto). Un gesto del usuario después (ficha, regla) no
+   * lo borra: dice cómo nació. Opcional · sin índice · sin bump.
+   */
+  clasificacionOrigen?: OrigenPorEje;
   /** Denormalized alias del inmueble vinculado (para display sin join). */
   inmuebleAlias?: string;
   /**

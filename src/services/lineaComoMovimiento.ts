@@ -71,6 +71,23 @@ export function movementDesdeLinea(linea: LineaExtractoPersistida): Movement {
 export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Movement, 'id'> {
   const description = linea.conceptoLiteral;
   const amount = linea.importe;
+  // E2.4.2 · lo que el motor dejó en la línea (los 4 ejes con su origen) nace
+  // con el movimiento. Un cuadre, un reconocimiento o la ficha lo pisan
+  // después si saben más; lo que no pisen, se queda. Una clasificación
+  // parcial (sin familia, o sin piso) es válida y se guarda tal cual.
+  const c = linea.clasificacion;
+  const delMotor: Partial<Movement> = c
+    ? {
+        naturaleza: c.naturaleza,
+        ...(c.familia ? { familia: c.familia } : {}),
+        ...(c.subtipo ? { subtipo: c.subtipo } : {}),
+        ...(c.metodo ? { paymentMethod: c.metodo } : {}),
+        ...(c.ambito === 'inmueble' && c.inmuebleId != null
+          ? { ambito: 'inmueble' as const, inmuebleId: String(c.inmuebleId) }
+          : { ambito: 'personal' as const }),
+        clasificacionOrigen: c.origen,
+      }
+    : {};
   return {
     accountId: linea.accountId,
     date: linea.fechaOperacion,
@@ -98,6 +115,7 @@ export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Mo
     importBatch: linea.importBatchId,
     createdAt: linea.createdAt,
     updatedAt: linea.updatedAt,
+    ...delMotor,
   };
 }
 

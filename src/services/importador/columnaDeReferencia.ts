@@ -35,6 +35,12 @@
 export const ALIAS_REFERENCIA: readonly string[] = [
   'referencia',
   'ref',
+  // E2.4.2 · Sabadell numera las dos suyas · la 1 lleva el NIF del emisor y
+  // la 2 el CUPS o el nº de contrato (lo que dice de qué piso es el recibo).
+  'referencia 1',
+  'referencia 2',
+  'ref 1',
+  'ref 2',
   'numero operacion',
   'número operación',
   'num operacion',
@@ -49,6 +55,13 @@ export const ALIAS_REFERENCIA: readonly string[] = [
   'movimiento',
   'mas datos',
   'más datos',
+  // E2.4.2 · ING escribe en «Comentario» lo que el usuario anotó al pagar
+  // («panelista») y Revolut dice en «Type» si fue una recarga (TOPUP), un
+  // pago con tarjeta o una transferencia · señal de método y de traspaso.
+  'comentario',
+  'comentarios',
+  'type',
+  'tipo',
 ];
 
 /**
@@ -75,4 +88,28 @@ export function columnaDeReferencia(
     }
   }
   return undefined;
+}
+
+/**
+ * E2.4.2 · TODAS las demás columnas con identificador, en el orden de
+ * `ALIAS_REFERENCIA`, sin las ya ocupadas. Para los bancos que traen dos
+ * (Sabadell «Referencia 1» + «Referencia 2») o un comentario aparte (ING).
+ * Vacío si no hay ninguna más.
+ */
+export function columnasDeReferencia(
+  cabecerasNormalizadas: readonly string[],
+  yaOcupadas: readonly number[],
+  normalizar: (s: string) => string,
+): number[] {
+  const ocupadas = new Set(yaOcupadas);
+  const salida: number[] = [];
+  for (const alias of ALIAS_REFERENCIA) {
+    const buscado = normalizar(alias);
+    for (let i = 0; i < cabecerasNormalizadas.length; i++) {
+      if (ocupadas.has(i) || salida.includes(i)) continue;
+      if (cabecerasNormalizadas[i] !== buscado) continue;
+      salida.push(i);
+    }
+  }
+  return salida;
 }

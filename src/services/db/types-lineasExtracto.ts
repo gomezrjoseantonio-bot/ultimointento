@@ -20,6 +20,8 @@
 // un pago que junta fianza + dos meses): `movementIds` es plural y la suma de los
 // importes de esos movimientos debe ser igual a `importe`. Vacío si aún no ha
 // generado ninguno. La regla no aplica a una línea con `descarte`.
+import type { ClasificacionLinea } from '../clasificacion/tipos';
+
 export type EstadoLineaExtracto = 'sin_procesar' | 'pendiente' | 'resuelta';
 export type ComoSeResolvioLinea = 'motor' | 'confirmada' | 'a_mano';
 export type AtencionLineaExtracto = 'recordar' | 'silenciada';
@@ -101,6 +103,15 @@ export interface LineaExtractoPersistida {
   descarte?: DescarteLineaExtracto;
   /** E1.3 · lo que el usuario decidió sobre esta línea en la sesión · para retomarla. */
   decision?: DecisionDeLineaPersistida;
+  /**
+   * E2.4.2 · lo que el MOTOR sabe de esta línea · los 4 ejes que pudo rellenar
+   * con certeza, cada uno con su origen (aprendida · identificador · concepto ·
+   * recurrencia · defecto). Se escribe al analizar el lote (importar o retomar)
+   * y lo hereda el movimiento cuando nace (`movementNuevoDesdeLinea`). Una
+   * clasificación PARCIAL (naturaleza + método + familia, sin piso) es válida
+   * y se guarda tal cual. No es una decisión del usuario: `decision` manda.
+   */
+  clasificacion?: ClasificacionLinea;
 
   // ── Enlace ────────────────────────────────────────────────────────────────
   /** Movimientos nacidos de esta línea · PLURAL · vacío si aún ninguno. */

@@ -31,5 +31,18 @@ export function contieneConcepto(textoBancoNormalizado: string, concepto: string
     .split(' ')
     .filter((p) => p.length > 2);
   if (palabras.length === 0) return false;
-  return palabras.every((p) => textoBancoNormalizado.includes(p));
+  // E2.4.2 · regla dura 1 · por PALABRA ENTERA, nunca substring: «ONCE» no
+  // está en «CONCEPTO» ni «GAS» en «GASTO». La única tolerancia es el recorte
+  // del banco (cinco letras o más y una es prefijo de la otra).
+  const delBanco = textoBancoNormalizado.split(' ').filter((p) => p.length > 0);
+  return palabras.every((p) => delBanco.some((t) => mismaPalabraEntera(t, p)));
+}
+
+const MINIMO_PARA_PREFIJO = 5;
+
+/** Igual, o un recorte del banco («COMERCIALIZA» ↔ «COMERCIALIZACION»). */
+export function mismaPalabraEntera(delBanco: string, buscada: string): boolean {
+  if (delBanco === buscada) return true;
+  if (delBanco.length < MINIMO_PARA_PREFIJO || buscada.length < MINIMO_PARA_PREFIJO) return false;
+  return delBanco.startsWith(buscada) || buscada.startsWith(delBanco);
 }
