@@ -45,7 +45,6 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
         amount: -200,
         source: 'import',
         naturaleza: 'movimiento_interno', familia: 'traspaso',
-        naturaleza: 'movimiento_interno', familia: 'traspaso',
         transferMetadata: { targetAccountId: 9, pairMovementId: 6 },
       },
       // Pata de ENTRADA · la creó convertirEnTraspaso, manual, aún sin extracto.
@@ -55,7 +54,6 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
         date: '2026-08-18',
         amount: 200,
         source: 'manual',
-        naturaleza: 'movimiento_interno', familia: 'traspaso',
         naturaleza: 'movimiento_interno', familia: 'traspaso',
         categoryLabel: 'Traspaso · entrada',
         category: { tipo: 'Traspaso' },
@@ -77,7 +75,6 @@ describe('reconciliar una pata de traspaso con su extracto (§4.4 · D1)', () =>
       unifiedStatus: 'conciliado',
       movementState: 'Conciliado',
       statusConciliacion: 'match_automatico',
-      naturaleza: 'movimiento_interno', familia: 'traspaso',
       naturaleza: 'movimiento_interno', familia: 'traspaso',
       transferMetadata: { targetAccountId: 1 },
       amount: 200,

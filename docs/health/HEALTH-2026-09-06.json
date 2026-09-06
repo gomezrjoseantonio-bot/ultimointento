@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-09-06",
-  "generatedAt": "2026-09-06T05:35:44.033Z",
+  "generatedAt": "2026-09-06T05:51:15.743Z",
   "git": {
     "branch": "claude/audit-categories-types-scopes-p5966s",
-    "head": "361518e"
+    "head": "6059a40"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -264,7 +264,7 @@
         "3248 · src/modules/financiacion/wizards/PrestamoPageV2.tsx",
         "2183 · src/services/declaracionDistributorService.ts",
         "1956 · src/modules/mi-plan/wizards/WizardNuevoFondo.module.css",
-        "1858 · src/services/dashboardService.ts",
+        "1859 · src/services/dashboardService.ts",
         "1756 · src/services/irpfCalculationService.ts",
         "1557 · src/services/aeatParserService.ts",
         "1516 · src/App.tsx",

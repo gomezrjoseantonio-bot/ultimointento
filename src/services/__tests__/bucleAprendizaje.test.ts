@@ -428,8 +428,8 @@ describe('E2.2 · B · la regla con confianza RESUELVE al Guardar · nace el mov
     expect(movs).toHaveLength(2);
     const salida = movs.find((m) => m.accountId === CUENTA)!;
     const entrada = movs.find((m) => m.accountId === EFECTIVO)!;
-    expect(salida).toMatchObject({ amount: -200, naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso' });
-    expect(entrada).toMatchObject({ amount: 200, naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso' });
+    expect(salida).toMatchObject({ amount: -200, naturaleza: 'movimiento_interno', familia: 'traspaso' });
+    expect(entrada).toMatchObject({ amount: 200, naturaleza: 'movimiento_interno', familia: 'traspaso' });
     // D2 · la línea solo enlaza SU pata.
     const l = await linea(lineaId);
     expect(l.movementIds).toEqual([salida.id]);

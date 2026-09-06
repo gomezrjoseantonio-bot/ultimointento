@@ -234,8 +234,8 @@ export const getTreasuryProjections = async (
     }
     
     const accountEvents = filteredEvents.filter(e => e.accountId === account.id);
-    const inflow = accountEvents.filter(e => sentidoDe(e) === 'entra').reduce((sum, e) => sum + e.amount, 0);
-    const outflow = accountEvents.filter(e => sentidoDe(e) === 'sale').reduce((sum, e) => sum + e.amount, 0);
+    const inflow = accountEvents.filter(e => sentidoDe(e) === 'entra').reduce((sum, e) => sum + Math.abs(e.amount), 0);
+    const outflow = accountEvents.filter(e => sentidoDe(e) === 'sale').reduce((sum, e) => sum + Math.abs(e.amount), 0);
     
     accountBalances.set(account.id!, {
       current: account.balance ?? 0,
@@ -243,8 +243,8 @@ export const getTreasuryProjections = async (
     });
   }
 
-  const totalInflow = filteredEvents.filter(e => sentidoDe(e) === 'entra').reduce((sum, e) => sum + e.amount, 0);
-  const totalOutflow = filteredEvents.filter(e => sentidoDe(e) === 'sale').reduce((sum, e) => sum + e.amount, 0);
+  const totalInflow = filteredEvents.filter(e => sentidoDe(e) === 'entra').reduce((sum, e) => sum + Math.abs(e.amount), 0);
+  const totalOutflow = filteredEvents.filter(e => sentidoDe(e) === 'sale').reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
   return {
     events: filteredEvents,

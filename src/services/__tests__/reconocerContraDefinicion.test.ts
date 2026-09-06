@@ -272,9 +272,9 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
     const movs = (await todos<Movement>('movements')).sort((a, b) => (a.id as number) - (b.id as number));
     expect(movs).toHaveLength(2);
     const [salida, entrada] = movs;
-    expect(salida).toMatchObject({ accountId: SANTANDER, amount: -1500, naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'import', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Traspaso a Bankinter' });
+    expect(salida).toMatchObject({ accountId: SANTANDER, amount: -1500, naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'import', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico', descripcionPrevision: 'Traspaso a Bankinter' });
     expect(salida.transferMetadata).toEqual({ targetAccountId: BANKINTER, pairMovementId: entrada.id });
-    expect(entrada).toMatchObject({ accountId: BANKINTER, amount: 1500, naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'manual' });
+    expect(entrada).toMatchObject({ accountId: BANKINTER, amount: 1500, naturaleza: 'movimiento_interno', familia: 'traspaso', source: 'manual' });
     expect(await linea(id)).toMatchObject({ estado: 'resuelta', movementIds: [salida.id] });
     // Enseña la regla de TRASPASO con su cuenta (E2.2) · y solo esa, no una de «clasificar».
     const reglas = await todos<MovementLearningRule>('movementLearningRules');
@@ -288,7 +288,7 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
 
     const movs = await todos<Movement>('movements');
     expect(movs).toHaveLength(1);
-    expect(movs[0]).toMatchObject({ amount: 2000, naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso', unifiedStatus: 'conciliado', descripcionPrevision: 'Traspaso entre tus cuentas' });
+    expect(movs[0]).toMatchObject({ amount: 2000, naturaleza: 'movimiento_interno', familia: 'traspaso', unifiedStatus: 'conciliado', descripcionPrevision: 'Traspaso entre tus cuentas' });
     expect(movs[0].transferMetadata).toBeUndefined();
     expect(await todos('movementLearningRules')).toEqual([]);
   });
@@ -314,9 +314,9 @@ describe('E2.4 · traspaso propio · fuera de gasto e ingreso, con la pata que c
     expect(movs).toHaveLength(2);
     const salida = movs.find((m) => m.accountId === SANTANDER)!;
     const entrada = movs.find((m) => m.id === 501)!;
-    expect(salida).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso', descripcionPrevision: 'Traspaso a Bankinter' });
+    expect(salida).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', descripcionPrevision: 'Traspaso a Bankinter' });
     expect(salida.transferMetadata).toEqual({ targetAccountId: BANKINTER, pairMovementId: 501 });
-    expect(entrada).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', naturaleza: 'movimiento_interno', familia: 'traspaso', amount: 1500 });
+    expect(entrada).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', amount: 1500 });
     expect(entrada.transferMetadata).toEqual({ targetAccountId: SANTANDER, pairMovementId: salida.id });
   });
 
