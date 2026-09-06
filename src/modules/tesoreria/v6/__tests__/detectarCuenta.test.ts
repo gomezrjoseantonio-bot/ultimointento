@@ -70,3 +70,73 @@ describe('cruzar con las cuentas del usuario', () => {
     expect(d.estado).toBe('detectada');
   });
 });
+
+// ─── E2.4.2 · Paso 0 · la cabecera se lee también de un Excel ────────────────
+//
+// Antes se leían los primeros 64 KB como texto: en un XLSX (un ZIP) el IBAN no
+// aparecía y todo lo que no fuera CSV caía al selector. Estos tests fijan que
+// los cinco bancos del fixture identifican su cuenta, en CSV y en XLSX.
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as XLSX from 'xlsx';
+import { detectarCuenta } from '../detectarCuenta';
+
+const FIXTURES = path.resolve(__dirname, '../../../../features/inbox/importers/__fixtures__');
+
+const IBANS: Record<string, string> = {
+  santander: 'ES6100490052632210412715',
+  sabadell: 'ES4700812706150003239635',
+  unicaja: 'ES6021037003520030084437',
+  ing: 'ES7214650100991713720331',
+};
+
+const cuentasDeJose = () =>
+  Object.entries(IBANS).map(([alias, iban], i) => cuenta(i + 1, alias, iban));
+
+const ficheroCsv = (banco: string): File =>
+  new File([fs.readFileSync(path.join(FIXTURES, `${banco}-fixture.csv`))], `${banco}.csv`, { type: 'text/csv' });
+
+/** El mismo contenido, como libro Excel · lo que exportan Sabadell, Unicaja e ING. */
+const ficheroXlsx = (banco: string): File => {
+  const texto = fs.readFileSync(path.join(FIXTURES, `${banco}-fixture.csv`), 'utf8');
+  const filas = texto.split(/\r?\n/).map((l) => l.split(','));
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  return new File([buffer], `${banco}.xlsx`, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+};
+
+describe('E2.4.2 · Paso 0 · cada fichero identifica su cuenta por el IBAN de cabecera', () => {
+  const cuentas = cuentasDeJose();
+
+  it.each(['santander', 'sabadell', 'unicaja', 'ing'])('%s · CSV', async (banco) => {
+    const d = await detectarCuenta(ficheroCsv(banco), cuentas);
+    expect(d.estado).toBe('detectada');
+    if (d.estado === 'detectada') expect(d.cuenta.alias).toBe(banco);
+  });
+
+  it.each(['sabadell', 'unicaja', 'ing'])('%s · XLSX (antes: sin-iban)', async (banco) => {
+    const d = await detectarCuenta(ficheroXlsx(banco), cuentas);
+    expect(d.estado).toBe('detectada');
+    if (d.estado === 'detectada') expect(d.cuenta.alias).toBe(banco);
+  });
+
+  it('Revolut · el CSV no trae IBAN (la cuenta es la tarjeta) · pide elegir, no adivina', async () => {
+    const d = await detectarCuenta(ficheroCsv('revolut'), cuentas);
+    expect(d.estado).toBe('sin-iban');
+  });
+
+  it('IBAN que no es de ninguna cuenta · viaja con banco y titular de la cabecera para poder crearla', async () => {
+    const d = await detectarCuenta(ficheroXlsx('sabadell'), [cuenta(9, 'otra', IBANS.santander)]);
+    expect(d.estado).toBe('iban-desconocido');
+    if (d.estado === 'iban-desconocido') {
+      expect(d.iban).toBe(IBANS.sabadell);
+      expect(d.cabecera?.banco).toMatch(/Sabadell/);
+      expect(d.cabecera?.titular).toBe('NOMBRE*APELLIDO APELLIDO');
+    }
+  });
+});

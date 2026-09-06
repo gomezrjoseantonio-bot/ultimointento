@@ -27,6 +27,13 @@ import {
   PROFILE_CONFIDENCE_THRESHOLD,
 } from './deteccionDeBanco';
 import { bankProfilesService } from './bankProfilesService';
+import {
+  clasificarLineas,
+  contextoDelLote,
+  guardarClasificacionEnLineas,
+  type BaseParaClasificar,
+} from './clasificacion/clasificarLote';
+import type { ClasificacionLinea } from './clasificacion/tipos';
 import { matchLineas, MatchOptions } from './movementMatchingService';
 import { suggestForLineas } from './movementSuggestionService';
 import { reconocerDeterministasDeLineas } from './deterministas/matcheoDeterminista';
@@ -82,6 +89,14 @@ export interface OrchestratorResult {
    * que casar. Ese es el motivo real de que se reconocieran dos de cien.
    */
   reconocido: LoQueSeReconocePorLinea;
+  /**
+   * E2.4.2 · lo que el MOTOR sabe de cada línea · los 4 ejes con su origen
+   * (`clasificarLinea`), en el orden aprendidas → identificador → concepto →
+   * recurrencia → defecto. Consume las sugerencias y lo reconocido; no los
+   * sustituye. Se escribe también en la línea (`lineasExtracto.clasificacion`)
+   * para que el movimiento nazca con ello.
+   */
+  clasificacion: Map<number, ClasificacionLinea>;
   bankProfileUsed?: string;
   warnings: string[];
 }
@@ -310,7 +325,7 @@ async function procesarLoteParseado(
 export async function analizarLineas(
   lineas: LineaExtractoPersistida[],
   matchOptions?: MatchOptions
-): Promise<Pick<OrchestratorResult, 'matchResult' | 'suggestions' | 'reconocido'>> {
+): Promise<Pick<OrchestratorResult, 'matchResult' | 'suggestions' | 'reconocido' | 'clasificacion'>> {
   const entran = lineas.filter(entraAlMatcheo);
   const matchResult = await matchLineas(entran, matchOptions);
   const sinMatch = new Set(matchResult.sinMatch);
@@ -324,7 +339,24 @@ export async function analizarLineas(
       return { origenes: new Map(), atribuciones: new Map() };
     }
   })();
-  return { matchResult, suggestions, reconocido };
+  // E2.4.2 · el motor · sobre TODAS las que entran (también las que casaron
+  // con una previsión: el cuadre pisará lo que sepa mejor al nacer el
+  // movimiento, y el resto de ejes —método, por ejemplo— los pone esto). Es la
+  // única escritura de este análisis, y solo toca su propio campo.
+  const clasificacion = await (async (): Promise<Map<number, ClasificacionLinea>> => {
+    try {
+      const db = await initDB();
+      const base = db as unknown as BaseParaClasificar;
+      const ctx = await contextoDelLote(base);
+      const c = clasificarLineas(entran, { suggestions, reconocido }, ctx);
+      await guardarClasificacionEnLineas(base, c, new Date().toISOString());
+      return c;
+    } catch (err) {
+      console.warn('[orchestrator] no se pudo clasificar el lote', err);
+      return new Map();
+    }
+  })();
+  return { matchResult, suggestions, reconocido, clasificacion };
 }
 
 // Reads the destination account from IndexedDB and infers its bank-profile key

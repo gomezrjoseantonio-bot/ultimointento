@@ -1,0 +1,14 @@
+Cuenta,ES6100490052632210412715
+Titular,NOMBRE APELLIDO APELLIDO
+
+Fecha Operacion,Fecha Valor,Concepto,Importe,Saldo
+01/09/2026,01/09/2026,Liquidacion Periodica Prestamo 0049 0052 143 0005465,-993.43,2635.40
+01/09/2026,01/09/2026,Transferencia A Favor De Nombre Apellido Apellido Concepto Nomina,-800.00,3628.83
+31/08/2026,31/08/2026,Bizum A Favor De Persona Ejemplo Uno Concepto Sin Concepto,-15.00,4428.83
+30/08/2026,30/08/2026,Recibo Segurcaixa Adeslas Nº Recibo 07085234611,-3.07,4443.83
+28/08/2026,28/08/2026,"Compra Revolut**0940*, Dublin, Tarjeta 5489010341469623, Comision 0,00",-30.00,4446.90
+27/08/2026,27/08/2026,Compra Bizum Renfe Viajeros,-45.60,4476.90
+25/08/2026,25/08/2026,"Transferencia De Empresa Ejemplo Sa, Concepto Nomina",3928.00,4522.50
+20/08/2026,20/08/2026,"Pago Movil En Mercadona, Oviedo, Tarj. :*9623",-52.30,594.50
+15/08/2026,15/08/2026,Recibo Comunidad Propietarios Direccion Ejemplo 32,-102.00,646.80
+10/08/2026,10/08/2026,Emision De Cheque Bancario N.  A0176477,-5240.92,748.80

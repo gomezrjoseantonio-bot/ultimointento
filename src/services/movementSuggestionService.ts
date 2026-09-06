@@ -401,7 +401,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   {
     match: (d, amount) =>
       amount < 0 &&
-      /(IBERDROLA|ENDESA|NATURGY|REPSOL|CEPSA|TOTAL\s+ENERGIES|VODAFONE|MOVISTAR|ORANGE|YOIGO|MASMOVIL|JAZZTEL)/i.test(
+      /\b(IBERDROLA|ENDESA|NATURGY|REPSOL|CEPSA|TOTAL\s+ENERGIES|VODAFONE|MOVISTAR|ORANGE|YOIGO|MASMOVIL|JAZZTEL)\b/i.test(
         d
       ),
     build: () => ({
@@ -418,7 +418,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
   // Hipoteca / préstamo
   {
-    match: (d, amount) => amount < 0 && /(CUOTA\s+PRESTAMO|HIPOTECA|RECIBO\s+BANCO)/i.test(d),
+    match: (d, amount) => amount < 0 && /\b(CUOTA\s+PRESTAMO|HIPOTECA|RECIBO\s+BANCO)\b/i.test(d),
     build: () => ({
       confidence: 65,
       description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta',
@@ -450,7 +450,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   },
   // Comunidad
   {
-    match: (d, amount) => amount < 0 && /(COMUNIDAD|ADMIN\s+FINCAS|FINCAS)/i.test(d),
+    match: (d, amount) => amount < 0 && /\b(COMUNIDAD|ADMIN\s+FINCAS|FINCAS)\b/i.test(d),
     build: () => ({
       confidence: 60,
       description: 'Posible cuota de comunidad de propietarios',
@@ -472,7 +472,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   // contraparte lo casaba con su contrato, subiendo la confianza a 60. El nombre
   // coincidía porque Aroa es quien COBRA los 80 €.
   {
-    match: (d, amount) => amount > 0 && /(BIZUM|TRANSFERENCIA\s+RECIBIDA)/i.test(d),
+    match: (d, amount) => amount > 0 && /\b(BIZUM|TRANSFERENCIA\s+RECIBIDA)\b/i.test(d),
     build: (movement, contratos) => {
       // A qué contrato · sin esto el evento nacía sin `sourceId` ni
       // `contratoId`, huérfano: ni contaba para el estado de cobro del
@@ -513,7 +513,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   // que NO es un cobro. Decírselo al usuario le ahorra preguntarse por qué ATLAS
   // no ha reconocido un Bizum que ve clarísimo.
   {
-    match: (d, amount) => amount < 0 && /BIZUM/i.test(d),
+    match: (d, amount) => amount < 0 && /\bBIZUM\b/i.test(d),
     build: () => ({
       confidence: 30,
       description: 'Bizum que sale de tu cuenta · lo pagas tú, así que no es el cobro de ninguna renta',
@@ -523,7 +523,7 @@ const HEURISTIC_RULES: HeuristicRule[] = [
   // Compras Amazon / AliExpress (only when amount is negative ⇒ gasto personal)
   {
     match: (d, amount) =>
-      amount < 0 && /(AMAZON|ALIEXPRESS|ALI\s+EXPRESS)/i.test(d),
+      amount < 0 && /\b(AMAZON|ALIEXPRESS|ALI\s+EXPRESS)\b/i.test(d),
     build: () => ({
       confidence: 50,
       description: 'Compra online (Amazon / AliExpress) · proponer marcar como gasto personal',

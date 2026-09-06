@@ -158,10 +158,39 @@ function splitDelimited(line: string): string[] {
   return line.split(delim).map((c) => c.replace(/^"|"$/g, '').trim());
 }
 
-async function readGrid(file: File): Promise<string[][]> {
+// `File.text()` / `File.arrayBuffer()` no existen en todos los entornos (jsdom
+// de los tests, navegadores viejos) · `FileReader` sí. Mismo camino que el
+// importador (`bankParser.readFileAsText`).
+function leerTexto(file: File): Promise<string> {
+  if (typeof (file as { text?: unknown }).text === 'function') return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function leerBuffer(file: File): Promise<ArrayBuffer> {
+  if (typeof (file as { arrayBuffer?: unknown }).arrayBuffer === 'function') return file.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
+ * Las primeras filas del fichero como rejilla de texto · CSV/TXT por líneas,
+ * XLS/XLSX abriendo el libro. E2.4.2 · exportada para que `detectarCuenta`
+ * lea el IBAN también de un Excel (un XLSX es un ZIP: leerlo como texto no
+ * ve nada).
+ */
+export async function readGrid(file: File): Promise<string[][]> {
   const name = file.name.toLowerCase();
   if (name.endsWith('.csv') || name.endsWith('.txt')) {
-    const text = await file.text();
+    const text = await leerTexto(file);
     return text
       .split(/\r?\n/)
       .slice(0, MAX_FILAS_CABECERA)
@@ -169,7 +198,7 @@ async function readGrid(file: File): Promise<string[][]> {
   }
   // XLS/XLSX · reutiliza la librería ya presente en el bundle (dynamic import).
   const XLSX = await import('xlsx');
-  const buffer = await file.arrayBuffer();
+  const buffer = await leerBuffer(file);
   const workbook = XLSX.read(buffer, { type: 'array' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!sheet) return [];

@@ -40,6 +40,7 @@ import { useDecisionesDeSesion } from './decisionesDeSesion';
 import { decisionesDesdeFilas, type LoteAMedias } from './decisionesPersistidas';
 import { leerSesionDelLote, tituloDeLaSesion, persistirCambios, useLotesAMedias } from './montarSesion';
 import { valoresPorLinea } from './clasificarEnBloque';
+import { aplicarAprendizajeALasHermanas } from './aprendizajeEnSesion';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
@@ -524,11 +525,24 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         if (r.resultado === 'falta_casilla') return;
         marcarCreado(linea.lineaId);
         setCreando(null);
+        // E2.4.2 · Paso 2 · aprendizaje intra-lote · las hermanas de esta línea
+        // (misma clave, mismo signo, aún en «te necesitan») se resuelven ahora
+        // con los mismos valores (`aprendizajeEnSesion`).
+        await aplicarAprendizajeALasHermanas({
+          linea,
+          valores: v,
+          lineas,
+          sinDecidir: (id) => {
+            const l = lineas.find((x) => x.lineaId === id);
+            return !!l && bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas) === 'te_necesitan';
+          },
+          onResuelta: marcarCreado,
+        });
       } catch (err) {
         console.error('[DrawerExtracto] no se pudo clasificar la línea', err);
       }
     },
-    [marcarCreado]
+    [marcarCreado, lineas, decisiones, personales, reconocidas, autoResueltas]
   );
 
   if (!abierto) return null;

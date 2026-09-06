@@ -83,6 +83,16 @@ export interface Tarjeta {
    * Siempre una cuenta bancaria propia · nunca el efectivo ni otra tarjeta.
    */
   cuentaLiquidacionId: number;
+  /**
+   * E2.4.2 · los cuatro últimos del número de la tarjeta · «0940».
+   *
+   * Es lo único de la tarjeta que el banco escribe en el extracto («Compra
+   * Revolut**0940*», «Pago en Revolut**0940*», «Tarj. :*9623») y lo que
+   * permite reconocer que una recarga va a una tarjeta PROPIA: un traspaso,
+   * no un gasto. Opcional · sin él la tarjeta sigue funcionando y esa señal
+   * simplemente no se usa. Sin índice, sin bump de versión.
+   */
+  ultimosCuatro?: string;
   /** Solo en `credito` · el débito no acumula nada, cobra al momento. */
   ciclo?: CicloTarjeta;
   activa: boolean;

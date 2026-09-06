@@ -312,7 +312,10 @@
         "dd-mm-yyyy"
       ],
       "minScore": 3,
-      "useCargoAbono": true
+      "useCargoAbono": true,
+      "ibanHeader": [
+        "cuenta"
+      ]
     },
     {
       "bankKey": "Unicaja",
@@ -408,11 +411,20 @@
         "thousand": "."
       },
       "dateHints": [
+        "excel-serial",
         "dd/mm/yyyy",
         "dd-mm-yyyy"
       ],
       "minScore": 3,
-      "useCargoAbono": true
+      "useCargoAbono": true,
+      "ibanHeader": [
+        "número de cuenta:",
+        "numero de cuenta"
+      ],
+      "ignoreColumns": [
+        "categoría",
+        "categoria"
+      ]
     },
     {
       "bankKey": "Sabadell",
@@ -512,7 +524,15 @@
         "dd-mm-yyyy"
       ],
       "minScore": 3,
-      "useCargoAbono": true
+      "useCargoAbono": true,
+      "ibanHeader": [
+        "cuenta:",
+        "cuenta"
+      ],
+      "extraReference": [
+        "referencia 1",
+        "referencia 2"
+      ]
     },
     {
       "bankKey": "Bankinter",
@@ -707,7 +727,17 @@
         "dd-mm-yyyy"
       ],
       "minScore": 3,
-      "useCargoAbono": false
+      "useCargoAbono": false,
+      "ibanHeader": [
+        "cuenta"
+      ],
+      "ignoreColumns": [
+        "categoria",
+        "subcategoria"
+      ],
+      "extraReference": [
+        "comentario"
+      ]
     },
     {
       "bankKey": "Openbank",
@@ -1002,12 +1032,15 @@
         "thousand": "."
       },
       "dateHints": [
+        "yyyy-mm-dd",
         "dd/mm/yyyy",
-        "dd-mm-yyyy",
-        "yyyy-mm-dd"
+        "dd-mm-yyyy"
       ],
       "minScore": 3,
-      "useCargoAbono": true
+      "useCargoAbono": true,
+      "extraReference": [
+        "type"
+      ]
     }
   ]
 }
