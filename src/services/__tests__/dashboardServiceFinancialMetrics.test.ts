@@ -36,14 +36,14 @@ describe('dashboardService financial metrics', () => {
         { fecha: '2026-04-20', importe: '999', propertyId: 10 }
       ],
       treasuryEvents: [
-        { type: 'expense', status: 'pending', amount: '315', predictedDate: '2026-03-15' },
-        { type: 'financing', status: 'pending', amount: '200', predictedDate: '2026-03-16' },
-        { type: 'expense', status: 'confirmed', amount: '999', predictedDate: '2026-03-17' },
-        { type: 'expense', status: 'pending', amount: '120', predictedDate: '2026-03-01' },
-        { type: 'expense', status: 'pending', amount: '100', predictedDate: '2026-02-15' },
-        { type: 'financing', status: 'pending', amount: '80', predictedDate: '2026-02-20' },
-        { type: 'expense', status: 'executed', amount: '777', predictedDate: '2026-03-20' },
-        { type: 'income', status: 'pending', amount: '50', predictedDate: '2026-03-14' }
+        { naturaleza: 'gasto', status: 'pending', amount: '315', predictedDate: '2026-03-15' },
+        { naturaleza: 'gasto', familia: 'prestamo_hipoteca', status: 'pending', amount: '200', predictedDate: '2026-03-16' },
+        { naturaleza: 'gasto', status: 'confirmed', amount: '999', predictedDate: '2026-03-17' },
+        { naturaleza: 'gasto', status: 'pending', amount: '120', predictedDate: '2026-03-01' },
+        { naturaleza: 'gasto', status: 'pending', amount: '100', predictedDate: '2026-02-15' },
+        { naturaleza: 'gasto', familia: 'prestamo_hipoteca', status: 'pending', amount: '80', predictedDate: '2026-02-20' },
+        { naturaleza: 'gasto', status: 'executed', amount: '777', predictedDate: '2026-03-20' },
+        { naturaleza: 'ingreso', status: 'pending', amount: '50', predictedDate: '2026-03-14' }
       ],
       rentaMensual: [
         { periodo: '2026-03', importePrevisto: 400, estado: 'pendiente' }
@@ -437,11 +437,11 @@ describe('dashboardService financial metrics', () => {
       ],
       movements: [],
       treasuryEvents: [
-        { accountId: 1, type: 'expense', status: 'predicted', amount: 25, predictedDate: '2026-03-02' },
-        { accountId: 1, type: 'income', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
-        { accountId: 1, type: 'expense', status: 'predicted', amount: 100, predictedDate: '2026-03-21' },
-        { accountId: 1, type: 'financing', status: 'predicted', amount: 300, predictedDate: '2026-03-22' },
-        { accountId: 1, type: 'expense', status: 'confirmed', amount: 400, predictedDate: '2026-03-24' }
+        { accountId: 1, naturaleza: 'gasto', status: 'predicted', amount: 25, predictedDate: '2026-03-02' },
+        { accountId: 1, naturaleza: 'ingreso', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
+        { accountId: 1, naturaleza: 'gasto', status: 'predicted', amount: 100, predictedDate: '2026-03-21' },
+        { accountId: 1, naturaleza: 'gasto', familia: 'prestamo_hipoteca', status: 'predicted', amount: 300, predictedDate: '2026-03-22' },
+        { accountId: 1, naturaleza: 'gasto', status: 'confirmed', amount: 400, predictedDate: '2026-03-24' }
       ]
     };
 
@@ -468,10 +468,10 @@ describe('dashboardService financial metrics', () => {
         { id: 1, isActive: true, activa: true, alias: 'Cuenta Banco', balance: 1000, openingBalance: 1000, openingBalanceDate: '2026-03-01' }
       ],
       treasuryEvents: [
-        { accountId: 1, type: 'expense', status: 'confirmed', amount: 200, predictedDate: '2026-03-04' },
-        { accountId: 1, type: 'income', status: 'executed', amount: 50, predictedDate: '2026-03-08' },
-        { accountId: 1, type: 'income', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
-        { accountId: 1, type: 'financing', status: 'predicted', amount: 300, predictedDate: '2026-03-22' }
+        { accountId: 1, naturaleza: 'gasto', status: 'confirmed', amount: 200, predictedDate: '2026-03-04' },
+        { accountId: 1, naturaleza: 'ingreso', status: 'executed', amount: 50, predictedDate: '2026-03-08' },
+        { accountId: 1, naturaleza: 'ingreso', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
+        { accountId: 1, naturaleza: 'gasto', familia: 'prestamo_hipoteca', status: 'predicted', amount: 300, predictedDate: '2026-03-22' }
       ],
       movements: []
     };
@@ -552,7 +552,7 @@ describe('dashboardService financial metrics', () => {
         { id: 1, isActive: true, alias: 'Cuenta Banco', balance: 6906 }
       ],
       treasuryEvents: [
-        { accountId: 1, type: 'expense', status: 'confirmed', amount: 1240, predictedDate: '2026-03-04' }
+        { accountId: 1, naturaleza: 'gasto', status: 'confirmed', amount: 1240, predictedDate: '2026-03-04' }
       ]
     };
 

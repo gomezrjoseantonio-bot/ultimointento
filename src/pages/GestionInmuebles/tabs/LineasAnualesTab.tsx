@@ -882,7 +882,7 @@ async function createExpensePrevision(
   try {
     const db = await initDB();
     const event: Omit<TreasuryEvent, 'id'> = {
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: Math.abs(input.amount),
       predictedDate: input.date,
       description: input.concepto,

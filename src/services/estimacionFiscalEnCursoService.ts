@@ -86,15 +86,15 @@ async function calcularMesesConDatos(ejercicio: number): Promise<number> {
   ]);
 
   // V5.6: Use treasuryEvents for rent income months (replaces rentaMensual)
-  // Filter: type='income', confirmed/executed status, rent-related category, year matches
+  // Filter: naturaleza='ingreso', confirmed/executed status, rent-related category, year matches
   const RENTA_CATEGORY_KEYS = new Set(['renta', 'alquiler', 'renta_inmueble']);
   for (const evt of treasuryEvts as any[]) {
-    const evtType = String(evt?.type ?? '').toLowerCase();
+    const evtNaturaleza = String(evt?.naturaleza ?? '').toLowerCase();
     const evtStatus = String(evt?.status ?? '').toLowerCase();
     const evtCategoryKey = String(evt?.categoryKey ?? '').toLowerCase();
     const evtSourceType = String(evt?.sourceType ?? '').toLowerCase();
 
-    if (evtType !== 'income') continue;
+    if (evtNaturaleza !== 'ingreso') continue;
     if (evtStatus !== 'confirmed' && evtStatus !== 'executed') continue;
     const isRentEvent = RENTA_CATEGORY_KEYS.has(evtCategoryKey) || evtSourceType === 'contrato';
     if (!isRentEvent) continue;

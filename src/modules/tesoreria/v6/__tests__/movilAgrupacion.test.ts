@@ -23,7 +23,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-08-10',
     description: 'Recibo',
@@ -154,7 +154,7 @@ describe('el orden lo manda el pulgar', () => {
       eventos: [
         ev({ id: 1, amount: 300 }),
         ev({ id: 2, amount: 300 }),
-        ev({ id: 3, type: 'income', amount: 100 }),
+        ev({ id: 3, naturaleza: 'ingreso', amount: 100 }),
       ],
       saldoPorCuenta: saldos,
       year: 2026,
@@ -169,7 +169,7 @@ describe('lo que se lee en cada fila', () => {
   it('el importe lleva signo · un ingreso no se confunde con un cargo', () => {
     const grupos = agruparPendientesPorCuenta({
       cuentas,
-      eventos: [ev({ type: 'income', amount: 475, description: 'Lucía Fernández' })],
+      eventos: [ev({ naturaleza: 'ingreso', amount: 475, description: 'Lucía Fernández' })],
       saldoPorCuenta: saldos,
       year: 2026,
       month0: 7,
@@ -222,7 +222,7 @@ describe('quién cobra, también en el móvil', () => {
         {
           id: 1,
           accountId: 1,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: 40.29,
           predictedDate: '2026-08-10',
           description: 'Seguro hogar',
@@ -247,7 +247,7 @@ describe('quién cobra, también en el móvil', () => {
         {
           id: 1,
           accountId: 1,
-          type: 'expense',
+          naturaleza: 'gasto',
           amount: 40,
           predictedDate: '2026-08-10',
           description: 'Seguro hogar',

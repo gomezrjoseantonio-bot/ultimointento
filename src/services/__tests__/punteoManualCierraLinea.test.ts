@@ -55,7 +55,7 @@ const lineaDelRecurrente = () => ({
 /** La previsión de tesorería de ESE mismo recibo. */
 const previsionDelRecurrente = (): Omit<TreasuryEvent, 'id'> =>
   ({
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 60,
     predictedDate: '2026-04-01',
     description: 'Comunidad',

@@ -35,6 +35,7 @@ import type { GastoInmueble, MejoraInmueble } from './db/types-inmuebles';
 import { aceptaCierre, camposDeCierre } from './cierreLineaInmueble';
 import { resolveCasillaAEAT, resolveGastoCategoria } from './treasuryConfirmationService';
 import { deriveCategoryFromMovement, feedLearningRule } from './aplicarSugerencia';
+import { naturalezaPorSigno } from './catalogo/catalogoUnico';
 
 export interface AltaMovimiento {
   tipo: 'gasto' | 'ingreso' | 'transferencia';
@@ -163,8 +164,10 @@ async function altaMovimientoNormal(v: AltaMovimiento): Promise<number> {
     // aquí lo que hay es la palabra del usuario (§2 · punteoModel).
     source: 'manual',
     unifiedStatus: 'no_planificado',
-    type:
-      v.tipo === 'transferencia' ? 'Transferencia' : importe >= 0 ? 'Ingreso' : 'Gasto',
+    // Una transferencia EXTERNA (sin cuenta destino propia) es ingreso o gasto
+    // por su signo, pagada por transferencia · la interna se convierte arriba.
+    naturaleza: naturalezaPorSigno(importe),
+    ...(v.tipo === 'transferencia' ? { paymentMethod: 'transferencia' as const } : {}),
     origin: 'Manual',
     movementState: 'Confirmado',
     state: 'pending',
@@ -364,10 +367,10 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     valueDate: fecha,
     amount: importe,
     description: v.concepto,
-    // El tipo lo manda lo que ELIGIÓ el usuario, no el signo. Derivarlo solo
-    // del importe convertía en gasto una transferencia externa —que sale en
-    // negativo como cualquier cargo— y ya no había forma de volver.
-    type: v.tipo === 'transferencia' ? 'Transferencia' : importe >= 0 ? 'Ingreso' : 'Gasto',
+    // La naturaleza la manda el signo; que fuera una transferencia externa lo
+    // dice el método de pago, no un tipo aparte (E2.4.1b).
+    naturaleza: naturalezaPorSigno(importe),
+    ...(v.tipo === 'transferencia' ? { paymentMethod: 'transferencia' as const } : {}),
     category: { tipo: importe >= 0 ? 'Ingresos' : 'Gastos' },
     ambito: v.inmuebleId != null ? 'inmueble' : 'personal',
     categoryKey: v.categoryKey ?? undefined,

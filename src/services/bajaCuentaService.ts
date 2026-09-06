@@ -20,6 +20,7 @@ import { initDB } from './db';
 import type { TreasuryEvent } from './db';
 import { esPendiente } from './tesoreriaV6Metrics';
 import { cuentasService } from './cuentasService';
+import { conSigno } from './catalogo/catalogoUnico';
 
 export interface MotivoBloqueo {
   /** Cuántos previstos siguen abiertos en esta cuenta. */
@@ -48,7 +49,7 @@ export async function motivoParaNoDarDeBaja(accountId: number): Promise<MotivoBl
     ejemplos: porFecha.slice(0, 3).map((e) => ({
       fecha: (e.predictedDate ?? '').slice(0, 10),
       concepto: e.description,
-      importe: e.type === 'income' ? Math.abs(e.amount) : -Math.abs(e.amount),
+      importe: conSigno(e, e.amount),
     })),
   };
 }

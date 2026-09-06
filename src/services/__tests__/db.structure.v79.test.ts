@@ -65,7 +65,7 @@ const EXPECTED_STORES: Record<string, string[]> = {
   retos: ['estado', 'mes', 'tipo'],
   snapshotsDeclaracion: ['ejercicio', 'fechaSnapshot', 'origen'],
   traspasosPlanPensiones: ['activoId', 'fechaEjecucion', 'planId'],
-  treasuryEvents: ['accountId', 'ambito', 'año', 'certeza', 'generadoPor', 'inmuebleId', 'predictedDate', 'sourceId', 'sourceType', 'status', 'type'],
+  treasuryEvents: ['accountId', 'ambito', 'año', 'certeza', 'generadoPor', 'inmuebleId', 'naturaleza', 'predictedDate', 'sourceId', 'sourceType', 'status'],
   valoracionesActivos: ['idx_activo', 'idx_activo_fecha', 'idx_anchor_fiscal', 'idx_fecha', 'idx_tipo', 'idx_tipo_subtipo'],
   vinculosAccesorio: ['inmuebleAccesorioId', 'inmueblePrincipalId', 'principal-accesorio-ejercicio'],
   viviendaHabitual: ['activa', 'personalDataId', 'vigenciaDesde'],

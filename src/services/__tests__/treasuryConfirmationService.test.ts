@@ -13,7 +13,7 @@ const INMUEBLE_ID = 42;
 const nowIso = () => new Date().toISOString();
 
 const baseEvent = (overrides: Partial<TreasuryEvent> = {}): Omit<TreasuryEvent, 'id'> => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 120,
   predictedDate: '2026-04-10',
   description: 'Reparación fontanero',
@@ -89,7 +89,7 @@ describe('treasuryConfirmationService · PR3', () => {
 
       const movement = (await db.get('movements', movementId)) as Movement;
       expect(movement.amount).toBe(-150);
-      expect(movement.type).toBe('Gasto');
+      expect(movement.naturaleza).toBe('gasto');
       expect(movement.reference).toBe(`treasury_event:${eventId}`);
       expect(movement.unifiedStatus).toBe('conciliado');
     });
@@ -98,7 +98,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 550,
           description: 'Renta Tenderina 64',
         }) as any),
@@ -108,7 +108,7 @@ describe('treasuryConfirmationService · PR3', () => {
 
       const movement = (await db.get('movements', movementId)) as Movement;
       expect(movement.amount).toBe(550);
-      expect(movement.type).toBe('Ingreso');
+      expect(movement.naturaleza).toBe('ingreso');
     });
 
     // F2b · el concepto fino de la previsión viaja al movimiento al confirmar,
@@ -131,7 +131,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          type: 'financing',
+          naturaleza: 'gasto', familia: 'prestamo_hipoteca',
           amount: 45000,
           description: 'Cancelación deuda Tenderina 64',
         }) as any),
@@ -140,7 +140,8 @@ describe('treasuryConfirmationService · PR3', () => {
       const { movementId } = await confirmTreasuryEvent(eventId);
 
       const movement = (await db.get('movements', movementId)) as Movement;
-      expect(movement.type).toBe('Gasto');
+      expect(movement.naturaleza).toBe('gasto');
+      expect(movement.familia).toBe('prestamo_hipoteca');
       expect(movement.amount).toBe(-45000);
     });
 
@@ -538,7 +539,7 @@ describe('treasuryConfirmationService · PR3', () => {
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
-          type: 'income',
+          naturaleza: 'ingreso',
           amount: 500,
           description: 'Renta',
         }) as any),

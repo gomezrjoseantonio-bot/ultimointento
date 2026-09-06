@@ -19,7 +19,7 @@ const cuenta = (id: number, alias: string): Account => ({
 });
 
 const ev = (over: Partial<TreasuryEvent> & { id: number }): TreasuryEvent => ({
-  type: 'expense', amount: 50.73, predictedDate: '2026-07-01', description: 'Aqualia',
+  naturaleza: 'gasto', amount: 50.73, predictedDate: '2026-07-01', description: 'Aqualia',
   sourceType: 'gasto_recurrente', status: 'predicted', accountId: 1,
   createdAt: '', updatedAt: '', ...over,
 });

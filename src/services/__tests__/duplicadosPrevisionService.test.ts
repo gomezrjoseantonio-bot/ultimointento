@@ -35,7 +35,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-08-10',
     description: 'Recibo luz',
@@ -95,7 +95,7 @@ describe('las previsiones de préstamo también se cuentan', () => {
       ...ev({ sourceType: undefined, sourceId: undefined, ...over }),
       prestamoId: 3,
       numeroCuota: 14,
-      type: 'financing',
+      naturaleza: 'gasto', familia: 'prestamo_hipoteca',
     }) as TreasuryEvent;
 
   it('dos cuotas idénticas del mismo préstamo son un duplicado', () => {
@@ -131,8 +131,8 @@ describe('cuánto distorsionan', () => {
 
   it('un ingreso duplicado distorsiona en positivo', () => {
     const inf = analizarDuplicados([
-      ev({ id: 1, type: 'income', amount: 475 }),
-      ev({ id: 2, type: 'income', amount: 475 }),
+      ev({ id: 1, naturaleza: 'ingreso', amount: 475 }),
+      ev({ id: 2, naturaleza: 'ingreso', amount: 475 }),
     ]);
     expect(inf.grupos[0].distorsion).toBe(475);
   });

@@ -10,7 +10,7 @@ const HOY = '2026-08-15';
 const ev = (fecha: string, over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: fecha,
     description: 'Recibo',

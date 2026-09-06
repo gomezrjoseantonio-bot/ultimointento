@@ -36,7 +36,7 @@ export async function cargarRevealData(): Promise<RevealData> {
   for (const ev of eventos) {
     if (!ev.predictedDate || !ev.predictedDate.startsWith(String(anio))) continue;
     const mes = new Date(ev.predictedDate).getUTCMonth();
-    if (ev.type === 'income') mensualIngreso[mes] += Math.abs(ev.amount);
+    if (ev.naturaleza === 'ingreso') mensualIngreso[mes] += Math.abs(ev.amount);
     else mensualGasto[mes] += Math.abs(ev.amount);
   }
   const rentasAnio = mensualIngreso.reduce((a, b) => a + b, 0);

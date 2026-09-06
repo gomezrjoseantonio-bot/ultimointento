@@ -31,7 +31,7 @@ const contrato = (over: Partial<Contract>): Contract =>
 
 const ev = (over: Partial<TreasuryEvent>): TreasuryEvent =>
   ({
-    type: 'income',
+    naturaleza: 'ingreso',
     amount: 1000,
     predictedDate: iso(2026, 6, 1),
     description: 'Renta',
@@ -51,7 +51,7 @@ describe('esRentaDeContrato · enlace evento ↔ contrato', () => {
     expect(esRentaDeContrato(ev({ contratoId: undefined, sourceType: 'contract', sourceId: 1 }), 1)).toBe(true);
   });
   it('excluye gastos (no income)', () => {
-    expect(esRentaDeContrato(ev({ type: 'expense' }), 1)).toBe(false);
+    expect(esRentaDeContrato(ev({ naturaleza: 'gasto' }), 1)).toBe(false);
   });
   it('excluye eventos descartados', () => {
     expect(esRentaDeContrato(ev({ descartado: true }), 1)).toBe(false);

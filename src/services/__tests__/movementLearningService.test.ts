@@ -21,7 +21,7 @@ const createTestMovement = (overrides: Partial<Movement> = {}): Movement => ({
   accountId: 'test-account-1',
   category: { tipo: '', subtipo: '' },
   source: 'import' as const,
-  type: 'Gasto' as const,
+  naturaleza: 'gasto' as const,
   origin: 'CSV' as const,
   movementState: 'Conciliado' as const,
   ambito: 'personal' as const,

@@ -16,7 +16,7 @@ const aportacion = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 3,
-    type: 'expense',
+    naturaleza: 'gasto',
     sourceType: 'inversion_aportacion',
     amount: -300,
     predictedDate: '2026-03-10',

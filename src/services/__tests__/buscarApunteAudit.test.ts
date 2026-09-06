@@ -69,7 +69,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 7,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -32.5,
     predictedDate: '2026-08-01',
     description: 'Seguro de vida',

@@ -62,7 +62,7 @@ function sembrar(): void {
       {
         id: 7,
         status: 'predicted',
-        type: 'expense',
+        naturaleza: 'gasto',
         amount: 82,
         predictedDate: '2026-08-27',
         description: 'Agua Tenderina',

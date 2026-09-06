@@ -1629,7 +1629,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     const isHipoteca = prestamo.ambito === 'INMUEBLE';
     for (const { d, status } of plan.emitir) {
       const event: Omit<TreasuryEvent, 'id'> = {
-        type: d.tipo === 'ingreso' ? 'income' : 'financing',
+        ...(d.tipo === 'ingreso'
+          ? { naturaleza: 'ingreso' as const, familia: 'otros_ingresos' as const }
+          : { naturaleza: 'gasto' as const, familia: 'prestamo_hipoteca' as const }),
         amount: d.importe,
         predictedDate: d.fecha,
         description: d.concepto,

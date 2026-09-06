@@ -4,7 +4,7 @@ import type { TreasuryEvent } from '../../../services/db';
 const ev = (over: Partial<TreasuryEvent> & { id: number }): TreasuryEvent =>
   ({
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 48,
     predictedDate: '2026-08-01',
     description: 'Curenergía · Gas · Tenderina 64 4DR',
@@ -51,7 +51,7 @@ describe('candidatosDeLinea · orden por cercanía', () => {
 
   it('respeta el signo · a un cargo no le ofrece ingresos', () => {
     const cand = candidatosDeLinea({ fecha: '2026-08-02', importe: -48 }, [
-      ev({ id: 1, type: 'income', amount: 48, description: 'Renta' }),
+      ev({ id: 1, naturaleza: 'ingreso', amount: 48, description: 'Renta' }),
     ]);
     expect(cand).toHaveLength(0);
   });

@@ -66,7 +66,7 @@ const rentasDe = async (contratoId: number, prefijo: string): Promise<TreasuryEv
   const todos = (await db.getAll('treasuryEvents')) as TreasuryEvent[];
   return todos.filter(
     (e) =>
-      e.type === 'income' &&
+      e.naturaleza === 'ingreso' &&
       (e.sourceType === 'contrato' || e.sourceType === 'contract') &&
       e.sourceId === contratoId &&
       typeof e.predictedDate === 'string' &&

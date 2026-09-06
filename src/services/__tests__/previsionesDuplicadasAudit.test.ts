@@ -12,7 +12,7 @@ const ahora = '2026-08-01T00:00:00.000Z';
 
 function evento(over: Partial<TreasuryEvent> = {}): TreasuryEvent {
   return {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -40,
     predictedDate: '2026-09-15',
     description: 'Gimnasio',

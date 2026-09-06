@@ -16,7 +16,7 @@ const baseMovement = (overrides: Record<string, any> = {}) => ({
   status: 'conciliado' as const,
   unifiedStatus: 'conciliado' as const,
   source: 'manual' as const,
-  type: 'Ingreso' as const,
+  naturaleza: 'ingreso' as const,
   origin: 'Manual' as const,
   movementState: 'Conciliado' as const,
   ambito: 'personal' as const,
@@ -57,7 +57,7 @@ describe('recalculateAccountBalance · frontera del saldo inicial', () => {
     await db.add('movements', baseMovement({
       accountId,
       amount: -1000,
-      type: 'Gasto',
+      naturaleza: 'gasto',
       date: '2026-08-05',
       description: 'Gasto posterior',
     }));
@@ -76,7 +76,7 @@ describe('recalculateAccountBalance · frontera del saldo inicial', () => {
     })));
 
     await db.add('movements', baseMovement({ accountId, amount: 500, date: '2020-01-01' }));
-    await db.add('movements', baseMovement({ accountId, amount: -200, type: 'Gasto', date: '2026-08-05' }));
+    await db.add('movements', baseMovement({ accountId, amount: -200, naturaleza: 'gasto', date: '2026-08-05' }));
 
     await recalculateAccountBalance(accountId);
 

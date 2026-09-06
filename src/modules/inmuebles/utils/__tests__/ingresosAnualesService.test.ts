@@ -3,7 +3,7 @@ import type { TreasuryEvent } from '../../../../services/db';
 
 const ev = (over: Partial<TreasuryEvent>): TreasuryEvent =>
   ({
-    type: 'income',
+    naturaleza: 'ingreso',
     amount: 1000,
     predictedDate: '2025-03-10',
     description: 'Renta',
@@ -19,7 +19,7 @@ describe('esRentaConfirmada', () => {
     expect(esRentaConfirmada(ev({}))).toBe(true);
     expect(esRentaConfirmada(ev({ status: 'executed' }))).toBe(true);
     expect(esRentaConfirmada(ev({ status: 'predicted' }))).toBe(false);
-    expect(esRentaConfirmada(ev({ type: 'expense' }))).toBe(false);
+    expect(esRentaConfirmada(ev({ naturaleza: 'gasto' }))).toBe(false);
     expect(esRentaConfirmada(ev({ sourceType: 'manual' }))).toBe(false);
   });
 });
@@ -32,7 +32,7 @@ describe('ingresosPorAnio', () => {
       ev({ año: 2025, mes: 6, amount: 800 }),
       ev({ año: 2026, mes: 2, amount: 900 }),
       ev({ status: 'predicted', año: 2025, mes: 2, amount: 9999 }), // ignorado
-      ev({ type: 'expense', año: 2025, mes: 3, amount: 9999 }), // ignorado
+      ev({ naturaleza: 'gasto', año: 2025, mes: 3, amount: 9999 }), // ignorado
     ];
     const [s25, s26] = ingresosPorAnio(events, [2025, 2026]);
     expect(s25.mensual[0]).toBe(800); // ene

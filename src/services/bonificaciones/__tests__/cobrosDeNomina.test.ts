@@ -10,7 +10,7 @@ import type { TreasuryEvent } from '../../db';
 const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
-    type: 'income',
+    naturaleza: 'ingreso',
     amount: 1300,
     predictedDate: '2026-03-25',
     description: 'Nómina – Orange',
@@ -63,7 +63,7 @@ describe('lo que entra por nómina', () => {
 
   it('solo mira la nómina, no cualquier ingreso', () => {
     expect(cobrosDeNomina([evento({ sourceType: 'contrato' })])).toEqual([]);
-    expect(cobrosDeNomina([evento({ type: 'expense' })])).toEqual([]);
+    expect(cobrosDeNomina([evento({ naturaleza: 'gasto' })])).toEqual([]);
   });
 
   // Sin cuenta no se puede decir dónde entró, y la cuenta es justo lo que exige

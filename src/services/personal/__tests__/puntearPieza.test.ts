@@ -11,7 +11,7 @@ import { initDB } from '../../db';
 
 const pieza = (over: Record<string, unknown> = {}) => ({
   id: 5,
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: -100,
   predictedDate: '2026-08-10',
   sourceType: 'gasto_tarjeta',

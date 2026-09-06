@@ -281,7 +281,7 @@ describe('propertySaleService', () => {
     } as any);
 
     const loanForecastEventId = Number(await db.add('treasuryEvents', {
-      type: 'financing',
+      naturaleza: 'gasto', familia: 'prestamo_hipoteca',
       amount: 999,
       predictedDate: '2026-03-20',
       description: 'Cuota Hipoteca – Piso Completo',
@@ -501,7 +501,7 @@ describe('propertySaleService', () => {
     } as any);
 
     const loanForecastEventId = Number(await db.add('treasuryEvents', {
-      type: 'financing',
+      naturaleza: 'gasto', familia: 'prestamo_hipoteca',
       amount: 500,
       predictedDate: '2026-03-01',
       description: 'Cuota Hipoteca – Piso Punteo',
@@ -577,7 +577,7 @@ describe('propertySaleService', () => {
     expect(sale?.id).toBeDefined();
 
     const cancellationEvent = (await db.getAll('treasuryEvents')).find((e: any) =>
-      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda Piso Diferencia Importe')
+      e.sourceId === sale!.id && e.familia === 'prestamo_hipoteca' && e.description.includes('Cancelación deuda Piso Diferencia Importe')
     );
     expect(cancellationEvent).toBeTruthy();
 
@@ -618,7 +618,7 @@ describe('propertySaleService', () => {
     expect(sale?.id).toBeDefined();
 
     const cancellationEvent = (await db.getAll('treasuryEvents')).find((e: any) =>
-      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda Piso Revert Marker')
+      e.sourceId === sale!.id && e.familia === 'prestamo_hipoteca' && e.description.includes('Cancelación deuda Piso Revert Marker')
     );
     expect(cancellationEvent).toBeTruthy();
 
@@ -777,7 +777,7 @@ describe('propertySaleService', () => {
       unifiedStatus: 'conciliado',
       source: 'manual',
       category: { tipo: 'Venta inmueble' },
-      type: 'Ingreso',
+      naturaleza: 'ingreso',
       origin: 'Manual',
       movementState: 'Conciliado',
       ambito: 'inmueble',
@@ -800,7 +800,7 @@ describe('propertySaleService', () => {
       unifiedStatus: 'conciliado',
       source: 'manual',
       category: { tipo: 'Costes venta inmueble' },
-      type: 'Gasto',
+      naturaleza: 'gasto',
       origin: 'Manual',
       movementState: 'Conciliado',
       ambito: 'inmueble',
@@ -812,7 +812,7 @@ describe('propertySaleService', () => {
     } as any);
 
     await db.add('treasuryEvents', {
-      type: 'income',
+      naturaleza: 'ingreso',
       amount: 200000,
       predictedDate: '2026-02-12',
       description: 'Cobro venta Piso Legacy Movs',

@@ -8,6 +8,7 @@ import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual
 import { getCachedStoreRecords } from './indexedDbCacheService';
 import { valoracionesService } from './valoracionesService';
 import { mapInversionTipo } from './migrations/seedV74_PR4';
+import { conSigno } from './catalogo/catalogoUnico';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -1329,7 +1330,7 @@ class DashboardService {
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
       const gastosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => (event.type === 'expense' || event.type === 'financing') && isForecastTreasuryEvent(event))
+        .filter((event) => event.naturaleza === 'gasto' && isForecastTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
 
@@ -1360,7 +1361,7 @@ class DashboardService {
         .reduce((sum: number, ing: any) => sum + parseNumericValue(ing.importe), 0);
 
       const ingresosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => event.type === 'income' && isForecastTreasuryEvent(event))
+        .filter((event) => event.naturaleza === 'ingreso' && isForecastTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
@@ -1450,16 +1451,16 @@ class DashboardService {
             const predictedDateOnly = toDateOnlyString(event.predictedDate);
             return Boolean(predictedDateOnly && predictedDateOnly <= todayDateOnly);
           })
-          .reduce((sum, event) => sum + (event.type === 'income' ? 1 : -1) * toNumber(event.amount), 0);
+          .reduce((sum, event) => sum + conSigno(event, toNumber(event.amount)), 0);
 
         const futurosCuenta = eventosMesCuenta.filter((event) => isForecastTreasuryEvent(event));
 
         const porCobrar = futurosCuenta
-          .filter((event) => event.type === 'income')
+          .filter((event) => event.naturaleza === 'ingreso')
           .reduce((sum, event) => sum + toNumber(event.amount), 0);
 
         const porPagar = futurosCuenta
-          .filter((event) => event.type === 'expense' || event.type === 'financing')
+          .filter((event) => event.naturaleza === 'gasto')
           .reduce((sum, event) => sum + toNumber(event.amount), 0);
 
         const hoy = openingBalance + confirmadosHastaHoy;
@@ -1561,7 +1562,7 @@ class DashboardService {
           .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
         const gastosProgramados = (treasuryEvents as any[])
-          .filter((event) => (event.type === 'expense' || event.type === 'financing') && isForecastTreasuryEvent(event))
+          .filter((event) => event.naturaleza === 'gasto' && isForecastTreasuryEvent(event))
           .filter((event) => {
             const fecha = parseDateValue(event.predictedDate);
             if (!fecha) return false;
@@ -1603,7 +1604,7 @@ class DashboardService {
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
       const gastosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => (event.type === 'expense' || event.type === 'financing') && isForecastTreasuryEvent(event))
+        .filter((event) => event.naturaleza === 'gasto' && isForecastTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
@@ -1631,7 +1632,7 @@ class DashboardService {
         .reduce((sum: number, renta: any) => sum + parseNumericValue(renta.importePrevisto ?? renta.expectedAmount ?? 0), 0);
 
       const ingresosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => event.type === 'income' && isForecastTreasuryEvent(event))
+        .filter((event) => event.naturaleza === 'ingreso' && isForecastTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
 

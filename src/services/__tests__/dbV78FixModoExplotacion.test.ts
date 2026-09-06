@@ -69,9 +69,9 @@ describe('V78.1 · self-heal modoExplotacion + limpieza huérfanos', () => {
         },
       ],
       [
-        { id: 100, type: 'income', sourceType: 'contrato', sourceId: 10, amount: 713 },
-        { id: 101, type: 'income', sourceType: 'contrato', sourceId: 11, amount: 927 },
-        { id: 102, type: 'income', sourceType: 'contrato', sourceId: 20, amount: 333 },
+        { id: 100, naturaleza: 'ingreso', sourceType: 'contrato', sourceId: 10, amount: 713 },
+        { id: 101, naturaleza: 'ingreso', sourceType: 'contrato', sourceId: 11, amount: 927 },
+        { id: 102, naturaleza: 'ingreso', sourceType: 'contrato', sourceId: 20, amount: 333 },
       ],
     );
 

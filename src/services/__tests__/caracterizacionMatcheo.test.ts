@@ -117,7 +117,7 @@ function mov(over: Partial<Movement> & { id: number }): Movement {
 
 function previsto(over: Partial<TreasuryEvent> & { id: number }): TreasuryEvent {
   return {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 0,
     predictedDate: '2026-08-01',
     description: '',
@@ -177,15 +177,15 @@ const LOTE: Movement[] = [
 ];
 
 const PREVISTOS: TreasuryEvent[] = [
-  previsto({ id: 101, type: 'expense', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
-  previsto({ id: 102, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
-  previsto({ id: 103, type: 'income', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
-  previsto({ id: 104, type: 'expense', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
-  previsto({ id: 105, type: 'expense', amount: 82, predictedDate: '2026-08-27', sourceType: 'gasto_recurrente', description: 'Agua Tenderina' }),
-  previsto({ id: 106, type: 'expense', amount: 100, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad Tenderina' }),
-  previsto({ id: 107, type: 'expense', amount: 50, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad garaje' }),
-  previsto({ id: 108, type: 'expense', amount: 72.5, predictedDate: '2026-08-10', sourceType: 'gasto_recurrente', providerName: 'CALLE URIA', description: 'Comunidad Uría' }),
-  previsto({ id: 109, type: 'expense', amount: 30, predictedDate: '2026-08-14', sourceType: 'gasto', providerName: 'Revolut', description: 'Revolut', descartado: true }),
+  previsto({ id: 101, naturaleza: 'gasto', amount: 454.66, predictedDate: '2026-08-01', sourceType: 'prestamo', providerName: 'Unicaja', description: 'Cuota Unicaja', categoryKey: 'vivienda.hipoteca', ambito: 'inmueble', inmuebleId: 4 }),
+  previsto({ id: 102, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Adnan Parwez Khan', description: 'Renta hab 2' }),
+  previsto({ id: 103, naturaleza: 'ingreso', amount: 380, predictedDate: '2026-08-05', sourceType: 'contract', counterparty: 'Laura Sánchez Ruiz', description: 'Renta hab 3' }),
+  previsto({ id: 104, naturaleza: 'gasto', amount: 45, predictedDate: '2026-08-12', sourceType: 'gasto_recurrente', providerName: 'Iberdrola', description: 'Luz Tenderina' }),
+  previsto({ id: 105, naturaleza: 'gasto', amount: 82, predictedDate: '2026-08-27', sourceType: 'gasto_recurrente', description: 'Agua Tenderina' }),
+  previsto({ id: 106, naturaleza: 'gasto', amount: 100, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad Tenderina' }),
+  previsto({ id: 107, naturaleza: 'gasto', amount: 50, predictedDate: '2026-08-20', sourceType: 'gasto_recurrente', description: 'Comunidad garaje' }),
+  previsto({ id: 108, naturaleza: 'gasto', amount: 72.5, predictedDate: '2026-08-10', sourceType: 'gasto_recurrente', providerName: 'CALLE URIA', description: 'Comunidad Uría' }),
+  previsto({ id: 109, naturaleza: 'gasto', amount: 30, predictedDate: '2026-08-14', sourceType: 'gasto', providerName: 'Revolut', description: 'Revolut', descartado: true }),
 ];
 
 function sembrarLoteDeAgosto(): void {
@@ -374,7 +374,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       // 5 · HOY: el agua no está en la heurística de suministros (AQUALIA no es luz ni telco).
       [5, [noSeQueEs(5)]],
       // 6 · comunidad.
-      [6, [{ movementId: 6, via: 'heuristica', confidence: 60, description: 'Posible cuota de comunidad de propietarios', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'inmueble.comunidad', sourceType: 'gasto' } }]],
+      [6, [{ movementId: 6, via: 'heuristica', confidence: 60, description: 'Posible cuota de comunidad de propietarios', action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', categoryKey: 'inmueble.comunidad', sourceType: 'gasto' } }]],
       // 8 · HOY: «CDAD PROP» no lo lee la heurística de comunidad (pide COMUNIDAD o FINCAS).
       [8, [noSeQueEs(8)]],
       // 9 · HOY: la nómina no tiene heurística · la reconoce el determinista, no esto.
@@ -384,7 +384,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       [11, [{ movementId: 11, via: 'heuristica', confidence: 50, description: 'Compra online (Amazon / AliExpress) · proponer marcar como gasto personal', action: { kind: 'mark_personal_expense', categoryKey: 'tecnologia' } }]],
       [12, [noSeQueEs(12)]],
       // 13 · IBI.
-      [13, [{ movementId: 13, via: 'heuristica', confidence: 60, description: 'Posible impuesto del inmueble (IBI, tasa de basura, etc.)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'inmueble.ibi', sourceType: 'gasto' } }]],
+      [13, [{ movementId: 13, via: 'heuristica', confidence: 60, description: 'Posible impuesto del inmueble (IBI, tasa de basura, etc.)', action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', categoryKey: 'inmueble.ibi', sourceType: 'gasto' } }]],
       // 14 · Bizum que sale.
       [14, [{ movementId: 14, via: 'heuristica', confidence: 30, description: 'Bizum que sale de tu cuenta · lo pagas tú, así que no es el cobro de ninguna renta', action: { kind: 'ignore' } }]],
       // 15 · transferencia recibida sin dueño · pregunta abierta, no una renta inventada.
@@ -392,7 +392,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
       // 16 · regla aprendida con 5 aplicaciones · 70 + round(log10(6)·5) = 74 · cortocircuita.
       [16, [{ movementId: 16, via: 'learning_rule', confidence: 74, description: 'Regla aprendida (5 aplicaciones previas) → ocio', action: { kind: 'mark_personal_expense', categoryKey: 'ocio' }, metadata: { learnKey: buildLearnKey(NETFLIX), ruleId: 1, appliedCount: 5, resuelveSola: true } }]],
       // 17 · compromiso activo · 70 + 10 (céntimo exacto) + 10 (proveedor en el texto) · cortocircuita.
-      [17, [{ movementId: 17, via: 'compromiso_recurrente', confidence: 90, description: 'Coincide con compromiso "Gas Tenderina" (Naturgy)', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', inmuebleId: 4, categoryKey: 'suministros', sourceType: 'gasto_recurrente', sourceId: 3 }, metadata: { compromisoId: 3, razones: ['texto', 'importe_exacto'] } }]],
+      [17, [{ movementId: 17, via: 'compromiso_recurrente', confidence: 90, description: 'Coincide con compromiso "Gas Tenderina" (Naturgy)', action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', inmuebleId: 4, categoryKey: 'suministros', sourceType: 'gasto_recurrente', sourceId: 3 }, metadata: { compromisoId: 3, razones: ['texto', 'importe_exacto'] } }]],
       // 18 · la regla PERSONAL (gasto) sobre un ABONO la tira el signo · y Amazon en positivo tampoco es compra.
       [18, [noSeQueEs(18)]],
       // 19 · HOY: «TRANSFERENCIA VENTA» no es «TRANSFERENCIA RECIBIDA» · sin heurística.
@@ -430,7 +430,7 @@ describe('suggestForUnmatched · lo que quedó sin match en el lote de agosto', 
     stores.movements.push(mov({ id: 34, date: '2026-08-01', amount: -454.66, description: 'CUOTA PRESTAMO 0123 UNICAJA' }));
     const r = await suggestForUnmatched([34]);
     expect(r.get(34)).toEqual([
-      { movementId: 34, via: 'heuristica', confidence: 65, description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta', action: { kind: 'create_treasury_event', type: 'expense', ambito: 'inmueble', categoryKey: 'vivienda.hipoteca', sourceType: 'prestamo' } },
+      { movementId: 34, via: 'heuristica', confidence: 65, description: 'Posible cuota de préstamo / hipoteca · proponer asignar a préstamo activo de la cuenta', action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'inmueble', categoryKey: 'vivienda.hipoteca', sourceType: 'prestamo' } },
     ]);
     // HOY: «RECIBO PRESTAMO» (como lo escribe Unicaja en la línea 1) NO lo lee esta heurística.
     const r1 = await suggestForUnmatched([1]);

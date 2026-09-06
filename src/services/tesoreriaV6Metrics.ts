@@ -17,15 +17,15 @@
 // ============================================================================
 
 import type { Account, Movement, TreasuryEvent } from './db';
-import { isTransferKey } from './categoryCatalog';
+import { conSigno } from './catalogo/catalogoUnico';
 
 /**
  * Un traspaso interno NO es gasto ni ingreso · el dinero no entra ni sale del
  * patrimonio, cambia de cuenta. Contando sus patas, sacar 20 € al cajero
  * aparecía a la vez como 20 € gastados y 20 € ingresados.
  */
-export function esTraspasoInterno(r: { categoryKey?: string }): boolean {
-  return isTransferKey(r.categoryKey);
+export function esTraspasoInterno(r: { naturaleza?: string }): boolean {
+  return r.naturaleza === 'movimiento_interno';
 }
 
 export interface RangoMes {
@@ -49,10 +49,9 @@ export function rangoDelMes(year: number, month0: number): RangoMes {
 
 export const soloFecha = (iso?: string): string => (iso ?? '').slice(0, 10);
 
-/** Importe con signo: magnitud por |amount|, dirección por `type`. */
-export function importeConSigno(e: Pick<TreasuryEvent, 'amount' | 'type'>): number {
-  const magnitud = Math.abs(e.amount);
-  return e.type === 'income' ? magnitud : -magnitud;
+/** Importe con signo: magnitud por |amount|, dirección por la naturaleza (y `sentido` en un interno). */
+export function importeConSigno(e: Pick<TreasuryEvent, 'amount' | 'naturaleza' | 'sentido'>): number {
+  return conSigno(e, e.amount);
 }
 
 /**

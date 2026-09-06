@@ -83,7 +83,7 @@ describe('el gasto se clasifica con el catálogo unificado', () => {
 
     await waitFor(() => expect(mockDbAdd).toHaveBeenCalled());
     const payload = mockDbAdd.mock.calls[0][1] as any;
-    expect(payload.type).toBe('expense');
+    expect(payload.naturaleza).toBe('gasto');
     expect(payload.categoryKey).toBe('gasto_personal_dia_dia');
     expect(payload.subtypeKey).toBeUndefined();
   });

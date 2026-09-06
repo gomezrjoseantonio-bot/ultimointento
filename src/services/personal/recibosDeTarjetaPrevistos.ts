@@ -96,7 +96,7 @@ export function eventoDePieza(
   const dia = fecha.slice(0, 10);
   const [año, mes] = dia.split('-').map(Number);
   return {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -Math.abs(importe),
     predictedDate: dia,
     description: compromiso.alias || 'Gasto con tarjeta',
@@ -315,7 +315,7 @@ export function eventoDeRecibo(
   const [año, mes] = recibo.fechaCargo.split('-').map(Number);
 
   return {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -recibo.importe,
     predictedDate: recibo.fechaCargo,
     description: `Recibo tarjeta ${alias}`,

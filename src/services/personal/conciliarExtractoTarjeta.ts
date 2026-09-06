@@ -188,7 +188,7 @@ export async function aplicarPlanTarjeta(
     // Línea sin objetivo · nace como pieza YA conciliada (el extracto manda).
     if (linea.importe <= 0) continue; // una devolución sin par no crea gasto
     await db.add('treasuryEvents', {
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: -Math.abs(linea.importe),
       predictedDate: linea.fecha,
       description: linea.concepto,

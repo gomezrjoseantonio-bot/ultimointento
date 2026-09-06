@@ -29,6 +29,7 @@ import type { MatchResult, MatchScore } from './movementMatchingService';
 import type { MovementSuggestion } from './movementSuggestionService';
 import type { LoQueSeReconoce } from './deterministas/matcheoDeterminista';
 import type { AtribucionDeterminista, OrigenDeterminista } from './deterministas/tipos';
+import { naturalezaPorSigno } from './catalogo/catalogoUnico';
 
 /**
  * ¿Entra esta línea al matcheo?
@@ -85,7 +86,7 @@ export function movementNuevoDesdeLinea(linea: LineaExtractoPersistida): Omit<Mo
     currency: linea.divisa,
     unifiedStatus: 'no_planificado',
     source: 'import',
-    type: amount >= 0 ? 'Ingreso' : 'Gasto',
+    naturaleza: naturalezaPorSigno(amount),
     origin: 'CSV',
     movementState: 'Confirmado',
     state: 'pending',

@@ -24,7 +24,7 @@ export interface ProyeccionAnual {
  * `TreasuryEvent`.
  */
 export const esRentaConfirmada = (e: TreasuryEvent): boolean =>
-  e.type === 'income' &&
+  e.naturaleza === 'ingreso' &&
   (e.sourceType === 'contract' || e.sourceType === 'contrato') &&
   (e.status === 'confirmed' || e.status === 'executed');
 

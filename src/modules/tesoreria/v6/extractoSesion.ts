@@ -16,6 +16,7 @@ import type { MatchResultPorLinea } from '../../../services/lineaComoMovimiento'
 import { entraAlMatcheo, movementDesdeLinea } from '../../../services/lineaComoMovimiento';
 import type { MovimientoConfirmadoRef } from '../../../services/conciliacionConfirmados';
 import type { TreasuryEvent, LineaExtractoPersistida } from '../../../services/db';
+import { conSigno } from '../../../services/catalogo/catalogoUnico';
 
 export type VeredictoLinea =
   | 'cuadra'
@@ -207,7 +208,7 @@ export function construirLineas(
     return {
       id,
       descripcion: e.description,
-      importe: e.type === 'income' ? Math.abs(e.amount) : -Math.abs(e.amount),
+      importe: conSigno(e, e.amount),
       fecha: (e.predictedDate ?? '').slice(0, 10),
     };
   };
@@ -527,5 +528,5 @@ export function seOfrecePara(evento: TreasuryEvent, cuentaId: number | undefined
   // algo: con los dos a `undefined`, un `===` daría verdadero y ofrecería un
   // evento sin cuenta a un destino sin cuenta.
   const esDeLaCuenta = cuentaId != null && evento.accountId === cuentaId;
-  return esDeLaCuenta || (evento.type === 'financing' && evento.accountId == null);
+  return esDeLaCuenta || (evento.familia === 'prestamo_hipoteca' && evento.accountId == null);
 }

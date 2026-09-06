@@ -27,7 +27,7 @@ const CARGO = {
   source: 'import',
   unifiedStatus: 'conciliado',
   statusConciliacion: 'match_manual',
-  type: 'Gasto',
+  naturaleza: 'gasto',
   origin: 'CSV',
   category: { tipo: 'Gastos' },
   reference: 'linea-extracto-77',
@@ -73,8 +73,8 @@ describe('el cargo del extracto pasa a ser la salida', () => {
   // Sin ella, la retirada seguiría contando como gasto.
   it('queda marcado como traspaso · deja de ser un gasto', async () => {
     await convertirEnTraspaso(5, 9);
-    expect(movimientos[5].categoryKey).toBe('traspaso_salida');
-    expect(movimientos[5].type).toBe('Transferencia');
+    expect(movimientos[5].naturaleza).toBe('movimiento_interno');
+    expect(movimientos[5].familia).toBe('traspaso');
     // Emparejado con su espejo · esa huella es lo que hace la conversión
     // repetible sin duplicar nada.
     expect(movimientos[5].transferMetadata).toEqual({ targetAccountId: 9, pairMovementId: 6 });
@@ -88,7 +88,7 @@ describe('la pata de entrada', () => {
 
     expect(entrada.accountId).toBe(9);
     expect(entrada.amount).toBe(200);
-    expect(entrada.categoryKey).toBe('traspaso_entrada');
+    expect(entrada.naturaleza).toBe('movimiento_interno');
     // La otra cuenta es la de ORIGEN · de ahí vino el dinero.
     expect(entrada.transferMetadata).toEqual({ targetAccountId: 1 });
   });

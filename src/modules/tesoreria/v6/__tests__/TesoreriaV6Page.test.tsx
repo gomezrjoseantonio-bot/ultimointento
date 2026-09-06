@@ -34,7 +34,7 @@ const cuenta = (id: number, over: Partial<Account> = {}): Account => ({
 });
 
 const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: enEsteMes(Math.min(28, ultimoDia)),
   description: 'Recibo',
@@ -54,7 +54,7 @@ const movimiento = (over: Partial<Movement> = {}): Movement => ({
   unifiedStatus: 'conciliado',
   source: 'import',
   category: { tipo: 'Gastos' },
-  type: 'Gasto',
+  naturaleza: 'gasto',
   origin: 'CSV',
   movementState: 'Confirmado',
   ambito: 'personal',
@@ -104,7 +104,7 @@ describe('§4.1 · hero', () => {
     montarDb({
       accounts: [cuenta(1), cuenta(2)],
       treasuryEvents: [
-        evento({ type: 'income', amount: 650, predictedDate: enEsteMes(Math.min(20, ultimoDia)) }),
+        evento({ naturaleza: 'ingreso', amount: 650, predictedDate: enEsteMes(Math.min(20, ultimoDia)) }),
       ],
     });
     montar();
@@ -139,7 +139,7 @@ describe('V9 · tabla "Mis cuentas" · columna Estado', () => {
     montarDb({
       accounts: [cuenta(1, { openingBalance: 50 })],
       treasuryEvents: [
-        evento({ type: 'expense', amount: 500, accountId: 1, predictedDate: enEsteMes(Math.min(28, ultimoDia)) }),
+        evento({ naturaleza: 'gasto', amount: 500, accountId: 1, predictedDate: enEsteMes(Math.min(28, ultimoDia)) }),
       ],
     });
     montar();

@@ -28,7 +28,7 @@ const cuenta = (id: number, alias: string): Account => ({
 });
 
 const ev = (over: Partial<TreasuryEvent> & { id: number }): TreasuryEvent => ({
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: '2026-07-20',
   description: 'Recibo luz',
@@ -49,7 +49,7 @@ const mov = (over: Partial<Movement> & { id: number }): Movement => ({
   unifiedStatus: 'conciliado',
   source: 'import',
   category: { tipo: 'Gastos' },
-  type: 'Gasto',
+  naturaleza: 'gasto',
   origin: 'CSV',
   movementState: 'Confirmado',
   ambito: 'personal',
@@ -150,7 +150,7 @@ describe('solo lo que todavía no ha movido dinero', () => {
         {...base}
         eventos={[
           ev({ id: 1, description: 'Recibo luz' }),
-          ev({ id: 2, description: 'Venta piso', status: 'confirmed', type: 'income', amount: 200000 }),
+          ev({ id: 2, description: 'Venta piso', status: 'confirmed', naturaleza: 'ingreso', amount: 200000 }),
         ]}
       />
     );
@@ -189,7 +189,7 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
       <DrawerCalendario
         {...base}
         eventos={[
-          ev({ id: 1, sourceType: 'nomina', type: 'income', description: 'Nómina – ORANGE ESPAGNE SA' }),
+          ev({ id: 1, sourceType: 'nomina', naturaleza: 'ingreso', description: 'Nómina – ORANGE ESPAGNE SA' }),
         ]}
       />
     );
@@ -207,7 +207,7 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     const renta = (id: number, quien: string, importe: number, hab: string) =>
       ev({
         id,
-        type: 'income',
+        naturaleza: 'ingreso',
         amount: importe,
         sourceType: 'contrato',
         inmuebleId: 2,
@@ -253,7 +253,7 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
     const renta = (id: number, quien: string) =>
       ev({
         id,
-        type: 'income',
+        naturaleza: 'ingreso',
         amount: 395,
         sourceType: 'contrato',
         inmuebleId: 2,
@@ -283,7 +283,7 @@ describe('la fila dice de quién es el cargo y de qué piso', () => {
         eventos={[
           ev({
             id: 1,
-            type: 'income',
+            naturaleza: 'ingreso',
             amount: 1350,
             sourceType: 'contrato',
             inmuebleId: 2,

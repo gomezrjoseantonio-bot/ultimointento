@@ -185,7 +185,7 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
   let treasuryForecastCreated = false;
   if (iban && totalAmount > 0) {
     treasuryForecastCreated = await createTreasuryForecast({
-      type: 'expense',
+      naturaleza: 'gasto',
       amount: totalAmount,
       date: dueDate,
       description: `Pago ${provider} - ${concept}`,

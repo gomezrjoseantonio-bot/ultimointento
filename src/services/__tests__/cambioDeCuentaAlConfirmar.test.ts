@@ -31,7 +31,7 @@ const cuenta = (id: number, alias: string) =>
   }) as Account;
 
 const PREVISION = {
-  type: 'income', amount: 607, predictedDate: '2026-09-01',
+  naturaleza: 'ingreso', amount: 607, predictedDate: '2026-09-01',
   description: 'Alquiler Acevedo 32', accountId: ORIGEN, status: 'predicted',
   sourceType: 'contrato', sourceId: 1, createdAt: '', updatedAt: '',
 } as const;

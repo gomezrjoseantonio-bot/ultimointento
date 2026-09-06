@@ -44,9 +44,9 @@ beforeEach(() => {
   mockBootstrap.mockReset().mockResolvedValue({});
   mockEstimacion.mockReset();
   mockEventos = [
-    { type: 'income', amount: 2140, predictedDate: `${anio}-01-01` },
-    { type: 'income', amount: 2140, predictedDate: `${anio}-02-01` },
-    { type: 'expense', amount: -785, predictedDate: `${anio}-01-05` },
+    { naturaleza: 'ingreso', amount: 2140, predictedDate: `${anio}-01-01` },
+    { naturaleza: 'ingreso', amount: 2140, predictedDate: `${anio}-02-01` },
+    { naturaleza: 'gasto', amount: -785, predictedDate: `${anio}-01-05` },
   ];
 });
 

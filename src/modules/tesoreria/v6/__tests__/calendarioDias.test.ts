@@ -22,7 +22,7 @@ const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
     accountId: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-03-15',
     description: 'Recibo',
@@ -164,8 +164,8 @@ describe('el punto ámbar · días que dejan una cuenta corta', () => {
     const dias = construirDias({
       ...base,
       eventos: [
-        ev({ id: 1, accountId: 1, type: 'expense', amount: 1500, predictedDate: '2026-03-20' }),
-        ev({ id: 2, accountId: 2, type: 'income', amount: 2000, predictedDate: '2026-03-20' }),
+        ev({ id: 1, accountId: 1, naturaleza: 'gasto', amount: 1500, predictedDate: '2026-03-20' }),
+        ev({ id: 2, accountId: 2, naturaleza: 'ingreso', amount: 2000, predictedDate: '2026-03-20' }),
       ],
       movimientos: [],
     });
@@ -275,8 +275,8 @@ describe('el resumen del mes', () => {
       year: 2026,
       month0: 2,
       eventos: [
-        ev({ id: 1, type: 'income', amount: 1200 }),
-        ev({ id: 2, type: 'expense', amount: 300 }),
+        ev({ id: 1, naturaleza: 'ingreso', amount: 1200 }),
+        ev({ id: 2, naturaleza: 'gasto', amount: 300 }),
       ],
       saldoTotalHoy: 2000,
     });
@@ -288,7 +288,7 @@ describe('el resumen del mes', () => {
     const resumen = resumirMes({
       year: 2026,
       month0: 2,
-      eventos: [ev({ status: 'executed', type: 'income', amount: 1200 })],
+      eventos: [ev({ status: 'executed', naturaleza: 'ingreso', amount: 1200 })],
       saldoTotalHoy: 2000,
     });
     expect(resumen).toEqual({ quedaEntrar: 0, quedaSalir: 0, cierre: 2000 });

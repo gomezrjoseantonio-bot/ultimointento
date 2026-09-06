@@ -1,17 +1,17 @@
 // PR5-HOTFIX v2 · Traspasos entre cuentas propias.
 //
 // Un traspaso crea DOS TreasuryEvents espejo:
-//   - Uno de tipo `expense` en la cuenta origen (categoryKey='traspaso_salida')
-//   - Uno de tipo `income`  en la cuenta destino (categoryKey='traspaso_entrada')
+//   - Uno en la cuenta origen (naturaleza `movimiento_interno` · familia
+//     `traspaso` · sentido `sale`)
+//   - Uno en la cuenta destino (idem · sentido `entra`)
 //
 // Ambos se vinculan mutuamente mediante `transferMetadata.pairEventId`.
 //
 // Los traspasos NO se cuentan en los KPIs de Ingreso/Gasto/Neto (ver
-// computeKpis en useMonthConciliacion — filtran por `isTransferKey`).
+// computeKpis — filtran por `naturaleza === 'movimiento_interno'`).
 
 import { initDB } from './db';
 import type { TreasuryEvent } from './db';
-import { TRANSFER_KEYS } from './categoryCatalog';
 import { confirmTreasuryEvent } from './treasuryConfirmationService';
 
 export interface CreateTransferParams {
@@ -52,7 +52,9 @@ export async function createTransfer(
 
   // 1. Crear event de salida (cuenta origen).
   const originEvent: Omit<TreasuryEvent, 'id'> = {
-    type: 'expense',
+    naturaleza: 'movimiento_interno',
+    sentido: 'sale',
+    familia: 'traspaso',
     amount: params.amount,
     predictedDate: params.date,
     description: `${concept} · salida`,
@@ -60,7 +62,6 @@ export async function createTransfer(
     accountId: params.originAccountId,
     status: 'predicted',
     ambito: 'personal',
-    categoryKey: TRANSFER_KEYS.SALIDA,
     categoryLabel: 'Traspaso · salida',
     transferMetadata: { targetAccountId: params.targetAccountId },
     createdAt: now,
@@ -70,7 +71,9 @@ export async function createTransfer(
 
   // 2. Crear event de entrada (cuenta destino), ligado al origen por pairEventId.
   const targetEvent: Omit<TreasuryEvent, 'id'> = {
-    type: 'income',
+    naturaleza: 'movimiento_interno',
+    sentido: 'entra',
+    familia: 'traspaso',
     amount: params.amount,
     predictedDate: params.date,
     description: `${concept} · entrada`,
@@ -78,7 +81,6 @@ export async function createTransfer(
     accountId: params.targetAccountId,
     status: 'predicted',
     ambito: 'personal',
-    categoryKey: TRANSFER_KEYS.ENTRADA,
     categoryLabel: 'Traspaso · entrada',
     transferMetadata: {
       targetAccountId: params.originAccountId,

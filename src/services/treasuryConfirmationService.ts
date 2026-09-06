@@ -28,11 +28,11 @@ import { initDB } from './db';
 import type { TreasuryEvent, Movement } from './db';
 import {
   resolveCategoryFromRecord,
-  isTransferKey,
   type CategoryDef,
 } from './categoryCatalog';
 import { recalculateAccountBalance } from './treasuryEventsService';
 import { camposDeCierre, buscarLineaDelEvento } from './cierreLineaInmueble';
+import { conSigno } from './catalogo/catalogoUnico';
 
 // Fire-and-forget recálculo del saldo de las cuentas afectadas. Errores se
 // loguean pero no rompen la operación principal de tesorería.
@@ -240,14 +240,9 @@ function buildMovementPayload({
     );
   }
 
-  // Financing events (pagos/cancelaciones de préstamo) salen como 'Gasto'
-  // para no contaminar los filtros de transferencias internas — consistente
-  // con loanSettlementService.
-  const type: Movement['type'] =
-    event.type === 'income' ? 'Ingreso' : 'Gasto';
-
-  const signedAmount =
-    event.type === 'income' ? Math.abs(finalAmount) : -Math.abs(finalAmount);
+  // El movimiento hereda los 4 ejes del previsto; el signo lo pone el sentido
+  // (ingreso entra · gasto sale · un interno lo dice él).
+  const signedAmount = conSigno(event, finalAmount);
 
   const payload: Omit<Movement, 'id'> = {
     accountId: finalAccountId,
@@ -271,7 +266,9 @@ function buildMovementPayload({
     category: {
       tipo: event.categoryLabel ?? 'Otros',
     },
-    type,
+    naturaleza: event.naturaleza,
+    familia: event.familia,
+    subtipo: event.subtipo,
     origin: 'Manual',
     movementState: 'Conciliado',
     ambito: event.ambito ?? 'personal',
@@ -322,7 +319,7 @@ export async function confirmTreasuryEvent(
 
   // Traspasos internos NO generan línea de inmueble nunca (son movimientos
   // espejo entre cuentas propias).
-  const esTransfer = isTransferKey(existingEvent.categoryKey);
+  const esTransfer = existingEvent.naturaleza === 'movimiento_interno';
 
   const esLineaInmueble =
     !esTransfer &&
@@ -1018,9 +1015,7 @@ export async function updateConfirmedMovement(
     if (movement) {
       const signedAmount =
         updates.amount != null
-          ? event.type === 'income'
-            ? Math.abs(updates.amount)
-            : -Math.abs(updates.amount)
+          ? conSigno(event, updates.amount)
           : movement.amount;
       const nextInmuebleId =
         updates.ambito === 'personal'

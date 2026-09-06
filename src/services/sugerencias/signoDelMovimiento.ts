@@ -64,8 +64,8 @@ export function direccionDeLaAccion(action: SuggestionAction): DireccionDelDiner
     case 'transfer':
       return 'sale';
     case 'create_treasury_event':
-      if (action.type === 'income') return 'entra';
-      if (action.type === 'expense') return 'sale';
+      if (action.naturaleza === 'ingreso') return 'entra';
+      if (action.naturaleza === 'gasto') return 'sale';
       return 'ninguna';
     case 'ignore':
     default:

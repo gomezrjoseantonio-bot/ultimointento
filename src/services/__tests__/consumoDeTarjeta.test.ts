@@ -15,7 +15,7 @@ const pieza = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
     id: 1,
     sourceType: 'gasto_tarjeta',
     tarjetaId: 7,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: 100,
     predictedDate: '2026-08-04',
     status: 'predicted',
@@ -137,7 +137,7 @@ describe('el día a día de la tarjeta', () => {
     // Con barra hacia arriba se leería como un cobro, que no lo es.
     const dias = serie([
       pieza({ id: 1, amount: 100, predictedDate: '2026-08-10' }),
-      pieza({ id: 2, amount: 30, type: 'income', predictedDate: '2026-08-10' }),
+      pieza({ id: 2, amount: 30, naturaleza: 'ingreso', predictedDate: '2026-08-10' }),
     ]);
 
     const dia = dias.find((d) => d.dia === '2026-08-10')!;

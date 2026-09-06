@@ -19,7 +19,7 @@ const HOY = '2026-08-05';
 
 const evento = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
-    type: 'income',
+    naturaleza: 'ingreso',
     amount: 1200,
     predictedDate: '2026-07-25',
     description: 'Nómina',
@@ -49,9 +49,9 @@ beforeEach(async () => {
 describe('la lista delante', () => {
   it('dice qué se va a dar por no ocurrido, y cuánto es', async () => {
     await sembrar([
-      evento({ amount: 1200, type: 'income' }),
-      evento({ amount: 300, type: 'expense', description: 'Luz' }),
-      evento({ amount: 50, type: 'expense', status: 'executed', description: 'Ya cobrado' }),
+      evento({ amount: 1200, naturaleza: 'ingreso' }),
+      evento({ amount: 300, naturaleza: 'gasto', description: 'Luz' }),
+      evento({ amount: 50, naturaleza: 'gasto', status: 'executed', description: 'Ya cobrado' }),
     ]);
 
     const previo = await loQueQuedaAbierto('2026-07');
@@ -156,7 +156,7 @@ describe('qué meses se pueden cerrar', () => {
   });
 
   it('la tira dice, de cada mes, qué queda y si está cerrado', async () => {
-    await sembrar([evento(), evento({ type: 'expense', amount: 300 })]);
+    await sembrar([evento(), evento({ naturaleza: 'gasto', amount: 300 })]);
     await cerrarMes('2026-06', HOY);
 
     const [julio, junio] = await mesesCerrables(HOY, 2);

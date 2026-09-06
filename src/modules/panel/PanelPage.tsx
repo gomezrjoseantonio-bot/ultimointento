@@ -93,7 +93,7 @@ const mismoMes = (iso: string | undefined, ref: Date): boolean => {
 };
 
 const esSalida = (ev: TreasuryEvent): boolean =>
-  ev.type === 'expense' || ev.type === 'financing';
+  ev.naturaleza === 'gasto';
 
 /** Magnitud del evento en positivo · robusto ante datos con signo heredado. */
 const magnitud = (ev: TreasuryEvent, usarActual = false): number =>
@@ -421,7 +421,7 @@ const PanelPage: React.FC = () => {
       !esTraspasoInterno(ev) &&
       mismoMes(ev.actualDate ?? ev.predictedDate, today);
 
-    const ingresosCobrados = enMes.filter((ev) => ev.type === 'income' && ejecutadoEnMes(ev));
+    const ingresosCobrados = enMes.filter((ev) => ev.naturaleza === 'ingreso' && ejecutadoEnMes(ev));
     const salidasHechas = enMes.filter((ev) => esSalida(ev) && ejecutadoEnMes(ev));
     const haEntrado = ingresosCobrados.reduce((s, ev) => s + magnitud(ev, true), 0);
     const haSalido = salidasHechas.reduce((s, ev) => s + magnitud(ev, true), 0);
@@ -503,7 +503,7 @@ const PanelPage: React.FC = () => {
 
     return {
       haEntrado: treasuryEvents
-        .filter((ev) => ev.type === 'income' && ejecutadoEnMes(ev))
+        .filter((ev) => ev.naturaleza === 'ingreso' && ejecutadoEnMes(ev))
         .map((ev) => toRow(ev, true))
         .sort(porDia),
       haSalido: treasuryEvents
@@ -566,7 +566,7 @@ const PanelPage: React.FC = () => {
   const porConfirmar = useMemo(() => {
     const hoy = today.toISOString().slice(0, 10);
     const pendientes = treasuryEvents.filter((ev) => {
-      if (ev.type !== 'income') return false;
+      if (ev.naturaleza !== 'ingreso') return false;
       if (ev.descartado) return false;
       if (ev.status !== 'predicted') return false;
       const f = (ev.predictedDate ?? '').slice(0, 10);

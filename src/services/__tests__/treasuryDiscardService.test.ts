@@ -12,7 +12,7 @@ let eventos: TreasuryEvent[];
 
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent => ({
   id: 1,
-  type: 'expense',
+  naturaleza: 'gasto',
   amount: 100,
   predictedDate: '2026-07-10',
   description: 'Recibo',

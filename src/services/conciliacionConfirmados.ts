@@ -18,7 +18,6 @@
 // ============================================================================
 
 import type { Movement } from './db';
-import { isTransferKey } from './categoryCatalog';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { movimientosDesdeLineas } from './lineaComoMovimiento';
 
@@ -64,10 +63,10 @@ function esConfirmadoEmparejable(m: Movement): boolean {
   // ese extracto, su línea debe cuadrar con la pata ya creada y subirla a
   // conciliado, sin duplicar. Antes se excluía toda `transferMetadata`, y por eso
   // la pata de entrada de un traspaso importado se quedaba huérfana. Solo se
-  // admiten las patas de traspaso (`isTransferKey`); cualquier otra cosa con
+  // admiten las patas de traspaso (`movimiento_interno`); cualquier otra cosa con
   // `transferMetadata` sigue fuera. La pata creada al importar es `source:
   // 'import'` y ya la filtra la guarda de arriba: aquí solo entran las manuales.
-  if (m.transferMetadata && !isTransferKey(m.categoryKey)) return false;
+  if (m.transferMetadata && m.naturaleza !== 'movimiento_interno') return false;
   // Una compra a crédito no mueve la cuenta el día de la compra (sale en el
   // recibo), así que no le corresponde una línea del extracto de la cuenta.
   if (m.gastoTarjetaCredito) return false;

@@ -23,7 +23,7 @@ const mov = (over: Partial<Movement> & { id: number }): Movement =>
     unifiedStatus: 'no_planificado',
     source: 'import',
     category: { tipo: 'Gastos' },
-    type: 'Gasto',
+    naturaleza: 'gasto',
     origin: 'CSV',
     movementState: 'Confirmado',
     ambito: 'personal',

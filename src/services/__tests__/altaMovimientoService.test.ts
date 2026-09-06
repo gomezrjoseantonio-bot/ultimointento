@@ -214,7 +214,9 @@ describe('el alta normal', () => {
 
   it('una transferencia se guarda como tal', async () => {
     await altaMovimiento({ ...base, tipo: 'transferencia', importe: -500 });
-    expect(movements[0].type).toBe('Transferencia');
+    // Externa · sale dinero de verdad: gasto pagado por transferencia (E2.4.1b).
+    expect(movements[0].naturaleza).toBe('gasto');
+    expect(movements[0].paymentMethod).toBe('transferencia');
   });
 
   it('sin cuenta se rechaza · un movimiento sin cuenta no mueve ningún saldo', async () => {
@@ -270,7 +272,8 @@ describe('la transferencia interna escribe SUS DOS PATAS', () => {
 
     expect(createTransfer).not.toHaveBeenCalled();
     expect(movements).toHaveLength(1);
-    expect(movements[0].type).toBe('Transferencia');
+    expect(movements[0].naturaleza).not.toBe('movimiento_interno');
+    expect(movements[0].paymentMethod).toBe('transferencia');
     expect(r.movementIdDestino).toBeUndefined();
   });
 

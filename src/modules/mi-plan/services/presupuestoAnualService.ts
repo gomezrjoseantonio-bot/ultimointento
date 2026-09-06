@@ -36,6 +36,7 @@ import { bolsaForCategoria } from '../../personal/helpers';
 import { initDB } from '../../../services/db';
 import type { TreasuryEvent, Movement } from '../../../services/db';
 import { calculateTotalInitialCash } from '../../../services/accountBalanceService';
+import { conSigno, sentidoDe } from '../../../services/catalogo/catalogoUnico';
 
 export type GrupoKey =
   | 'nomina' | 'autonomo' | 'alquileres'   // ENTRA
@@ -381,7 +382,7 @@ export async function buildReal(year: number): Promise<RealMes[]> {
     const real = importeRealEvento(ev, mvById);
     const linkedId = ev.executedMovementId ?? ev.movementId;
     if (typeof linkedId === 'number') usados.add(linkedId);
-    if (ev.type === 'income') {
+    if (ev.naturaleza === 'ingreso') {
       add(i, grupoDeIngresoReal(ev), real);          // ingreso = +
     } else {
       const grp = grupoDeGastoReal(ev as unknown as Parameters<typeof grupoDeGastoReal>[0]);
@@ -609,14 +610,14 @@ async function overrideDesdeFoto(
     if (!d || Number.isNaN(d.getTime()) || d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue;
     if (d.getDate() < diaHoy) continue;                 // solo lo que vence DESPUÉS de la foto
     const amt = Math.abs(ev.amount ?? 0);
-    const grp = ev.type === 'income'
+    const grp = ev.naturaleza === 'ingreso'
       ? grupoDeIngresoReal(ev)
       : grupoDeGastoReal(ev as unknown as Parameters<typeof grupoDeGastoReal>[0]);
     if (grp === 'residuo') continue;                    // sin grupo (edge · raro) · no se pinta
-    const signed = ev.type === 'income' ? amt : -amt;
+    const signed = conSigno(ev, amt);
     pend.set(grp, round2((pend.get(grp) ?? 0) + signed));
     const arr = lines.get(grp) ?? [];
-    arr.push({ concepto: ev.description ?? (ev.type === 'income' ? 'Pendiente de entrar' : 'Pago pendiente'), importe: round2(signed) });
+    arr.push({ concepto: ev.description ?? (sentidoDe(ev) === 'entra' ? 'Pendiente de entrar' : 'Pago pendiente'), importe: round2(signed) });
     lines.set(grp, arr);
   }
   for (const key of ORDEN) {

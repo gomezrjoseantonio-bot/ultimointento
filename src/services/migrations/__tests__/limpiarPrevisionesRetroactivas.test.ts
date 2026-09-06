@@ -15,7 +15,7 @@ import type { TreasuryEvent } from '../../db';
 const ev = (over: Partial<TreasuryEvent> = {}): TreasuryEvent =>
   ({
     id: 1,
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: -50,
     predictedDate: '2026-03-10',
     description: 'Agua',

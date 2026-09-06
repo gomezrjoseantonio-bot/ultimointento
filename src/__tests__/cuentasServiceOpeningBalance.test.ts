@@ -108,7 +108,7 @@ describe('cuentasService.create() - opening balance movement', () => {
       'movements',
       expect.objectContaining({
         amount: -200,
-        type: 'Gasto',
+        naturaleza: 'gasto',
         isOpeningBalance: true,
       })
     );

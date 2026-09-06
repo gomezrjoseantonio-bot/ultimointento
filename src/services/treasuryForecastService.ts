@@ -1,6 +1,7 @@
 import { initDB, TreasuryEvent, Document, Movement } from './db';
 import type { Ingreso } from './db';
 import { isCapexType } from './aeatClassificationService';
+import { sentidoDe } from './catalogo/catalogoUnico';
 
 /**
  * Create treasury forecast event from confirmed document
@@ -21,7 +22,7 @@ export const createTreasuryEventFromDocument = async (document: Document): Promi
   
   // Create treasury event for expense forecast
   const event: TreasuryEvent = {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: financialData.amount, // Already checked above
     predictedDate: financialData.predictedPaymentDate || financialData.dueDate || new Date().toISOString().split('T')[0],
     description: `${document.metadata.proveedor || 'Factura'} - ${financialData.invoiceNumber || document.filename}`,
@@ -91,7 +92,7 @@ export const createTreasuryEventFromIngreso = async (ingresoId: number): Promise
   if (!ingreso || ingreso.importe <= 0) return;
 
   const event: TreasuryEvent = {
-    type: 'income',
+    naturaleza: 'ingreso',
     amount: ingreso.importe,
     predictedDate: ingreso.fecha_prevista_cobro,
     description: `Ingreso: ${ingreso.contraparte}`,
@@ -147,7 +148,7 @@ export const createTreasuryEventFromGasto = async (gastoId: number): Promise<voi
   if (yaExisten.some((e: any) => e.sourceType === 'gasto' && !e.descartado)) return;
 
   const event: TreasuryEvent = {
-    type: 'expense',
+    naturaleza: 'gasto',
     amount: gasto.importe || gasto.total || 0,
     predictedDate: gasto.fecha || gasto.fecha_pago_prevista,
     description: `Gasto: ${gasto.proveedorNombre || gasto.contraparte_nombre || ''}`,
@@ -233,8 +234,8 @@ export const getTreasuryProjections = async (
     }
     
     const accountEvents = filteredEvents.filter(e => e.accountId === account.id);
-    const inflow = accountEvents.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
-    const outflow = accountEvents.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
+    const inflow = accountEvents.filter(e => sentidoDe(e) === 'entra').reduce((sum, e) => sum + e.amount, 0);
+    const outflow = accountEvents.filter(e => sentidoDe(e) === 'sale').reduce((sum, e) => sum + e.amount, 0);
     
     accountBalances.set(account.id!, {
       current: account.balance ?? 0,
@@ -242,8 +243,8 @@ export const getTreasuryProjections = async (
     });
   }
 
-  const totalInflow = filteredEvents.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
-  const totalOutflow = filteredEvents.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
+  const totalInflow = filteredEvents.filter(e => sentidoDe(e) === 'entra').reduce((sum, e) => sum + e.amount, 0);
+  const totalOutflow = filteredEvents.filter(e => sentidoDe(e) === 'sale').reduce((sum, e) => sum + e.amount, 0);
 
   return {
     events: filteredEvents,

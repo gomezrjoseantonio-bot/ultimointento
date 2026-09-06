@@ -15,6 +15,7 @@ import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
 import { cargarAliasContraparte, nombreDeContraparte } from './movementLearningService';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { matchResultPorLinea, movimientosDesdeLineas, type MatchResultPorLinea } from './lineaComoMovimiento';
+import { sentidoDe } from './catalogo/catalogoUnico';
 
 /**
  * Los alias que el usuario ya enseñó · clave del nombre que manda el banco →
@@ -188,7 +189,7 @@ function collectCandidates(
       if (!Number.isFinite(daysDiff)) continue;
       // Importe clavado ⇒ se mira todo el mes; el resto sigue con ±5 días.
       const importeExacto =
-        signMatchesType(movement.amount, event.type) &&
+        signMatchesType(movement.amount, event) &&
         Math.abs(Math.abs(movement.amount) - Math.abs(event.amount)) < 0.005;
       const ventana = importeExacto ? VENTANA_IMPORTE_EXACTO_DIAS : opts.fechaWindowDays;
       if (daysDiff > ventana) continue;
@@ -233,7 +234,7 @@ function scorePair(
   const movAbs = Math.abs(movement.amount);
   const evtAbs = Math.abs(event.amount);
   const diffAbs = Math.abs(movAbs - evtAbs);
-  const sameSign = signMatchesType(movement.amount, event.type);
+  const sameSign = signMatchesType(movement.amount, event);
 
   if (sameSign && diffAbs < 0.005) {
     score += 30;
@@ -257,7 +258,7 @@ function scorePair(
   // el origen del "0 de 27". En INGRESOS no vale: quién paga es lo que
   // distingue una renta de un ingreso cualquiera del mismo importe, así que ahí
   // manda la contraparte (Bizum/alias), no el importe a secas.
-  const esGasto = event.type === 'expense' || event.type === 'financing';
+  const esGasto = event.naturaleza === 'gasto';
   if (esGasto && sameSign && diffAbs < 0.005 && movement.accountId === event.accountId) {
     score += 25;
     reasons.push('importe_exacto_misma_cuenta');
@@ -273,7 +274,7 @@ function scorePair(
   // contraparte SIGUE sumando (desempata dos rentas iguales), y si hay dos
   // previstos del mismo importe la ambigüedad va a multiMatch, no a un cuadre a
   // ciegas. Se acota a ±5 días para que un ingreso suelto lejano no la consuma.
-  const esIngreso = event.type === 'income';
+  const esIngreso = event.naturaleza === 'ingreso';
   const textoIngreso = `${movement.description ?? ''} ${movement.counterparty ?? ''}`.toLowerCase();
   const pareceAlquiler = /alquiler|arrendamiento|mensualidad|inquilin|\brenta\b/.test(textoIngreso);
   if (
@@ -382,11 +383,11 @@ function puntosDeBizum(movement: Movement, event: TreasuryEvent, reasons: string
   return 0;
 }
 
-function signMatchesType(movementAmount: number, type: TreasuryEvent['type']): boolean {
-  if (type === 'income') return movementAmount > 0;
-  if (type === 'expense') return movementAmount < 0;
-  // financing covers both directions (loan disbursement vs cuota); accept either.
-  return true;
+function signMatchesType(movementAmount: number, event: Pick<TreasuryEvent, 'naturaleza' | 'sentido'>): boolean {
+  // El sentido lo dice la naturaleza (y `sentido` en un movimiento interno):
+  // una cuota de préstamo sale, una disposición entra. Ya no hay un `financing`
+  // que valga para las dos direcciones.
+  return sentidoDe(event) === 'entra' ? movementAmount > 0 : movementAmount < 0;
 }
 
 function daysBetween(a: string, b: string): number {

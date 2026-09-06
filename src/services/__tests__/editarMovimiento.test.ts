@@ -26,7 +26,7 @@ const anotado = (over: Partial<Movement> = {}): Movement =>
     amount: -48,
     description: 'Gas',
     source: 'manual',
-    type: 'Gasto',
+    naturaleza: 'gasto',
     origin: 'Manual',
     movementState: 'Confirmado',
     unifiedStatus: 'no_planificado',
@@ -115,18 +115,20 @@ describe('corregir lo anotado', () => {
 
     const m = await leer(id);
     expect(m?.amount).toBe(300);
-    expect(m?.type).toBe('Ingreso');
+    expect(m?.naturaleza).toBe('ingreso');
     expect(m?.category).toEqual({ tipo: 'Ingresos' });
   });
 
   // Una transferencia externa sale en negativo como cualquier cargo, así que
-  // derivar el tipo del signo la convertía en gasto — y sin vuelta atrás.
+  // el signo dice gasto y el método de pago dice transferencia (E2.4.1b).
   it('una transferencia externa sigue siendo transferencia', async () => {
-    const id = await guardar(anotado({ type: 'Transferencia', description: 'A mi hermano' }));
+    const id = await guardar(anotado({ paymentMethod: 'transferencia', description: 'A mi hermano' }));
 
     await editarMovimiento(id, { ...correccion, tipo: 'transferencia', importe: -200 });
 
-    expect((await leer(id))?.type).toBe('Transferencia');
+    const m = await leer(id);
+    expect(m?.paymentMethod).toBe('transferencia');
+    expect(m?.naturaleza).toBe('gasto');
   });
 
   // La interna son dos apuntes espejo · crear la otra pata al editar dejaría un
@@ -138,7 +140,7 @@ describe('corregir lo anotado', () => {
     await expect(
       editarMovimiento(id, { ...correccion, tipo: 'transferencia', cuentaDestinoId: 2 })
     ).rejects.toThrow(MovimientoNoEditableError);
-    expect((await leer(id))?.type).toBe('Gasto');
+    expect((await leer(id))?.naturaleza).toBe('gasto');
   });
 
   it('lo que no es suyo no se toca', async () => {

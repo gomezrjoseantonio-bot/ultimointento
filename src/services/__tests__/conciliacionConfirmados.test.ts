@@ -79,7 +79,7 @@ describe('solo lo anotado a mano y suelto', () => {
   it('una pata de traspaso (categoryKey traspaso_*) SÍ casa · §4.4', () => {
     const r = emparejarConfirmados(
       [lineaImport({ amount: 1500 })],
-      [mov({ id: 7, amount: 1500, categoryKey: 'traspaso_entrada', transferMetadata: { targetAccountId: 9 } })]
+      [mov({ id: 7, amount: 1500, naturaleza: 'movimiento_interno', familia: 'traspaso', transferMetadata: { targetAccountId: 9 } })]
     );
     expect(r.get(100)).toBe(7);
   });

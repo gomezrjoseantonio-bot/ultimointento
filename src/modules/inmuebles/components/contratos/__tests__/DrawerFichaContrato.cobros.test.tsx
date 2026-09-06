@@ -30,7 +30,7 @@ const contrato: Contract & { id: number } = {
 } as Contract & { id: number };
 
 const rentaVencidaSinCobrar: Partial<TreasuryEvent> = {
-  type: 'income',
+  naturaleza: 'ingreso',
   amount: 950,
   // Muy en el pasado → vencida sin cobrar sea cual sea la fecha de hoy → impago.
   predictedDate: '2020-02-05',

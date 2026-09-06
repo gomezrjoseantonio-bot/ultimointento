@@ -20,7 +20,7 @@ describe('comparativaService · Bloque B.2 · el real cruza el enlace previsión
     // Evento previsto para MARZO/2020 y EJECUTADO, enlazado al movimiento #1.
     await db.put('treasuryEvents', {
       id: 1,
-      type: 'income',
+      naturaleza: 'ingreso',
       amount: 1000,
       predictedDate: '2020-03-10T00:00:00.000Z',
       año: 2020,

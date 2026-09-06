@@ -79,7 +79,7 @@ function agrupadoPorCuentaYMes(
   const porClave = new Map<string, CobroDeUnMes>();
 
   for (const ev of eventos) {
-    if (ev.type !== 'income' || !cuenta(ev)) continue;
+    if (ev.naturaleza !== 'ingreso' || !cuenta(ev)) continue;
     if (ev.descartado === true) continue;
     if (ev.accountId == null) continue;
 

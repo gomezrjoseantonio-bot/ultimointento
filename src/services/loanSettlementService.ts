@@ -190,7 +190,8 @@ const createMovement = ({
   category: {
     tipo: operationType === 'TOTAL' ? 'Cancelación préstamo' : 'Amortización préstamo',
   },
-  type: 'Gasto' as const,
+  naturaleza: 'gasto' as const,
+  familia: 'prestamo_hipoteca' as const,
   origin: 'Manual' as const,
   movementState: 'Conciliado' as const,
   ambito: ambitoDelPrestamo(prestamo),
@@ -216,7 +217,8 @@ const createTreasuryEvent = ({
   prestamo: Prestamo;
   operationType: 'TOTAL' | 'PARTIAL';
 }) => ({
-  type: 'financing' as const,
+  naturaleza: 'gasto' as const,
+  familia: 'prestamo_hipoteca' as const,
   amount: round2(totalCashOut),
   predictedDate: operationDate,
   description: operationType === 'TOTAL'

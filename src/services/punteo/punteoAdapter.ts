@@ -11,8 +11,6 @@ import { rutaDelGastoRecurrente } from './enlaceGastoRecurrente';
 import {
   getCategoryByKey,
   getSubtypeByKey,
-  isTransferKey,
-  TRANSFER_KEYS,
 } from '../categoryCatalog';
 import { esMovimientoEditable } from '../altaMovimientoService';
 import { conceptoPorId } from '../conceptos/catalogoConceptos';
@@ -21,10 +19,11 @@ import {
   estadoDeMovimiento,
   type ItemPunteo,
 } from './punteoModel';
+import { conSigno, LABEL_NATURALEZA, type Naturaleza, type Sentido } from '../catalogo/catalogoUnico';
 
 // ─── Etiqueta de origen (qué es la cosa) ────────────────────────────────────
 
-export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'categoryKey'>): string {
+export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'naturaleza' | 'categoryKey'>): string {
   switch (e.sourceType) {
     case 'prestamo':
     case 'hipoteca':
@@ -63,7 +62,7 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
     case 'inversion_liquidacion':
       return 'Inversión';
     default:
-      return e.type === 'income' ? 'Ingreso' : 'Gasto';
+      return LABEL_NATURALEZA[e.naturaleza] ?? 'Gasto';
   }
 }
 
@@ -80,14 +79,16 @@ export function origenDeEvento(e: Pick<TreasuryEvent, 'sourceType' | 'type' | 'c
  * movimiento que la cumple caigan en el mismo sitio.
  */
 export function origenDeMovimiento(
-  m: Pick<Movement, 'categoryKey' | 'type'>
+  m: Pick<Movement, 'categoryKey' | 'naturaleza' | 'paymentMethod'>
 ): string {
-  if (m.type === 'Transferencia') return 'Transferencia';
+  if (m.naturaleza === 'movimiento_interno') return 'Transferencia';
   const categoria = getCategoryByKey(m.categoryKey);
-  if (categoria && !isTransferKey(m.categoryKey)) {
+  if (categoria) {
     return DICE_OTRA_COSA_EL_EVENTO[categoria.key] ?? categoria.label;
   }
-  return m.type === 'Ingreso' ? 'Ingreso' : 'Gasto';
+  // Una transferencia EXTERNA es un ingreso/gasto pagado por transferencia.
+  if (m.paymentMethod === 'transferencia') return 'Transferencia';
+  return LABEL_NATURALEZA[m.naturaleza] ?? 'Gasto';
 }
 
 /**
@@ -235,20 +236,23 @@ export type AliasCuenta = (id: number) => string | undefined;
  * fila, las dos se leen igual —"Traspaso a ahorro, −2.000 €"— y la interna
  * parece dinero perdido.
  *
- * La dirección la dice su `categoryKey` (`traspaso_salida`/`traspaso_entrada`)
- * y la otra cuenta viaja en `transferMetadata.targetAccountId`, que en la pata
- * de entrada guarda la de ORIGEN: en las dos es "la otra".
+ * La dirección la dice el sentido del previsto o el signo del movimiento, y la
+ * otra cuenta viaja en `transferMetadata.targetAccountId`, que en la pata de
+ * entrada guarda la de ORIGEN: en las dos es "la otra".
  */
 function piezasDeTransferencia(
   r: {
-    categoryKey?: string;
+    naturaleza?: Naturaleza;
+    familia?: string;
+    sentido?: Sentido;
+    amount?: number;
     description?: string;
     transferMetadata?: { targetAccountId: number };
   },
   aliasCuenta?: AliasCuenta
 ): { concepto: string; detalle: string } | undefined {
-  if (!isTransferKey(r.categoryKey)) return undefined;
-  const sale = r.categoryKey === TRANSFER_KEYS.SALIDA;
+  if (r.naturaleza !== 'movimiento_interno' || r.familia !== 'traspaso') return undefined;
+  const sale = r.sentido ? r.sentido === 'sale' : (r.amount ?? 0) < 0;
   const otra = r.transferMetadata?.targetAccountId;
   const nombre = otra != null ? aliasCuenta?.(otra) : undefined;
   // El "· salida"/"· entrada" que `createTransfer` pega a la descripción sobra
@@ -333,7 +337,7 @@ export function eventoAItem(
   aliasCuenta?: AliasCuenta,
 ): ItemPunteo {
   const mag = Math.abs(e.actualAmount ?? e.amount);
-  const importe = e.type === 'income' ? mag : -mag;
+  const importe = conSigno(e, mag);
   // §2.2 · ningún identificador interno visible. Aquí se caía en
   // `Inmueble ${id}` cuando el alias no se resolvía, y eso pintaba "Inmueble 2"
   // en la fila: un número de fila de base de datos que al lector no le dice
@@ -414,14 +418,21 @@ export function eventoAItem(
  * hacer el mismo razonamiento —y lo haga al revés desde la pata de entrada.
  */
 function traspasoDeLaFila(
-  r: { categoryKey?: string; accountId?: number; transferMetadata?: { targetAccountId: number } },
+  r: {
+    naturaleza?: Naturaleza;
+    familia?: string;
+    sentido?: Sentido;
+    amount?: number;
+    accountId?: number;
+    transferMetadata?: { targetAccountId: number };
+  },
   eventId?: number
 ): { eventId: number; origenId: number; destinoId: number } | undefined {
-  if (eventId == null || !isTransferKey(r.categoryKey)) return undefined;
+  if (eventId == null || r.naturaleza !== 'movimiento_interno' || r.familia !== 'traspaso') return undefined;
   const propia = r.accountId;
   const otra = r.transferMetadata?.targetAccountId;
   if (propia == null || otra == null) return undefined;
-  const sale = r.categoryKey === TRANSFER_KEYS.SALIDA;
+  const sale = r.sentido ? r.sentido === 'sale' : (r.amount ?? 0) < 0;
   return {
     eventId,
     origenId: sale ? propia : otra,
@@ -472,7 +483,10 @@ function piezasDeMovimiento(
     | 'category'
     | 'description'
     | 'providerName'
-    | 'type'
+    | 'naturaleza'
+    | 'familia'
+    | 'amount'
+    | 'paymentMethod'
     | 'transferMetadata'
     | 'paymentMethod'
     | 'counterparty'
@@ -503,7 +517,7 @@ function piezasDeMovimiento(
   // Externa · el dinero SÍ se va, y decirlo evita que se confunda con la
   // interna, que se lee igual de lejos y no significa lo mismo. Tu clasificación
   // manda en el subtítulo cuando existe.
-  if (m.type === 'Transferencia') {
+  if (m.paymentMethod === 'transferencia' && m.naturaleza !== 'movimiento_interno') {
     return { concepto: m.description ?? '', detalle: clasificacion ?? 'Transferencia externa' };
   }
   // §6.3 · sin nombre de pagador, la clasificación es lo único que hay: titula;
