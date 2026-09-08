@@ -79,6 +79,18 @@ Tres tests existentes cambian, y conviene mirarlos porque son el antes y el desp
 
 Un concepto de **una sola palabra** ya no aprende regla ni arrastra hermanas. Es deliberado y es el lado seguro: sobre-agrupar clasifica mal en silencio, y sobre-separar solo cuesta clasificar alguna línea más a mano. Si aparece un banco que escribe conceptos de una palabra de verdad, se revisa entonces.
 
+## Segunda parte · el bloque no respetaba la selección
+
+Jose, al leer el arreglo de arriba: «yo buscaba por ejemplo gas y marcaba todas las que quería clasificar, y me clasificaba esa y todas las demás».
+
+Ese es OTRO camino, y tiene un fallo propio que sobrevive al de la clave. En la pantalla de conciliar hay buscador y selección múltiple: filtras por «gas», marcas las que quieres y pulsas «Clasificar las N como…». El manejador (`DrawerExtracto.clasificarVarias`) llamaba, por cada línea elegida, a la misma función que clasifica una línea suelta, y esa función termina arrastrando a las **hermanas del lote**. Eso es lo que E2.4.2 vino a hacer y está bien cuando clasificas UNA. En bloque no: el usuario ya ha ido marcando una por una cuáles quiere, y eso **es** la respuesta a «cuáles». Si de ocho recibos de gas marcaba cinco y dejaba tres fuera a propósito, los tres se clasificaban igual.
+
+Con la clave rota, además, «las hermanas» eran todo lo pendiente del mismo signo. Por eso se veía tan grande.
+
+**Arreglo.** La regla se muda al módulo que se llama `clasificarEnBloque`, que es de quien es, y ahí sí se puede probar: `clasificarLasElegidas` recorre exactamente las elegidas y llama a clasificar **sin arrastre**. El drawer se queda con dos líneas y baja de 799 a 794. Cinco tests nuevos fijan que hay una llamada por línea elegida, que nunca se arrastra, que las dejadas fuera se quedan fuera, que cada una conserva su importe y su fecha, y que sin selección no pasa nada.
+
+**Los dos arreglos hacen falta.** La clave, para que «las hermanas» de una línea suelta sean de verdad las suyas. El bloque, para que una selección hecha a mano se respete aunque la clave sea perfecta.
+
 ## Lo que NO se ha hecho
 
 - **Verificar el texto de la regla al aplicarla.** `movementLearningRules` guarda `descriptionPattern` y `counterpartyPattern` y la búsqueda no los mira: va por clave y punto. Comprobarlos sería un tercer candado que dejaría inofensivo cualquier choque futuro de huellas. No hace falta para este fallo y toca cómo se aplican todas las reglas, así que queda propuesto.
