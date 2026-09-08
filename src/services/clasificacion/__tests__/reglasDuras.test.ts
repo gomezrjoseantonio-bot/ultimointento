@@ -36,24 +36,93 @@ describe('regla 1 · palabra ENTERA, nunca substring', () => {
 });
 
 describe('regla 2 · el signo manda sobre la palabra', () => {
-  it('«ABONO POR DOMICILIACIÓN» en positivo es una bonificación, no un recibo', () => {
-    const c = clasificarLinea(mov('ABONO POR DOMICILIACIÓN DE RECIBOS', 19.46), ctx());
-    expect(c.naturaleza).toBe('ingreso');
-    expect(c.familia).toBe('otros_ingresos');
-  });
-  it('«TRANSFERENCIA CURENERGÍA» en positivo es la devolución de la comercializadora', () => {
-    const c = clasificarLinea(mov('TRANSFERENCIA CURENERGIA SAU', 31.2), ctx());
-    expect(c.naturaleza).toBe('ingreso');
-    expect(c.familia).toBe('otros_ingresos');
-    expect(c.motivos.join(' ')).toMatch(/devolución de un suministro/);
-  });
-  it('una regla aprendida que dice «gasto» sobre un abono no se aplica', () => {
+  it('una renta que SALE no es una renta · el ingreso en negativo se descarta', () => {
     const c = clasificarLinea(
-      mov('BIZUM DE ALGUIEN', 50),
-      ctx({ sugerencias: [{ via: 'learning_rule', confidence: 90, description: '', action: { kind: 'mark_personal_expense', familia: 'supermercado' } }] }),
+      mov('BIZUM A FAVOR DE AROA GOMEZ', -80),
+      ctx({ sugerencias: [{ via: 'learning_rule', confidence: 90, description: '', action: { kind: 'assign_to_contract', contractId: 3 } }] }),
     );
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).not.toBe('alquiler');
+  });
+});
+
+// E2.4.2-fix · Curenergía cobra una cuota fija y regulariza cada seis meses.
+// Lo que devuelve es del suministro de ese piso, no un ingreso caído del cielo:
+// se queda en la familia del gasto, con signo +, y así RESTA de la luz en vez
+// de inflar los ingresos (Opción A · §7 del DEFINITIVO).
+describe('la devolución de un gasto es de la familia de ese gasto', () => {
+  it('«TRANSFERENCIA CURENERGÍA» en positivo es luz, no «otros ingresos»', () => {
+    const c = clasificarLinea(mov('TRANSFERENCIA CURENERGIA SAU', 31.2), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBe('suministro');
+    expect(c.subtipo).toBe('luz');
+    expect(c.motivos.join(' ')).toMatch(/devolución de ese gasto/);
+  });
+
+  it('el recibo de siempre no cambia · en negativo sigue siendo la cuota', () => {
+    const c = clasificarLinea(mov('ELECTRICIDAD IBERDROLA COMERCIALIZA', -48), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBe('suministro');
+    expect(c.subtipo).toBe('luz');
+    expect(c.motivos.join(' ')).not.toMatch(/devolución/);
+  });
+
+  it('el seguro que reintegra vuelve a seguros, no a ingresos', () => {
+    const c = clasificarLinea(mov('ABONO MAPFRE REGULARIZACION POLIZA', 62.4), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBe('seguros_alarmas');
+  });
+
+  it('un recibo devuelto es una devolución SIN familia · falta decir de cuál', () => {
+    // El concepto dice que vuelve dinero de un recibo, pero no de qué recibo.
+    // Inventarle familia sería peor que dejar que lo diga quien lo sabe.
+    const c = clasificarLinea(mov('ABONO POR DOMICILIACIÓN DE RECIBOS', 19.46), ctx());
+    expect(c.naturaleza).toBe('gasto');
     expect(c.familia).toBeUndefined();
+  });
+
+  it('si el recibo devuelto trae el proveedor, la familia sale sola', () => {
+    const c = clasificarLinea(mov('ABONO POR DOMICILIACION IBERDROLA', 19.46), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBe('suministro');
+    expect(c.subtipo).toBe('luz');
+  });
+
+  it('una bonificación del banco SÍ es un ingreso · es dinero nuevo', () => {
+    const c = clasificarLinea(mov('BONIFICACION PLAN CUENTA NOMINA', 12), ctx());
     expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBe('otros_ingresos');
+  });
+});
+
+// La otra mitad de la regla: lo que entra y es un ingreso DE VERDAD no se
+// convierte en la devolución de nada. Si esto se rompe, la renta de un piso
+// dejaría de contar como ingreso y restaría del alquiler pagado.
+describe('un ingreso de verdad no se lee como devolución', () => {
+  it('la renta que entra sigue siendo alquiler · ingreso', () => {
+    const c = clasificarLinea(mov('TRANSFERENCIA ALQUILER SEPTIEMBRE PISO 3', 650), ctx());
+    expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBe('alquiler');
+  });
+
+  it('la nómina que entra sigue siendo nómina', () => {
+    const c = clasificarLinea(mov('NOMINA EMPRESA SL', 1850), ctx());
+    expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBe('nomina');
+  });
+
+  it('la devolución de Hacienda es un ingreso, no un gasto en positivo', () => {
+    // No es de ninguna familia de gasto: no hay «gasto de Hacienda» del que
+    // restarla, aunque la palabra sea la misma.
+    const c = clasificarLinea(mov('ABONO AEAT DEVOLUCION RENTA 2025', 420), ctx());
+    expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBe('otros_ingresos');
+  });
+
+  it('una transferencia de una persona sigue sin familia · el defecto es ingreso', () => {
+    const c = clasificarLinea(mov('ABONO TRANSFERENCIA DE NOMBRE APELLIDO', 400), ctx());
+    expect(c.naturaleza).toBe('ingreso');
+    expect(c.familia).toBeUndefined();
   });
 });
 

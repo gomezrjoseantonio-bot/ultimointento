@@ -50,7 +50,11 @@ interface Contexto {
 const LIQUIDACION_TARJETA = ['LIQUIDACION DE LAS TARJETAS', 'LIQUIDACION TARJETA', 'LIQUIDACION DE TARJETA', 'LIQUIDACION TARJETAS', 'RECIBO TARJETA'];
 const DISPOSICION = ['ABONO DISPOSICION', 'DISPOSICION PRESTAMO', 'DISPOSICION DE PRESTAMO', 'PRESTAMOS ABONO DISPOSICION'];
 const CUOTA_PRESTAMO = ['LIQUIDACION PERIODICA PRESTAMO', 'PRESTAMOS ADEUDO CUOTA', 'ADEUDO CUOTA', 'CUOTA PRESTAMO', 'CUOTA DE PRESTAMO', 'CUOTA HIPOTECA', 'CUOTA DE HIPOTECA', 'HIPOTECA', 'PRESTAMO', 'PRESTAMOS'];
-const ABONO_DOMICILIACION = ['ABONO POR DOMICILIACION', 'ABONO DOMICILIACION', 'DEVOLUCION RECIBO', 'DEVOLUCION DE RECIBO', 'BONIFICACION'];
+// Los dos nacieron juntos y se separan en E2.4.2-fix, porque no son lo mismo:
+// una bonificación es dinero NUEVO que regala el banco (un ingreso de verdad),
+// y un recibo devuelto es dinero TUYO que vuelve — la marcha atrás de un gasto.
+const BONIFICACION = ['BONIFICACION'];
+const DEVOLUCION_RECIBO = ['ABONO POR DOMICILIACION', 'ABONO DOMICILIACION', 'DEVOLUCION RECIBO', 'DEVOLUCION DE RECIBO'];
 const NOMINA = ['NOMINA', 'NOMINAS', 'SALARIO', 'HABERES'];
 const PENSION = ['PENSION', 'INSS', 'SEGURIDAD SOCIAL'];
 const FIANZA = ['FIANZA'];
@@ -113,11 +117,25 @@ const texto = (m: LineaParaReglas) => `${m.description} ${m.reference ?? ''}`;
 const gasto = (familia: FamiliaId, motivo: string, subtipo?: string): Parcial =>
   ({ naturaleza: 'gasto', familia, ...(subtipo ? { subtipo } : {}), motivo });
 
-/** Familia + subtipo por una lista de comercios · solo cuando el dinero SALE. */
+/**
+ * Familia + subtipo por una lista de comercios · en los DOS signos.
+ *
+ * En negativo es el recibo. En positivo es la DEVOLUCIÓN de ese mismo recibo, y
+ * es de la MISMA familia (E2.4.2-fix · §7 DEFINITIVO): Curenergía cobra una
+ * cuota fija y regulariza cada seis meses, y lo que abona es del suministro de
+ * ese piso —mismo proveedor, mismo CUPS—, no un ingreso caído del cielo. Al
+ * quedarse en la familia, resta de la luz de ese piso en vez de inflar los
+ * ingresos. Igual el seguro que cobró de más y la reparación reembolsada.
+ *
+ * Cuidado con el ORDEN: una lista de comercios que también es un ingreso de
+ * verdad en positivo —el alquiler— tiene que llevar su regla de ingreso ANTES,
+ * porque la primera naturaleza que se fija gana.
+ */
 function porComercio(m: LineaParaReglas, lista: readonly string[], familia: FamiliaId, subtipo?: string): Parcial | undefined {
-  if (!sale(m)) return undefined;
   const cual = cualCasa(texto(m), lista);
-  return cual ? gasto(familia, `«${cual}» en el concepto`, subtipo) : undefined;
+  if (!cual) return undefined;
+  const porQue = entra(m) ? `«${cual}» en el concepto · devolución de ese gasto` : `«${cual}» en el concepto`;
+  return gasto(familia, porQue, subtipo);
 }
 
 const REGLAS: Regla[] = [
@@ -133,12 +151,19 @@ const REGLAS: Regla[] = [
     : undefined),
 
   // ── 2 · el signo manda sobre la palabra ──
-  (m) => (entra(m) && tieneAlguna(texto(m), ABONO_DOMICILIACION)
-    ? { naturaleza: 'ingreso', familia: 'otros_ingresos', motivo: 'abono en positivo · bonificación o devolución, no un recibo' }
+  //
+  // La bonificación es dinero nuevo del banco · eso sí es un ingreso.
+  (m) => (entra(m) && tieneAlguna(texto(m), BONIFICACION)
+    ? { naturaleza: 'ingreso', familia: 'otros_ingresos', motivo: 'bonificación del banco · dinero nuevo, no la vuelta de un recibo' }
     : undefined),
-  (m) => (entra(m) && tieneAlguna(texto(m), [...SUMINISTRO_LUZ, ...SUMINISTRO_GAS, ...SUMINISTRO_AGUA, ...SUMINISTRO_SIN_SUBTIPO].filter((p) => p.length > 3))
-    ? { naturaleza: 'ingreso', familia: 'otros_ingresos', motivo: 'abono de la comercializadora · devolución de un suministro' }
+  // El recibo devuelto es la marcha atrás de un GASTO, pero el concepto no dice
+  // de cuál: se queda como devolución SIN familia y la pone quien lo sabe — o
+  // la regla de comercio de más abajo, si el proveedor aparece en el texto.
+  (m) => (entra(m) && tieneAlguna(texto(m), DEVOLUCION_RECIBO)
+    ? { naturaleza: 'gasto', motivo: 'recibo devuelto · dinero de un gasto que vuelve, falta decir de cuál' }
     : undefined),
+  // El abono de la comercializadora ya no vive aquí: lo coge la regla de
+  // comercio del suministro (más abajo), que además acierta el subtipo.
 
   // ── 3 · nómina yo→yo · la parte es el propio titular ──
   (m, ctx) => (tieneAlguna(texto(m), NOMINA) && laParteEsElTitular(m.description, [...ctx.nombresTitular])
@@ -210,10 +235,14 @@ const REGLAS: Regla[] = [
   (m) => porComercio(m, SEGUROS_DECESOS, 'seguros_alarmas', 'decesos'),
   (m) => porComercio(m, SEGUROS_VEHICULO, 'seguros_alarmas', 'vehiculo'),
   (m) => porComercio(m, SEGUROS, 'seguros_alarmas'),
-  (m) => porComercio(m, ALQUILER, 'alquiler_renting'),
+  // El alquiler que ENTRA es la renta, y va ANTES que su regla de comercio: sin
+  // este orden, al abrir los comercios a los dos signos (E2.4.2-fix) una renta
+  // en positivo se leería como la devolución de un alquiler pagado. Es la única
+  // lista que significa cosas distintas según el signo.
   (m) => (entra(m) && tieneAlguna(texto(m), ALQUILER)
     ? { naturaleza: 'ingreso', familia: 'alquiler', motivo: '«alquiler» en el concepto · el piso lo dice el contrato' }
     : undefined),
+  (m) => porComercio(m, ALQUILER, 'alquiler_renting'),
   (m) => porComercio(m, LIMPIEZA, 'limpieza'),
   (m) => porComercio(m, REPARACION, 'reparacion_mantenimiento'),
   (m) => porComercio(m, GESTION_GESTORIA, 'gestion', 'gestoria'),

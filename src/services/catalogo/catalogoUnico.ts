@@ -636,3 +636,24 @@ export function esMovimientoInterno(c: Pick<Clasificacion, 'naturaleza'>): boole
 export function naturalezaPorSigno(importe: number): Exclude<Naturaleza, 'movimiento_interno'> {
   return importe >= 0 ? 'ingreso' : 'gasto';
 }
+
+/**
+ * Una DEVOLUCIÓN · dinero de un gasto que vuelve (E2.4.2-fix · §7 DEFINITIVO).
+ *
+ * Curenergía cobra una cuota fija y regulariza cada seis meses: lo que devuelve
+ * es del suministro —mismo proveedor, mismo CUPS, mismo piso—, no un ingreso
+ * ajeno. Igual el seguro que cobró de más o la reparación que reembolsan. Así
+ * que una familia de GASTO admite importes en positivo, y entonces el
+ * movimiento RESTA del gasto de esa familia en vez de sumar en ingresos.
+ *
+ * La marca no es un campo: es la propia pareja naturaleza+signo. Un `Movement`
+ * de naturaleza `gasto` con importe positivo no puede significar otra cosa, y
+ * un flag aparte sí podría contradecir al importe. El signo dice si pagas o te
+ * devuelven; familia y punto atan el neto.
+ *
+ * Ojo con lo que NO es: un ingreso de verdad (renta, nómina, venta) nace con
+ * naturaleza `ingreso` y no pasa por aquí.
+ */
+export function esDevolucion(x: { naturaleza?: Naturaleza | null; amount?: number | null }): boolean {
+  return x.naturaleza === 'gasto' && (x.amount ?? 0) > 0;
+}
