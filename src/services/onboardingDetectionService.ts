@@ -325,7 +325,9 @@ async function reforzarLearning(sug: Sugerencia, override?: AmbitoRecurrente): P
         ? override?.inmuebleId ?? cand.propuesta.inmuebleId
         : undefined;
     await createOrUpdateRule({
-      learnKey: mov ? buildLearnKey(mov) : `onboarding:${cand.conceptoNormalizado}`,
+      // Sin movimiento —o sin clave que sacarle— se cae al concepto
+      // normalizado, que es el respaldo que este flujo ya tenía.
+      learnKey: (mov ? buildLearnKey(mov) : null) ?? `onboarding:${cand.conceptoNormalizado}`,
       familia: cand.propuesta.familia,
       subtipo: cand.propuesta.subtipo,
       ambito: ambitoEfectivo,

@@ -250,17 +250,21 @@ describe('Treasury Learning Engine', () => {
 
     // ── E2.3 · el nº de factura de Sabadell y la clave ─────────────────────
     //
-    // HALLAZGO (preexistente · v1 · NO se toca en E2.3): `removeVolatileTokens`
-    // quita toda palabra de 8+ caracteres (`\b[a-z0-9]{8,}\b`), LETRAS incluidas.
-    // «ELECTRICIDAD», «IBERDROLA» y «COMERCIALIZACION» desaparecen del patrón y
-    // la clave de Sabadell se queda con «gas 105»: cambia cada mes. Y en
-    // general, la clave v1 se construye SIN los nombres largos de proveedor
-    // (COMUNIDAD, PROPIETARIOS, TRANSFERENCIA…), que es justo lo que identifica.
-    // Arreglarlo cambia la v1 de todas las reglas · otra tarea.
-    test('HALLAZGO · sin identificador, el nº de factura SÍ cambia la clave (la v1 tira las palabras largas)', () => {
+    // Aquí vivía un HALLAZGO que decía: «`removeVolatileTokens` quita toda
+    // palabra de 8+ caracteres, LETRAS incluidas, así que ELECTRICIDAD,
+    // IBERDROLA y COMERCIALIZACION desaparecen y la clave se queda con
+    // «gas 105», que cambia cada mes. Arreglarlo cambia la v1 de todas las
+    // reglas · otra tarea».
+    //
+    // Esa otra tarea es este arreglo (Jose, 8 sep 2026). Aquel descarte no solo
+    // hacía la clave inestable: dejaba a casi todos los conceptos sin NADA con
+    // lo que agrupar, así que compartían clave y clasificar una línea
+    // clasificaba el resto. Con las palabras dentro, el nº de factura ya no
+    // manda y los dos recibos son el mismo proveedor, que es lo que se quería.
+    test('el nº de factura ya NO cambia la clave · el proveedor manda sobre el número', () => {
       const sinRef = (factura: string) =>
         createTestMovement({ description: `ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS ${factura}`, counterparty: '', amount: -38.2 });
-      expect(buildLearnKeyV1(sinRef('104'))).not.toBe(buildLearnKeyV1(sinRef('105')));
+      expect(buildLearnKeyV1(sinRef('104'))).toBe(buildLearnKeyV1(sinRef('105')));
     });
 
     test('E2.3 · CON identificador (el NIF de Referencia 1) el nº de factura ya NO cambia la clave · Sabadell resuelto', () => {

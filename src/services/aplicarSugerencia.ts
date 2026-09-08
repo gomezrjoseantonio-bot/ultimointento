@@ -75,6 +75,10 @@ export async function feedLearningRule(
   if (!derived) return;
   try {
     const learnKey = buildLearnKey(movement);
+    // Sin clave no se aprende NADA. De un concepto del que no queda con qué
+    // agrupar no se puede sacar una regla: la que naciera se aplicaría a
+    // cualquier otro apunte igual de anónimo. Mejor volver a preguntar.
+    if (!learnKey) return;
     // T16-fix-functional · pasar el movimiento permite a createOrUpdateRule
     // rellenar counterpartyPattern/descriptionPattern/amountSign y propagar
     // movimientoId al history[] (B2 + B8 del audit T16).

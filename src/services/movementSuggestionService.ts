@@ -254,10 +254,13 @@ async function loadLearningRulesIndex(
   const index = new Map<string, MovementLearningRule>();
   const seenKeys = new Set<string>();
   for (const movement of movements) {
-    seenKeys.add(buildLearnKey(movement));
+    // `null` = no hay con qué agrupar este concepto · no se busca regla.
+    const v2 = buildLearnKey(movement);
+    if (v2) seenKeys.add(v2);
     // E2.1 · la v1 es el respaldo de LECTURA de las reglas de antes: se carga
     // también, y `suggestFromLearningRule` la prueba si la v2 no tiene regla.
-    seenKeys.add(buildLearnKeyV1(movement));
+    const v1 = buildLearnKeyV1(movement);
+    if (v1) seenKeys.add(v1);
   }
 
   for (const key of seenKeys) {
@@ -296,10 +299,12 @@ function reglaDelMovimiento(
   rulesByKey: Map<string, MovementLearningRule>
 ): { learnKey: string; rule: MovementLearningRule } | null {
   const v2 = buildLearnKey(movement);
-  const porV2 = rulesByKey.get(v2);
-  if (porV2) return { learnKey: v2, rule: porV2 };
+  const porV2 = v2 ? rulesByKey.get(v2) : undefined;
+  if (v2 && porV2) return { learnKey: v2, rule: porV2 };
   const v1 = buildLearnKeyV1(movement);
-  if (v1 === v2) return null;
+  // Sin clave no hay regla que valga · y si la v1 es la misma que la v2, ya
+  // se ha probado.
+  if (!v1 || v1 === v2) return null;
   const porV1 = rulesByKey.get(v1);
   return porV1 ? { learnKey: v1, rule: porV1 } : null;
 }

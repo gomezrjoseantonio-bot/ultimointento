@@ -64,7 +64,15 @@ jest.mock('../../features/inbox/importers/bankParser', () => ({
 jest.mock('../movementMatchingService', () => ({ matchLineas: jest.fn() }));
 jest.mock('../movementSuggestionService', () => ({ suggestForLineas: jest.fn() }));
 jest.mock('../movementLearningService', () => ({
-  buildLearnKey: jest.fn(() => 'hash:any'),
+  // Función plana y NO `jest.fn`, por lo mismo que se explica abajo en
+  // `bankProfilesService`: el `resetMocks` de CRA borra la implementación de
+  // un `jest.fn` antes de cada test y esto devolvía `undefined`. Daba igual
+  // mientras nadie mirase la clave; desde que «sin clave no se aprende», una
+  // clave falsa hacía que no se guardara ninguna regla y el test medía otra
+  // cosa. `createOrUpdateRule` sigue siendo `jest.fn` porque de ese SÍ se
+  // cuentan las llamadas.
+  buildLearnKey: () => 'hash:any',
+  buildLearnKeyV1: () => 'hash:any',
   createOrUpdateRule: jest.fn(async () => ({})),
 }));
 // El cierre determinista de verdad necesita el cuadro del préstamo, la venta…
@@ -405,8 +413,10 @@ describe('bankStatementOrchestrator', () => {
   it('3. confirmDecisions · el movimiento NACE al guardar, enlazado a su línea · ignorar no crea nada · el saldo no se mueve', async () => {
     // Cuatro líneas pendientes (lo que deja el import) y dos previstos.
     stores.lineasExtracto.push(
-      lineaPendiente({ id: 1, fecha: '2026-04-22', importe: 380, texto: 'RENTA 1' }),
-      lineaPendiente({ id: 2, fecha: '2026-04-22', importe: 380, texto: 'RENTA 2' }),
+      // Dos palabras y no una: desde el arreglo de la clave de aprendizaje, un
+      // concepto de UNA sola palabra no identifica a nadie y no genera regla.
+      lineaPendiente({ id: 1, fecha: '2026-04-22', importe: 380, texto: 'RENTA INQUILINO 1' }),
+      lineaPendiente({ id: 2, fecha: '2026-04-22', importe: 380, texto: 'RENTA INQUILINO 2' }),
       lineaPendiente({ id: 3, fecha: '2026-04-15', importe: -45.23, texto: 'IBERDROLA' }),
       lineaPendiente({ id: 4, fecha: '2026-04-18', importe: -32.99, texto: 'AMAZON' }),
     );
@@ -430,8 +440,8 @@ describe('bankStatementOrchestrator', () => {
     // para la que sigue esperando.
     expect(stores.movements).toHaveLength(2);
     const [m1, m2] = stores.movements;
-    expect(m1.description).toBe('RENTA 1');
-    expect(m2.description).toBe('RENTA 2');
+    expect(m1.description).toBe('RENTA INQUILINO 1');
+    expect(m2.description).toBe('RENTA INQUILINO 2');
     expect(m1.importBatch).toBe('batch-A');
 
     // Cada línea enlaza a SU movimiento y deja de sumar por sí misma.
