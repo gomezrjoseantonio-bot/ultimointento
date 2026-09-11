@@ -268,9 +268,6 @@ const PrevisionesDuplicadas = lazyWithPreload(() =>
 );
 
 
-// Design Bible page - ATLAS Design System reference
-const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
-
 // Glossary page - Sprint 3: Accessible technical terms reference
 const GlossaryPage = lazyWithPreload(() => import('./pages/GlossaryPage'));
 const HerramientasPage = lazyWithPreload(() => import('./pages/HerramientasPage'));
@@ -754,13 +751,6 @@ function App() {
             <Route path="describe-image" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <ImageDescriptionPage />
-              </React.Suspense>
-            } />
-            
-            {/* Design Bible - ATLAS Design System */}
-            <Route path="design-bible" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <DesignBiblePage />
               </React.Suspense>
             } />
             

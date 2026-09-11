@@ -1,7 +1,7 @@
 // Panel · home · versión C. Pantalla de SUPERVISIÓN.
 //
 // Referencia de composición · `docs/audit-inputs/atlas-panel-v3-version-c.html`
-// Autoridad de diseño · `docs/audit-inputs/GUIA-DISENO-V5-atlas.md`
+// Autoridad de diseño · `docs/GUIA-DISENO-V5-atlas.md`
 // Fuentes verificadas · `docs/audits/T-CC-PANEL-VERSION-C-FASE-A-INFORME.md`
 //
 // Estructura (§B.1):

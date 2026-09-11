@@ -50,4 +50,4 @@ ATLAS ha completado la limpieza estructural del modelo de datos (TAREA 7). El mo
 - `docs/STORES-V60-ACTIVOS.md` · documentación de referencia de los 39 stores activos.
 - `docs/AUDIT-39-stores-V60.md` · auditoría TAREA 7-bis, referencia histórica.
 - `docs/audit-inputs/HANDOFF-V4-atlas.md` · handoff anterior.
-- `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` · guía de diseño UI.
+- `docs/GUIA-DISENO-V5-atlas.md` · guía de diseño UI.

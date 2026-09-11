@@ -47,7 +47,7 @@ const GananciaAcumuladaCard: React.FC<GananciaAcumuladaCardProps> = ({
 
       <div className={styles.big}>
         {signo}
-        <MoneyValue value={Math.abs(total)} decimals={0} />
+        <MoneyValue tone="inherit" value={Math.abs(total)} decimals={0} />
       </div>
 
       {componentes.length > 0 && (

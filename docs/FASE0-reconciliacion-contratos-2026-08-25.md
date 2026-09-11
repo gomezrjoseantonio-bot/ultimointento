@@ -26,7 +26,7 @@
 | `estadoCobroContratoService.ts:20` → tolera ambos | ✅ válido | `const RENT_SOURCE_TYPES = new Set(['contract', 'contrato'])` |
 | `contractService.ts:194-198` → `getAll`+filtro | ✅ válido | |
 
-**Divergencia no material pero reportable:** la tarea pide aplicar el *"Checklist v4 (sección 22 de `GUIA_DISENO_DEFINITIVA_V4.md`)"*. **Ese fichero no existe en el repo.** Búsqueda exhaustiva (`find . -iname "*GUIA*"` fuera de `node_modules`): solo `GUIA_USO_SENCILLO.md`, `AUDITORIA_CUMPLIMIENTO_GUIA_ESTILO_V3_2026-03-08.md` y `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` — este último tiene 17 secciones, no 22, y su checklist es el §17 ("Checklist obligatorio antes de cerrar un mockup"). Como esta entrega no contiene cambios de UI ni de código, el checklist no aplica; se reporta para que la referencia se corrija en las tareas siguientes.
+**Divergencia no material pero reportable:** la tarea pide aplicar el *"Checklist v4 (sección 22 de `GUIA_DISENO_DEFINITIVA_V4.md`)"*. **Ese fichero no existe en el repo.** Búsqueda exhaustiva (`find . -iname "*GUIA*"` fuera de `node_modules`): solo `GUIA_USO_SENCILLO.md`, `AUDITORIA_CUMPLIMIENTO_GUIA_ESTILO_V3_2026-03-08.md` y `docs/GUIA-DISENO-V5-atlas.md` — este último tiene 17 secciones, no 22, y su checklist es el §17 ("Checklist obligatorio antes de cerrar un mockup"). Como esta entrega no contiene cambios de UI ni de código, el checklist no aplica; se reporta para que la referencia se corrija en las tareas siguientes.
 
 ---
 

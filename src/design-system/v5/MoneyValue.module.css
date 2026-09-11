@@ -4,9 +4,11 @@
   font-weight: var(--atlas-v5-fw-bold);
   letter-spacing: var(--atlas-v5-ls-mono);
   white-space: nowrap;
-  color: var(--atlas-v5-ink);
+  /* Sin color en la base: `inherit` toma el del contenedor. El default del
+     componente es `ink` (clase abajo) · guía v5 §2.2 · regla de importes. */
 }
 
+.money.ink { color: var(--atlas-v5-ink); }
 .money.pos { color: var(--atlas-v5-pos); }
 .money.neg { color: var(--atlas-v5-neg); }
 .money.brand { color: var(--atlas-v5-brand); }

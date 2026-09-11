@@ -428,7 +428,7 @@ const BudgetRow: React.FC<BudgetRowProps> = ({ label, actual, meta, color, isAho
         <span className={styles.budgetMeta}>
           {isAhorro && actual > meta ? (
             <span className={styles.posCol}>
-              <MoneyValue value={actual} decimals={0} /> · superado
+              <MoneyValue tone="inherit" value={actual} decimals={0} /> · superado
             </span>
           ) : (
             <>

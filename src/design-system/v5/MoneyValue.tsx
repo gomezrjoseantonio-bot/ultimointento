@@ -10,7 +10,8 @@ export type MoneyTone =
   | 'gold'
   | 'warn'
   | 'muted'
-  | 'ink';
+  | 'ink'
+  | 'inherit';
 export type MoneySize = 'inline' | 'kpi' | 'kpiStar';
 
 export interface MoneyValueProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -22,7 +23,11 @@ export interface MoneyValueProps extends React.HTMLAttributes<HTMLSpanElement> {
   showSign?: boolean;
   /** Decimales. Default 2. Para KPIs grandes 0 puede ser más limpio. */
   decimals?: number;
-  /** Tono de color · `auto` colorea por signo · `ink` mantiene tinta neutra. */
+  /** Tono de color. Default `ink` (regla de importes · guía v5 §2.2: los
+   *  importes van en tinta; el color por signo hay que pedirlo con `auto`,
+   *  `pos` o `neg`, y solo para deltas de rentabilidad o estados).
+   *  `inherit` no pinta: toma el color del contenedor (héroes navy · cifras
+   *  oro cuyo color pone el wrapper). */
   tone?: MoneyTone;
   /** Tamaño de tipografía · §2.4. */
   size?: MoneySize;
@@ -31,15 +36,16 @@ export interface MoneyValueProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 /**
- * Importe formateado en JetBrains Mono · color por signo si tone='auto'.
- * Siempre `tabular-nums` · alineación consistente en columnas.
+ * Importe formateado en JetBrains Mono · tinta por defecto · color por signo
+ * SOLO si tone='auto' (decisión Jose 2026-09-11 · un mockup nuevo no debe
+ * heredar el semáforo sin pedirlo). Siempre `tabular-nums`.
  */
 const MoneyValue: React.FC<MoneyValueProps> = ({
   value,
   showCurrency = true,
   showSign = false,
   decimals = 2,
-  tone = 'auto',
+  tone = 'ink',
   size = 'inline',
   locale = 'es-ES',
   className,
@@ -75,7 +81,7 @@ const MoneyValue: React.FC<MoneyValueProps> = ({
 
   const classes = [
     styles.money,
-    resolvedTone !== 'ink' ? styles[resolvedTone] : '',
+    resolvedTone !== 'inherit' ? styles[resolvedTone] : '',
     styles[size],
     className ?? '',
   ]

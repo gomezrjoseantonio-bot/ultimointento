@@ -1,4 +1,3 @@
-import './styles/fiscal-tokens.css';
 import '@fontsource/ibm-plex-sans';
 import '@fontsource/ibm-plex-mono';
 import '@fontsource/inter/400.css';

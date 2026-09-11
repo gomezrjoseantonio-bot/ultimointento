@@ -7,12 +7,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ATLAS v4 — Solo 3 familias: Navy, Teal, Gris
+        // CAPA DE COMPATIBILIDAD v4 → v5 · NO ES FUENTE DE VERDAD.
+        // Nombres Tailwind viejos (navy, primary, success, error, gray, hz-*, ok…)
+        // apuntando a src/design-system/v5/tokens.css. Cero hex aquí.
         'atlas-blue': 'var(--atlas-v5-brand)',
         'atlas-blue-dark': 'var(--atlas-v5-brand)',
         'atlas-navy-1': 'var(--atlas-v5-ink-2)',
         'atlas-navy-2': 'var(--atlas-v5-brand)',
-        'atlas-teal': '#1DA0BA', // teal · frente gráficos (pendiente · no repuntado)
+        'atlas-teal': 'var(--atlas-v5-chart-accent)',
         'bg': 'var(--atlas-v5-bg)',
         'text-gray': 'var(--atlas-v5-ink-3)',
 
@@ -38,7 +40,7 @@ module.exports = {
 
         // Legacy brand colors (backward compatibility)
         'brand-navy': 'var(--atlas-v5-brand)',
-        'brand-teal': '#1DA0BA',
+        'brand-teal': 'var(--atlas-v5-chart-accent)',
 
         // v4: Horizon tokens → navy
         'hz-primary': 'var(--atlas-v5-brand)',

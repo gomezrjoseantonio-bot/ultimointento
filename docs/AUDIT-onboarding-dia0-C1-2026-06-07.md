@@ -48,7 +48,7 @@
 
 - **D1 · STOP-worthy (C2/C6) · tipo de `prestamoVinculadoId`.** §3.1 lo define como `number` ("FK a prestamos"), pero **`Prestamo.id` es `string` (uuid corto)** (`types/prestamos.ts:8`). Si se declara `number` no podrá referenciar un préstamo real. **Propuesta:** declararlo `prestamoVinculadoId?: string`. → **Esperar confirmación de Jose antes de C2.**
 - **D2 · Coexistencia `/onboarding` vs `/empezar`.** Ya existe una ruta `/onboarding` (thin shell, mockup viejo) que solo redirige a importadores. La tarea manda `/empezar` como ruta nueva. ¿Se deja `/onboarding` como está (legacy) y se añade `/empezar` aparte, o se reemplaza/redirige `/onboarding` → `/empezar`? El spec dice ruta nueva, así que por defecto **coexisten** salvo que Jose indique lo contrario.
-- **D3 · Path del documento de diseño.** §Documentos cita `docs/GUIA-DISENO-V5-atlas.md`, pero el archivo real está en **`docs/audit-inputs/GUIA-DISENO-V5-atlas.md`**. Usaré ese para el checklist §17. (No bloqueante.)
+- **D3 · Path del documento de diseño.** §Documentos cita `docs/GUIA-DISENO-V5-atlas.md`, pero el archivo real está en **`docs/GUIA-DISENO-V5-atlas.md`**. Usaré ese para el checklist §17. (No bloqueante.)
 - **D4 · Riesgo prefill nómina/préstamo (V9).** No hay mecanismo de pre-relleno en los wizards de nómina/autónomo. Si añadir pre-relleno (§2.4/§2.5) exige tocar los wizards de forma no trivial → **STOP §4** y reportar al iniciar C5/C6.
 
 ## Conclusión C1

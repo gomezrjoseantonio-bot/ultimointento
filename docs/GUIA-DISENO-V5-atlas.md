@@ -5,6 +5,8 @@
 > Incorpora todo lo aprendido en Mi Plan v3 · es de aplicación obligatoria.
 >
 > Si esta guía contradice algo de la V4 · prevalece la V5.
+>
+> **Única guía vigente** (auditoría 2026-09-11). Los tokens reales viven en `src/design-system/v5/tokens.css`; si esta guía y ese fichero difieren, manda el fichero. `design-bible/` (2024, `--atlas-blue`, `--ok`, `--error`) ha sido eliminado.
 
 ---
 
@@ -138,6 +140,18 @@ ambigüedad es lo que hizo que spec y código no coincidieran.
 | `--pos` (verde) | Ingreso · ganancia · completado | Rentas · cumplido · al-día |
 | `--neg` (rojo) | Pérdida · alerta · fallado | Gastos negativos · vacío crítico · fallado |
 | `--warn` (ámbar) | Riesgo · atención · parcial | En riesgo · parcial · sin asignar |
+
+#### 2.2.1 · REGLA DE IMPORTES · vinculante (decisión Jose · 2026-09-11)
+
+> **Importes en tinta · oro solo veredicto · ámbar solo acción · verde/rojo solo estado. Nunca colorear un importe.**
+
+- **Todo importe y todo saldo va en tinta** (`--atlas-v5-ink`). Da igual el signo: un saldo negativo se escribe con `−` en tinta, no en rojo.
+- **Oro** (`--atlas-v5-gold`) solo para la **cifra-veredicto** de la pantalla: el cierre del mes, el total, la ganancia acumulada. **Nunca `--atlas-v5-gold-ink` en cifras** (se lee marrón).
+- **Ámbar** (`--atlas-v5-warn`) solo donde **hay que actuar**: recibo retrasado, "N por confirmar", se queda corta.
+- **Verde/rojo** (`--atlas-v5-pos` / `--atlas-v5-neg`) solo para **estado** (cuadre OK · descuadre · error de validación · conciliado) y, como única excepción numérica, para **deltas de rentabilidad** (ganancia/pérdida de una inversión, revalorización, "cómo va el mes"). Nunca para un saldo, un movimiento ni un gasto.
+- **Sin fondo amarillo.** No existe token: el único ámbar de fondo es `--atlas-v5-warn-wash`, reservado a bandas de aviso.
+- En código: `MoneyValue` pinta en tinta por defecto. El color por signo hay que pedirlo (`tone="auto"`, `"pos"`, `"neg"`) y solo en los casos de delta de rentabilidad. `tone="inherit"` cuando el color lo pone el contenedor (héroes navy, cifras oro).
+- Referencia de implementación: Tesorería V6 (`src/modules/tesoreria/v6/`) · spec `docs/TAREA-CC-TESORERIA-V5.md` §5 · auditoría `docs/AUDITORIA-DESIGN-SYSTEM-fuente-unica-2026-09-11.md` §3.
 
 ### 2.3 · Tipografía
 

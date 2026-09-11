@@ -63,7 +63,7 @@ cierre el mensaje real hay que actualizar los tres.
 ### 2.5 La imagen para compartir usa una tipografía provisional
 
 `public/og-image.png` (1200×630) se generó con **Liberation Sans**, no con las
-tipografías de marca del proyecto (Inter / IBM Plex Sans, ver `design-bible/`).
+tipografías de marca del proyecto (Inter + JetBrains Mono, ver `docs/GUIA-DISENO-V5-atlas.md` §2.3).
 Conviene rehacerla con la tipografía correcta antes de publicar.
 
 ### 2.6 Variables de entorno de las funciones serverless

@@ -374,7 +374,5 @@ En el roadmap de UX:
 
 ## 📚 Recursos Adicionales
 
-- **ATLAS Design Bible**: `/design-bible/`
-- **Guía de Botones**: `/design-bible/ATLAS_BUTTON_GUIDE.md`
+- **Guía de diseño V5 (única)**: `docs/GUIA-DISENO-V5-atlas.md` · tokens en `src/design-system/v5/tokens.css`
 - **Auditoría Completa**: `/AUDITORIA_FINAL_ATLAS.md`
-- **Tokens de Color**: `/design-bible/foundations/README.md`
