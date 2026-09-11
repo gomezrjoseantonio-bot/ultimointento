@@ -177,6 +177,7 @@ export type FamiliaGastoId =
   | 'comisiones_bancarias'
   | 'multas'
   | 'compra_online'
+  | 'cuota_reta'
   | 'otros';
 
 export type FamiliaInternaId = 'traspaso' | 'aportacion' | 'disposicion_prestamo' | 'fianza';
@@ -244,7 +245,7 @@ export const FAMILIAS: readonly Familia[] = [
   },
   { id: 'otros_ingresos', naturaleza: 'ingreso', label: 'Otros ingresos', subtipos: [], ambitosAplicables: 'ambos' },
 
-  // ── NATURALEZA = GASTO · 21 familias · lista plana ────────────────────────
+  // ── NATURALEZA = GASTO · 22 familias · lista plana ────────────────────────
   {
     id: 'comunidad',
     naturaleza: 'gasto',
@@ -458,6 +459,19 @@ export const FAMILIAS: readonly Familia[] = [
     subtipos: [],
     ambitosAplicables: 'personal',
     descripcion: 'Bazares opacos · Amazon · Shein · AliExpress',
+  },
+  {
+    id: 'cuota_reta',
+    naturaleza: 'gasto',
+    label: 'Cuota RETA',
+    subtipos: [],
+    ambitosAplicables: 'personal',
+    // Jose · 11 sep 2026 · la cotización de autónomos a la Seguridad Social. Su
+    // regularización (la TGSS devuelve el exceso · +283,03 · +1.488,72) es la
+    // DEVOLUCIÓN de esta familia (§7: mismo signo contrario, resta), nunca una
+    // pensión: una pensión es dinero que entra por derecho, una cuota que
+    // vuelve es dinero que salió de más.
+    descripcion: 'Cotización de autónomos (Seguridad Social)',
   },
   { id: 'otros', naturaleza: 'gasto', label: 'Otros', subtipos: [], ambitosAplicables: 'ambos', descripcion: 'Cajón' },
 

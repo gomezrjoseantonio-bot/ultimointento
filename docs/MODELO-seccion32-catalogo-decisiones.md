@@ -144,6 +144,8 @@ Regla: TODAS las familias tienen subtipo, PERO el 2º nivel NO es obligatorio (e
 
 **CATÁLOGO GASTOS FINAL = 21 familias** (20 + Compra online). Lista plana, subtipos opcionales, sin fiscalidad, sin agrupar por ámbito.
 
+> **11 sep 2026 · 22 familias.** Se añade `cuota_reta` («Cuota RETA» · la cotización de autónomos a la Seguridad Social). Lo destapó Abanca: la regularización de la TGSS (+283,03 · +1.488,72) se clasificaba como pensión porque «SEGURIDAD SOCIAL» estaba en la lista de PENSIÓN y no había familia para la cuota. Su devolución sigue §7 (misma familia, signo +, resta). El resto del autónomo (IVA 303, factura con IVA, préstamo de socio) queda para la fase de previsión.
+
 ### 32.39 · CATÁLOGO ÚNICO · MOVIMIENTO INTERNO (3ª naturaleza · cerrado con Jose · 5 sep)
 **Aclaración conceptual clave de Jose:** la 3ª naturaleza NO es "sin movimiento". Un traspaso/recarga/efectivo SÍ es una salida/entrada de dinero REAL (afecta al SALDO de la cuenta, plano CAJA). Lo que es neutro es el efecto sobre el PATRIMONIO (el dinero sigue siendo tuyo, solo cambia de sitio). → Nombre: **"Movimiento interno"** (no "neutro", que sugiere que no pasa nada). Naturaleza de un movimiento = Ingreso / Gasto / **Movimiento interno**.
 - **Consecuencia práctica:** en vista de CUENTA/tesorería el movimiento interno cuenta para el saldo (real); en vista de PATRIMONIO / "cuánto gané-gasté" NO cuenta (ni gasto ni ingreso). Por eso no puede ir en gastos (inflaría) ni ingresos.

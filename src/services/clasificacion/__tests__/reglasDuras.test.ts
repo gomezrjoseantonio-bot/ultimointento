@@ -71,6 +71,28 @@ describe('la devolución de un gasto es de la familia de ese gasto', () => {
     expect(c.motivos.join(' ')).toMatch(/devolución de ese gasto/);
   });
 
+  it('la regularización de la TGSS es la cuota RETA que vuelve · no una pensión (Abanca · sep 2026)', () => {
+    // Los dos importes reales de Jose. Antes «SEGURIDAD SOCIAL» estaba en la
+    // lista de PENSIÓN y esto salía como ingreso · pensión.
+    const a = clasificarLinea(mov('TESORERIA GENERAL DE LA SEGURIDAD SOCIAL', 283.03), ctx());
+    expect(a.naturaleza).toBe('gasto');
+    expect(a.familia).toBe('cuota_reta');
+    expect(a.motivos.join(' ')).toMatch(/devolución de ese gasto/);
+    const b = clasificarLinea(mov('DDPP DE LA TGSS', 1488.72), ctx());
+    expect(b.naturaleza).toBe('gasto');
+    expect(b.familia).toBe('cuota_reta');
+    // Y la cuota de todos los meses es la cuota.
+    const cuota = clasificarLinea(mov('ADEUDO TGSS CUOTA AUTONOMOS 09/2026', -300), ctx());
+    expect(cuota.naturaleza).toBe('gasto');
+    expect(cuota.familia).toBe('cuota_reta');
+    expect(cuota.motivos.join(' ')).not.toMatch(/devolución/);
+  });
+
+  it('la pensión sigue siendo pensión · con «pensión» o con INSS', () => {
+    expect(clasificarLinea(mov('PENSION INSS SEPTIEMBRE', 900), ctx())).toMatchObject({ naturaleza: 'ingreso', familia: 'pension' });
+    expect(clasificarLinea(mov('ABONO PENSION SEGURIDAD SOCIAL', 900), ctx())).toMatchObject({ naturaleza: 'ingreso', familia: 'pension' });
+  });
+
   it('el recibo de siempre no cambia · en negativo sigue siendo la cuota', () => {
     const c = clasificarLinea(mov('ELECTRICIDAD IBERDROLA COMERCIALIZA', -48), ctx());
     expect(c.naturaleza).toBe('gasto');
