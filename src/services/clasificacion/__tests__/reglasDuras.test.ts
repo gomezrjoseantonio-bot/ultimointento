@@ -59,6 +59,18 @@ describe('la devolución de un gasto es de la familia de ese gasto', () => {
     expect(c.motivos.join(' ')).toMatch(/devolución de ese gasto/);
   });
 
+  it('la devolución de la gestoría es de gestión · gestoría, no un ingreso (Abanca · sep 2026)', () => {
+    // Cuota mensual con devolución puntual · mismo patrón §7 que Curenergía:
+    // misma familia, signo positivo, resta. Por concepto entra cuando el
+    // banco escribe «gestoría»; por su NIF, con un compromiso (ver
+    // `clasificarLinea.test`).
+    const c = clasificarLinea(mov('ABONO GESTORIA LOPEZ ASESORES SL', 45), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBe('gestion');
+    expect(c.subtipo).toBe('gestoria');
+    expect(c.motivos.join(' ')).toMatch(/devolución de ese gasto/);
+  });
+
   it('el recibo de siempre no cambia · en negativo sigue siendo la cuota', () => {
     const c = clasificarLinea(mov('ELECTRICIDAD IBERDROLA COMERCIALIZA', -48), ctx());
     expect(c.naturaleza).toBe('gasto');
