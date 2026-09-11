@@ -119,6 +119,23 @@ describe('un ingreso de verdad no se lee como devolución', () => {
     expect(c.familia).toBe('otros_ingresos');
   });
 
+  it('el premio de lotería o apuestas es un ingreso, no la vuelta de una apuesta', () => {
+    // Jose (11 sep 2026): «poner como otros ingresos». La lista OCIO_APUESTAS
+    // dispara en los dos signos desde E2.4.2-fix, y sin la regla de ingreso
+    // delante el premio restaba de lo gastado en apuestas.
+    const premio = clasificarLinea(mov('PREMIO LOTERIAS Y APUESTAS DEL ESTADO', 50), ctx());
+    expect(premio.naturaleza).toBe('ingreso');
+    expect(premio.familia).toBe('otros_ingresos');
+    const botemania = clasificarLinea(mov('ABONO BOTEMANIA', 120), ctx());
+    expect(botemania.naturaleza).toBe('ingreso');
+    expect(botemania.familia).toBe('otros_ingresos');
+    // Y lo que sale sigue siendo el gasto de siempre.
+    const decimo = clasificarLinea(mov('LOTERIAS Y APUESTAS', -6), ctx());
+    expect(decimo.naturaleza).toBe('gasto');
+    expect(decimo.familia).toBe('ocio');
+    expect(decimo.subtipo).toBe('otros');
+  });
+
   it('una transferencia de una persona sigue sin familia · el defecto es ingreso', () => {
     const c = clasificarLinea(mov('ABONO TRANSFERENCIA DE NOMBRE APELLIDO', 400), ctx());
     expect(c.naturaleza).toBe('ingreso');
