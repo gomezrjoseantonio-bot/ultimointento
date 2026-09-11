@@ -63,7 +63,7 @@ const ValorHoyHero: React.FC<ValorHoyHeroProps> = ({
     partes.push(
       <span key="anual">
         {cambioAnual >= 0 ? '+' : '−'}
-        <MoneyValue value={Math.abs(cambioAnual)} decimals={0} /> este año
+        <MoneyValue tone="inherit" value={Math.abs(cambioAnual)} decimals={0} /> este año
       </span>,
     );
   }
@@ -80,7 +80,7 @@ const ValorHoyHero: React.FC<ValorHoyHeroProps> = ({
     <div className={styles.hero}>
       <div className={styles.kick}>{kicker}</div>
       <div className={styles.big}>
-        <MoneyValue value={valorActual} decimals={0} />
+        <MoneyValue tone="inherit" value={valorActual} decimals={0} />
       </div>
       {partes.length > 0 && (
         <div className={styles.delta}>

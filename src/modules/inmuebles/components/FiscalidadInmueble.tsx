@@ -197,21 +197,21 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
             <div className={styles.nvK}>
               <div className={styles.kL}>Ganancia</div>
               <div className={`${styles.kV} ${styles.gold}`}>
-                <MoneyValue value={ventaDelEjercicio.fiscalSnapshot?.gananciaPatrimonial ?? 0} decimals={0} />
+                <MoneyValue tone="inherit" value={ventaDelEjercicio.fiscalSnapshot?.gananciaPatrimonial ?? 0} decimals={0} />
               </div>
               <div className={styles.kH}>patrimonial</div>
             </div>
             <div className={styles.nvK}>
               <div className={styles.kL}>Impuesto estimado</div>
               <div className={styles.kV}>
-                <MoneyValue value={ventaDelEjercicio.fiscalSnapshot?.irpfEstimado ?? 0} decimals={0} />
+                <MoneyValue tone="inherit" value={ventaDelEjercicio.fiscalSnapshot?.irpfEstimado ?? 0} decimals={0} />
               </div>
               <div className={styles.kH}>base ahorro</div>
             </div>
             <div className={styles.nvK}>
               <div className={styles.kL}>Valor transmisión</div>
               <div className={styles.kV}>
-                <MoneyValue value={ventaDelEjercicio.fiscalSnapshot?.valorNetoTransmision ?? ventaDelEjercicio.salePrice} decimals={0} />
+                <MoneyValue tone="inherit" value={ventaDelEjercicio.fiscalSnapshot?.valorNetoTransmision ?? ventaDelEjercicio.salePrice} decimals={0} />
               </div>
               <div className={styles.kH}>tras gastos deducibles</div>
             </div>
@@ -253,21 +253,21 @@ const FiscalidadInmueble: React.FC<FiscalidadInmuebleProps> = ({ inmuebleId }) =
               <div className={styles.nvK}>
                 <div className={styles.kL}>A declarar</div>
                 <div className={`${styles.kV} ${styles.gold}`}>
-                  <MoneyValue value={rend.rendimientoNetoReducido} decimals={0} />
+                  <MoneyValue tone="inherit" value={rend.rendimientoNetoReducido} decimals={0} />
                 </div>
                 <div className={styles.kH}>neto reducido</div>
               </div>
               <div className={styles.nvK}>
                 <div className={styles.kL}>Ingresos</div>
                 <div className={styles.kV}>
-                  <MoneyValue value={rend.ingresosIntegros} decimals={0} />
+                  <MoneyValue tone="inherit" value={rend.ingresosIntegros} decimals={0} />
                 </div>
                 <div className={styles.kH}>renta con contrato</div>
               </div>
               <div className={styles.nvK}>
                 <div className={styles.kL}>Ahorro fiscal</div>
                 <div className={styles.kV}>
-                  <MoneyValue value={rend.reduccionHabitual} decimals={0} />
+                  <MoneyValue tone="inherit" value={rend.reduccionHabitual} decimals={0} />
                 </div>
                 <div className={styles.kH}>
                   <RotuloReduccion desglose={rend.reduccion} conImporte={false} />

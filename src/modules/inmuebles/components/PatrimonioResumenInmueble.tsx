@@ -303,7 +303,7 @@ const PatrimonioResumenInmueble: React.FC<PatrimonioResumenInmuebleProps> = ({
               <>
                 <div className={`${styles.cardValue} ${revalorizacion >= 0 ? styles.pos : styles.neg}`}>
                   {revalorizacion >= 0 ? '+' : '−'}
-                  <MoneyValue value={Math.abs(revalorizacion)} decimals={0} />
+                  <MoneyValue tone={revalorizacion >= 0 ? 'pos' : 'neg'} value={Math.abs(revalorizacion)} decimals={0} />
                 </div>
                 {revalorizacionPct !== null && (
                   <div className={`${styles.delta} ${revalorizacion >= 0 ? styles.pos : styles.neg}`}>

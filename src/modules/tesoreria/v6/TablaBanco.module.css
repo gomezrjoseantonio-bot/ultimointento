@@ -109,7 +109,8 @@
 .mudo { color: var(--atlas-v5-ink-5); }
 
 .oro {
-  color: var(--atlas-v5-gold-ink);
+  /* Cifra-veredicto en --gold, nunca gold-ink (se lee marrón · §5 · guía §2.2). */
+  color: var(--atlas-v5-gold);
   font-weight: var(--atlas-v5-fw-bold);
 }
 

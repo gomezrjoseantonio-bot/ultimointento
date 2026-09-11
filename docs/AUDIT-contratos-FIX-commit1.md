@@ -8,7 +8,7 @@
 > Correctivo post-merge del PR REORG · 8 problemas detectados en producción 03-06-26.
 > Commit 1 NO toca código · solo localiza el estado actual y prepara los commits 2-6.
 > Mockup vinculante · `docs/mockups/atlas-contratos-reorg-v5.html`.
-> Guía · `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` (sección 17 checklist).
+> Guía · `docs/GUIA-DISENO-V5-atlas.md` (sección 17 checklist).
 
 ## Tabla de verificación (§ 0.3)
 
