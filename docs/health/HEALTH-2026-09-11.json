@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-09-11",
-  "generatedAt": "2026-09-11T16:33:33.392Z",
+  "generatedAt": "2026-09-11T23:10:44.631Z",
   "git": {
-    "branch": "claude/audit-categories-types-scopes-p5966s",
-    "head": "412825b"
+    "branch": "claude/nifty-dirac-kjjeic",
+    "head": "0ab4a9f"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -34,7 +34,7 @@
       "indicador": "emojis_ui",
       "fecha": "2026-07-20",
       "anterior": 64,
-      "nueva": 60,
+      "nueva": 57,
       "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
     },
     {
@@ -48,7 +48,7 @@
       "indicador": "ficheros_no_v5",
       "fecha": "2026-07-20",
       "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
-      "nueva": 108,
+      "nueva": 106,
       "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
     }
   ],
@@ -63,14 +63,14 @@
     {
       "indicador": "ficheros_no_v5",
       "antes": 109,
-      "despues": 108,
+      "despues": 106,
       "motivo": "#1643 · RedirectAlquileresAContratos.tsx (redirect sin UI · falso positivo v5)",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
     {
       "indicador": "hex_hardcoded",
       "antes": 974,
-      "despues": 230,
+      "despues": 212,
       "motivo": "ve #RGB, rgb()/hsl(), tailwind [#], tailwind.config.js",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -91,7 +91,7 @@
     {
       "indicador": "emojis_ui",
       "antes": 64,
-      "despues": 60,
+      "despues": 57,
       "motivo": "Frente A · ve cadenas .ts con señal de entrega a UI (toast/message:/…) · antes solo .tsx",
       "exencion": "transitoria · se desactiva cuando main incorpora el nuevo baseline"
     },
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 28 raíces estrictas · alive 1004 · dead 0 · solo_tests 53 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 999 · dead 0 · solo_tests 52 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -194,7 +194,7 @@
       "calibracion": null
     },
     "hex_hardcoded": {
-      "value": 230,
+      "value": 212,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -204,7 +204,7 @@
       "calibracion": null
     },
     "emojis_ui": {
-      "value": 60,
+      "value": 57,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
@@ -214,7 +214,7 @@
       "calibracion": {
         "fecha": "2026-07-20",
         "anterior": 64,
-        "nueva": 60,
+        "nueva": 57,
         "motivo": "Frente A · ampliado a cadenas .ts con señal de entrega a UI (toast/message:/title:/…). Antes solo .tsx (64). Suma 6 cadenas user-facing (documentIngestionService x5 toasts «✓ …archivada», treasuryCreationService toast icon ⚠️ = 2 code points) → 71. NO incluye los 17 emojis devueltos sueltos desde servicios (badges/motivos): eso es deuda de arquitectura, va a la lista. Autorizado por Jose."
       }
     },
@@ -267,7 +267,7 @@
         "1859 · src/services/dashboardService.ts",
         "1756 · src/services/irpfCalculationService.ts",
         "1557 · src/services/aeatParserService.ts",
-        "1487 · src/App.tsx",
+        "1477 · src/App.tsx",
         "1455 · src/services/propertySaleService.ts",
         "1446 · src/services/declaracionOnboardingService.ts",
         "1439 · scripts/health.mjs",
@@ -280,14 +280,14 @@
       "calibracion": null
     },
     "ficheros_no_v5": {
-      "value": 108,
+      "value": 106,
       "direction": "down",
       "objetivo": null,
       "measurable": true,
       "approx": false,
       "note": null,
       "detail": [
-        "108 / 404 .tsx sin v5 (consumen v5: 296 · directo o vía .module.css con var(--atlas-v5-*))",
+        "106 / 402 .tsx sin v5 (consumen v5: 296 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",
@@ -307,7 +307,7 @@
       "calibracion": {
         "fecha": "2026-07-20",
         "anterior": "pct_v5 = 61.3 % (subía · trinquete invertido)",
-        "nueva": 108,
+        "nueva": 106,
         "motivo": "pct_v5 RETIRADO y sustituido por ficheros_no_v5 (su complemento): conteo de .tsx que AÚN NO usan v5, que BAJA hacia 0 como el resto de indicadores en vez de subir. Misma detección (directo o vía .module.css con var(--atlas-v5-*)). Autorizado por Jose · no esconde nada: el % migrado sigue derivable (conV5/total)."
       }
     },
@@ -327,7 +327,7 @@
       "objetivo": 0,
       "measurable": false,
       "approx": false,
-      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
+      "note": "NO MEDIBLE · sin node_modules (jest no disponible)",
       "detail": null,
       "calibracion": null
     },

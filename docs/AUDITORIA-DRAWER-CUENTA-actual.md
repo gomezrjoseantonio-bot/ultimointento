@@ -224,7 +224,7 @@ Render `renderFila` (`PunteoList.tsx:286-420`); rejilla CSS en `src/modules/shar
 
 ### 7.3 Guía de diseño y design system
 
-- La guía vinculante existe: `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` (`:1` "GUÍA DE DISEÑO ATLAS · V5 … es de aplicación obligatoria").
+- La guía vinculante existe: `docs/GUIA-DISENO-V5-atlas.md` (`:1` "GUÍA DE DISEÑO ATLAS · V5 … es de aplicación obligatoria").
 - El drawer usa el design system **parcialmente**: importa `Icons` de `src/design-system/v5` (`DrawerCuenta.tsx:29`; también `PunteoList.tsx:20`, `PunteoPiezas.tsx:17`) y todo su CSS consume tokens `--atlas-v5-*` (p. ej. `--atlas-v5-brand`, `--atlas-v5-gold`, `--atlas-v5-overlay`, `--atlas-v5-shadow-drawer` — `DrawerV6.module.css:9, 27, 33, 40-41, 123, 169-171`). No usa componentes contenedores del DS (`CardV5` se usa en la página, `TesoreriaV6Page.tsx:911`, pero no dentro del drawer): el chasis es CSS module propio.
 - Referencia de mockup citada en código: `docs/mockups/atlas-tesoreria-v6-escritorio.html` (`TesoreriaV6Page.tsx:5`).
 - Tests que fijan el comportamiento actual del drawer: `src/modules/tesoreria/v6/__tests__/DrawerCuenta.test.tsx` y `TesoreriaV6Page.test.tsx:315-380`.

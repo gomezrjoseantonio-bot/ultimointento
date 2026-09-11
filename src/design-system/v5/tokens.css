@@ -240,6 +240,7 @@
   --atlas-v5-focus-ring-gold: 0 0 0 3px rgba(184, 138, 62, 0.15);
   --atlas-v5-focus-ring-warn: 0 0 0 3px rgba(138, 98, 19, 0.2);
   --atlas-v5-focus-ring-neutral: 0 0 0 3px rgba(10, 31, 61, 0.06); /* foco neutro navy · inputs/selects */
+  --atlas-v5-focus-ring-color: rgba(30, 41, 84, 0.12);  /* COLOR del anillo (navy brand) · para quien compone su propio box-shadow · capa v4 */
 
   /* ===== Hover · superposiciones sutiles (frente rgba · efectos) =====
      Veladura de hover por propósito, no por valor. Antes cada :hover repetía
@@ -274,6 +275,7 @@
   --atlas-v5-chart-grid: rgba(200, 208, 220, 0.4);  /* grid horizontal */
   --atlas-v5-chart-axis: #6C757D;         /* labels eje X/Y */
   --atlas-v5-chart-border: #C8D0DC;       /* borde tooltip */
+  --atlas-v5-chart-accent-wash: #E6F7FA;  /* tinte del acento · badges teal de la capa de compatibilidad v4 */
 
   /* ============================================================
      Tesorería V6 · tinta sobre navy (§4.1 hero · §4.4 cabecera)

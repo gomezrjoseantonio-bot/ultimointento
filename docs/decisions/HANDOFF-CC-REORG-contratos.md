@@ -2,7 +2,7 @@
 
 > PR único · 9 commits secuenciales · rama `claude/nice-clarke-j4HLZ`.
 > Mockup vinculante: `docs/mockups/atlas-contratos-reorg-v5.html`.
-> Reglas de diseño: `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` § 17.
+> Reglas de diseño: `docs/GUIA-DISENO-V5-atlas.md` § 17.
 > Audit previo (§ 0.5): `docs/decisions/AUDIT-CC-REORG-contratos-commit1.md`.
 
 ## 1 · Problema (producción 02-06-26)

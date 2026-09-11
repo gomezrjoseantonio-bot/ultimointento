@@ -3,8 +3,14 @@
 @tailwind utilities;
 
 /* ============================================================
-   ATLAS — SISTEMA DE DISEÑO v4.0
-   Solo 3 familias: Navy, Teal, Gris. Sin semáforos.
+   CAPA DE COMPATIBILIDAD v4 → v5 · NO ES FUENTE DE VERDAD
+   La única fuente de verdad de estilo es
+   src/design-system/v5/tokens.css (guía: docs/GUIA-DISENO-V5-atlas.md).
+   Este fichero solo mantiene vivos los NOMBRES viejos (--navy-*, --grey-*,
+   --blue, --teal, --ok/--warn/--error, --hz-*, --atlas-blue…) para las
+   pantallas legacy que aún no se han migrado. Todos apuntan a --atlas-v5-*.
+   Cero hex aquí: cualquier color nuevo se declara en tokens.css.
+   Auditoría: docs/AUDITORIA-DESIGN-SYSTEM-fuente-unica-2026-09-11.md
    ============================================================ */
 :root {
   /* ===== NAVY (identidad, acción, texto) ===== */
@@ -18,8 +24,8 @@
   --navy-50: var(--atlas-v5-brand-wash);
 
   /* ===== TEAL (acento, dato vivo) ===== */
-  --teal-600: #1DA0BA;
-  --teal-100: #E6F7FA;
+  --teal-600: var(--atlas-v5-chart-accent);
+  --teal-100: var(--atlas-v5-chart-accent-wash);
 
   /* ===== GRIS (estructura, texto, fondos) ===== */
   /* Unificado a la paleta v5 (misma razón que navy): elimina la 2ª fuente de
@@ -34,7 +40,7 @@
   --grey-200: var(--atlas-v5-line);
   --grey-100: var(--atlas-v5-line-2);
   --grey-50: var(--atlas-v5-bg);
-  --white: #FFFFFF;
+  --white: var(--atlas-v5-white);
 
   /* ===== Aliases de compatibilidad v3→v4 ===== */
   --blue: var(--navy-900);
@@ -69,12 +75,12 @@
   --s-neutral-bg: var(--s-neu-bg);
 
   /* ===== CHART — Paleta de 6 ===== */
-  --c1: #042C5E;
-  --c2: #1DA0BA;
-  --c3: #5B8DB8;
-  --c4: #A8C4DE;
-  --c5: #C8D0DC;
-  --c6: #303A4C;
+  --c1: var(--atlas-v5-c1);
+  --c2: var(--atlas-v5-c2);
+  --c3: var(--atlas-v5-c3);
+  --c4: var(--atlas-v5-c4);
+  --c5: var(--atlas-v5-c5);
+  --c6: var(--atlas-v5-c6);
   --chart-1: var(--c1);
   --chart-2: var(--c2);
   --chart-3: var(--c3);
@@ -82,7 +88,7 @@
   --chart-5: var(--c5);
   --chart-6: var(--c6);
 
-  --focus-ring: rgba(4, 44, 94, 0.12);
+  --focus-ring: var(--atlas-v5-focus-ring-color);
 
   --r-sm: 4px;
   --r-md: 8px;
@@ -167,8 +173,8 @@
   --surface-sidebar: var(--n-900);
   --border: var(--n-100);
   --border-md: var(--n-300);
-  --shadow-1: 0 1px 2px rgba(26, 35, 50, .06), 0 4px 8px rgba(26, 35, 50, .04);
-  --shadow-2: 0 10px 24px rgba(26, 35, 50, .08);
+  --shadow-1: var(--atlas-v5-shadow-card);
+  --shadow-2: var(--atlas-v5-shadow-lift);
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
@@ -379,7 +385,7 @@ html, #root { min-height: 100vh; }
 .atlas-field:focus, .input:focus, select:focus {
   outline: none;
   border-color: var(--blue-800);
-  box-shadow: 0 0 0 2px rgba(4, 44, 94, .12);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 .atlas-field::placeholder, .input::placeholder { color: var(--gray-400); }
 

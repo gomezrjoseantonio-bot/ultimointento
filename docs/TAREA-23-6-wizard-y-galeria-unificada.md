@@ -36,7 +36,7 @@ Los 2 stores `inversiones` y `planesPensiones` permanecen separados. La unificac
 
 ### 0.4 · Mockup + guía v5 son ley
 - Mockup vigente · `docs/audit-inputs/atlas-inversiones-v2.html` (1994 líneas validado)
-- Guía vigente · `docs/audit-inputs/GUIA-DISENO-V5-atlas.md`
+- Guía vigente · `docs/GUIA-DISENO-V5-atlas.md`
 
 ### 0.5 · Cero hex hardcoded · tokens v5 obligatorios
 

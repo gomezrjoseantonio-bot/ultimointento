@@ -34,7 +34,7 @@ Si CC encuentra ambigüedad · PARAR · comentar PR · esperar input. Si encuent
 
 ### 0.4 · Mockup + guía v5 son ley
 - Mockup vigente · `docs/audit-inputs/atlas-panel.html` (693 líneas validado)
-- Guía vigente · `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` secciones 3.2 y 3.3
+- Guía vigente · `docs/GUIA-DISENO-V5-atlas.md` secciones 3.2 y 3.3
 - Si conflicto · prevalece guía v5
 
 ### 0.5 · Cero hex hardcoded · tokens canónicos obligatorios (ver § Z)

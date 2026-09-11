@@ -454,13 +454,13 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
           {valorActual !== null ? (
             <>
               <div className={styles.featBig}>
-                <MoneyValue value={valorActual} decimals={0} />
+                <MoneyValue tone="inherit" value={valorActual} decimals={0} />
               </div>
               <div className={styles.featDelta}>
                 {cambioAnual !== null && (
                   <>
                     {cambioAnual >= 0 ? '+' : '−'}
-                    <MoneyValue value={Math.abs(cambioAnual)} decimals={0} /> este año
+                    <MoneyValue tone="inherit" value={Math.abs(cambioAnual)} decimals={0} /> este año
                   </>
                 )}
                 {cambioAnual !== null && revalorizacionPct !== null && ' · '}
@@ -488,7 +488,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
         <div className={styles.eqWrap}>
           <div className={styles.eqBarHd}>
             <span className={styles.eqLabel}>
-              Patrimonio neto · <b><MoneyValue value={patrimonioNeto} decimals={0} /></b>
+              Patrimonio neto · <b><MoneyValue tone="inherit" value={patrimonioNeto} decimals={0} /></b>
               {composicion.netoPct !== null && ` · ${composicion.netoPct} %`}
             </span>
             <span className={styles.eqHint}>de qué se compone</span>
@@ -530,7 +530,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
                 </span>
                 <span className={styles.eqLegValue}>
                   {s.key === 'revalorizacion' && s.amount < 0 && '−'}
-                  <MoneyValue value={Math.abs(s.amount)} decimals={0} />
+                  <MoneyValue tone="inherit" value={Math.abs(s.amount)} decimals={0} />
                 </span>
               </div>
             ))}
@@ -554,13 +554,13 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
             <>
               <div className={`${styles.kcBig} ${styles.gold}`}>
                 {gananciaTotal >= 0 ? '+' : '−'}
-                <MoneyValue value={Math.abs(gananciaTotal)} decimals={0} />
+                <MoneyValue tone="inherit" value={Math.abs(gananciaTotal)} decimals={0} />
               </div>
               <div className={styles.flowEq}>
                 {revalorizacion !== null && (
                   <>
                     <span className="am">
-                      <MoneyValue value={Math.abs(revalorizacion)} decimals={0} showCurrency={false} />
+                      <MoneyValue tone="inherit" value={Math.abs(revalorizacion)} decimals={0} showCurrency={false} />
                     </span>
                     <span className={styles.op}>reval.</span>
                   </>
@@ -569,7 +569,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
                 {rentasAcumuladas !== 0 && (
                   <>
                     <span className="am">
-                      <MoneyValue value={Math.abs(rentasAcumuladas)} decimals={0} showCurrency={false} />
+                      <MoneyValue tone="inherit" value={Math.abs(rentasAcumuladas)} decimals={0} showCurrency={false} />
                     </span>
                     <span className={styles.op}>rentas</span>
                   </>
@@ -655,7 +655,7 @@ const ResumenCockpitInmueble: React.FC<ResumenCockpitInmuebleProps> = ({
                 )}
                 {deudaAmortizada > 0 && (
                   <span className={`${styles.kcChip} ${styles.g}`}>
-                    amortizado <MoneyValue value={deudaAmortizada} decimals={0} showCurrency={false} /> €
+                    amortizado <MoneyValue tone="inherit" value={deudaAmortizada} decimals={0} showCurrency={false} /> €
                   </span>
                 )}
               </div>

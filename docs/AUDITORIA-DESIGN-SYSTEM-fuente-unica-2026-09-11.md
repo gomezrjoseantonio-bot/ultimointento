@@ -4,12 +4,14 @@
 > Mismo patrón que la auditoría del catálogo único: hay varias fuentes de estilo compitiendo, se fija LA vigente y se lista qué borrar con los greps que lo prueban.
 > Reglas de oro aplicadas · A no migrar · B grepear antes de eliminar · C verificar contra código real · D cimientos bien.
 > **Stop-and-wait** · este documento es la entrega. La eliminación va en tarea aparte con OK de Jose.
+>
+> **ESTADO · 2026-09-11 · OK de Jose recibido y limpieza EJECUTADA** (mismo PR #1870, commits posteriores). Decisiones: (1) fuente única `src/design-system/v5/tokens.css` · guía movida a `docs/GUIA-DISENO-V5-atlas.md`; (2) §3.4 → **opción 1** · importes en tinta, oro solo veredicto, ámbar solo acción, verde/rojo solo estado y deltas de rentabilidad · `MoneyValue` con `tone="ink"` por defecto · regla escrita en la guía §2.2.1; (3) fósiles eliminados (`design-bible/` tras rescatar los 3 docs fiscales a `docs/`, `DesignBiblePage` + ruta, `treasury-v4.css`, `tax-view.css`, `ejercicio-selector.css`, `fiscal-tokens.css`, scripts de migración v3 y `atlas-lint.js`) · auditorías 2024-2026-03 archivadas en `docs/archive/`; (4) `index.css` y `tailwind.config.js` rotulados como capa de compatibilidad y sin hex propios; (5) hallazgos secundarios anotados como deuda en `docs/DEUDA-design-system-2026-09-11.md`. Las rutas y recuentos de abajo describen el estado ANTES de la limpieza.
 
 ---
 
 ## 0 · Resumen en 8 líneas
 
-1. **La fuente de verdad única es `src/design-system/v5/tokens.css`** (paleta Oxford Gold) con su documento normativo `docs/audit-inputs/GUIA-DISENO-V5-atlas.md`. Lo consumen 271 ficheros (10.209 líneas `--atlas-v5-*`), incluidas TODAS las pantallas reales: Tesorería V6/V9, Inversiones, Conciliación (dentro de Tesorería), Panel, Sidebar y Topbar.
+1. **La fuente de verdad única es `src/design-system/v5/tokens.css`** (paleta Oxford Gold) con su documento normativo `docs/GUIA-DISENO-V5-atlas.md`. Lo consumen 271 ficheros (10.209 líneas `--atlas-v5-*`), incluidas TODAS las pantallas reales: Tesorería V6/V9, Inversiones, Conciliación (dentro de Tesorería), Panel, Sidebar y Topbar.
 2. **`design-bible/` es fósil**. Sus valores semánticos (`#28A745` verde, `#DC3545` rojo, `#FFC107` amarillo) tienen **0 usos** en `src/`; el navy viejo `#042C5E` sobrevive en 4 líneas legacy (paleta de gráficos `index.css:72` y tres pantallas `horizon/*`), nunca como `--atlas-blue`. Sus nombres (`--atlas-blue`, `--ok`, `--error`) sobreviven solo como alias en `src/index.css`, y ese alias ya apunta a la paleta V5. Nadie del código vivo lee `design-bible/`; solo lo enlaza una página rota (`DesignBiblePage.tsx`) y auditorías de 2024-2026-03.
 3. **`src/index.css` y `tailwind.config.js` NO son fuentes de verdad rivales: son capa de compatibilidad** ya "repuntada" a V5. Se quedan (regla A · no migrar), pero se rotulan como alias y se les repuntan sus 9 hex y 5 rgba propios.
 4. **CSS fósiles**: `treasury-v4.css`, `tax-view.css`, `ejercicio-selector.css` (0 imports) y `fiscal-tokens.css` (importado en `index.tsx:1` pero vacío). Se borran.
@@ -22,7 +24,7 @@
 
 ## 1 · Pregunta 1 · ¿Cuál es la fuente de verdad única y vigente?
 
-**Respuesta: `src/design-system/v5/tokens.css`** (382 líneas, prefijo `--atlas-v5-*`), documentada por `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` (1.258 líneas).
+**Respuesta: `src/design-system/v5/tokens.css`** (382 líneas, prefijo `--atlas-v5-*`), documentada por `docs/GUIA-DISENO-V5-atlas.md` (1.258 líneas).
 
 ### 1.1 · Evidencia de carga
 
@@ -31,7 +33,7 @@
 | Se importa en el arranque de la app | `src/index.tsx:15` `import './design-system/v5/tokens.css'` |
 | Se declara "única autorizada · cero hex fuera de este archivo" | `src/design-system/v5/tokens.css:1-5` |
 | Cita a la guía como su fuente | `src/design-system/v5/tokens.css:4` (`GUIA-DISENO-V5-atlas.md §2.1-2.7`) |
-| La guía declara nombres idénticos al código | `docs/audit-inputs/GUIA-DISENO-V5-atlas.md:62-66` |
+| La guía declara nombres idénticos al código | `docs/GUIA-DISENO-V5-atlas.md:62-66` |
 | Barrel del DS · "punto único de entrada para los módulos productivos" | `src/design-system/v5/index.ts:1-10` |
 | Handoff vigente la señala como guía a leer antes de cualquier UI | `docs/HANDOFF-V7-atlas.md:345`, `docs/HANDOFF-V8-atlas.md:298-299` |
 | Programa T20 fija "paleta v5 (Oxford Gold)" como alcance de toda la UI | `docs/TAREA-20-migracion-mockups-ui-real.md:9,45` |
@@ -59,7 +61,7 @@ La guía V5 está en `docs/audit-inputs/`, carpeta que su propio README describe
 | # | Fuente | Tamaño | Estado | Quién la consume (evidencia) | Veredicto |
 |---|---|---|---|---|---|
 | A | `src/design-system/v5/tokens.css` | 382 líneas | **VIVA · única** | `src/index.tsx:15` · 271 ficheros | **Se queda. Fuente de verdad.** |
-| B | `docs/audit-inputs/GUIA-DISENO-V5-atlas.md` | 1.258 líneas | **VIVA · normativa de A** | `tokens.css:4`, `HANDOFF-V7:345`, `HANDOFF-V8:298`, `TAREA-20`, `TAREA-CC-TESORERIA-V5.md:275` | Se queda. Mover de carpeta (§1.3). Corregir deriva con tokens (§8.3) |
+| B | `docs/GUIA-DISENO-V5-atlas.md` | 1.258 líneas | **VIVA · normativa de A** | `tokens.css:4`, `HANDOFF-V7:345`, `HANDOFF-V8:298`, `TAREA-20`, `TAREA-CC-TESORERIA-V5.md:275` | Se queda. Mover de carpeta (§1.3). Corregir deriva con tokens (§8.3) |
 | C | `src/index.css` | 647 líneas | **VIVA · capa de alias v4→v5** | `src/index.tsx:14`. Define `--navy-*`, `--grey-*`, `--blue`, `--teal`, `--ok/--warn/--error`, `--hz-*`, `--atlas-blue`… **los de color apuntando a `--atlas-v5-*`** (`index.css:13-36`, `:176-201`), salvo 9 hex y 5 rgba propios que aún no están repuntados (`--teal-600/100`, `--white`, `--c1..--c6`, `--focus-ring`, `--shadow-1/2`; de ellos dependen `--teal` y `--atlas-teal`) · detalle en §7.2. 53 ficheros / 1.076 líneas la usan (pantallas legacy: `horizon/*`, `pulse/*`, `inbox`, importadores) | **Se queda como alias** (regla A). Rotular "NO es fuente de verdad". Repuntar sus 9 hex y 5 rgba propios (§7.2) |
 | D | `tailwind.config.js` | 178 líneas | **VIVA · capa de alias** | Colores Tailwind (`navy`, `primary`, `success`, `error`, `gray`…) → `var(--atlas-v5-*)` (`tailwind.config.js:11-161`). 36 ficheros tsx / 545 líneas usan `bg-navy-N`, `text-gray-N`… | Se queda como alias. Repuntar `atlas-teal`/`brand-teal` `#1DA0BA` (`:15`, `:41`) a token |
 | E | `src/styles/fiscal-tokens.css` | 1 línea (vacío) | **FÓSIL** | `src/index.tsx:1` lo importa; contenido: "intentionally empty" | **Borrar** + quitar import |
