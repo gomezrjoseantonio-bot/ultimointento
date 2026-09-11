@@ -12,8 +12,18 @@
 // Aquí vive la regla, sola y en un sitio por el que pasa todo lo que el detector
 // propone:
 //
-//   importe > 0  ⇒  dinero que ENTRA  ⇒  cabe ingreso/renta, nunca gasto
+//   importe > 0  ⇒  dinero que ENTRA  ⇒  cabe ingreso/renta · y la DEVOLUCIÓN
+//                                        de un gasto, que es de su familia
 //   importe < 0  ⇒  dinero que SALE   ⇒  cabe gasto,          nunca renta
+//
+// La devolución es la excepción que añadió E2.4.2-fix, y no es un descuido del
+// signo sino lo contrario: Curenergía cobra una cuota fija y cada seis meses
+// devuelve lo que sobró. Ese abono es del suministro —mismo proveedor, mismo
+// CUPS, mismo piso— y tiene que RESTAR de la luz de ese piso. Si el guardián lo
+// tumba, la propuesta que sabe de qué punto es se pierde y el abono acaba de
+// «otros ingresos», desatado del piso. Lo que sigue siendo imposible es una
+// renta que sale, un traspaso que entra por la pata de salida y un gasto que
+// entra sin que nadie diga de qué gasto es.
 //
 // Por qué un guardián a la salida y no un `if` en cada regla. Los `if` también
 // están —cada heurística mira ya su signo, y así el motivo que se le enseña al
@@ -73,10 +83,36 @@ export function direccionDeLaAccion(action: SuggestionAction): DireccionDelDiner
   }
 }
 
+/**
+ * ¿La propuesta viene de un GASTO CONOCIDO que puede estar devolviendo dinero?
+ *
+ * Solo `create_treasury_event` de naturaleza gasto, que es lo que propone un
+ * compromiso recurrente reconocido —la luz de ese piso, con su CUPS y su
+ * proveedor—. Es justo la propuesta que hay que dejar pasar sobre un abono:
+ * sin ella, la devolución de Curenergía pierde el punto y el piso.
+ *
+ * Los otros no entran, y cada uno por su motivo:
+ *   · `transfer` es la pata de SALIDA hacia otra cuenta propia · sobre un
+ *     abono no es una devolución, es la pata equivocada;
+ *   · `assign_to_contract` es dar por cobrada una renta · un ingreso por sí
+ *     mismo;
+ *   · `mark_personal_expense` es una regla APRENDIDA de un gasto suelto, sin
+ *     punto ni proveedor que ate nada. Dejarla pasar convertía «ABONO NOMINA»
+ *     de 1.840 € en la devolución de un suministro, que es exactamente el
+ *     fallo que este guardián nació para evitar. La devolución con proveedor
+ *     reconocible ya la coge el motor por el concepto (`porComercio`).
+ */
+function proponeUnGastoConocido(action: SuggestionAction): boolean {
+  return action.kind === 'create_treasury_event' && action.naturaleza === 'gasto';
+}
+
 /** ¿Esta propuesta dice lo contrario de lo que dice el importe? */
 export function contradiceElSigno(action: SuggestionAction, amount: number): boolean {
   const dinero = direccionDelImporte(amount);
   const propuesta = direccionDeLaAccion(action);
   if (dinero === 'ninguna' || propuesta === 'ninguna') return false;
+  // La devolución de un gasto entra con la familia de ese gasto · no contradice
+  // el signo, lo usa: por eso resta en lugar de sumar (E2.4.2-fix).
+  if (dinero === 'entra' && proponeUnGastoConocido(action)) return false;
   return dinero !== propuesta;
 }

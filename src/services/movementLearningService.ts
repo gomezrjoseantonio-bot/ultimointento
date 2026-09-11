@@ -59,7 +59,16 @@ function removeVolatileTokens(text: string): string {
     .replace(/\d+[,.]\d{2}/g, '') // Amounts with decimals
     .replace(/\b\d{4,}\b/g, '') // Long numbers (references)
     .replace(/\bref\w*\s*\d+/g, '') // Reference numbers
-    .replace(/\b[a-z0-9]{8,}\b/g, '') // Long alphanumeric codes
+    // Códigos largos · SOLO lo que mezcla letras y números («a1b2c3d4», un
+    // CUPS, una referencia con prefijo). Antes era `[a-z0-9]{8,}` a secas y,
+    // como `normalizeText` ya lo ha pasado todo a minúsculas, borraba también
+    // las PALABRAS de ocho letras o más: «mercadona», «iberdrola»,
+    // «comunidad», «transferencia». Sin ellas casi ningún concepto dejaba dos
+    // palabras que juntar, la clave se quedaba en «v1|signo» y cualquier
+    // apunte del mismo signo compartía clave — o sea que clasificar una línea
+    // clasificaba el resto. Los números largos sueltos ya los quita la
+    // regla de arriba, así que aquí solo hace falta lo mixto.
+    .replace(/\b(?=[a-z0-9]*\d)[a-z0-9]{8,}\b/g, '')
     .replace(/\bES\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}/gi, '') // Spanish IBANs
     .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]+/g, '') // International IBANs
     .replace(/\s+/g, ' ')
@@ -97,11 +106,8 @@ function extractNGrams(text: string, maxGrams: number = 3): string[] {
     .map(([gram]) => gram);
 }
 
-/**
- * Los n-grams del movimiento · lo que comparten todos los recibos de un mismo
- * texto, una vez quitado lo volátil. Es la parte común de las claves v1 y v2.
- */
-function ngramsDelMovimiento(movement: Movement, conIdentificador = false): string[] {
+/** El texto del que sale la clave · concepto y contraparte, sin lo volátil. */
+function textoParaLaClave(movement: Movement, conIdentificador = false): string {
   const contraparte = normalizeText(movement.counterparty || '');
   const descripcion = normalizeText(movement.description || '');
 
@@ -119,20 +125,55 @@ function ngramsDelMovimiento(movement: Movement, conIdentificador = false): stri
     cleanDescripcion = sinNumerosCortos(cleanDescripcion);
   }
 
-  // Combine both texts for n-gram extraction
-  const combinedText = `${cleanContraparte} ${cleanDescripcion}`.trim();
+  return `${cleanContraparte} ${cleanDescripcion}`.trim();
+}
+
+/**
+ * Los n-grams del movimiento · lo que comparten todos los recibos de un mismo
+ * texto, una vez quitado lo volátil. Es la parte común de las claves v1 y v2.
+ */
+function ngramsDelMovimiento(movement: Movement, conIdentificador = false): string[] {
+  const combinedText = textoParaLaClave(movement, conIdentificador);
 
   // Extract top 3 n-grams
   const ngrams = extractNGrams(combinedText, 3);
-  // E2.3 · con identificador, si tras quitar lo volátil queda UNA sola palabra
-  // («gas», «luz») no hay n-gram posible y la clave se quedaría solo con el
-  // identificador: gas y luz del mismo acreedor (mismo NIF) serían una regla.
-  // La palabra suelta entra entonces como token. Solo en la v2 con
-  // identificador: la v1 no se toca.
-  if (conIdentificador && ngrams.length === 0) {
-    return combinedText.split(/\s+/).filter((w) => w.length > 2).slice(0, 3);
-  }
-  return ngrams;
+
+  // SIN identificador la clave son los n-gram y nada más, como siempre: el
+  // principio del concepto dice quién cobra y la cola suele ser texto libre
+  // («Bizum a favor de Víctor Concepto Cena» y «… Concepto Regalo» son el
+  // mismo Víctor). Meter todas las palabras partiría esos dos en dos reglas y
+  // se perdería lo que E2.4.2 vino a hacer.
+  if (!conIdentificador) return ngrams;
+
+  // CON identificador sí entran todas las palabras, sin repetir y en orden
+  // alfabético. El acreedor ya está fijado por su NIF o su CUPS, así que lo
+  // que quede del texto solo puede afinar QUÉ le compras: sin esto, el gas y
+  // la luz del mismo acreedor comparten los tres primeros n-gram y se funden
+  // en una sola regla. En orden alfabético porque un banco que escriba el
+  // mismo concepto en otro orden no debería estrenar regla.
+  //
+  // Solo palabras de LETRAS: un token con dígitos («ene2024», el nº de
+  // factura) es volátil y estrenaría regla cada mes.
+  const palabras = Array.from(
+    new Set(combinedText.split(/\s+/).filter((w) => w.length > 2 && /^[a-z]+$/.test(w))),
+  ).sort();
+
+  // E2.3 · si tras quitar lo volátil queda UNA sola palabra («gas», «luz») no
+  // hay n-gram posible y la clave se quedaría solo con el identificador.
+  if (ngrams.length === 0) return palabras.slice(0, 3);
+  return [...ngrams, ...palabras];
+}
+
+/**
+ * ¿Hay CON QUÉ agrupar este concepto? · dos palabras, no una.
+ *
+ * Una sola palabra no identifica a nadie: «BIZUM», «TRANSFERENCIA» o «RECIBO»
+ * a secas son cualquiera. Agruparlos era el fallo que hacía que clasificar una
+ * línea clasificara todas las pendientes del mismo signo. Con identificador la
+ * pregunta no se hace: un CUPS o un NIF agrupa solo.
+ */
+function hayConQueAgrupar(movement: Movement): boolean {
+  return extractNGrams(textoParaLaClave(movement), 1).length > 0;
 }
 
 function sinNumerosCortos(text: string): string {
@@ -150,10 +191,16 @@ function signoDe(movement: Movement): 'positive' | 'negative' {
  * leerlas (`movementSuggestionService` la prueba cuando la v2 no encuentra
  * regla); no se escribe ninguna regla nueva con ella. No se migran las viejas:
  * son de usar y tirar, y la primera confirmación con identificador ya nace v2.
+ *
+ * `null` cuando del concepto no queda NADA con lo que agrupar. Antes esos
+ * movimientos se iban todos a la misma clave —`v1|signo` y punto— y ese cajón
+ * era el más poblado del sistema: una regla aprendida ahí se aplicaba a
+ * cualquier otro apunte del mismo signo. «No sé agrupar esto» tiene que
+ * significar eso y no «agrúpalo con todo lo demás».
  */
-export function buildLearnKeyV1(movement: Movement): string {
-  const keyParts = ['v1', signoDe(movement), ...ngramsDelMovimiento(movement)];
-  return simpleHash(keyParts.join('|'));
+export function buildLearnKeyV1(movement: Movement): string | null {
+  if (!hayConQueAgrupar(movement)) return null;
+  return simpleHash(['v1', signoDe(movement), ...ngramsDelMovimiento(movement)].join('|'));
 }
 
 /**
@@ -173,9 +220,12 @@ export function buildLearnKeyV1(movement: Movement): string {
  * Exported for movementSuggestionService: the suggestion engine looks up rules
  * by computing the same learnKey from a just-imported movement.
  */
-export function buildLearnKey(movement: Movement): string {
+export function buildLearnKey(movement: Movement): string | null {
   const ids = identificadoresDeMovimiento(movement);
+  // Sin identificador, la v1 manda · y puede decir que no hay con qué agrupar.
   if (ids.length === 0) return buildLearnKeyV1(movement);
+  // Con identificador SÍ hay con qué: un CUPS o un NIF agrupa por sí solo,
+  // aunque del texto no quede un n-gram.
   const keyParts = [
     'v2',
     signoDe(movement),
@@ -193,7 +243,7 @@ export function identificadoresDeRegla(movement: Movement): string[] {
 /**
  * Generate a learn key for a movement (alias kept for internal use).
  */
-function generateLearnKey(movement: Movement): string {
+function generateLearnKey(movement: Movement): string | null {
   return buildLearnKey(movement);
 }
 
@@ -501,11 +551,13 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
 
     const processedMovements = movements.map(movement => {
       // E2.1 · primero la clave v2; si no hay regla, la v1 (reglas de antes).
+      // Sin clave no se busca nada: un concepto del que no queda con qué
+      // agrupar no hereda la clasificación de otro apunte cualquiera.
       let learnKey = generateLearnKey(movement);
-      let rule = rulesMap.get(learnKey);
+      let rule = learnKey ? rulesMap.get(learnKey) : undefined;
       if (!rule) {
         const v1 = buildLearnKeyV1(movement);
-        rule = rulesMap.get(v1);
+        rule = v1 ? rulesMap.get(v1) : undefined;
         if (rule) learnKey = v1;
       }
 
@@ -517,7 +569,9 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
           ambito: rule.ambito,
           inmuebleId: rule.inmuebleId,
           statusConciliacion: 'match_automatico' as const,
-          learnKey,
+          // Aquí siempre hay clave (la regla se encontró por ella) · el `??`
+          // es solo para que el tipo lo diga.
+          learnKey: learnKey ?? undefined,
           updatedAt: new Date().toISOString()
         };
       }

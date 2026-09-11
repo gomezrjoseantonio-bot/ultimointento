@@ -18,7 +18,7 @@
 // módulo, y por eso está aparte: es la regla, no el formulario.
 // ============================================================================
 
-import { valoresPorLinea } from '../clasificarEnBloque';
+import { clasificarLasElegidas, valoresPorLinea } from '../clasificarEnBloque';
 import type { LineaExtracto } from '../extractoSesion';
 import type { GuardadoFicha } from '../FichaMovimiento';
 
@@ -91,5 +91,68 @@ describe('el concepto se comparte, el dinero no', () => {
 
   it('sin líneas no devuelve nada · y no revienta', () => {
     expect(valoresPorLinea(AGUA, [])).toEqual([]);
+  });
+});
+
+// ── Y solo las elegidas ─────────────────────────────────────────────────────
+//
+// Jose, con el buscador en «gas»: «marcaba todas las que quería clasificar y me
+// clasificaba esa y todas las demás». Clasificar UNA línea arrastra a sus
+// hermanas del lote, que es lo que E2.4.2 vino a hacer y está bien de una en
+// una. En bloque no: el usuario ya ha ido marcando cuáles quiere, y eso ES la
+// respuesta a «cuáles».
+
+describe('en bloque se clasifican las elegidas · y nadie más', () => {
+  const llamadas = (): Array<{ lineaId: number; arrastra: boolean }> => [];
+
+  it('una llamada por línea elegida, en orden, y ninguna de más', async () => {
+    const vistas = llamadas();
+    await clasificarLasElegidas(AGUA, RECIBOS, async (l, _v, arrastra) => {
+      vistas.push({ lineaId: l.lineaId, arrastra });
+    });
+
+    expect(vistas.map((x) => x.lineaId)).toEqual([101, 102, 103]);
+  });
+
+  it('NUNCA arrastra hermanas · esto es el fallo que reportó Jose', () => {
+    const vistas = llamadas();
+    return clasificarLasElegidas(AGUA, RECIBOS, async (l, _v, arrastra) => {
+      vistas.push({ lineaId: l.lineaId, arrastra });
+    }).then(() => {
+      expect(vistas.every((x) => x.arrastra === false)).toBe(true);
+    });
+  });
+
+  it('las que se dejaron fuera a propósito se quedan fuera', async () => {
+    // Cinco recibos de gas, marca dos. Los otros tres no se tocan.
+    const elegidas = [RECIBOS[0], RECIBOS[2]];
+    const vistas = llamadas();
+    await clasificarLasElegidas(AGUA, elegidas, async (l) => {
+      vistas.push({ lineaId: l.lineaId, arrastra: false });
+    });
+
+    expect(vistas.map((x) => x.lineaId)).toEqual([101, 103]);
+  });
+
+  it('cada elegida se lleva SU importe y SU fecha, como siempre', async () => {
+    const vistos: Array<{ importe: number; fecha: string }> = [];
+    await clasificarLasElegidas(AGUA, RECIBOS, async (_l, v) => {
+      vistos.push({ importe: v.importe, fecha: v.fecha });
+    });
+
+    expect(vistos).toEqual([
+      { importe: -31.65, fecha: '2026-06-25' },
+      { importe: -25.06, fecha: '2026-04-27' },
+      { importe: -28.4, fecha: '2026-02-25' },
+    ]);
+  });
+
+  it('sin nada elegido no se clasifica nada', async () => {
+    const vistas = llamadas();
+    await clasificarLasElegidas(AGUA, [], async (l) => {
+      vistas.push({ lineaId: l.lineaId, arrastra: false });
+    });
+
+    expect(vistas).toEqual([]);
   });
 });

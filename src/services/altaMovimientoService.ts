@@ -367,6 +367,12 @@ export async function editarMovimiento(movementId: number, v: AltaMovimiento): P
     description: v.concepto,
     // La naturaleza la manda el signo; que fuera una transferencia externa lo
     // dice el método de pago, no un tipo aparte (E2.4.1b).
+    //
+    // Anotar una devolución A MANO queda fuera de E2.4.2-fix: el «tipo» que
+    // elige el usuario dice la dirección y mandaría sobre la familia, así que
+    // pasar un ingreso a gasto en positivo aquí cambiaría lo que ya significa
+    // corregir un apunte. La devolución que importa —la del banco— entra
+    // clasificada por el motor.
     naturaleza: naturalezaPorSigno(importe),
     ...(v.tipo === 'transferencia' ? { paymentMethod: 'transferencia' as const } : {}),
     ambito: v.inmuebleId != null ? 'inmueble' : 'personal',
@@ -527,16 +533,32 @@ export async function gastoDesdeMovimiento(params: {
   if (!casillaAEAT) return { resultado: 'falta_casilla' };
 
   // Mina M6 · aquí va el id del MOVIMIENTO, nunca el de la línea.
-  const cierre = camposDeCierre({
-    id: movementId,
-    amount: params.importe,
-    date: fecha,
-    valueDate: movimiento?.valueDate,
-    accountId: movimiento?.accountId,
-  });
+  const cierre = camposDeCierre(
+    {
+      id: movementId,
+      amount: params.importe,
+      date: fecha,
+      valueDate: movimiento?.valueDate,
+      accountId: movimiento?.accountId,
+    },
+    undefined,
+    // `params.importe` viene CON SIGNO, como lo trae el banco · así un abono
+    // en positivo se guarda como devolución (línea en negativo), y no como un
+    // recibo más de la misma familia.
+    true,
+  );
 
   // ── ¿Ya hay fila de este gasto? · la del recurrente no lleva enlace ────────
-  if (params.origenIdRecurrente) {
+  //
+  // Una DEVOLUCIÓN nunca cierra la cuota del mes (E2.4.2-fix). La fila del
+  // recurrente se busca por piso + familia + mes, así que el abono de
+  // Curenergía de septiembre encajaba en la MISMA fila que la cuota de
+  // septiembre y le pisaba el importe: la cuota de 48 € desaparecía del coste
+  // del piso y quedaba solo el −31,20 de la devolución. Con fila propia se
+  // suman las dos y el neto sale solo (48 − 31,20 = 16,80 de luz ese mes), que
+  // es lo que dice la regla: basta familia + proveedor + piso, sin enlazar la
+  // factura exacta.
+  if (params.origenIdRecurrente && params.importe <= 0) {
     let previa: GastoInmueble | undefined;
     try {
       const porOrigen = (await db.getAllFromIndex('gastosInmueble', 'origen-origenId', [

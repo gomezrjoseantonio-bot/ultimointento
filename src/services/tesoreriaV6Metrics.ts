@@ -17,7 +17,7 @@
 // ============================================================================
 
 import type { Account, Movement, TreasuryEvent } from './db';
-import { conSigno } from './catalogo/catalogoUnico';
+import { conSigno, esDevolucion } from './catalogo/catalogoUnico';
 
 /**
  * Un traspaso interno NO es gasto ni ingreso · el dinero no entra ni sale del
@@ -650,6 +650,11 @@ export function calcularRealidad(params: {
     if (!enRango(soloFecha(m.date), desde, hasta)) continue;
     if (m.isOpeningBalance) continue;
     if (esTraspasoInterno(m)) continue;
+    // Una DEVOLUCIÓN es un gasto en positivo y RESTA del gasto (E2.4.2-fix):
+    // sumarla en ingresos subía «lo que gané» y dejaba «lo que gasté» intacto,
+    // cuando lo que pasó es que la luz de ese semestre costó menos. Puede dejar
+    // el gasto del mes en negativo y se deja: taparlo esconde dinero.
+    if (esDevolucion(m)) { realGastos -= m.amount; continue; }
     if (m.amount > 0) realIngresos += m.amount;
     else realGastos += Math.abs(m.amount);
   }

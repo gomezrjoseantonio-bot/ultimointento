@@ -183,11 +183,21 @@ export type CamposDeCierre = Pick<
  *   · el DATO REAL (`importe`, `fecha`, `ejercicio`, `fechaValor`,
  *     `cuentaBancaria`) es lo que de verdad pasó, y manda sobre lo previsto.
  *
- * `importe` va en MAGNITUD: el signo vive en el movimiento (negativo si es un
- * cargo) y la línea de gasto siempre declara positivo, como el resto de
- * escritores. El `ejercicio` sale de la fecha de CARGO y nunca de la fecha
- * valor: es el criterio de caja, y un cargo del 3 de enero es gasto del año
- * nuevo aunque se previera para el 28 de diciembre.
+ * `importe` va en MAGNITUD salvo que quien llama diga que su importe TRAE
+ * SIGNO (`elImporteTraeSigno`), y entonces un importe positivo es una
+ * DEVOLUCIÓN y la línea nace en negativo (E2.4.2-fix). Así la devolución RESTA
+ * sola donde se suman estas líneas —el coste del piso (`CostesInmueble`) y la
+ * casilla que se deduce (`sumaDeducidaPorCasilla`)—; sin el signo, el abono de
+ * Curenergía se deducía en el IRPF como si fuera otro recibo de la luz.
+ *
+ * El interruptor existe porque los dos caminos NO traen lo mismo: la
+ * conciliación pasa el `Movement` del banco, que lleva su signo, mientras que
+ * `treasuryConfirmationService` pasa el importe del EVENTO, que es una
+ * magnitud (el sentido lo lleva la naturaleza, no el número). Adivinarlo por
+ * el signo convertía cada recibo confirmado desde una previsión en una
+ * devolución de su propio importe. El `ejercicio` sale de la fecha de CARGO y
+ * nunca de la fecha valor: es el criterio de caja, y un cargo del 3 de enero
+ * es gasto del año nuevo aunque se previera para el 28 de diciembre.
  *
  * `eventId` es opcional porque una línea puede colapsarse contra un movimiento
  * que no nació de ninguna previsión (un alta a mano): ahí no hay evento al que
@@ -196,14 +206,17 @@ export type CamposDeCierre = Pick<
 export function camposDeCierre(
   movimiento: MovimientoReal,
   eventId?: number | null,
+  elImporteTraeSigno = false,
 ): CamposDeCierre {
   const fecha = String(movimiento.date).slice(0, 10);
+  const magnitud = Math.abs(movimiento.amount);
+  const esDevolucion = elImporteTraeSigno && movimiento.amount > 0;
   return {
     estado: 'confirmado',
     estadoTesoreria: 'confirmed',
     movimientoId: movimiento.id != null ? String(movimiento.id) : undefined,
     ...(eventId != null ? { treasuryEventId: eventId } : {}),
-    importe: Math.abs(movimiento.amount),
+    importe: esDevolucion ? -magnitud : magnitud,
     fecha,
     ejercicio: Number(fecha.slice(0, 4)),
     ...(movimiento.valueDate
@@ -260,7 +273,7 @@ export async function cerrarLineaDeGastoDelEvento(
 
   await db.put('gastosInmueble', {
     ...linea,
-    ...camposDeCierre(movimiento, evento.id),
+    ...camposDeCierre(movimiento, evento.id, true),
     updatedAt: new Date().toISOString(),
   });
   return true;
@@ -306,7 +319,7 @@ export async function repuntarLineasAlMovimiento(
     if (!aceptaCierre(linea)) continue;
     await db.put('gastosInmueble', {
       ...linea,
-      ...camposDeCierre(movimiento, linea.treasuryEventId),
+      ...camposDeCierre(movimiento, linea.treasuryEventId, true),
       updatedAt: ahora,
     });
     movidas += 1;

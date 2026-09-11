@@ -39,7 +39,7 @@ import {
 import { useDecisionesDeSesion } from './decisionesDeSesion';
 import { decisionesDesdeFilas, type LoteAMedias } from './decisionesPersistidas';
 import { leerSesionDelLote, tituloDeLaSesion, persistirCambios, useLotesAMedias } from './montarSesion';
-import { valoresPorLinea } from './clasificarEnBloque';
+import { clasificarLasElegidas } from './clasificarEnBloque';
 import { aplicarAprendizajeALasHermanas } from './aprendizajeEnSesion';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
@@ -479,7 +479,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
    * inmueble, sobre la ficha prerrellenada.
    */
   const crearDesdeFicha = useCallback(
-    async (linea: LineaExtracto, v: GuardadoFicha) => {
+    async (linea: LineaExtracto, v: GuardadoFicha, arrastraHermanas = true) => {
       // Una derrama que resultó ser MEJORA no es gasto: el apunte se queda (el
       // dinero salió) pero la deducción va por amortización (`mejorasInmueble`).
       if (v.esMejora) {
@@ -527,8 +527,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         setCreando(null);
         // E2.4.2 · Paso 2 · aprendizaje intra-lote · las hermanas de esta línea
         // (misma clave, mismo signo, aún en «te necesitan») se resuelven ahora
-        // con los mismos valores (`aprendizajeEnSesion`).
-        await aplicarAprendizajeALasHermanas({
+        // con los mismos valores (`aprendizajeEnSesion`). NO cuando el usuario
+        // ha elegido a mano cuáles: ahí ya ha dicho cuáles son.
+        if (arrastraHermanas) await aplicarAprendizajeALasHermanas({
           linea,
           valores: v,
           lineas,
@@ -614,11 +615,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // otros no. Es un cierre que se usa en un solo sitio; memorizarlo no ahorra
   // nada y romper el orden de los hooks lo rompe todo.
   const clasificarVarias = async (v: GuardadoFicha) => {
-    const lineasAClasificar = clasificandoVarias ?? [];
-    const valores = valoresPorLinea(v, lineasAClasificar);
-    for (let i = 0; i < lineasAClasificar.length; i++) {
-      await crearDesdeFicha(lineasAClasificar[i], valores[i]);
-    }
+    await clasificarLasElegidas(v, clasificandoVarias ?? [], crearDesdeFicha);
     setClasificandoVarias(null);
   };
 

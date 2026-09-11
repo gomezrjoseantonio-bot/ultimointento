@@ -67,6 +67,10 @@ export interface ContextoClasificacion {
 
 function compatibleConSigno(naturaleza: Naturaleza | undefined, amount: number): boolean {
   if (!naturaleza || naturaleza === 'movimiento_interno' || amount === 0) return true;
+  // Un GASTO en positivo es la DEVOLUCIÓN de ese gasto y cabe (E2.4.2-fix): el
+  // abono de la comercializadora es del suministro, no un ingreso ajeno. Al
+  // revés no: un ingreso que sale no es nada, así que ese bloqueo se queda.
+  if (naturaleza === 'gasto' && amount > 0) return true;
   return naturaleza === naturalezaPorSigno(amount);
 }
 
@@ -77,6 +81,14 @@ function aplicar(c: ClasificacionLinea, p: Parcial, origen: OrigenEje, amount: n
   // Una familia dice su naturaleza · si contradice el signo, tampoco vale.
   const natDeFamilia = p.familia ? naturalezaDe(p.familia) : undefined;
   if (natDeFamilia && !compatibleConSigno(natDeFamilia, amount)) return false;
+
+  // Una regla APRENDIDA no convierte un abono en devolución. Se aprendió sobre
+  // un gasto suelto y no trae punto ni proveedor que ate el dinero a nada, así
+  // que sobre un ingreso solo puede equivocarse: es el mismo criterio que
+  // aplica `contradiceElSigno` a las propuestas. La devolución con proveedor
+  // reconocible entra por el concepto, y la del recibo de un compromiso por su
+  // identificador — las dos sí saben de qué gasto vuelve el dinero.
+  if (origen === 'aprendida' && amount > 0 && (p.naturaleza === 'gasto' || natDeFamilia === 'gasto')) return false;
 
   let tocado = false;
   const fijaNaturaleza = p.naturaleza ?? natDeFamilia;

@@ -40,3 +40,32 @@ export function valoresPorLinea(
     fecha: l.fecha,
   })) as GuardadoFicha[];
 }
+
+/**
+ * Clasificar las ELEGIDAS · y solo las elegidas.
+ *
+ * Jose, con el buscador puesto en «gas»: «marcaba todas las que quería
+ * clasificar y me clasificaba esa y todas las demás».
+ *
+ * Pasaban dos cosas a la vez. La primera era la clave de aprendizaje, que
+ * metía casi todos los conceptos en el mismo cajón (arreglada aparte). La
+ * segunda es ésta, y sobrevive a la primera: clasificar una línea arrastra a
+ * sus hermanas del lote —lo que E2.4.2 vino a hacer, y está bien cuando
+ * clasificas UNA—, pero aquí el usuario ya ha ido marcando una por una cuáles
+ * quería. Eso es la respuesta a «cuáles», y arrastrar más es pisársela: si de
+ * ocho recibos de gas marca cinco y deja tres fuera a propósito, los tres se
+ * clasificaban igual.
+ *
+ * Por eso el bloque llama SIN arrastre. El concepto se comparte, el dinero de
+ * cada línea es el suyo (`valoresPorLinea`), y nadie más se entera.
+ */
+export async function clasificarLasElegidas(
+  ficha: GuardadoFicha,
+  elegidas: LineaExtracto[],
+  clasificar: (linea: LineaExtracto, valores: GuardadoFicha, arrastraHermanas: boolean) => Promise<void>,
+): Promise<void> {
+  const valores = valoresPorLinea(ficha, elegidas);
+  for (let i = 0; i < elegidas.length; i++) {
+    await clasificar(elegidas[i], valores[i], false);
+  }
+}

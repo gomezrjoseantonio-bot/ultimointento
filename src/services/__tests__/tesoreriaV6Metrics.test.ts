@@ -36,7 +36,10 @@ const mov = (over: Partial<Movement> = {}): Movement => ({
   unifiedStatus: 'conciliado',
   source: 'import',
   category: { tipo: 'Gastos' },
-  naturaleza: 'gasto',
+  // La naturaleza sigue al signo salvo que el caso diga otra cosa · un gasto
+  // en POSITIVO ya no es un descuido del fixture, es una devolución
+  // (E2.4.2-fix), y escribirlo sin querer cambiaba lo que el test mide.
+  naturaleza: (over.amount ?? -100) >= 0 ? 'ingreso' : 'gasto',
   origin: 'CSV',
   movementState: 'Confirmado',
   ambito: 'personal',

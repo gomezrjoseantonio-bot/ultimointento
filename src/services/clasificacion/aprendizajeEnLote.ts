@@ -35,8 +35,14 @@ export interface LineaConClave {
   contraparte?: string;
 }
 
-/** La clave de aprendizaje de una línea · la misma que llevará su regla. */
-export function claveDeLinea(l: LineaConClave): string {
+/**
+ * La clave de aprendizaje de una línea · la misma que llevará su regla.
+ *
+ * `null` cuando del concepto no queda con qué agrupar, y entonces esta línea
+ * no tiene hermanas: es lo que impedía que clasificar una sola resolviera
+ * cuanto quedaba pendiente del mismo signo.
+ */
+export function claveDeLinea(l: LineaConClave): string | null {
   const m = {
     description: l.textoBanco,
     amount: l.importe,
@@ -57,6 +63,10 @@ export function hermanasDeAprendizaje(
   sinDecidir: (lineaId: number) => boolean,
 ): LineaConClave[] {
   const clave = claveDeLinea(clasificada);
+  // Sin clave, ninguna hermana. Un concepto del que no queda nada que agrupar
+  // no se parece a otro por no parecerse los dos a nada: si esto no está,
+  // clasificar UNA línea clasifica todas las pendientes del mismo signo.
+  if (clave === null) return [];
   return lote.filter(
     (l) =>
       l.lineaId !== clasificada.lineaId &&

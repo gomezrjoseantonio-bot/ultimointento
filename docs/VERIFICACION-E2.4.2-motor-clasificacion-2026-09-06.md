@@ -64,7 +64,9 @@ Casos que fijan los tests: cuota (`prestamo_hipoteca` · domiciliación) · disp
 
 **Lo que NO se hace, a propósito (regla 8):** «Ahorros Septiembre», «Apple», «Transferencia a Smartflip», «Recibo Dirección Ejemplo 15-17» se quedan sin familia. Mejor «personal / sin familia» que un «mueble» inventado.
 
-**Un matiz sobre la regla 2** (Jose: «TRANSFERENCIA CURENERGÍA positivo = abono de la comercializadora (suministro)»): el catálogo no admite `familia: suministro` con `naturaleza: ingreso` (`motivosInvalidos · familia_de_otra_naturaleza`), y un gasto en positivo sumaría en vez de restar en los KPI (usan magnitudes). Se clasifica como **`ingreso · otros_ingresos`** (§32.32 #7: bonificación, devolución/reembolso) con el motivo «devolución de un suministro». Si se quiere que reste del gasto del piso, es una decisión de catálogo (una «devolución» con signo), no del motor.
+> **CORREGIDO por E2.4.2-fix** (ver `VERIFICACION-E2.4.2-fix-devoluciones-2026-09-08.md`). Aquí se decía que «TRANSFERENCIA CURENERGÍA positivo» se quedaba en `ingreso · otros_ingresos` porque el catálogo no admitía `familia: suministro` con naturaleza ingreso. **Era una lectura equivocada del catálogo**: `motivosInvalidos` exige que la familia sea de la naturaleza dicha, pero no mira el signo del importe, así que `gasto · suministro · luz` con importe positivo siempre fue una clasificación válida. Lo que lo impedía eran tres filtros de signo del motor, no el catálogo. Hoy Curenergía en positivo sale **`gasto · suministro · luz`**, marcada como devolución por su propio signo, y RESTA de la luz de ese piso. Los dos tests de esta regla se reescribieron con esa verdad.
+
+Con el matiz corregido, la línea de la tabla del Sabadell también cambia: nueve líneas (se añadió la regularización de Curenergía al fixture), seis con familia, tres sin ella — porque «ABONO POR DOMICILIACIÓN» ya no recibe la familia inventada `otros_ingresos`, sino que se queda como devolución sin decir de qué gasto.
 
 ## 4 · Orden y origen (VERIFICADO · `clasificarLinea.test.ts`)
 

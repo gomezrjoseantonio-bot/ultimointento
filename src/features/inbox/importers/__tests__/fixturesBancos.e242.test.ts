@@ -72,21 +72,33 @@ describe('Santander · 10 líneas', () => {
   });
 });
 
-describe('Sabadell · 8 líneas · las dos referencias', () => {
-  it('cuota, disposición, abono de domiciliación, remuneración', async () => {
+describe('Sabadell · 9 líneas · las dos referencias', () => {
+  it('cuota, disposición, devolución de la comercializadora, remuneración', async () => {
     const f = await clasificarFixture('sabadell', 2);
-    expect(f).toHaveLength(8);
+    expect(f).toHaveLength(9);
     const por = (t: RegExp) => f.find((x) => t.test(x.desc))!.c;
     expect(por(/IBERDROLA/)).toMatchObject({ familia: 'suministro', subtipo: 'luz' });
     expect(por(/GAS VISALIA/)).toMatchObject({ familia: 'suministro', subtipo: 'gas' });
+    // E2.4.2-fix · la regularización semestral de Curenergía es LUZ en positivo,
+    // del mismo punto que la cuota de Iberdrola: resta de la luz, no es un
+    // ingreso. Antes caía en «otros ingresos» y descuadraba el neto del piso.
+    expect(por(/CURENERGIA/)).toMatchObject({ naturaleza: 'gasto', familia: 'suministro', subtipo: 'luz' });
     expect(por(/ABONO TRANSFERENCIA DE NOMBRE APELLIDO/)).toMatchObject({ naturaleza: 'ingreso', metodo: 'transferencia' });
-    expect(por(/ABONO POR DOMICILIACI/)).toMatchObject({ naturaleza: 'ingreso', familia: 'otros_ingresos' });
+    // El recibo devuelto es la marcha atrás de un gasto · pero no dice de cuál.
+    expect(por(/ABONO POR DOMICILIACI/).naturaleza).toBe('gasto');
+    expect(por(/ABONO POR DOMICILIACI/).familia).toBeUndefined();
     expect(por(/ADEUDO CUOTA/)).toMatchObject({ familia: 'prestamo_hipoteca', metodo: 'domiciliacion' });
     expect(por(/REMUN/)).toMatchObject({ familia: 'rendimiento', subtipo: 'interes' });
     expect(por(/SMARTFLIP/).familia).toBeUndefined();
     expect(por(/ABONO DISPOSICI/)).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'disposicion_prestamo', metodo: 'transferencia' });
     // Iberdrola y Visalia no dicen cómo se cobran (ni recibo ni adeudo) · sin señal no se inventa el método.
-    expect(resumen(f)).toEqual({ total: 8, conFamilia: 6, interno: 1, conMetodo: 6, sinFamilia: 2 });
+    //
+    // `conFamilia` se queda en 6 y no sube a 7 con la línea nueva, a propósito:
+    // Curenergía gana familia (suministro · luz) y el abono de domiciliación la
+    // pierde, porque la que tenía —«otros ingresos»— era mentira. Tres sin
+    // familia es el número honesto: nadie sabe todavía de qué gasto vuelve ese
+    // recibo, y quien lo sepa lo dirá.
+    expect(resumen(f)).toEqual({ total: 9, conFamilia: 6, interno: 1, conMetodo: 7, sinFamilia: 3 });
   });
 });
 

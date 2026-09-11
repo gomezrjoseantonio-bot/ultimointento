@@ -207,9 +207,19 @@ describe('B2 · el colapso no deja la línea huérfana', () => {
 // ─── camposDeCierre · la pieza pura compartida ──────────────────────────────
 
 describe('camposDeCierre · lo mismo escriben los tres caminos', () => {
-  it('el importe es MAGNITUD · el signo lo lleva el movimiento, no la línea', () => {
+  it('el importe es MAGNITUD mientras nadie diga que trae signo', () => {
+    // Es lo que pasa `treasuryConfirmationService`, que confirma contra el
+    // importe del EVENTO — una magnitud, sin signo que interpretar.
     expect(camposDeCierre(delBanco(), 7).importe).toBe(87.4);
     expect(camposDeCierre(delBanco({ amount: 87.4 }), 7).importe).toBe(87.4);
+  });
+
+  it('con el importe CON SIGNO, un abono se guarda como devolución', () => {
+    // E2.4.2-fix · quien pasa el movimiento del banco sí trae el signo: el
+    // cargo sigue siendo una línea positiva y el abono nace en negativo, para
+    // que reste del coste del piso y de la casilla en vez de sumar.
+    expect(camposDeCierre(delBanco(), 7, true).importe).toBe(87.4);
+    expect(camposDeCierre(delBanco({ amount: 31.2 }), 7, true).importe).toBe(-31.2);
   });
 
   it('el ejercicio sale de la fecha de cargo · nunca de la fecha valor', () => {
