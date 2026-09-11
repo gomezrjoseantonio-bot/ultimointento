@@ -25,6 +25,8 @@
 
 import type { MovementSuggestion, SuggestionAction } from '../../../../services/movementSuggestionService';
 import { familiaPorId, labelClasificacion, type FamiliaId } from '../../../../services/catalogo/catalogoUnico';
+import { avisoDeClasificacion } from '../../../../services/clasificacion/clasificada';
+import type { ClasificacionLinea } from '../../../../services/clasificacion/tipos';
 
 /**
  * E1.5 · lo que este traductor necesita de una sugerencia · vale la de un
@@ -137,6 +139,8 @@ function ayudaDe(s: SugerenciaLegible): string {
 export function propuestaDeLinea(
   sugerencias: SugerenciaLegible[],
   atribucion?: { alias?: string; concepto: string; ejercicio: number } | null,
+  /** E2.4.2-fix2 · lo que el motor dice de una línea que deja SIN clasificar a propósito (el IVA). */
+  aviso?: string | null,
 ): Propuesta {
   const s = laQueManda(sugerencias ?? []);
   // FASE 2 · lo que el usuario declaró el año pasado responde a la pregunta que
@@ -151,7 +155,9 @@ export function propuestaDeLinea(
     return {
       tono: 'pregunta',
       titular: atribucion ? `Parece ${atribucion.concepto.toLowerCase()} de un piso` : 'No sé qué es · dímelo tú una vez',
-      ayuda: porLaDeclaracion ?? 'si subes la factura, la leo y relleno proveedor e importe solo',
+      // El aviso del motor va antes que la frase genérica: «movimiento con
+      // Hacienda · IVA» explica por qué está aquí y no parece un olvido.
+      ayuda: porLaDeclaracion ?? aviso ?? 'si subes la factura, la leo y relleno proveedor e importe solo',
       seRecuerda: false,
     };
   }
@@ -174,7 +180,7 @@ export function propuestaDeLinea(
  * junto a cómo se dice, y para que se pueda probar sin React.
  */
 export function propuestasDeLineas(
-  lineas: ReadonlyArray<{ lineaId: number }>,
+  lineas: ReadonlyArray<{ lineaId: number; clasificacion?: ClasificacionLinea }>,
   sugerencias: ReadonlyMap<number, SugerenciaLegible[]> | undefined,
   atribuciones: ReadonlyMap<number, { inmuebleId: number; concepto: string; ejercicio: number }> | undefined,
   inmuebles: ReadonlyArray<{ id: number; alias: string }>,
@@ -190,6 +196,7 @@ export function propuestasDeLineas(
         a
           ? { alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias, concepto: a.concepto, ejercicio: a.ejercicio }
           : null,
+        avisoDeClasificacion(l.clasificacion),
       ),
     );
   }

@@ -15,6 +15,7 @@
 // préstamo 4/240» caigan juntas.
 // ============================================================================
 
+import { estaClasificada, etiquetaDeClasificacion } from '../../../../services/clasificacion/clasificada';
 import type { LineaExtracto } from '../extractoSesion';
 
 export interface GrupoResuelto {
@@ -54,9 +55,17 @@ export function claveDeGrupo(texto: string): string {
     .trim();
 }
 
-/** Cómo se llama esta línea resuelta · lo que casó manda sobre el churro. */
+/**
+ * Cómo se llama esta línea resuelta · lo que casó manda sobre el churro; y si
+ * no casó con nada pero el motor le puso sus ejes, la ETIQUETA manda sobre el
+ * texto del banco (E2.4.2-fix2): «AHORRO» y «AHORROS» son una sola fila,
+ * «Traspaso · A ahorro», no dos montones partidos por una ese.
+ */
 export function nombreDeLineaResuelta(l: LineaExtracto): string {
-  return l.previsto?.descripcion || l.confirmado?.descripcion || l.textoBanco;
+  if (l.previsto?.descripcion) return l.previsto.descripcion;
+  if (l.confirmado?.descripcion) return l.confirmado.descripcion;
+  if (l.clasificacion && estaClasificada(l.clasificacion)) return etiquetaDeClasificacion(l.clasificacion);
+  return l.textoBanco;
 }
 
 /**

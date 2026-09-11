@@ -58,6 +58,8 @@ export function bucketDeLinea(
   reconocidas?: ReadonlySet<number>,
   /** E2.2 · por `lineaId` · una regla aprendida con confianza la resuelve sola. */
   autoResueltas?: ReadonlySet<number>,
+  /** E2.4.2-fix2 · por `lineaId` · el motor le puso sus 4 ejes (`estaClasificada`). */
+  clasificadas?: ReadonlySet<number>,
 ): Bucket {
   const veredicto = veredictoEfectivo(linea, decisiones);
 
@@ -89,6 +91,12 @@ export function bucketDeLinea(
       // «personal» (resolver pesa más que solo saber de quién es). El «No es
       // esto» de arriba la devuelve a «te necesitan» y penaliza la regla.
       if (autoResueltas?.has(linea.lineaId)) return 'resueltas';
+      // E2.4.2-fix2 · «resuelto = tiene sus 4 ejes puestos». El motor ya los
+      // calculaba al importar y nadie los leía: TGSS, ahorro, gestoría caían a
+      // «te necesitan» con la respuesta guardada en la fila. Va detrás de los
+      // libros y las reglas (esos traen más: piso, cuenta, cuadro) y delante de
+      // «personal». «No es esto» la devuelve a «te necesitan» como a cualquiera.
+      if (clasificadas?.has(linea.lineaId)) return 'resueltas';
       // El montón «personal» va DESPUÉS de los dos anteriores a propósito. Que
       // una línea sea tuya y no de un piso no la desconcilia ni la designora:
       // «resueltas» e «ignorados» son actos —uno del emparejador, otro del
@@ -125,6 +133,7 @@ export function cuadre(
   personales?: ReadonlySet<number>,
   reconocidas?: ReadonlySet<number>,
   autoResueltas?: ReadonlySet<number>,
+  clasificadas?: ReadonlySet<number>,
 ): Cuadre {
   const porBucket: Record<Bucket, number> = {
     resueltas: 0,
@@ -135,7 +144,7 @@ export function cuadre(
   const huerfanas: number[] = [];
 
   for (const l of lineas) {
-    const b = bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas);
+    const b = bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas, clasificadas);
     if (b in porBucket) porBucket[b] += 1;
     else huerfanas.push(l.lineaId);
   }

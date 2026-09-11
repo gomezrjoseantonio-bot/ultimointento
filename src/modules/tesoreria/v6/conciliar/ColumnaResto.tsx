@@ -21,6 +21,7 @@ import React from 'react';
 import { Icons } from '../../../../design-system/v5';
 import type { LineaExtracto } from '../extractoSesion';
 import { agruparResueltas } from './agruparResueltas';
+import { etiquetaDeClasificacion } from '../../../../services/clasificacion/clasificada';
 import type { LoQueYaReconoce } from './loQueYaReconoce';
 import { importeConSigno } from '../formatoV6';
 import styles from './PanelConciliar.module.css';
@@ -130,7 +131,11 @@ const Monton: React.FC<MontonProps> = ({
                           {/* El texto LITERAL del banco · es lo que el usuario
                               puede reconocer en su cuenta para decidir. */}
                           <span className={styles.dentroA}>{l.textoBanco}</span>
-                          <span className={styles.dentroB}>{l.fecha}</span>
+                          {/* E2.4.2-fix2 · y sus ejes, si el motor los puso. */}
+                          <span className={styles.dentroB}>
+                            {l.fecha}
+                            {l.clasificacion ? ` · ${etiquetaDeClasificacion(l.clasificacion)}` : ''}
+                          </span>
                         </span>
                         <span className={styles.dentroN}>{importeConSigno(l.importe)}</span>
                         <button

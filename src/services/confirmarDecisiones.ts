@@ -36,6 +36,7 @@
 // bucle: antes solo aprendía el bloque 1.
 // ============================================================================
 
+import { estaClasificada } from './clasificacion/clasificada';
 import { initDB, Movement, TreasuryEvent } from './db';
 import type { LineaExtractoPersistida } from './db/types-lineasExtracto';
 import { cerrarLineaDeGastoDelEvento, type DbParaCierre } from './cierreLineaInmueble';
@@ -86,6 +87,8 @@ export interface ConfirmationPayload {
    * una línea que la regla había resuelto sola) · pierden la confianza.
    */
   reglasCorregidas?: number[];
+  /** E2.4.2-fix2 · lo que el motor clasificó al importar y nadie tocó · nace con sus ejes. */
+  resueltasPorConcepto?: number[];
 }
 
 export async function confirmDecisions(
@@ -225,6 +228,20 @@ export async function confirmDecisions(
     }
   }
 
+  // 5 bis · E2.4.2-fix2 · lo que el motor clasificó al importar (concepto,
+  // identificador o regla) y nadie tocó · DESPUÉS de las reglas y de todo lo
+  // que el usuario decidió: cualquier gesto suyo sobre la línea manda.
+  for (const lineaId of payload.resueltasPorConcepto ?? []) {
+    if (lineasTocadas.has(lineaId)) continue;
+    try {
+      const resuelta = await resolverPorConcepto(db, base, lineaId, now);
+      if (resuelta) lineasTocadas.add(lineaId);
+    } catch (err) {
+      // Una línea que falla no tumba el Guardar: se queda a resolver, visible.
+      console.error('[confirmarDecisiones] no se pudo materializar una línea clasificada', err);
+    }
+  }
+
   // 6 · E2.2 · las reglas que el usuario desmintió pierden la confianza.
   for (const ruleId of new Set(payload.reglasCorregidas ?? [])) {
     try {
@@ -233,6 +250,54 @@ export async function confirmDecisions(
       console.warn('[confirmarDecisiones] no se pudo penalizar la regla', ruleId, err);
     }
   }
+}
+
+/**
+ * E2.4.2-fix2 · una línea que el MOTOR dejó con sus 4 ejes · `true` si quedó
+ * resuelta. Mismo camino que `resolverPorRegla`, para que el resultado sea
+ * indistinguible de haberlo hecho a mano: `gastoDesdeMovimiento` para un
+ * gasto o un ingreso (materializa, clasifica y escribe la fila fiscal si hay
+ * piso); un movimiento INTERNO por concepto («AHORROS») sabe QUÉ es y no A
+ * DÓNDE, así que nace como movimiento interno sin pata al otro lado —lo que
+ * ya admite `traspasosPropios`— y el movimiento hereda los ejes de la línea.
+ */
+async function resolverPorConcepto(
+  db: Awaited<ReturnType<typeof initDB>>,
+  base: BaseParaMaterializar,
+  lineaId: number,
+  now: string
+): Promise<boolean> {
+  const linea = (await db.get('lineasExtracto', lineaId)) as LineaExtractoPersistida | undefined;
+  if (!linea || linea.descarte) return false;
+  const c = linea.clasificacion;
+  if (!c || !estaClasificada(c)) return false;
+  // Ya resuelta (un Guardar que falló a medias y se reintenta) · no se repite.
+  if (linea.estado === 'resuelta' || (linea.movementIds?.length ?? 0) > 0) return true;
+  if (c.naturaleza === 'movimiento_interno') {
+    await materializarLinea(base, lineaId, now, 'motor');
+  } else {
+    const inmuebleId = c.ambito === 'inmueble' && c.inmuebleId != null ? c.inmuebleId : null;
+    const origenIdRecurrente = await origenIdRecurrenteDelGasto(inmuebleId, c.familia, linea.fechaOperacion);
+    const r = await gastoDesdeMovimiento({
+      lineaId,
+      inmuebleId,
+      concepto: linea.conceptoLiteral,
+      importe: linea.importe,
+      fecha: linea.fechaOperacion,
+      familia: c.familia,
+      subtipo: c.subtipo,
+      origenIdRecurrente,
+    });
+    if (r.resultado === 'falta_casilla') return false;
+  }
+  const enlazada = (await db.get('lineasExtracto', lineaId)) as LineaExtractoPersistida | undefined;
+  if (!enlazada) return false;
+  await db.put('lineasExtracto', { ...enlazada, comoSeResolvio: 'motor', updatedAt: now });
+  for (const movementId of enlazada.movementIds ?? []) {
+    const m = (await db.get('movements', movementId)) as Movement | undefined;
+    if (m) await db.put('movements', { ...m, statusConciliacion: 'match_automatico', updatedAt: now });
+  }
+  return true;
 }
 
 /**
