@@ -116,8 +116,15 @@ function aplicar(c: ClasificacionLinea, p: Parcial, origen: OrigenEje, amount: n
     tocado = true;
   }
   if (p.sentido && c.naturaleza === 'movimiento_interno' && c.sentido === undefined) c.sentido = p.sentido;
-  if (tocado) c.motivos.push(p.motivo);
+  // Un AVISO (regla que solo trae motivo, sin ejes · el IVA) también se anota:
+  // la línea se queda sin clasificar a propósito y tiene que poder decir por qué.
+  if (tocado || esSoloAviso(p)) c.motivos.push(p.motivo);
   return tocado;
+}
+
+function esSoloAviso(p: Parcial): boolean {
+  return p.naturaleza === undefined && p.familia === undefined && p.metodo === undefined
+    && p.ambito === undefined && p.inmuebleId == null && p.sentido === undefined;
 }
 
 // ─── 1 · aprendida ───────────────────────────────────────────────────────────

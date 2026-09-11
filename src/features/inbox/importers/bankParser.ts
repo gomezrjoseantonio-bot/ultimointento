@@ -21,7 +21,10 @@ const COLUMN_ALIASES = {
     // Sabadell escribe «F. Operativa» (cabecera real del export xlsx). Sin este
     // alias la columna no casaba, `date` caía en la fecha VALOR y un recibo con
     // operativa 02/01 y valor 31/12 se iba al ejercicio anterior.
-    'f. operativa', 'f operativa', 'fecha operativa'
+    'f. operativa', 'f operativa', 'fecha operativa',
+    // Abanca escribe «Fecha ctble» (contable). Sin el alias `date` caía en la
+    // fecha VALOR y el fichero avisaba de que no traía fecha de cargo.
+    'fecha ctble', 'fecha contable', 'f. contable', 'f contable'
   ],
   amount: [
     'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto',
