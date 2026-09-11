@@ -42,13 +42,13 @@ import { leerSesionDelLote, tituloDeLaSesion, persistirCambios, useLotesAMedias 
 import { clasificarLasElegidas } from './clasificarEnBloque';
 import { useArrastreConTope } from './aprendizajeEnSesion';
 import AvisoArrastre from './conciliar/AvisoArrastre';
-import FichaDeCreacion from './FichaDeCreacion';
+import { prerrellenoDeFicha } from './prerrellenoDeFicha';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
 import PanelExtractoTarjeta from './PanelExtractoTarjeta';
 import { cuadre, bucketDeLinea, type Bucket } from './conciliarBuckets';
-import type { GuardadoFicha } from './FichaMovimiento';
+import FichaMovimiento, { type GuardadoFicha } from './FichaMovimiento';
 import { colorDeBanco } from './bancoColores';
 import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { convertirLineaEnTraspaso } from '../../../services/traspasoDesdeMovimiento';
@@ -633,11 +633,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // §4.5 prerrellenada · "Crear movimiento" desde una línea sin cuadre. Se monta
   // en las dos ramas del render (pantalla y dropzone), así que vive fuera.
   const fichaDeCreacion = (
-    <FichaDeCreacion
-      creando={creando}
-      clasificandoVarias={clasificandoVarias}
-      cuentaActiva={cuentaActiva}
-      cuentas={cuentas}
+    <FichaMovimiento
+      abierta={creando != null || clasificandoVarias != null}
+      esEdicion={false}
+      inicial={prerrellenoDeFicha(creando, clasificandoVarias, cuentaActiva?.id ?? null)}
+      cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
       inmuebles={inmuebles}
       tarjetas={tarjetas}
       onCerrar={() => {
