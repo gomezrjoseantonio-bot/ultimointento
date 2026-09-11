@@ -56,7 +56,15 @@ const CUOTA_PRESTAMO = ['LIQUIDACION PERIODICA PRESTAMO', 'PRESTAMOS ADEUDO CUOT
 const BONIFICACION = ['BONIFICACION'];
 const DEVOLUCION_RECIBO = ['ABONO POR DOMICILIACION', 'ABONO DOMICILIACION', 'DEVOLUCION RECIBO', 'DEVOLUCION DE RECIBO'];
 const NOMINA = ['NOMINA', 'NOMINAS', 'SALARIO', 'HABERES'];
-const PENSION = ['PENSION', 'INSS', 'SEGURIDAD SOCIAL'];
+// «SEGURIDAD SOCIAL» ya no está aquí (Jose · 11 sep 2026): la Seguridad Social
+// es la que COBRA la cuota de autónomos y la que la devuelve; la pensión la paga
+// el INSS y el concepto dice «pensión». Una pensión (ingreso) y una cotización
+// (gasto) no son lo mismo, y con la palabra en esta lista un abono de la TGSS
+// se leía como pensión.
+const PENSION = ['PENSION', 'INSS'];
+// La TGSS · la cuota RETA en negativo y su regularización en positivo (la
+// devolución de esa misma familia · §7). Va ANTES que PENSION.
+const TGSS = ['TGSS', 'TESORERIA GENERAL', 'TESORERIA GRAL', 'REGIMEN ESPECIAL AUTONOMOS', 'CUOTA AUTONOMOS', 'RETA'];
 const FIANZA = ['FIANZA'];
 const EFECTIVO_SALE = ['CAJERO', 'REINTEGRO', 'RETIRADA EFECTIVO', 'DISPOSICION EFECTIVO', 'RETIRADA'];
 const EFECTIVO_ENTRA = ['INGRESO EFECTIVO', 'INGRESO EN EFECTIVO'];
@@ -175,6 +183,10 @@ const REGLAS: Regla[] = [
   (m) => (entra(m) && tieneAlguna(texto(m), ['AEAT', 'AGENCIA TRIBUTARIA', 'HACIENDA', 'DEVOLUCION RENTA', 'TESORO PUBLICO'])
     ? { naturaleza: 'ingreso', familia: 'otros_ingresos', motivo: 'devolución de Hacienda' }
     : undefined),
+  // La cuota de autónomos y su devolución · ANTES que la pensión: hasta aquí
+  // un abono de la TGSS («TESORERIA GENERAL DE LA SEGURIDAD SOCIAL» +283,03)
+  // se leía como pensión, y es la cuota que vuelve.
+  (m) => porComercio(m, TGSS, 'cuota_reta'),
   (m) => (entra(m) && tieneAlguna(texto(m), PENSION)
     ? { naturaleza: 'ingreso', familia: 'pension', motivo: '«pensión» en el concepto' }
     : undefined),

@@ -43,7 +43,7 @@ está mal es el código.
 | `venta` | `inmueble` / `acciones` / `fondos` / `criptomonedas` (subtipo = tipos de activo de `inversiones` + inmueble) |
 | `otros_ingresos` | — |
 
-## NATURALEZA = GASTO · 21 familias · lista plana
+## NATURALEZA = GASTO · 22 familias · lista plana
 
 | familia | subtipos (opcionales) |
 |---|---|
@@ -67,6 +67,7 @@ está mal es el código.
 | `comisiones_bancarias` | `mantenimiento` / `transferencia` / `otros` |
 | `multas` | `trafico` / `otras` |
 | `compra_online` | — (bazares opacos: Amazon / Shein / AliExpress) |
+| `cuota_reta` | — (cuota de autónomos a la Seguridad Social · Jose · 11 sep 2026 · su regularización, la TGSS en positivo, es la devolución de esta familia: §7, resta) |
 | `otros` | — (cajón) |
 
 ## NATURALEZA = MOVIMIENTO INTERNO · 4 familias
