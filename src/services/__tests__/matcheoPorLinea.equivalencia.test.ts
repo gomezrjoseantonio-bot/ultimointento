@@ -31,7 +31,7 @@ import {
   movementIdsPorLinea,
   origenParaMovimiento,
 } from '../lineaComoMovimiento';
-import { buildLearnKey } from '../movementLearningService';
+import { buildLearnKey, patronesDeRegla } from '../movementLearningService';
 import { initDB, type Movement, type TreasuryEvent } from '../db';
 import type { LineaExtractoPersistida } from '../db/types-lineasExtracto';
 
@@ -156,8 +156,8 @@ function libros(): Stores {
   return {
     treasuryEvents: [...PREVISTOS],
     movementLearningRules: [
-      { id: 1, learnKey: buildLearnKey(NETFLIX), familia: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 2, learnKey: buildLearnKey(DEVOLUCION), familia: 'compra_online', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 1, learnKey: buildLearnKey(NETFLIX), ...patronesDeRegla(NETFLIX), familia: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 2, learnKey: buildLearnKey(DEVOLUCION), ...patronesDeRegla(DEVOLUCION), familia: 'compra_online', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
       { id: 9, learnKey: 'x', familia: 'alquiler', ambito: 'inmueble', aliasContraparte: 'MPARWEZ', contraparteCanonica: 'Adnan Parwez Khan' },
     ],
     compromisosRecurrentes: [

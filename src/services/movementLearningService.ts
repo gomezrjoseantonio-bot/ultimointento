@@ -185,6 +185,20 @@ function signoDe(movement: Movement): 'positive' | 'negative' {
 }
 
 /**
+ * Las PIEZAS de la clave · lo que se hashea, antes de hashearlo. `reglaEncaja`
+ * las compara tal cual: dos textos que dieran el mismo hash por casualidad no
+ * darían las mismas piezas.
+ */
+function piezasV1(movement: Movement): string | null {
+  if (!hayConQueAgrupar(movement)) return null;
+  return ['v1', signoDe(movement), ...ngramsDelMovimiento(movement)].join('|');
+}
+
+function piezasV2(movement: Movement, claves: readonly string[]): string {
+  return ['v2', signoDe(movement), ...ngramsDelMovimiento(movement, true), ...claves.map((c) => `id=${c}`)].join('|');
+}
+
+/**
  * La clave v1 · `v1|signo|ngramA|ngramB|ngramC`, hasheada.
  *
  * Es la que tienen las reglas aprendidas antes de E2.1. Se conserva SOLO para
@@ -199,8 +213,8 @@ function signoDe(movement: Movement): 'positive' | 'negative' {
  * significar eso y no «agrúpalo con todo lo demás».
  */
 export function buildLearnKeyV1(movement: Movement): string | null {
-  if (!hayConQueAgrupar(movement)) return null;
-  return simpleHash(['v1', signoDe(movement), ...ngramsDelMovimiento(movement)].join('|'));
+  const piezas = piezasV1(movement);
+  return piezas === null ? null : simpleHash(piezas);
 }
 
 /**
@@ -226,13 +240,7 @@ export function buildLearnKey(movement: Movement): string | null {
   if (ids.length === 0) return buildLearnKeyV1(movement);
   // Con identificador SÍ hay con qué: un CUPS o un NIF agrupa por sí solo,
   // aunque del texto no quede un n-gram.
-  const keyParts = [
-    'v2',
-    signoDe(movement),
-    ...ngramsDelMovimiento(movement, true),
-    ...ids.map((id) => `id=${claveDeIdentificador(id)}`),
-  ];
-  return simpleHash(keyParts.join('|'));
+  return simpleHash(piezasV2(movement, ids.map(claveDeIdentificador)));
 }
 
 /** Los identificadores del movimiento, como se guardan en la regla · «tipo:valor». */
@@ -241,11 +249,49 @@ export function identificadoresDeRegla(movement: Movement): string[] {
 }
 
 /**
- * Generate a learn key for a movement (alias kept for internal use).
+ * El texto del que nace una regla · lo que se guarda para poder comprobar, al
+ * aplicarla, que sigue encajando (`reglaEncaja`). Es la ÚNICA derivación: la
+ * usa `createOrUpdateRule` y la usan los tests que siembran reglas.
  */
-function generateLearnKey(movement: Movement): string | null {
-  return buildLearnKey(movement);
+export function patronesDeRegla(
+  movement: Movement,
+): Pick<MovementLearningRule, 'counterpartyPattern' | 'descriptionPattern' | 'amountSign' | 'identificadores'> {
+  const identificadores = identificadoresDeRegla(movement);
+  return {
+    counterpartyPattern: normalizeText(movement.counterparty || ''),
+    descriptionPattern: removeVolatileTokens(normalizeText(movement.description || '')),
+    amountSign: signoDe(movement),
+    ...(identificadores.length > 0 ? { identificadores } : {}),
+  };
 }
+
+/**
+ * ¿Sigue encajando la regla con ESTE movimiento? · el tercer candado (Jose ·
+ * 11 sep 2026).
+ *
+ * La regla se encuentra por clave, y la clave es un hash. Aquí se comprueba
+ * lo que el hash resume: las piezas que salen del texto del movimiento y las
+ * que salen del texto GUARDADO en la regla tienen que ser las mismas (v2 con
+ * v2 si los dos traen identificador; si no, v1 con v1). Rechaza tres cosas
+ * que por clave pasaban: una regla sin texto guardado (no hay nada que
+ * comprobar · no se aplica), una regla del cajón común anterior a #1866 (su
+ * texto ya no da clave) y una colisión del hash entre dos textos distintos.
+ */
+export function reglaEncaja(movement: Movement, rule: MovementLearningRule): boolean {
+  const deLaRegla = {
+    description: rule.descriptionPattern ?? '',
+    counterparty: rule.counterpartyPattern ?? '',
+    amount: rule.amountSign === 'negative' ? -1 : 1,
+  } as Movement;
+  const clavesMov = identificadoresDeRegla(movement);
+  const clavesRegla = rule.identificadores ?? [];
+  if (clavesMov.length > 0 && clavesRegla.length > 0) {
+    return piezasV2(movement, clavesMov) === piezasV2(deLaRegla, clavesRegla);
+  }
+  const piezas = piezasV1(movement);
+  return piezas !== null && piezas === piezasV1(deLaRegla);
+}
+
 
 // ─── Alias de contraparte · quién es, no de qué categoría es ────────────────
 
@@ -368,18 +414,14 @@ export async function createOrUpdateRule(params: {
 
     const alias = movement ? aliasAprendible(movement, contraparteConfirmada) : undefined;
 
-    const derivedCounterparty = movement
-      ? normalizeText(movement.counterparty || '')
-      : undefined;
-    const derivedDescription = movement
-      ? removeVolatileTokens(normalizeText(movement.description || ''))
-      : undefined;
-    const derivedAmountSign: 'positive' | 'negative' | undefined = movement
-      ? (movement.amount >= 0 ? 'positive' : 'negative')
-      : undefined;
-    // E2.1 · lo que identifica el contrato dentro del texto del banco. Se
-    // guarda legible («contrato:8078716546») para la pantalla de reglas.
-    const derivedIdentificadores = movement ? identificadoresDeRegla(movement) : [];
+    // El texto del que nace la regla · una sola derivación (`patronesDeRegla`),
+    // la misma que comprueba `reglaEncaja` al aplicarla. Los identificadores
+    // se guardan legibles («contrato:8078716546») para la pantalla de reglas.
+    const patrones = movement ? patronesDeRegla(movement) : undefined;
+    const derivedCounterparty = patrones?.counterpartyPattern;
+    const derivedDescription = patrones?.descriptionPattern;
+    const derivedAmountSign = patrones?.amountSign;
+    const derivedIdentificadores = patrones?.identificadores ?? [];
 
     // Check if rule already exists
     const existingRules = await db.getAllFromIndex('movementLearningRules', 'learnKey', learnKey);
@@ -529,111 +571,10 @@ export async function penalizarRegla(ruleId: number): Promise<MovementLearningRu
 }
 
 /**
- * Apply all learning rules to movements during import.
- *
- * Sin lectores activos tras T16-cleanup (el legacy `bankStatementImportService`
- * fue eliminado en este PR). Se mantiene como API pública para futuros
- * consumidores. El path UI activo (orchestrator) usa
- * `movementSuggestionService.suggestForUnmatched`, que muestra sugerencias al
- * usuario antes de aplicarlas — distinto contrato.
- */
-export async function applyAllRulesOnImport(movements: Movement[]): Promise<Movement[]> {
-  try {
-    const db = await initDB();
-
-    // Get all learning rules
-    const allRules = await db.getAll('movementLearningRules');
-    const rulesMap = new Map<string, MovementLearningRule>();
-
-    allRules.forEach(rule => {
-      rulesMap.set(rule.learnKey, rule);
-    });
-
-    const processedMovements = movements.map(movement => {
-      // E2.1 · primero la clave v2; si no hay regla, la v1 (reglas de antes).
-      // Sin clave no se busca nada: un concepto del que no queda con qué
-      // agrupar no hereda la clasificación de otro apunte cualquiera.
-      let learnKey = generateLearnKey(movement);
-      let rule = learnKey ? rulesMap.get(learnKey) : undefined;
-      if (!rule) {
-        const v1 = buildLearnKeyV1(movement);
-        rule = v1 ? rulesMap.get(v1) : undefined;
-        if (rule) learnKey = v1;
-      }
-
-      if (rule) {
-        // Apply learned classification
-        return {
-          ...movement,
-          ...(rule.familia ? { familia: rule.familia, subtipo: rule.subtipo } : {}),
-          ambito: rule.ambito,
-          inmuebleId: rule.inmuebleId,
-          statusConciliacion: 'match_automatico' as const,
-          // Aquí siempre hay clave (la regla se encontró por ella) · el `??`
-          // es solo para que el tipo lo diga.
-          learnKey: learnKey ?? undefined,
-          updatedAt: new Date().toISOString()
-        };
-      }
-
-      // No rule found, keep as sin_match with default ambito
-      return {
-        ...movement,
-        ambito: 'personal' as const,
-        statusConciliacion: 'sin_match' as const,
-        updatedAt: new Date().toISOString()
-      };
-    });
-
-    // Update rule application counts for used rules
-    const appliedRules = new Set<string>();
-    processedMovements.forEach(movement => {
-      if (movement.learnKey && movement.statusConciliacion === 'match_automatico') {
-        appliedRules.add(movement.learnKey);
-      }
-    });
-
-    // Update applied counts asynchronously (sin history writes — T16-cleanup)
-    for (const learnKey of Array.from(appliedRules)) {
-      const rule = rulesMap.get(learnKey);
-      if (rule && rule.id) {
-        rule.appliedCount += 1;
-        rule.lastAppliedAt = new Date().toISOString();
-        rule.updatedAt = new Date().toISOString();
-        await db.put('movementLearningRules', rule);
-      }
-    }
-
-    if (appliedRules.size > 0) {
-      console.log(`🤖 Applied ${appliedRules.size} learning rules to new movements`);
-    }
-
-    return processedMovements;
-
-  } catch (error) {
-    console.error('❌ Error applying learning rules to new movements:', error);
-    return movements.map(movement => ({
-      ...movement,
-      ambito: 'personal' as const,
-      statusConciliacion: 'sin_match' as const,
-      updatedAt: new Date().toISOString()
-    }));
-  }
-}
-
-/**
- * Apply existing learning rules to new movements during import (alias for applyAllRulesOnImport)
- */
-export async function applyLearningRulesToNewMovements(movements: Movement[]): Promise<Movement[]> {
-  return applyAllRulesOnImport(movements);
-}
-
-/**
  * Service surface kept for compat with consumers that destructure the bundle.
  */
 export const learningService = {
   createOrUpdateRule,
-  applyAllRulesOnImport,
 };
 
 // ── D-CRUD-MEDIA sub-tarea 16 · listar / borrar reglas individualmente ───────

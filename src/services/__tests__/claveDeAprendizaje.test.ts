@@ -13,9 +13,9 @@
 // que «no queda nada con qué agrupar» signifique NINGUNA hermana en vez de
 // TODAS.
 
-import { buildLearnKey, buildLearnKeyV1 } from '../movementLearningService';
+import { buildLearnKey, buildLearnKeyV1, identificadoresDeRegla, patronesDeRegla, reglaEncaja } from '../movementLearningService';
 import { claveDeLinea, hermanasDeAprendizaje, type LineaConClave } from '../clasificacion/aprendizajeEnLote';
-import type { Movement } from '../db';
+import type { Movement, MovementLearningRule } from '../db';
 
 const mov = (description: string, amount: number, over: Partial<Movement> = {}): Movement =>
   ({ description, amount, ...over }) as Movement;
@@ -128,5 +128,76 @@ describe('las hermanas del lote · lo que le pasaba a Jose', () => {
   it('claveDeLinea dice null cuando no hay con qué agrupar', () => {
     expect(claveDeLinea(linea(9, 'BIZUM', -30))).toBeNull();
     expect(claveDeLinea(linea(9, 'MERCADONA OVIEDO', -30))).not.toBeNull();
+  });
+});
+
+// ── El tercer candado · la regla tiene que seguir encajando ─────────────────
+//
+// Jose (11 sep 2026): la regla se encuentra por clave, y la clave es un hash.
+// Antes de aplicarla se comprueba que el texto GUARDADO en la regla y el del
+// movimiento dan las mismas piezas. Las reglas se construyen aquí como las
+// construye `createOrUpdateRule`: con `patronesDeRegla`, no a mano.
+
+const reglaDe = (m: Movement, over: Partial<MovementLearningRule> = {}): MovementLearningRule =>
+  ({
+    learnKey: buildLearnKey(m) ?? 'sin-clave',
+    ...patronesDeRegla(m),
+    ambito: 'personal',
+    source: 'IMPLICIT',
+    createdAt: '',
+    updatedAt: '',
+    appliedCount: 1,
+    ...over,
+  }) as MovementLearningRule;
+
+describe('la regla tiene que seguir encajando con el movimiento', () => {
+  const marzo = mov('ENDESA ESPAÑA SA RECIBO LUZ MAR2026 REF789123', -45.23, { counterparty: 'ENDESA ESPAÑA SA' });
+  const abril = mov('ENDESA ESPAÑA SA RECIBO LUZ ABR2026 REF321654', -42.15, { counterparty: 'ENDESA ESPAÑA SA' });
+
+  it('la regla que nace de un recibo encaja con el siguiente del mismo comercio', () => {
+    expect(buildLearnKey(abril)).toBe(buildLearnKey(marzo));
+    expect(reglaEncaja(abril, reglaDe(marzo))).toBe(true);
+  });
+
+  it('la cola libre de un Bizum no la desencaja', () => {
+    const cena = mov('BIZUM A FAVOR DE VICTOR CONCEPTO CENA', -20);
+    const regalo = mov('BIZUM A FAVOR DE VICTOR CONCEPTO REGALO', -35);
+    expect(reglaEncaja(regalo, reglaDe(cena))).toBe(true);
+  });
+
+  it('una regla con la clave de un texto y el texto de otro NO encaja · la colisión no pasa', () => {
+    const mercadona = mov('MERCADONA OVIEDO', -60);
+    const colision = reglaDe(mercadona, { learnKey: buildLearnKey(marzo) ?? '' });
+    expect(reglaEncaja(marzo, colision)).toBe(false);
+  });
+
+  it('sin texto guardado no encaja · no hay nada que comprobar (D3)', () => {
+    const sinTexto = reglaDe(marzo, { descriptionPattern: '', counterpartyPattern: '' });
+    expect(reglaEncaja(marzo, sinTexto)).toBe(false);
+  });
+
+  it('una regla del cajón común de antes no encaja con nada · su texto ya no da clave', () => {
+    const cajon = reglaDe(mov('BIZUM', -30), { learnKey: 'clave-vieja-del-cajon' });
+    expect(reglaEncaja(mov('BIZUM', -30), cajon)).toBe(false);
+    expect(reglaEncaja(mov('TRANSFERENCIA', -30), cajon)).toBe(false);
+  });
+
+  it('el signo también tiene que encajar', () => {
+    const abono = mov('ENDESA ESPAÑA SA RECIBO LUZ MAY2026 REF111222', 31.2, { counterparty: 'ENDESA ESPAÑA SA' });
+    expect(reglaEncaja(abono, reglaDe(marzo))).toBe(false);
+  });
+
+  it('con identificador encaja el mismo contrato y no otro', () => {
+    const cups = 'ES0031104738629001JR0F';
+    const otroCups = 'ES0021000012345678AB0F';
+    const recibo104 = mov('IBERDROLA CLIENTES SAU GAS 104', -60, { reference: `CUPS ${cups}` });
+    const recibo105 = mov('IBERDROLA CLIENTES SAU GAS 105', -58, { reference: `CUPS ${cups}` });
+    const otroPiso = mov('IBERDROLA CLIENTES SAU GAS 104', -60, { reference: `CUPS ${otroCups}` });
+    // Precondición · el extractor ve el CUPS; si no, este test no prueba nada.
+    expect(identificadoresDeRegla(recibo104).length).toBeGreaterThan(0);
+    const regla = reglaDe(recibo104);
+    expect(regla.identificadores?.length).toBeGreaterThan(0);
+    expect(reglaEncaja(recibo105, regla)).toBe(true);
+    expect(reglaEncaja(otroPiso, regla)).toBe(false);
   });
 });

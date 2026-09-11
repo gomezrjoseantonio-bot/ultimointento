@@ -44,7 +44,7 @@ import {
   MovementLearningRule,
   TreasuryEvent,
 } from './db';
-import { buildLearnKey, buildLearnKeyV1, nombreDeContraparte } from './movementLearningService';
+import { buildLearnKey, buildLearnKeyV1, nombreDeContraparte, reglaEncaja } from './movementLearningService';
 import { contradiceElSigno } from './sugerencias/signoDelMovimiento';
 import { puedeResolverSola } from './reglaResuelveSola';
 import { reconocerRecurrente } from './recurrentes/reconocerRecurrente';
@@ -300,13 +300,15 @@ function reglaDelMovimiento(
 ): { learnKey: string; rule: MovementLearningRule } | null {
   const v2 = buildLearnKey(movement);
   const porV2 = v2 ? rulesByKey.get(v2) : undefined;
-  if (v2 && porV2) return { learnKey: v2, rule: porV2 };
+  // Tercer candado · la clave la encuentra, el texto guardado la confirma. Una
+  // regla que no encaja con ESTE movimiento es como si no estuviera.
+  if (v2 && porV2 && reglaEncaja(movement, porV2)) return { learnKey: v2, rule: porV2 };
   const v1 = buildLearnKeyV1(movement);
   // Sin clave no hay regla que valga · y si la v1 es la misma que la v2, ya
   // se ha probado.
   if (!v1 || v1 === v2) return null;
   const porV1 = rulesByKey.get(v1);
-  return porV1 ? { learnKey: v1, rule: porV1 } : null;
+  return porV1 && reglaEncaja(movement, porV1) ? { learnKey: v1, rule: porV1 } : null;
 }
 
 function suggestFromLearningRule(
