@@ -735,3 +735,6 @@
   padding: 4px 8px;
   cursor: pointer;
 }
+
+/* La pregunta del arrastre con tope · sus dos botones, en la misma línea. */
+.avisoAcciones { display: inline-flex; gap: 6px; margin-left: 10px; vertical-align: middle; }
