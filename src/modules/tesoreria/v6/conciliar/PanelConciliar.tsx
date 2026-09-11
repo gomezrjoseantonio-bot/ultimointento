@@ -43,6 +43,8 @@ export interface PanelConciliarProps {
   propuestas: Map<number, Propuesta>;
   aprendido: LoQueYaReconoce;
   avisos: string[];
+  /** La pregunta del arrastre con tope, si la hay · va junto a los avisos. */
+  pregunta?: React.ReactNode;
   error: string | null;
   guardando: boolean;
   /** §31 · el cuadre con el banco y la apertura derivada, si el fichero trae saldo. */
@@ -89,6 +91,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   propuestas,
   aprendido,
   avisos,
+  pregunta,
   error,
   guardando,
   apertura,
@@ -227,6 +230,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
           {a}
         </div>
       ))}
+      {pregunta}
       {error && <div className={`${styles.aviso} ${styles.avisoError}`}>{error}</div>}
       {apertura && onAplicarApertura && (
         <CuadreConElBanco

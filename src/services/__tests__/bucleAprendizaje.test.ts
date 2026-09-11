@@ -10,7 +10,7 @@
 
 import { initDB, type Movement, type MovementLearningRule } from '../db';
 import type { LineaExtractoPersistida } from '../db/types-lineasExtracto';
-import { buildLearnKey, createOrUpdateRule, penalizarRegla } from '../movementLearningService';
+import { buildLearnKey, createOrUpdateRule, patronesDeRegla, penalizarRegla } from '../movementLearningService';
 import { gastoDesdeMovimiento } from '../altaMovimientoService';
 import { convertirLineaEnTraspaso } from '../traspasoDesdeMovimiento';
 import { confirmDecisions } from '../confirmarDecisiones';
@@ -77,11 +77,12 @@ async function reglaPara(
 ): Promise<MovementLearningRule> {
   const d = await db();
   const ahora = new Date().toISOString();
+  const m = movementDesdeLinea(await linea(lineaId));
   const rule: MovementLearningRule = {
     learnKey: await claveDe(lineaId),
-    counterpartyPattern: '',
-    descriptionPattern: 'adeudo comunidad propietarios tenderina contrato',
-    amountSign: 'negative',
+    // El texto guardado sale del movimiento de verdad, como en producción: el
+    // tercer candado no aplica una regla cuyo texto no encaje con la línea.
+    ...patronesDeRegla(m),
     familia: 'comunidad',
     ambito: 'inmueble',
     inmuebleId: '4',

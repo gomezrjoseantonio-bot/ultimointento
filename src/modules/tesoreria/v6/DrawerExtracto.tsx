@@ -40,7 +40,9 @@ import { useDecisionesDeSesion } from './decisionesDeSesion';
 import { decisionesDesdeFilas, type LoteAMedias } from './decisionesPersistidas';
 import { leerSesionDelLote, tituloDeLaSesion, persistirCambios, useLotesAMedias } from './montarSesion';
 import { clasificarLasElegidas } from './clasificarEnBloque';
-import { aplicarAprendizajeALasHermanas } from './aprendizajeEnSesion';
+import { useArrastreConTope } from './aprendizajeEnSesion';
+import AvisoArrastre from './conciliar/AvisoArrastre';
+import { prerrellenoDeFicha } from './prerrellenoDeFicha';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
@@ -156,6 +158,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const ficheroRef = useRef<File | null>(null);
   /** Línea para la que se ha abierto la ficha con "Crear movimiento". */
   const [creando, setCreando] = useState<LineaExtracto | null>(null);
+  // E2.4.2 · el arrastre a las hermanas, con tope: más de unas pocas, pregunta.
+  const {
+    pendiente: arrastrePendiente,
+    proponer: proponerArrastre,
+    confirmar: confirmarArrastre,
+    descartar: descartarArrastre,
+  } = useArrastreConTope();
 
   const cuentaActiva = cuenta ?? cuentaElegida;
   /**
@@ -230,12 +239,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setTraspasando(null);
     setClasificandoVarias(null);
     setCreando(null);
+    descartarArrastre();
     ficheroRef.current = null;
     pendienteRef.current = null;
     setReglas([]);
     setAbiertoEn('');
     if (!cuenta) setCuentaElegida(null);
-  }, [cuenta, reiniciarDecisiones]);
+  }, [cuenta, reiniciarDecisiones, descartarArrastre]);
 
   /**
    * Montar la sesión a partir de lo que devuelve el orquestador · vale para
@@ -472,6 +482,16 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   }, [resultado, reiniciar, onCerrar]);
 
   // ── Acciones por línea · viven en `decisionesDeSesion` ────────────────────
+  // ¿Sigue esta línea en «te necesitan», sin gesto del usuario? Lo pregunta el
+  // arrastre a las hermanas, y al confirmar tarde se vuelve a preguntar con lo
+  // de AHORA: lo que el usuario haya tocado entre medias no se pisa.
+  const sinDecidir = useCallback(
+    (id: number) => {
+      const l = lineas.find((x) => x.lineaId === id);
+      return !!l && bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas) === 'te_necesitan';
+    },
+    [lineas, decisiones, personales, reconocidas, autoResueltas],
+  );
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. E1.5 ·
    * el `Movement` NACE aquí desde la línea (`materializarLinea` por dentro de
@@ -526,24 +546,15 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         marcarCreado(linea.lineaId);
         setCreando(null);
         // E2.4.2 · Paso 2 · aprendizaje intra-lote · las hermanas de esta línea
-        // (misma clave, mismo signo, aún en «te necesitan») se resuelven ahora
-        // con los mismos valores (`aprendizajeEnSesion`). NO cuando el usuario
-        // ha elegido a mano cuáles: ahí ya ha dicho cuáles son.
-        if (arrastraHermanas) await aplicarAprendizajeALasHermanas({
-          linea,
-          valores: v,
-          lineas,
-          sinDecidir: (id) => {
-            const l = lineas.find((x) => x.lineaId === id);
-            return !!l && bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas) === 'te_necesitan';
-          },
-          onResuelta: marcarCreado,
-        });
+        // (misma clave, mismo signo, aún en «te necesitan») se resuelven con los
+        // mismos valores, hasta el tope; por encima, se pregunta (`AvisoArrastre`). NO
+        // cuando el usuario ha elegido a mano cuáles: ahí ya ha dicho cuáles son.
+        if (arrastraHermanas) await proponerArrastre({ linea, valores: v, lineas, sinDecidir, onResuelta: marcarCreado });
       } catch (err) {
         console.error('[DrawerExtracto] no se pudo clasificar la línea', err);
       }
     },
-    [marcarCreado, lineas, decisiones, personales, reconocidas, autoResueltas]
+    [marcarCreado, lineas, sinDecidir, proponerArrastre]
   );
 
   if (!abierto) return null;
@@ -625,28 +636,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     <FichaMovimiento
       abierta={creando != null || clasificandoVarias != null}
       esEdicion={false}
-      inicial={
-        creando
-          ? {
-              tipo: creando.importe >= 0 ? 'ingreso' : 'gasto',
-              concepto: creando.textoBanco,
-              importe: creando.importe,
-              fecha: creando.fecha,
-              cuentaId: cuentaActiva?.id ?? null,
-            }
-          : clasificandoVarias?.length
-            ? {
-                // Se prellena con la primera para que el formulario no salga en
-                // blanco; el importe y la fecha de cada una los pone
-                // `valoresPorLinea` al guardar, no éstos.
-                tipo: clasificandoVarias[0].importe >= 0 ? 'ingreso' : 'gasto',
-                concepto: clasificandoVarias[0].textoBanco,
-                importe: clasificandoVarias[0].importe,
-                fecha: clasificandoVarias[0].fecha,
-                cuentaId: cuentaActiva?.id ?? null,
-              }
-            : undefined
-      }
+      inicial={prerrellenoDeFicha(creando, clasificandoVarias, cuentaActiva?.id ?? null)}
       cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
       inmuebles={inmuebles}
       tarjetas={tarjetas}
@@ -679,6 +669,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           propuestas={propuestas}
           aprendido={aprendido}
           avisos={resultado?.warnings ?? []}
+          pregunta={
+            <AvisoArrastre
+              pendiente={arrastrePendiente}
+              onSi={() => void confirmarArrastre({ sinDecidir, onResuelta: marcarCreado })}
+              onNo={descartarArrastre}
+            />
+          }
           error={error}
           guardando={paso === 'guardando'}
           apertura={apertura}

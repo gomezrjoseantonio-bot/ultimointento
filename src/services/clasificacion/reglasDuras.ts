@@ -128,8 +128,8 @@ const gasto = (familia: FamiliaId, motivo: string, subtipo?: string): Parcial =>
  * ingresos. Igual el seguro que cobró de más y la reparación reembolsada.
  *
  * Cuidado con el ORDEN: una lista de comercios que también es un ingreso de
- * verdad en positivo —el alquiler— tiene que llevar su regla de ingreso ANTES,
- * porque la primera naturaleza que se fija gana.
+ * verdad en positivo —el alquiler, el premio de lotería— tiene que llevar su
+ * regla de ingreso ANTES, porque la primera naturaleza que se fija gana.
  */
 function porComercio(m: LineaParaReglas, lista: readonly string[], familia: FamiliaId, subtipo?: string): Parcial | undefined {
   const cual = cualCasa(texto(m), lista);
@@ -259,6 +259,11 @@ const REGLAS: Regla[] = [
   (m) => porComercio(m, SUPERMERCADO, 'supermercado'),
   (m) => porComercio(m, COMPRA_ONLINE, 'compra_online'),
   (m) => porComercio(m, OCIO_CINE, 'ocio', 'cine_planes'),
+  // Un premio es dinero nuevo, no la vuelta de una apuesta: en positivo es
+  // ingreso, y va ANTES que su comercio por lo mismo que el alquiler.
+  (m) => (entra(m) && tieneAlguna(texto(m), OCIO_APUESTAS)
+    ? { naturaleza: 'ingreso', familia: 'otros_ingresos', motivo: 'premio de lotería o apuestas · dinero nuevo, no la vuelta de una apuesta' }
+    : undefined),
   (m) => porComercio(m, OCIO_APUESTAS, 'ocio', 'otros'),
   (m) => porComercio(m, SUSCRIPCION_STREAMING, 'suscripciones', 'streaming'),
   (m) => porComercio(m, SUSCRIPCION_MUSICA, 'suscripciones', 'musica'),

@@ -23,6 +23,12 @@ jest.mock('../movementLearningService', () => ({
   buildLearnKey: jest.fn(),
   // E2.1 · la clave v1 es el respaldo de lectura · también se controla aquí.
   buildLearnKeyV1: jest.fn(),
+  // Las claves de aquí son inventadas («hash:bizum-fuentes»), así que el
+  // tercer candado —el texto guardado tiene que dar las mismas piezas que el
+  // movimiento— se da por cierto. Función plana y no `jest.fn`: CRA arranca
+  // con `resetMocks: true`. El candado de verdad se prueba en
+  // `claveDeAprendizaje.test.ts`.
+  reglaEncaja: () => true,
 }));
 
 interface FakeStores {

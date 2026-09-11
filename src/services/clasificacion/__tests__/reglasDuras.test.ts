@@ -59,6 +59,18 @@ describe('la devolución de un gasto es de la familia de ese gasto', () => {
     expect(c.motivos.join(' ')).toMatch(/devolución de ese gasto/);
   });
 
+  it('la devolución de la gestoría es de gestión · gestoría, no un ingreso (Abanca · sep 2026)', () => {
+    // Cuota mensual con devolución puntual · mismo patrón §7 que Curenergía:
+    // misma familia, signo positivo, resta. Por concepto entra cuando el
+    // banco escribe «gestoría»; por su NIF, con un compromiso (ver
+    // `clasificarLinea.test`).
+    const c = clasificarLinea(mov('ABONO GESTORIA LOPEZ ASESORES SL', 45), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBe('gestion');
+    expect(c.subtipo).toBe('gestoria');
+    expect(c.motivos.join(' ')).toMatch(/devolución de ese gasto/);
+  });
+
   it('el recibo de siempre no cambia · en negativo sigue siendo la cuota', () => {
     const c = clasificarLinea(mov('ELECTRICIDAD IBERDROLA COMERCIALIZA', -48), ctx());
     expect(c.naturaleza).toBe('gasto');
@@ -117,6 +129,23 @@ describe('un ingreso de verdad no se lee como devolución', () => {
     const c = clasificarLinea(mov('ABONO AEAT DEVOLUCION RENTA 2025', 420), ctx());
     expect(c.naturaleza).toBe('ingreso');
     expect(c.familia).toBe('otros_ingresos');
+  });
+
+  it('el premio de lotería o apuestas es un ingreso, no la vuelta de una apuesta', () => {
+    // Jose (11 sep 2026): «poner como otros ingresos». La lista OCIO_APUESTAS
+    // dispara en los dos signos desde E2.4.2-fix, y sin la regla de ingreso
+    // delante el premio restaba de lo gastado en apuestas.
+    const premio = clasificarLinea(mov('PREMIO LOTERIAS Y APUESTAS DEL ESTADO', 50), ctx());
+    expect(premio.naturaleza).toBe('ingreso');
+    expect(premio.familia).toBe('otros_ingresos');
+    const botemania = clasificarLinea(mov('ABONO BOTEMANIA', 120), ctx());
+    expect(botemania.naturaleza).toBe('ingreso');
+    expect(botemania.familia).toBe('otros_ingresos');
+    // Y lo que sale sigue siendo el gasto de siempre.
+    const decimo = clasificarLinea(mov('LOTERIAS Y APUESTAS', -6), ctx());
+    expect(decimo.naturaleza).toBe('gasto');
+    expect(decimo.familia).toBe('ocio');
+    expect(decimo.subtipo).toBe('otros');
   });
 
   it('una transferencia de una persona sigue sin familia · el defecto es ingreso', () => {

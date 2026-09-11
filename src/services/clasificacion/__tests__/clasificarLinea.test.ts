@@ -57,6 +57,23 @@ describe('2 · el identificador gana al concepto', () => {
     expect(c.origen.familia).toBe('identificador');
   });
 
+  it('la devolución de un compromiso reconocido por su NIF es de la familia del gasto (Abanca · sep 2026)', () => {
+    // Finutive cobra la gestoría todos los meses y un mes devuelve. El texto
+    // del banco no dice «gestoría», pero el compromiso lo reconoce por su NIF
+    // (`porIdentidad`) y un abono contra un GASTO conocido es su devolución:
+    // misma familia, signo positivo, resta (§7). Nunca un «otro ingreso».
+    const c = clasificarLinea(
+      mov('FINUTIVE SL', 45),
+      ctx({
+        sugerencias: [
+          { via: 'compromiso_recurrente', confidence: 75, description: '', metadata: { porIdentidad: 'nif' }, action: { kind: 'create_treasury_event', naturaleza: 'gasto', ambito: 'personal', familia: 'gestion', subtipo: 'gestoria', sourceType: 'gasto_recurrente' } },
+        ],
+      }),
+    );
+    expect(c).toMatchObject({ naturaleza: 'gasto', familia: 'gestion', subtipo: 'gestoria' });
+    expect(c.origen.familia).toBe('identificador');
+  });
+
   it('el traspaso reconocido por el titular es interno con su sentido', () => {
     const c = clasificarLinea(
       mov('Transferencia De Gomez Ramirez Jose Antonio', 500),

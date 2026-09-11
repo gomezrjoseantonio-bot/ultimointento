@@ -45,7 +45,7 @@ import { suggestForUnmatched } from '../movementSuggestionService';
 import { reconocerDeterministas, nadaReconocido } from '../deterministas/matcheoDeterminista';
 import { confirmadosPorLinea, emparejarConfirmados } from '../conciliacionConfirmados';
 import { confirmDecisions } from '../bankStatementOrchestrator';
-import { buildLearnKey } from '../movementLearningService';
+import { buildLearnKey, patronesDeRegla } from '../movementLearningService';
 import { initDB, type Movement, type TreasuryEvent } from '../db';
 
 jest.mock('../db', () => ({ initDB: jest.fn() }));
@@ -193,8 +193,8 @@ function sembrarLoteDeAgosto(): void {
     movements: [...LOTE],
     treasuryEvents: [...PREVISTOS],
     movementLearningRules: [
-      { id: 1, learnKey: buildLearnKey(NETFLIX), familia: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
-      { id: 2, learnKey: buildLearnKey(DEVOLUCION), familia: 'compra_online', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 1, learnKey: buildLearnKey(NETFLIX), ...patronesDeRegla(NETFLIX), familia: 'ocio', ambito: 'personal', appliedCount: 5, updatedAt: '2026-07-01T00:00:00.000Z' },
+      { id: 2, learnKey: buildLearnKey(DEVOLUCION), ...patronesDeRegla(DEVOLUCION), familia: 'compra_online', ambito: 'personal', appliedCount: 3, updatedAt: '2026-07-01T00:00:00.000Z' },
     ],
     compromisosRecurrentes: [
       { id: 3, alias: 'Gas Tenderina', ambito: 'inmueble', inmuebleId: 4, cuentaCargo: CUENTA, estado: 'activo', importe: { modo: 'fijo', importe: 56 }, proveedor: { nombre: 'Naturgy' }, familia: 'suministro' },
