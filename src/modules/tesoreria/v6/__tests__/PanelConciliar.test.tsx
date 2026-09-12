@@ -91,11 +91,9 @@ describe('PanelConciliar · las tres zonas · lo que el usuario ve', () => {
         extremos: {} as never, fecha: '2026-08-31', saldoBanco: 12480.55, saldoAtlas: 12480.55, descuadre: 0, cuadra: true,
         modo: 'ajuste', apertura: {} as never, aperturaActual: { saldo: 0, fecha: null }, proponer: false, saldoAtlasTrasAplicar: 0, cuadraTrasAplicar: true,
       } as never,
-      onAplicarApertura: () => undefined,
     });
     expect(screen.getByText('Saldo · 31 ago 2026')).toBeInTheDocument();
-    // El saldo sale en el hero (y el cuadre con el banco lo repite debajo · es el mismo dato).
-    expect(screen.getAllByText(/12\.480,55/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/12\.480,55/)).toBeInTheDocument();
     pintar();
     expect(screen.getByText('el fichero no trae saldo')).toBeInTheDocument();
   });
@@ -111,28 +109,60 @@ describe('PanelConciliar · las tres zonas · lo que el usuario ve', () => {
     expect(screen.getByText('línea 1')).toBeInTheDocument();
   });
 
-  it('sin sugerencia para esa entidad sigue habiendo tarjeta · pregunta abierta', () => {
+  it('sin sugerencia para esa entidad sigue habiendo tarjeta · el chip «¿Qué es?» y nada más', () => {
     pintar({ propuestas: new Map() });
-    expect(screen.getByText(/No sé qué es/)).toBeInTheDocument();
+    expect(screen.getByText('¿Qué es?')).toBeInTheDocument();
   });
 
-  it('una respuesta coloca TODOS los movimientos de la entidad · el botón de piso abre la ficha con ese piso (P1)', () => {
+  it('una respuesta coloca TODOS los movimientos de la entidad · como el mockup: piso probable en oro · «Otro piso» = selector · «Personal»', () => {
     const enPiso = jest.fn();
-    const clasificar = jest.fn();
-    // Dos recibos de la misma comunidad · la misma contraparte · una entidad.
+    // Dos recibos de la misma comunidad · la misma contraparte · una entidad que
+    // ya sabe QUÉ es (comunidad) pero no DE QUÉ PISO.
+    const comunidad = (id: number, texto: string) =>
+      clasificada(id, { textoBanco: texto, clasificacion: { naturaleza: 'gasto', familia: 'comunidad', subtipo: 'cuota_mensual', ambito: 'inmueble', origen: { naturaleza: 'concepto', familia: 'concepto', ambito: 'concepto' }, motivos: [] } });
     pintar({
-      necesitan: [linea(1, { textoBanco: 'GESTIO FINQUES 08/26' }), linea(2, { textoBanco: 'GESTIO FINQUES 09/26' })],
-      propuestas: new Map(),
-      inmuebles: [{ id: 4, alias: 'Tenderina 64' }, { id: 5, alias: 'Sant Joan 3' }],
+      necesitan: [comunidad(1, 'GESTIO FINQUES 08/26'), comunidad(2, 'GESTIO FINQUES 09/26')],
+      propuestas: new Map([[101, { tono: 'pregunta' as const, titular: 'Parece comunidad de un piso', ayuda: 'en tu declaración de 2025, comunidad es de Tenderina 64', seRecuerda: false, pisoProbable: { id: 4, alias: 'Tenderina 64' } }]]),
+      inmuebles: [{ id: 4, alias: 'Tenderina 64' }, { id: 5, alias: 'Sant Joan 3' }, { id: 6, alias: 'Fuertes Acevedo 32' }],
       onClasificarVariasEnPiso: enPiso,
-      onClasificarVarias: clasificar,
     });
+    // UN botón con el piso probable · no uno por cada piso.
+    expect(screen.getByRole('button', { name: /Tenderina 64/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sant Joan 3/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Fuertes Acevedo 32/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Tenderina 64/ }));
     expect(enPiso).toHaveBeenCalledWith([101, 102], 4);
-    fireEvent.click(screen.getByRole('button', { name: /Es personal/ }));
+    // «Otro piso» abre el selector y ahí se fija.
+    fireEvent.click(screen.getByRole('button', { name: /Otro piso/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: /El piso de/ }), { target: { value: '5' } });
+    expect(enPiso).toHaveBeenCalledWith([101, 102], 5);
+    fireEvent.click(screen.getByRole('button', { name: /^Personal$/ }));
     expect(enPiso).toHaveBeenCalledWith([101, 102], null);
-    fireEvent.click(screen.getByRole('button', { name: /Clasificar los 2 como/ }));
-    expect(clasificar).toHaveBeenCalledWith([101, 102]);
+  });
+
+  it('sin saber qué es · «Es personal» en oro, «Elegir categoría» abre la ficha, y nada de párrafos de ayuda', () => {
+    const enPiso = jest.fn();
+    const clasificar = jest.fn();
+    pintar({ propuestas: new Map(), inmuebles: [{ id: 4, alias: 'Tenderina 64' }], onClasificarVariasEnPiso: enPiso, onClasificarVarias: clasificar });
+    expect(screen.queryByText(/si subes la factura/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lo aplico a/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No sé qué es/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Es personal/ }));
+    expect(enPiso).toHaveBeenCalledWith([101], null);
+    fireEvent.click(screen.getByRole('button', { name: /Elegir categoría/ }));
+    expect(clasificar).toHaveBeenCalledWith([101]);
+  });
+
+  it('ni banda ámbar de saldo ni «cuadra con un previsto» · el cuadre con el banco no se pinta aquí', () => {
+    pintar({
+      apertura: {
+        extremos: {} as never, fecha: '2026-08-31', saldoBanco: 12480.55, saldoAtlas: 11000, descuadre: 1480.55, cuadra: false,
+        modo: 'ajuste', apertura: {} as never, aperturaActual: { saldo: 0, fecha: null }, proponer: true, saldoAtlasTrasAplicar: 0, cuadraTrasAplicar: true,
+      } as never,
+    });
+    expect(screen.queryByTestId('cuadre-banco')).not.toBeInTheDocument();
+    expect(screen.queryByText(/fijar mi saldo de apertura/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cuadra con un previsto/)).not.toBeInTheDocument();
   });
 
   it('cuando NO cuadra, el pie lo dice y no disimula', () => {

@@ -684,8 +684,6 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           error={error}
           guardando={paso === 'guardando'}
           apertura={apertura}
-          aplicarApertura={aplicarLaApertura}
-          onAplicarApertura={setAplicarLaApertura}
           yaEstaban={yaEstaban}
           renderLinea={renderLinea}
           onRecuperar={recuperar}

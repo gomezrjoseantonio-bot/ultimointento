@@ -85,7 +85,9 @@ const GrupoEntidad: React.FC<GrupoEntidadProps> = ({
             {variante === 'colocado' ? [e.destino, e.sub].filter(Boolean).join(' · ') : e.sub || e.destino}
           </span>
         </span>
-        <span className={styles.entCount}>{unidadDe(e)}</span>
+        <Pill variant="gris" className={styles.entCount}>
+          {unidadDe(e)}
+        </Pill>
         <span className={styles.entMonto}>
           {e.interno ? (
             <span className={styles.entNeutro}>neutro</span>

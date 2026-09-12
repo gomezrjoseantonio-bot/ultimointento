@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-09-12",
-  "generatedAt": "2026-09-12T08:36:35.259Z",
+  "generatedAt": "2026-09-12T10:41:40.356Z",
   "git": {
     "branch": "claude/audit-categories-types-scopes-p5966s",
-    "head": "da04da4"
+    "head": "cd69b64"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 1006 · dead 0 · solo_tests 52 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 1005 · dead 0 · solo_tests 52 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -287,7 +287,7 @@
       "approx": false,
       "note": null,
       "detail": [
-        "106 / 404 .tsx sin v5 (consumen v5: 298 · directo o vía .module.css con var(--atlas-v5-*))",
+        "106 / 403 .tsx sin v5 (consumen v5: 297 · directo o vía .module.css con var(--atlas-v5-*))",
         "src/App.tsx",
         "src/components/ImageDescriptionComponent.tsx",
         "src/components/InvoiceBreakdownModal.tsx",

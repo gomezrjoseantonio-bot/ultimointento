@@ -31,7 +31,6 @@ import type { PropuestaDeApertura } from '../../../../services/aperturaDerivada'
 import HeroConciliar from './HeroConciliar';
 import TarjetaAccion from './TarjetaAccion';
 import ZonaColocado from './ZonaColocado';
-import CuadreConElBanco from './CuadreConElBanco';
 import YaEstaban from './YaEstaban';
 import { agruparPorEntidad, resumenDelFlujo } from './agruparPorEntidad';
 import { atajosDeBusqueda, filtrarPorTexto } from './buscarLineas';
@@ -52,10 +51,12 @@ export interface PanelConciliarProps {
   pregunta?: React.ReactNode;
   error: string | null;
   guardando: boolean;
-  /** §31 · el cuadre con el banco y la apertura derivada, si el fichero trae saldo. */
+  /**
+   * §31 · el saldo que dice el banco a la línea más reciente, si el fichero lo
+   * trae · solo para el hero. El aviso de cuadre/apertura NO se pinta aquí
+   * (Jose · 12 sep): el saldo es un debe aparte y no ocupa media pantalla.
+   */
   apertura?: PropuestaDeApertura | null;
-  aplicarApertura?: boolean;
-  onAplicarApertura?: (aplicar: boolean) => void;
   /** Las filas del fichero que ya estaban en ATLAS · se enseñan plegadas. */
   yaEstaban?: ReadonlyArray<LineaExtractoPersistida>;
   /** Los pisos del usuario · para los botones de piso de una entidad. */
@@ -104,8 +105,6 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   error,
   guardando,
   apertura,
-  aplicarApertura = false,
-  onAplicarApertura,
   yaEstaban = [],
   inmuebles = [],
   renderLinea,
@@ -173,9 +172,6 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
         ))}
         {pregunta}
         {error && <div className={`${styles.aviso} ${styles.avisoError}`}>{error}</div>}
-        {apertura && onAplicarApertura && (
-          <CuadreConElBanco propuesta={apertura} aplicar={aplicarApertura} onAplicar={onAplicarApertura} desactivado={guardando} />
-        )}
         <YaEstaban lineas={yaEstaban} />
 
         {/* ── Zona 2 · Confirma el destino ─────────────────────────────── */}
