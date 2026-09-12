@@ -154,6 +154,7 @@ export type FamiliaIngresoId =
   | 'alquiler'
   | 'rendimiento'
   | 'venta'
+  | 'inversion'
   | 'otros_ingresos';
 
 export type FamiliaGastoId =
@@ -207,7 +208,7 @@ const sub = (id: string, label: string): Subtipo => ({ id, label });
  * (Jose · E2.4.1). Lista plana: el orden es el de presentación.
  */
 export const FAMILIAS: readonly Familia[] = [
-  // ── NATURALEZA = INGRESO · 7 familias ────────────────────────────────────
+  // ── NATURALEZA = INGRESO · 8 familias ────────────────────────────────────
   { id: 'nomina', naturaleza: 'ingreso', label: 'Nómina', subtipos: [], ambitosAplicables: 'personal' },
   { id: 'pension', naturaleza: 'ingreso', label: 'Pensión', subtipos: [], ambitosAplicables: 'personal' },
   { id: 'autonomo', naturaleza: 'ingreso', label: 'Autónomo', subtipos: [], ambitosAplicables: 'personal' },
@@ -242,6 +243,33 @@ export const FAMILIAS: readonly Familia[] = [
       sub('criptomonedas', 'Criptomonedas'),
     ],
     ambitosAplicables: 'ambos',
+  },
+  {
+    // E2.4.2-fix2b (Jose · 12 sep 2026) · «la familia es la que dice el store».
+    // Lo que una posición de `inversiones` devuelve a la cuenta ENTERO:
+    // la cuota de un préstamo concedido (capital + interés − retención), un
+    // depósito que vence. Un ingreso, uno solo; el desglose vive en el pago
+    // anotado en la posición (§32.33 en espejo) y de ahí lo lee el IRPF.
+    // Un interés solo, sin capital, sigue siendo `rendimiento · interes`.
+    // Subtipo = `TipoPosicion` del store, la misma lista, sin inventar otra.
+    id: 'inversion',
+    naturaleza: 'ingreso',
+    label: 'Inversión',
+    subtipos: [
+      sub('prestamo_p2p', 'Préstamo P2P'),
+      sub('deposito_plazo', 'Depósito a plazo'),
+      sub('cuenta_remunerada', 'Cuenta remunerada'),
+      sub('accion', 'Acciones'),
+      sub('etf', 'ETF'),
+      sub('reit', 'REIT'),
+      sub('fondo_inversion', 'Fondo de inversión'),
+      sub('plan_pensiones', 'Plan de pensiones'),
+      sub('plan_empleo', 'Plan de empleo'),
+      sub('crypto', 'Criptomonedas'),
+      sub('otro', 'Otro'),
+    ],
+    ambitosAplicables: 'personal',
+    descripcion: 'Lo que una posición de Inversiones te devuelve entero · el desglose vive en la posición',
   },
   { id: 'otros_ingresos', naturaleza: 'ingreso', label: 'Otros ingresos', subtipos: [], ambitosAplicables: 'ambos' },
 

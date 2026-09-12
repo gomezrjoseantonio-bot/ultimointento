@@ -59,7 +59,7 @@ function dia(iso: string): number {
 }
 
 /** Días entre dos fechas ISO · `Infinity` si alguna falta. */
-function diasEntre(a: string | undefined, b: string | undefined): number {
+export function diasEntre(a: string | undefined, b: string | undefined): number {
   if (!a || !b) return Number.POSITIVE_INFINITY;
   return Math.abs(dia(a) - dia(b)) / MS_DIA;
 }

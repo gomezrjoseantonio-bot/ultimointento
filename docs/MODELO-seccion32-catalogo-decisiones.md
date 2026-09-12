@@ -165,3 +165,10 @@ Transferencia y Bizum (y domiciliación, tarjeta, efectivo, cheque) NO son categ
 - Al etiquetar/crear un movimiento se rellenan EJES INDEPENDIENTES: **naturaleza** (ingreso/gasto/interno) · **categoría** (familia+subtipo, qué es) · **método de pago** (cómo) · **ámbito** (personal/inmueble). Los 4 independientes.
 - El MÉTODO normalmente lo detecta ATLAS del concepto del banco (transferencia/bizum/recibo…); el usuario solo lo marca al crear a mano (sin fichero), y siempre editable. Vive en SU columna, separado de la categoría.
 - Confirma y cierra §32.1 (los ejes no se mezclan): confundir "bizum" con una categoría era el lío del inicio. Bizum = método, siempre.
+
+### 32.41 · Cuota de un préstamo CONCEDIDO = ingreso · familia `inversion` (Jose · 12 sep · E2.4.2-fix2b)
+«Yo dejé un dinero a mi empresa en formato de préstamo. Y eso está en Inversión. Cada mes me devuelve del dinero en cuotas (capital + intereses − IRPF retenido). Estamos en Tesorería. ¿Cuál es la familia?» →
+- **La familia es la que dice el store.** La cuota entera es UN ingreso: `ingreso · inversion · <tipo de la posición> · <nombre de la posición>`. Suma en «Ingresos del mes».
+- **No es `rendimiento`** («los rendimientos no tienen nada que ver aquí»). Un interés solo, sin capital (cuenta remunerada, depósito mensual), sí es `rendimiento · interes`.
+- **No es familia interna** (Tesorería excluye los internos de los ingresos) ni `disposicion_prestamo` (eso es cuando te ENTRA el capital de un préstamo que RECIBES · punto 3 de §32.39).
+- **El desglose** capital / interés / retención vive en el pago anotado en la posición (§32.33 en espejo). El IRPF lee de ahí el interés bruto y la retención. No se enseña al conciliar y no se parte ninguna línea.

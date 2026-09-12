@@ -976,6 +976,10 @@ export async function generateMonthlyForecasts(
             } else {
               await insertEvent({
                 ...clasificacionDeOrigen('inversion_rendimiento'),
+                // E2.4.2-fix2b · una cuota que devuelve capital es «Inversión ·
+                // <tipo>», no un rendimiento (Jose · 12 sep). Así previsto y
+                // confirmado dicen lo mismo.
+                ...(cobroPrestamo.incluyeCapital ? { familia: 'inversion' as const, subtipo: pos.tipo } : {}),
                 amount: Math.round(cobroPrestamo.neto * 100) / 100,
                 predictedDate: cobroPrestamo.fecha,
                 description: cobroPrestamo.incluyeCapital

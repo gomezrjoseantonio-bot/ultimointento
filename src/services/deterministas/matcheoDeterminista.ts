@@ -24,6 +24,7 @@ import type { OrigenDeterminista, AtribucionDeterminista } from './tipos';
 import { cuotasQueCuadran } from './cuotasDePrestamo';
 import { ventasQueCuadran } from './ventasDeInmueble';
 import { rendimientosQueCuadran } from './rendimientosDeInversion';
+import { cuotasDeInversionQueCuadran } from './cuotasDeInversion';
 import { nominasQueSeReconocen } from './nominas';
 import { recurrentesQueCuadran } from './recurrentes';
 import { rentasQueCuadran } from './rentas';
@@ -98,6 +99,10 @@ export async function reconocerDeterministas(movimientos: Movement[]): Promise<L
   for (const o of [
     ...cuotasQueCuadran(movimientos, prestamos),
     ...ventasQueCuadran(movimientos, ventas),
+    // E2.4.2-fix2b · la cuota de un préstamo concedido, contra el cuadro
+    // recalculado, antes que los pagos apuntados: el cuadro trae la familia y
+    // el desglose; el pago apuntado solo el neto.
+    ...cuotasDeInversionQueCuadran(movimientos, inversiones),
     ...rendimientosQueCuadran(movimientos, inversiones),
     ...nominasQueSeReconocen(movimientos, ingresos),
     ...traspasosPropios(movimientos, cuentas, nombres, otrosMovimientos),

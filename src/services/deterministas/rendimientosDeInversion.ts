@@ -66,6 +66,10 @@ export function rendimientosQueCuadran(
           piezaId: String(pago.id),
           titulo: `Rendimiento · ${pos.nombre?.trim() || 'inversión'}`,
           como: 'fecha_importe',
+          // P2 (Jose · 12 sep) · «si es un interés, un rendimiento». Antes el
+          // origen no traía familia y el movimiento se cerraba sin clasificar.
+          familia: 'rendimiento',
+          subtipo: 'interes',
           desglose: {
             tipo: 'rendimiento',
             bruto: pago.importe_bruto,

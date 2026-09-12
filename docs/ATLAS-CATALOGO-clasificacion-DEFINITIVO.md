@@ -31,7 +31,7 @@ está mal es el código.
 
 ---
 
-## NATURALEZA = INGRESO · 7 familias
+## NATURALEZA = INGRESO · 8 familias
 
 | familia | subtipos |
 |---|---|
@@ -41,6 +41,7 @@ está mal es el código.
 | `alquiler` | — (el tipo larga/corta/habitación/turístico vive en el CONTRATO) |
 | `rendimiento` | `interes` / `dividendo` / `rendimiento_inversion` |
 | `venta` | `inmueble` / `acciones` / `fondos` / `criptomonedas` (subtipo = tipos de activo de `inversiones` + inmueble) |
+| `inversion` | subtipo = `TipoPosicion` del store (`prestamo_p2p` / `deposito_plazo` / `cuenta_remunerada` / …) · **añadida 12 sep 2026** (E2.4.2-fix2b): lo que una posición devuelve ENTERO (cuota de préstamo concedido = capital + interés − retención; depósito que vence). Un ingreso, uno solo; el desglose vive en el pago de la posición (§32.33 en espejo). Un interés solo sigue siendo `rendimiento · interes` |
 | `otros_ingresos` | — |
 
 ## NATURALEZA = GASTO · 22 familias · lista plana

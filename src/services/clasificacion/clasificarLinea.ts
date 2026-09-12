@@ -171,7 +171,14 @@ function parcialDeOrigen(o: Omit<OrigenDeterminista, 'movementId'>): Parcial {
     case 'venta':
       return { naturaleza: 'ingreso', familia: 'venta', subtipo: 'inmueble', ...piso, motivo: `venta registrada · ${o.titulo}` };
     case 'inversion':
-      return { naturaleza: 'ingreso', familia: 'rendimiento', subtipo: o.subtipo ?? 'rendimiento_inversion', motivo: `pago de la inversión · ${o.titulo}` };
+      // E2.4.2-fix2b · el origen dice su familia: `inversion` (la cuota entera
+      // de un préstamo concedido) o `rendimiento` (un interés solo).
+      return {
+        naturaleza: 'ingreso',
+        familia: o.familia ?? 'rendimiento',
+        subtipo: o.subtipo ?? 'rendimiento_inversion',
+        motivo: o.familia === 'inversion' ? `cuadro del préstamo · ${o.titulo}` : `pago de la inversión · ${o.titulo}`,
+      };
     case 'nomina':
       return { naturaleza: 'ingreso', familia: 'nomina', metodo: 'transferencia', motivo: `tu nómina · ${o.titulo}` };
     case 'traspaso':

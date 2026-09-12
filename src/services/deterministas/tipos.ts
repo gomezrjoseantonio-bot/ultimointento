@@ -92,7 +92,21 @@ export type ComoSeReconocio = 'fecha_importe' | 'concepto_cuenta_dia' | 'identid
  */
 export type DesgloseFiscal =
   | { tipo: 'prestamo'; periodo: number; interes: number; amortizacion: number }
-  | { tipo: 'rendimiento'; bruto: number; retencion: number; neto: number };
+  | { tipo: 'rendimiento'; bruto: number; retencion: number; neto: number }
+  /**
+   * E2.4.2-fix2b · la cuota de un préstamo CONCEDIDO, contra el cuadro
+   * recalculado de la posición. `fecha` es la del cuadro (la del banco puede
+   * moverse ±5 días) y es la clave con la que se anota el pago en la posición.
+   */
+  | {
+      tipo: 'cuota_inversion';
+      periodo: number;
+      fecha: string;
+      interes: number;
+      retencion: number;
+      amortizacion: number;
+      neto: number;
+    };
 
 export interface OrigenDeterminista {
   movementId: number;

@@ -144,6 +144,64 @@ describe('la huella en el origen · para que un reimport no cuente dos veces', (
   });
 });
 
+// E2.4.2-fix2b · la cuota de un préstamo CONCEDIDO · el pago se anota en la
+// posición con el desglose del cuadro (§32.33 en espejo): el IRPF lee de ahí
+// el interés bruto y la retención, y la previsión ve `pagado` por fecha.
+describe('la cuota del préstamo concedido · el pago en la posición', () => {
+  const origenCuota = (): OrigenDeterminista => ({
+    movementId: 1,
+    fuente: 'inversion',
+    origenId: '7',
+    piezaId: 'cuadro:5',
+    titulo: 'Cuota 5/60 · Préstamo Socio · Unihouser',
+    como: 'fecha_importe',
+    familia: 'inversion',
+    subtipo: 'prestamo_p2p',
+    desglose: { tipo: 'cuota_inversion', periodo: 5, fecha: '2025-07-01', interes: 76.23, retencion: 14.48, amortizacion: 466.17, neto: 527.92 },
+  });
+  const cuota = () => ({ ...movimiento(), amount: 527.92, date: '2025-07-01', naturaleza: 'ingreso' }) as unknown as Record<string, unknown>;
+  type Pos = { rendimiento: { pagos_generados: Array<Record<string, unknown>> } };
+
+  it('sin pago apuntado · lo crea, pagado, con el desglose y el movimiento', async () => {
+    const { base, datos } = baseFalsa({
+      movements: { '1': cuota() },
+      inversiones: { '7': { id: 7, tipo: 'prestamo_p2p', rendimiento: { tasa_interes_anual: 3.25, pagos_generados: [] } } },
+    });
+    await expect(aplicarReconocimiento(base, origenCuota(), AHORA)).resolves.toBe(true);
+    const pagos = (datos.inversiones['7'] as Pos).rendimiento.pagos_generados;
+    expect(pagos).toHaveLength(1);
+    expect(pagos[0]).toMatchObject({
+      fecha_pago: '2025-07-01', importe_bruto: 76.23, retencion_fiscal: 14.48, importe_neto: 527.92, estado: 'pagado', movimiento_id: 1, cuenta_destino_id: 1,
+    });
+    // El movimiento queda cerrado con la familia que dice el store.
+    expect(datos.movements['1']).toMatchObject({ familia: 'inversion', subtipo: 'prestamo_p2p', unifiedStatus: 'conciliado', statusConciliacion: 'match_automatico' });
+  });
+
+  it('con el pago del alta («dar por cobradas») · lo reconoce por la fecha y no crea otro', async () => {
+    const { base, datos } = baseFalsa({
+      movements: { '1': cuota() },
+      inversiones: {
+        '7': { id: 7, rendimiento: { pagos_generados: [
+          { id: 51, fecha_pago: '2025-06-01', importe_neto: 527.68, estado: 'pagado' },
+          { id: 52, fecha_pago: '2025-07-01', importe_bruto: 76.23, retencion_fiscal: 14.48, importe_neto: 527.92, estado: 'pagado' },
+        ] } },
+      },
+    });
+    await aplicarReconocimiento(base, origenCuota(), AHORA);
+    const pagos = (datos.inversiones['7'] as Pos).rendimiento.pagos_generados;
+    expect(pagos).toHaveLength(2);
+    expect(pagos[1]).toMatchObject({ id: 52, estado: 'pagado', movimiento_id: 1 });
+    expect(pagos[0].movimiento_id).toBeUndefined();
+  });
+
+  it('una posición sin rendimiento no se inventa · el movimiento se cierra igual', async () => {
+    const { base, datos } = baseFalsa({ movements: { '1': cuota() }, inversiones: { '7': { id: 7 } } });
+    await expect(aplicarReconocimiento(base, origenCuota(), AHORA)).resolves.toBe(true);
+    expect((datos.inversiones['7'] as { rendimiento?: unknown }).rendimiento).toBeUndefined();
+    expect(datos.movements['1']).toMatchObject({ unifiedStatus: 'conciliado' });
+  });
+});
+
 describe('cuando algo falla', () => {
   it('si no se puede anotar en el origen, el movimiento se concilia igual', async () => {
     // Perder la huella fiscal es molesto. Dejarle al usuario la línea sin

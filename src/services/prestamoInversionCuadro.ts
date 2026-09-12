@@ -350,10 +350,19 @@ export function cobroPrevistoDelMes(
   if (!cuadro) return null;
   const periodo = cuadro.periodos.find((p) => p.fecha.startsWith(monthPrefix));
   if (!periodo) return null;
+  return cobroDePeriodo(periodo, retencionPorcentaje);
+}
 
+/** Un cobro del cuadro con su número de cuota · para casarlo contra el banco. */
+export interface CobroDelCuadro extends CobroPrevisto {
+  periodo: number;
+}
+
+function cobroDePeriodo(periodo: PeriodoPrestamo, retencionPorcentaje: number): CobroDelCuadro {
   const retencion = redondear(periodo.interes * (retencionPorcentaje / 100));
   const neto = redondear(periodo.interes - retencion + periodo.amortizacion);
   return {
+    periodo: periodo.numero,
     fecha: periodo.fecha,
     neto,
     interesBruto: periodo.interes,
@@ -361,4 +370,35 @@ export function cobroPrevistoDelMes(
     amortizacion: periodo.amortizacion,
     incluyeCapital: periodo.amortizacion > 0,
   };
+}
+
+/**
+ * E2.4.2-fix2b · cada cobro del cuadro, cuota a cuota, con el neto que
+ * dejan en la cuenta. La misma aritmética que la previsión del mes: una sola
+ * fuente para lo previsto y para lo que se casa contra el extracto.
+ */
+export function cobrosDelCuadro(posicion: PosicionInversion, retencionPorcentaje: number): CobroDelCuadro[] {
+  const cuadro = cuadroDePosicion(posicion);
+  if (!cuadro) return [];
+  return cuadro.periodos.map((p) => cobroDePeriodo(p, retencionPorcentaje));
+}
+
+/**
+ * La retención que practica esta posición · el alta la guarda en dos sitios
+ * (`retencion_fiscal` de la posición y `retencion_porcentaje` del
+ * rendimiento); sin ninguna, el 19 % general.
+ */
+export function retencionDePosicion(posicion: PosicionInversion): number {
+  const rendimiento = posicion.rendimiento as { retencion_porcentaje?: number } | undefined;
+  const valor = rendimiento?.retencion_porcentaje ?? posicion.retencion_fiscal;
+  return Number.isFinite(valor) ? Number(valor) : 19;
+}
+
+/**
+ * Id estable de un pago que nace de una cuota del cuadro · el mismo que usa
+ * el alta al dar por cobradas las cuotas vencidas, para que un pago creado al
+ * conciliar y uno creado al dar de alta el préstamo no sean dos.
+ */
+export function idDePagoDeCuota(numero: number, fecha: string): number {
+  return Number(`${numero}${Date.parse(fecha)}`.slice(-12));
 }

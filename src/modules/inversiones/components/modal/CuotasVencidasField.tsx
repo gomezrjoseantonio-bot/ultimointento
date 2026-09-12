@@ -8,6 +8,7 @@
 import React from 'react';
 import { formatCurrency } from '../../helpers';
 import type { CuadroPrestamo, PeriodoPrestamo } from '../../utils/prestamoCalendario';
+import { idDePagoDeCuota } from '../../../../services/prestamoInversionCuadro';
 import { toISODateLocal } from '../../../../utils/recurrenceDateUtils';
 import styles from '../../styles/atlas-inversiones.module.css';
 
@@ -76,7 +77,7 @@ export function pagosDeCuotasVencidas(
   estado: 'pagado';
 }> {
   return cuotas.cuotas.map(({ periodo, retenido, neto }) => ({
-    id: Number(`${periodo.numero}${Date.parse(periodo.fecha)}`.slice(-12)),
+    id: idDePagoDeCuota(periodo.numero, periodo.fecha),
     fecha_pago: periodo.fecha,
     importe_bruto: periodo.interes,
     retencion_fiscal: retenido,
