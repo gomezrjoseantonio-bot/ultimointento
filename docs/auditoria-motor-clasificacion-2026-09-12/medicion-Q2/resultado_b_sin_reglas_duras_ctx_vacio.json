@@ -1,0 +1,2652 @@
+[
+ {
+  "fichero": "santander_pdf",
+  "total": 255,
+  "clasificadas": 0,
+  "pct": "0.0%",
+  "conFamilia": 0,
+  "interno": 0,
+  "conMetodo": 253,
+  "porPaso": {
+   "ninguno": 255
+  },
+  "sinClasificar": [
+   {
+    "concepto": "Traspaso:",
+    "n": 60,
+    "importes": "-930, -607.5, -765.04, -395, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Jose Antonio Gomez Ramirez Concepto",
+    "n": 13,
+    "importes": "-7500, -15000, -1000, -1500, …"
+   },
+   {
+    "concepto": "Transferencia De Esteban Antonio Yanez Vallenilla, Concepto Pago De Ha",
+    "n": 9,
+    "importes": "200.16, 365, 365, 365, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Smartflip Developments Investments S.a., Co",
+    "n": 8,
+    "importes": "607.5, 607.5, 607.5, 607.5, …"
+   },
+   {
+    "concepto": "Transferencia A Favor De Jose Antonio Gomez Ramirez Concepto: Enviado ",
+    "n": 6,
+    "importes": "-2500, -2500, -2500, -2500, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Jose Antonio Gomez Ramirez",
+    "n": 6,
+    "importes": "-2200, -15000, -40, -40, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra, Concep",
+    "n": 6,
+    "importes": "395, 395, 395, 395, …"
+   },
+   {
+    "concepto": "Transferencia De Crismar De Jesus Yanez Vallenilla, Concepto Pago De A",
+    "n": 5,
+    "importes": "216.61, 395, 395, 395, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Alquiler",
+    "n": 5,
+    "importes": "182.5, 365, 365, 365, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Claudia Jimenez Perez, Concepto Pago Mes De",
+    "n": 5,
+    "importes": "380, 380, 380, 380, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Crismar De Jesus Yanez Vallenilla, Concepto",
+    "n": 4,
+    "importes": "395, 395, 395, 750.5"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Movimiento Ing.",
+    "n": 4,
+    "importes": "365, 547.5, 158.33, 365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Gabriela Josefina Medina Garcia, Concepto A",
+    "n": 3,
+    "importes": "465, 465, 465"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Alisser Real Estate Sl Concepto Tra",
+    "n": 3,
+    "importes": "-365, -380, -385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Danilo Humberto Arancibia Murillo, Concepto",
+    "n": 3,
+    "importes": "395, 395, 882.16"
+   },
+   {
+    "concepto": "Transferencia A Favor De Jose Antonio Gomez Ramirez Concepto: Nomina",
+    "n": 2,
+    "importes": "-2500, -7500"
+   },
+   {
+    "concepto": "Liquidacion Del Contrato 0014784 300",
+    "n": 2,
+    "importes": "-3.69, -0.37"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Bankinter Consumer Finance Concepto",
+    "n": 2,
+    "importes": "-9750, -15000"
+   },
+   {
+    "concepto": "Transferencia De Gomez Ramirez Jose Antonio, .",
+    "n": 2,
+    "importes": "78500, 0.37"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De José Antonio Gómez Ramírez Concepto",
+    "n": 2,
+    "importes": "-15000, -922.78"
+   },
+   {
+    "concepto": "Recibo Paypal Europe S.a.r.l. Et Cie S.c.a Nº Recibo 0049 0052 755 Bbr",
+    "n": 2,
+    "importes": "-0.23, -49.99"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For September",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jordan O Sullivan, Concepto Sent From Revol",
+    "n": 1,
+    "importes": "930"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For Aug",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Concepción Ramirez Guerrero Concept",
+    "n": 1,
+    "importes": "-5485.53"
+   },
+   {
+    "concepto": "Transferencia A Favor De Banco Cetelem S.a. Concepto: 43508951n - Cont",
+    "n": 1,
+    "importes": "-3255.74"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Gonzalo Javier González Guedán Conc",
+    "n": 1,
+    "importes": "-1350"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Agosto 2026",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For July",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Julio 2026 ",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Suministros Calle",
+    "n": 1,
+    "importes": "64.16"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Ju",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Giugno - Alq",
+    "n": 1,
+    "importes": "237"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For June",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Junio 2026 ",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For May",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Maggio - Alq",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Mayo 2026 C",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Aprile 2026-",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Abril 2026 ",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Fondo De Garantia",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Compra Internet En Ajuntament De M, Manresa Es, Tarj. : *827754",
+    "n": 1,
+    "importes": "-1038.57"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For March+rent ",
+    "n": 1,
+    "importes": "870"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Minoautos Multimarca Sl Concepto Pa",
+    "n": 1,
+    "importes": "-12240"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Belen Concepto Devolucion Fianza Fu",
+    "n": 1,
+    "importes": "-385"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Crismar Yanez Concepto Devolucionfi",
+    "n": 1,
+    "importes": "-395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Esteban Concepto Devolucion Fianza ",
+    "n": 1,
+    "importes": "-365"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Ovetus Abogados & Consultores Sl Co",
+    "n": 1,
+    "importes": "-430"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Carmen Alonso González Concepto Con",
+    "n": 1,
+    "importes": "-36.4"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Gestio I Administracio De Finques C",
+    "n": 1,
+    "importes": "-7260"
+   },
+   {
+    "concepto": "Intereses, Comisiones Por Operaciones De Prestamos",
+    "n": 1,
+    "importes": "-25.33"
+   },
+   {
+    "concepto": "Cancelacion Anticipada Prestamo 0004821 103",
+    "n": 1,
+    "importes": "-63980.04"
+   },
+   {
+    "concepto": "Transferencia De Cristian Lopez Vineta Pl La Pau, 4 En, Referencia: 00",
+    "n": 1,
+    "importes": "64005.37"
+   },
+   {
+    "concepto": "Transferencia De Cristian Lopez Vineta Pl La Pau, 4 En, 58797 Y 58891 ",
+    "n": 1,
+    "importes": "62901.31"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Gestion Y Ad. De Fincas Candaliga.canal S.l",
+    "n": 1,
+    "importes": "1000"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Alquiler 15",
+    "n": 1,
+    "importes": "547.5"
+   },
+   {
+    "concepto": "Transferencia De Claudia Jimenez Perez, Concepto Pago Mes De Abril . C",
+    "n": 1,
+    "importes": "380"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Ma",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Marzo 2026 -",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Marzo Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De F",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Retirada De Efectivo En Cajero Automatico 004901950010 El A Las 13:18.",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Cristian Lopez Vineta, Concepto Arras Piso ",
+    "n": 1,
+    "importes": "5750"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Febbraio 202",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Febrero Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Fe",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Bambi Angela, Concepto Affitto Gennaio 2026 - Alquile",
+    "n": 1,
+    "importes": "165.65"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Deposito Cauzionale ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Pago De ",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Enero Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Traspaso: Enviado Por Banco Santander",
+    "n": 1,
+    "importes": "-423"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De D",
+    "n": 1,
+    "importes": "423"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Di",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Diciembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Lucia Garcia Cordoba, Concepto Arras Numero",
+    "n": 1,
+    "importes": "18000"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jesus Jose Fernandez Lanza, Concepto Gabrie",
+    "n": 1,
+    "importes": "790"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Noviembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Noviembre 2",
+    "n": 1,
+    "importes": "1235.26"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Octubre Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Jose Antonio Gomez Concepto Ahorros",
+    "n": 1,
+    "importes": "-1235.26"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Octubre 202",
+    "n": 1,
+    "importes": "1235.26"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Claudia Jimenez Perez, Concepto Claudia Jim",
+    "n": 1,
+    "importes": "608"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Septiembre ",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Septiembre ",
+    "n": 1,
+    "importes": "1235.26"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Medio Mes Pi",
+    "n": 1,
+    "importes": "232.5"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Septiembre",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Fianza Y Me",
+    "n": 1,
+    "importes": "565"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Piso Agosto",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra,",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Fernandez Pumarol Javier, Concepto Alquiler",
+    "n": 1,
+    "importes": "285"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Agosto 2025",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Mes De Julio Alquiler",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Fernandez Pumarol Javier, Concepto Reserva ",
+    "n": 1,
+    "importes": "100"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Mes Julio",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Julio 2025 ",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Depósito Belén Zambran",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Fianza + 1.m",
+    "n": 1,
+    "importes": "930"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Junio 2025 ",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Mayo 2025 -",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler Marzo.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De José Antonio Gómez Ramírez",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiles Mes Hab. 1 Uso ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Mitad Fianza Habitaci",
+    "n": 1,
+    "importes": "182"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Alquiler Abril Habita",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Abril 2025 ",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Ignacio Fernandez Fernandez, Concepto Alqui",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Alquiler Marzo Habita",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiler Mes Hab. 1 Uso ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Marzo, Ten",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia A Favor De Jose Antonio Gomez Ramirez Concepto: Nómina",
+    "n": 1,
+    "importes": "-1200"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Pago Marzo Tender",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler Febrero.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Tenderina ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Fianza Alquiler Hab. 1 U",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiler Mes Hab. 1 Indi",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Febrero 2025.",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Logan Crespo Vieru, Concepto Envio De Dinero - Imagin",
+    "n": 1,
+    "importes": "0.04"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler Mes.",
+    "n": 1,
+    "importes": "318.55"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Fianza Enero.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Alquiler Mes De Enero",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Tovazzi Marco, Concepto Alquiler Enero.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Pernici Maria, Concepto Pago De Alquiler.",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Enero Tend",
+    "n": 1,
+    "importes": "395"
+   }
+  ]
+ },
+ {
+  "fichero": "sabadell_xls",
+  "total": 292,
+  "clasificadas": 0,
+  "pct": "0.0%",
+  "conFamilia": 0,
+  "interno": 0,
+  "conMetodo": 109,
+  "porPaso": {
+   "ninguno": 292
+  },
+  "sinClasificar": [
+   {
+    "concepto": "ELECTRICIDAD WEKIWI SL",
+    "n": 69,
+    "importes": "-31.39, -15.78, -61.95, -51.98, …"
+   },
+   {
+    "concepto": "GAS Visalia-Domestica Energia",
+    "n": 40,
+    "importes": "-66.9, -32.63, -46.56, -30.42, …"
+   },
+   {
+    "concepto": "ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 105",
+    "n": 38,
+    "importes": "-48, -38, -38, -48, …"
+   },
+   {
+    "concepto": "REMUN. MES CTA ONLINE SABADELL",
+    "n": 20,
+    "importes": "1.03, 0.93, 1.29, 0.83, …"
+   },
+   {
+    "concepto": "ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 104",
+    "n": 20,
+    "importes": "-45.88, -108, -108, -108, …"
+   },
+   {
+    "concepto": "PRESTAMOS ADEUDO CUOTA N.8078716546",
+    "n": 14,
+    "importes": "-304.26, -304.26, -304.26, -304.26, …"
+   },
+   {
+    "concepto": "PRESTAMOS ADEUDO CUOTA N.8078782349",
+    "n": 11,
+    "importes": "-204.91, -204.91, -204.91, -204.91, …"
+   },
+   {
+    "concepto": "ABONO POR DOMICILIACIÓN DE RECIBOS",
+    "n": 7,
+    "importes": "25.64, 35.51, 28.5, 31.53, …"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 6,
+    "importes": "500, 300, 1000, 3000, …"
+   },
+   {
+    "concepto": "NOMINA GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 6,
+    "importes": "1000, 3000, 2000, 3000, …"
+   },
+   {
+    "concepto": "TRANSFERENCIA A JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 5,
+    "importes": "-200, -300, -100, -210, …"
+   },
+   {
+    "concepto": "ELECTRICIDAD GANA ENERGIA LUZ",
+    "n": 5,
+    "importes": "-3.62, -29.12, -27.93, -36.78, …"
+   },
+   {
+    "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+    "n": 5,
+    "importes": "-11.98, -22.15, -50.86, -12.75, …"
+   },
+   {
+    "concepto": "GAS COMERCIALIZADORA REGULADA, GAS GAS POWER12297335",
+    "n": 4,
+    "importes": "-13.38, -20.06, -16.45, -115.19"
+   },
+   {
+    "concepto": "NOMINA DE Gomez Ramirez Jose Antonio",
+    "n": 4,
+    "importes": "1500, 1500, 2500, 2680"
+   },
+   {
+    "concepto": "ELECTRICIDAD GANA ENERGIA GAS",
+    "n": 4,
+    "importes": "-28.47, -73.65, -31.7, -140.43"
+   },
+   {
+    "concepto": "TRANSFERENCIA A SMARTFLIP",
+    "n": 3,
+    "importes": "-15000, -15000, -15000"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 2,
+    "importes": "400, 1000"
+   },
+   {
+    "concepto": "ENVIO DE INSTANT MONEY",
+    "n": 2,
+    "importes": "-20, -100"
+   },
+   {
+    "concepto": "TRANSFERENCIA CURENERG?A COMERCIALIZADOR ?LTIMO RECURS",
+    "n": 2,
+    "importes": "242.15, 9.62"
+   },
+   {
+    "concepto": "INTERESES Y/O COMISIONES CUENTA",
+    "n": 2,
+    "importes": "231.2, -231.2"
+   },
+   {
+    "concepto": "TRANSFERENCIA JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 2,
+    "importes": "15000, 15000"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE Gomez Ramirez Jose Antonio",
+    "n": 2,
+    "importes": "1500, 15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Jose Antonio Gomez Ramirez",
+    "n": 2,
+    "importes": "-2718, -1270"
+   },
+   {
+    "concepto": "ADEUDO RECIBO WEKIWI SL",
+    "n": 2,
+    "importes": "-38.78, -35.19"
+   },
+   {
+    "concepto": "GAS Domestica Gas y Electricidad S.L.U.",
+    "n": 1,
+    "importes": "-37.67"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE JOSE ANTONIO",
+    "n": 1,
+    "importes": "300"
+   },
+   {
+    "concepto": "TRANSFERENCIA A CB Santa Catalina",
+    "n": 1,
+    "importes": "-1490"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE SMARTFLIP DEVELOPMENTS INVESTMENTS S",
+    "n": 1,
+    "importes": "15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA 212128856",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Eloy Gomez Ramirez",
+    "n": 1,
+    "importes": "-500"
+   },
+   {
+    "concepto": "TRANSFERENCIA A MOTORES Y RECTIFICADOS VALENCIA, S.L",
+    "n": 1,
+    "importes": "-3993"
+   },
+   {
+    "concepto": "COMPRA TARJ. 5402XXXXXXXX7016 APPLE.COM/BILL-CORK",
+    "n": 1,
+    "importes": "-34.99"
+   },
+   {
+    "concepto": "PRESTAMOS ADEUDO LIQUIDACIÓN INTERESES N.8078782349",
+    "n": 1,
+    "importes": "-34.98"
+   },
+   {
+    "concepto": "TRANSFERENCIA A JOSÉ ANTONIO GÓMEZ RAMÍREZ",
+    "n": 1,
+    "importes": "-20000"
+   },
+   {
+    "concepto": "PRESTAMOS ABONO DISPOSICIÓN N.8078782349",
+    "n": 1,
+    "importes": "16500"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Jos Antonio G mez Ram rez",
+    "n": 1,
+    "importes": "-80"
+   },
+   {
+    "concepto": "TRANSFERENCIA A 4A Avenida Serviicios Inmobiliarios",
+    "n": 1,
+    "importes": "-2359.5"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Manuel Fernandez",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "PRESTAMOS ABONO DISPOSICIÓN N.8078716546",
+    "n": 1,
+    "importes": "24500"
+   }
+  ]
+ },
+ {
+  "fichero": "unicaja_pdf",
+  "total": 387,
+  "clasificadas": 0,
+  "pct": "0.0%",
+  "conFamilia": 0,
+  "interno": 0,
+  "conMetodo": 80,
+  "porPaso": {
+   "ninguno": 387
+  },
+  "sinClasificar": [
+   {
+    "concepto": "Simyo 633782-822070552003",
+    "n": 56,
+    "importes": "-23.99, -23.99, -21.93, -23.99, …"
+   },
+   {
+    "concepto": "GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 49,
+    "importes": "500, 1200, 750, 400, …"
+   },
+   {
+    "concepto": "REC.MCARD MOD.ACUM.",
+    "n": 38,
+    "importes": "-25.95, -2.3, -32.05, -577.69, …"
+   },
+   {
+    "concepto": "PRESTAMO 2103-4257-0500106068",
+    "n": 20,
+    "importes": "-454.66, -454.66, -454.66, -454.66, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497-874010012213",
+    "n": 20,
+    "importes": "-57.61, -43.19, -55.18, -42.56, …"
+   },
+   {
+    "concepto": "ENTREGA CUENTA CRED. TARJ.",
+    "n": 14,
+    "importes": "-234.2, -300, -120, -100, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7-006300000900",
+    "n": 14,
+    "importes": "-139.86, -139.86, -148.18, -148.18, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7-006300001000",
+    "n": 14,
+    "importes": "-139.86, -139.86, -148.18, -148.18, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7-006300001100",
+    "n": 14,
+    "importes": "-176.44, -176.44, -176.44, -176.44, …"
+   },
+   {
+    "concepto": "DIGI SPAIN400245-001056800700",
+    "n": 12,
+    "importes": "-55, -55, -55, -55, …"
+   },
+   {
+    "concepto": "PRESTAMO 2103-7003-0500230959",
+    "n": 11,
+    "importes": "-407.49, -407.49, -407.49, -407.49, …"
+   },
+   {
+    "concepto": "CP TENDERI016B9V-004300001200",
+    "n": 10,
+    "importes": "-80.26, -80.26, -80.26, -80.26, …"
+   },
+   {
+    "concepto": "JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 9,
+    "importes": "200, 800, 200, 100, …"
+   },
+   {
+    "concepto": "Gomez Ramirez Jose Antonio",
+    "n": 8,
+    "importes": "2500, 2500, 1500, 1500, …"
+   },
+   {
+    "concepto": "DIGI SPAIN018TDH-001056800700",
+    "n": 6,
+    "importes": "-35.9, -33, -33, -33, …"
+   },
+   {
+    "concepto": "CUOTA DICIEMBRE PLAN UNI SEGU",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA ENERO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -23.73"
+   },
+   {
+    "concepto": "CDAD PROP 01B046-000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "CUOTA FEBRERO PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-37.24, -21.97, -40.23"
+   },
+   {
+    "concepto": "Ahorros Marzo",
+    "n": 3,
+    "importes": "-100, -100, -100"
+   },
+   {
+    "concepto": "Ahorro más",
+    "n": 3,
+    "importes": "-30, -400, -70"
+   },
+   {
+    "concepto": "CUOTA MARZO PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-37.24, -21.97, -40.23"
+   },
+   {
+    "concepto": "CUOTA ABRIL PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-37.24, -21.97, -40.23"
+   },
+   {
+    "concepto": "CUOTA MAYO PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-37.24, -21.97, -40.23"
+   },
+   {
+    "concepto": "CUOTA JUNIO PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-37.24, -21.97, -40.23"
+   },
+   {
+    "concepto": "CUOTA JULIO PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-37.24, -21.97, -40.29"
+   },
+   {
+    "concepto": "CUOTA AGOSTO PLAN UNI SEGUR",
+    "n": 3,
+    "importes": "-40.23, -22.02, -44.1"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073937",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073938",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073939",
+    "n": 2,
+    "importes": "-74.36, -74.36"
+   },
+   {
+    "concepto": "Jose Antonio Gomez Ramirez",
+    "n": 2,
+    "importes": "500, 365"
+   },
+   {
+    "concepto": "Ahorros mensuales",
+    "n": 2,
+    "importes": "-300, -500"
+   },
+   {
+    "concepto": "CUOTA SEPTIEMBRE PLAN UNI SEG",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA OCTUBRE PLAN UNI SEGUR",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA NOVIEMBRE PLAN UNI SEGU",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "Ahorros Agosto",
+    "n": 2,
+    "importes": "-5000, -5000"
+   },
+   {
+    "concepto": "Ahorros Septiembre",
+    "n": 2,
+    "importes": "-5000, -5000"
+   },
+   {
+    "concepto": "Ahorro Enero",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "CDAD TENDE282654-004300001200",
+    "n": 1,
+    "importes": "-80.26"
+   },
+   {
+    "concepto": "CAJ. 18.29 C039089L301",
+    "n": 1,
+    "importes": "-560"
+   },
+   {
+    "concepto": "FCC AQUALIA OVIEDO UTE",
+    "n": 1,
+    "importes": "1562.88"
+   },
+   {
+    "concepto": "Ahorros y más",
+    "n": 1,
+    "importes": "-1200"
+   },
+   {
+    "concepto": "Ahorros y",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Ahorro y mas",
+    "n": 1,
+    "importes": "-800"
+   },
+   {
+    "concepto": "Ahorros y otros",
+    "n": 1,
+    "importes": "-500"
+   },
+   {
+    "concepto": "Regularizaciones",
+    "n": 1,
+    "importes": "-600"
+   },
+   {
+    "concepto": "Ahorros Junio",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000059013",
+    "n": 1,
+    "importes": "-181.94"
+   },
+   {
+    "concepto": "Devolución fianza HAB2 ACV32",
+    "n": 1,
+    "importes": "-380"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073938",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073939",
+    "n": 1,
+    "importes": "-47.34"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000059013",
+    "n": 1,
+    "importes": "-115.83"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073937",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "Reserva casa",
+    "n": 1,
+    "importes": "-518.75"
+   },
+   {
+    "concepto": "Cancelación ATG 100 José Anton",
+    "n": 1,
+    "importes": "-121"
+   },
+   {
+    "concepto": "Certificado energético",
+    "n": 1,
+    "importes": "-100"
+   },
+   {
+    "concepto": "HONORARIOS INTERMEDIACION VTA",
+    "n": 1,
+    "importes": "-2117.5"
+   },
+   {
+    "concepto": "SOBRANTE CAN PTMO",
+    "n": 1,
+    "importes": "403.11"
+   },
+   {
+    "concepto": "UNICAJA TRAMITACIONES SA",
+    "n": 1,
+    "importes": "121"
+   },
+   {
+    "concepto": "CASER CIA DE SEGUROS Y RE",
+    "n": 1,
+    "importes": "234.17"
+   },
+   {
+    "concepto": "Regularización Tenderina 48",
+    "n": 1,
+    "importes": "-81.96"
+   },
+   {
+    "concepto": "COBRO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-53.45"
+   },
+   {
+    "concepto": "COBRO PLAN UNI SEGURO",
+    "n": 1,
+    "importes": "-112.74"
+   },
+   {
+    "concepto": "Ahorro programado",
+    "n": 1,
+    "importes": "-500"
+   },
+   {
+    "concepto": "Planchas y",
+    "n": 1,
+    "importes": "-800"
+   },
+   {
+    "concepto": "Ahorro Mayo",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "FRANCISCO JAVIER RAMOS CALLES",
+    "n": 1,
+    "importes": "413.09"
+   },
+   {
+    "concepto": "Devolución Fianza T64 4I H4",
+    "n": 1,
+    "importes": "-465"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I - JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "Ahorro Agosto",
+    "n": 1,
+    "importes": "-3650"
+   }
+  ]
+ },
+ {
+  "fichero": "unicaja_xls",
+  "total": 144,
+  "clasificadas": 0,
+  "pct": "0.0%",
+  "conFamilia": 0,
+  "interno": 0,
+  "conMetodo": 27,
+  "porPaso": {
+   "ninguno": 144
+  },
+  "sinClasificar": [
+   {
+    "concepto": "Simyo 633782 822070552003",
+    "n": 24,
+    "importes": "-40.99, -33.99, -5, -40.99, …"
+   },
+   {
+    "concepto": "GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 17,
+    "importes": "2500, 2500, 2500, 2500, …"
+   },
+   {
+    "concepto": "REC.MCARD MOD.ACUM.",
+    "n": 9,
+    "importes": "-94.9, -183.95, -107, -30, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497 874010012213",
+    "n": 8,
+    "importes": "-68.71, -42.88, -62.95, -44.07, …"
+   },
+   {
+    "concepto": "PRESTAMO 2103 4257 0500106068",
+    "n": 8,
+    "importes": "-454.66, -454.66, -454.66, -454.66, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7 006300001100",
+    "n": 8,
+    "importes": "-88.22, -88.22, -88.22, -88.22, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7 006300001000",
+    "n": 8,
+    "importes": "-74.09, -74.09, -74.09, -74.09, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7 006300000900",
+    "n": 8,
+    "importes": "-74.09, -74.09, -74.09, -74.09, …"
+   },
+   {
+    "concepto": "ENTREGA CUENTA CRED. TARJ.",
+    "n": 8,
+    "importes": "-103.12, -460, -120, -180, …"
+   },
+   {
+    "concepto": "DIGI SPAIN018TDH 001056800700",
+    "n": 6,
+    "importes": "-18.55, -25.27, -33, -33, …"
+   },
+   {
+    "concepto": "Gomez Ramirez Jose Antonio",
+    "n": 5,
+    "importes": "7500, 1500, 1200, 1500, …"
+   },
+   {
+    "concepto": "JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 4,
+    "importes": "20, 300, 500, 200"
+   },
+   {
+    "concepto": "CDAD PROP 01B046 000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "Ahorros Septiembre",
+    "n": 2,
+    "importes": "-5000, -5000"
+   },
+   {
+    "concepto": "Ahorros Agosto",
+    "n": 2,
+    "importes": "-5000, -5000"
+   },
+   {
+    "concepto": "CUOTA ENERO PLAN UNI SEGUR",
+    "n": 2,
+    "importes": "-23.73, -40.23"
+   },
+   {
+    "concepto": "CUOTA DICIEMBRE PLAN UNI SEGU",
+    "n": 2,
+    "importes": "-23.73, -40.23"
+   },
+   {
+    "concepto": "CUOTA AGOSTO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-44.1"
+   },
+   {
+    "concepto": "Ahorro Agosto",
+    "n": 1,
+    "importes": "-3650"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "CUOTA JULIO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-40.29"
+   },
+   {
+    "concepto": "Devolución Fianza T64 4I H4",
+    "n": 1,
+    "importes": "-465"
+   },
+   {
+    "concepto": "CUOTA JUNIO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-40.23"
+   },
+   {
+    "concepto": "FRANCISCO JAVIER RAMOS CALLES",
+    "n": 1,
+    "importes": "413.09"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073939",
+    "n": 1,
+    "importes": "-74.36"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073938",
+    "n": 1,
+    "importes": "-165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073937",
+    "n": 1,
+    "importes": "-165.85"
+   },
+   {
+    "concepto": "CUOTA MAYO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-40.23"
+   },
+   {
+    "concepto": "Ahorro Mayo",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Planchas y",
+    "n": 1,
+    "importes": "-800"
+   },
+   {
+    "concepto": "Ahorro programado",
+    "n": 1,
+    "importes": "-500"
+   },
+   {
+    "concepto": "CUOTA ABRIL PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-40.23"
+   },
+   {
+    "concepto": "CUOTA MARZO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-40.23"
+   },
+   {
+    "concepto": "COBRO PLAN UNI SEGURO",
+    "n": 1,
+    "importes": "-112.74"
+   },
+   {
+    "concepto": "CUOTA FEBRERO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-40.23"
+   },
+   {
+    "concepto": "COBRO PLAN UNI SEGUR",
+    "n": 1,
+    "importes": "-53.45"
+   }
+  ]
+ },
+ {
+  "fichero": "TOTAL",
+  "total": 1078,
+  "clasificadas": 0,
+  "pct": "0.0%",
+  "conFamilia": 0,
+  "interno": 0,
+  "conMetodo": 469,
+  "porPaso": {
+   "ninguno": 1078
+  },
+  "sinClasificar": [
+   {
+    "concepto": "ELECTRICIDAD WEKIWI SL",
+    "n": 69,
+    "importes": "-31.39, -15.78, -61.95, -51.98, …"
+   },
+   {
+    "concepto": "GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 66,
+    "importes": "500, 1200, 750, 400, …"
+   },
+   {
+    "concepto": "Traspaso:",
+    "n": 60,
+    "importes": "-930, -607.5, -765.04, -395, …"
+   },
+   {
+    "concepto": "Simyo 633782-822070552003",
+    "n": 56,
+    "importes": "-23.99, -23.99, -21.93, -23.99, …"
+   },
+   {
+    "concepto": "REC.MCARD MOD.ACUM.",
+    "n": 47,
+    "importes": "-25.95, -2.3, -32.05, -577.69, …"
+   },
+   {
+    "concepto": "GAS Visalia-Domestica Energia",
+    "n": 40,
+    "importes": "-66.9, -32.63, -46.56, -30.42, …"
+   },
+   {
+    "concepto": "ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 105",
+    "n": 38,
+    "importes": "-48, -38, -38, -48, …"
+   },
+   {
+    "concepto": "Simyo 633782 822070552003",
+    "n": 24,
+    "importes": "-40.99, -33.99, -5, -40.99, …"
+   },
+   {
+    "concepto": "ENTREGA CUENTA CRED. TARJ.",
+    "n": 22,
+    "importes": "-234.2, -300, -120, -100, …"
+   },
+   {
+    "concepto": "REMUN. MES CTA ONLINE SABADELL",
+    "n": 20,
+    "importes": "1.03, 0.93, 1.29, 0.83, …"
+   },
+   {
+    "concepto": "ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 104",
+    "n": 20,
+    "importes": "-45.88, -108, -108, -108, …"
+   },
+   {
+    "concepto": "PRESTAMO 2103-4257-0500106068",
+    "n": 20,
+    "importes": "-454.66, -454.66, -454.66, -454.66, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497-874010012213",
+    "n": 20,
+    "importes": "-57.61, -43.19, -55.18, -42.56, …"
+   },
+   {
+    "concepto": "PRESTAMOS ADEUDO CUOTA N.8078716546",
+    "n": 14,
+    "importes": "-304.26, -304.26, -304.26, -304.26, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7-006300000900",
+    "n": 14,
+    "importes": "-139.86, -139.86, -148.18, -148.18, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7-006300001000",
+    "n": 14,
+    "importes": "-139.86, -139.86, -148.18, -148.18, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7-006300001100",
+    "n": 14,
+    "importes": "-176.44, -176.44, -176.44, -176.44, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Jose Antonio Gomez Ramirez Concepto",
+    "n": 13,
+    "importes": "-7500, -15000, -1000, -1500, …"
+   },
+   {
+    "concepto": "JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 13,
+    "importes": "200, 800, 200, 100, …"
+   },
+   {
+    "concepto": "Gomez Ramirez Jose Antonio",
+    "n": 13,
+    "importes": "2500, 2500, 1500, 1500, …"
+   },
+   {
+    "concepto": "DIGI SPAIN400245-001056800700",
+    "n": 12,
+    "importes": "-55, -55, -55, -55, …"
+   },
+   {
+    "concepto": "PRESTAMOS ADEUDO CUOTA N.8078782349",
+    "n": 11,
+    "importes": "-204.91, -204.91, -204.91, -204.91, …"
+   },
+   {
+    "concepto": "PRESTAMO 2103-7003-0500230959",
+    "n": 11,
+    "importes": "-407.49, -407.49, -407.49, -407.49, …"
+   },
+   {
+    "concepto": "CP TENDERI016B9V-004300001200",
+    "n": 10,
+    "importes": "-80.26, -80.26, -80.26, -80.26, …"
+   },
+   {
+    "concepto": "Transferencia De Esteban Antonio Yanez Vallenilla, Concepto Pago De Ha",
+    "n": 9,
+    "importes": "200.16, 365, 365, 365, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Smartflip Developments Investments S.a., Co",
+    "n": 8,
+    "importes": "607.5, 607.5, 607.5, 607.5, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497 874010012213",
+    "n": 8,
+    "importes": "-68.71, -42.88, -62.95, -44.07, …"
+   },
+   {
+    "concepto": "PRESTAMO 2103 4257 0500106068",
+    "n": 8,
+    "importes": "-454.66, -454.66, -454.66, -454.66, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7 006300001100",
+    "n": 8,
+    "importes": "-88.22, -88.22, -88.22, -88.22, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7 006300001000",
+    "n": 8,
+    "importes": "-74.09, -74.09, -74.09, -74.09, …"
+   },
+   {
+    "concepto": "CCPP CL TE0146B7 006300000900",
+    "n": 8,
+    "importes": "-74.09, -74.09, -74.09, -74.09, …"
+   },
+   {
+    "concepto": "ABONO POR DOMICILIACIÓN DE RECIBOS",
+    "n": 7,
+    "importes": "25.64, 35.51, 28.5, 31.53, …"
+   },
+   {
+    "concepto": "Transferencia A Favor De Jose Antonio Gomez Ramirez Concepto: Enviado ",
+    "n": 6,
+    "importes": "-2500, -2500, -2500, -2500, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Jose Antonio Gomez Ramirez",
+    "n": 6,
+    "importes": "-2200, -15000, -40, -40, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra, Concep",
+    "n": 6,
+    "importes": "395, 395, 395, 395, …"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 6,
+    "importes": "500, 300, 1000, 3000, …"
+   },
+   {
+    "concepto": "NOMINA GOMEZ RAMIREZ JOSE ANTONIO",
+    "n": 6,
+    "importes": "1000, 3000, 2000, 3000, …"
+   },
+   {
+    "concepto": "CUOTA DICIEMBRE PLAN UNI SEGU",
+    "n": 6,
+    "importes": "-37.24, -21.97, -40.23, -23.73, …"
+   },
+   {
+    "concepto": "CUOTA ENERO PLAN UNI SEGUR",
+    "n": 6,
+    "importes": "-37.24, -21.97, -40.23, -23.73, …"
+   },
+   {
+    "concepto": "DIGI SPAIN018TDH-001056800700",
+    "n": 6,
+    "importes": "-35.9, -33, -33, -33, …"
+   },
+   {
+    "concepto": "DIGI SPAIN018TDH 001056800700",
+    "n": 6,
+    "importes": "-18.55, -25.27, -33, -33, …"
+   },
+   {
+    "concepto": "Transferencia De Crismar De Jesus Yanez Vallenilla, Concepto Pago De A",
+    "n": 5,
+    "importes": "216.61, 395, 395, 395, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Alquiler",
+    "n": 5,
+    "importes": "182.5, 365, 365, 365, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Claudia Jimenez Perez, Concepto Pago Mes De",
+    "n": 5,
+    "importes": "380, 380, 380, 380, …"
+   },
+   {
+    "concepto": "TRANSFERENCIA A JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 5,
+    "importes": "-200, -300, -100, -210, …"
+   },
+   {
+    "concepto": "ELECTRICIDAD GANA ENERGIA LUZ",
+    "n": 5,
+    "importes": "-3.62, -29.12, -27.93, -36.78, …"
+   },
+   {
+    "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+    "n": 5,
+    "importes": "-11.98, -22.15, -50.86, -12.75, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Crismar De Jesus Yanez Vallenilla, Concepto",
+    "n": 4,
+    "importes": "395, 395, 395, 750.5"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Movimiento Ing.",
+    "n": 4,
+    "importes": "365, 547.5, 158.33, 365"
+   },
+   {
+    "concepto": "GAS COMERCIALIZADORA REGULADA, GAS GAS POWER12297335",
+    "n": 4,
+    "importes": "-13.38, -20.06, -16.45, -115.19"
+   },
+   {
+    "concepto": "NOMINA DE Gomez Ramirez Jose Antonio",
+    "n": 4,
+    "importes": "1500, 1500, 2500, 2680"
+   },
+   {
+    "concepto": "ELECTRICIDAD GANA ENERGIA GAS",
+    "n": 4,
+    "importes": "-28.47, -73.65, -31.7, -140.43"
+   },
+   {
+    "concepto": "CUOTA FEBRERO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -40.23"
+   },
+   {
+    "concepto": "CUOTA MARZO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -40.23"
+   },
+   {
+    "concepto": "CUOTA ABRIL PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -40.23"
+   },
+   {
+    "concepto": "CUOTA MAYO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -40.23"
+   },
+   {
+    "concepto": "CUOTA JUNIO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -40.23"
+   },
+   {
+    "concepto": "CUOTA JULIO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.29, -40.29"
+   },
+   {
+    "concepto": "CUOTA AGOSTO PLAN UNI SEGUR",
+    "n": 4,
+    "importes": "-40.23, -22.02, -44.1, -44.1"
+   },
+   {
+    "concepto": "CDAD PROP 01B046-000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "Ahorros Agosto",
+    "n": 4,
+    "importes": "-5000, -5000, -5000, -5000"
+   },
+   {
+    "concepto": "Ahorros Septiembre",
+    "n": 4,
+    "importes": "-5000, -5000, -5000, -5000"
+   },
+   {
+    "concepto": "CDAD PROP 01B046 000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Gabriela Josefina Medina Garcia, Concepto A",
+    "n": 3,
+    "importes": "465, 465, 465"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Alisser Real Estate Sl Concepto Tra",
+    "n": 3,
+    "importes": "-365, -380, -385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Danilo Humberto Arancibia Murillo, Concepto",
+    "n": 3,
+    "importes": "395, 395, 882.16"
+   },
+   {
+    "concepto": "TRANSFERENCIA A SMARTFLIP",
+    "n": 3,
+    "importes": "-15000, -15000, -15000"
+   },
+   {
+    "concepto": "Ahorros Marzo",
+    "n": 3,
+    "importes": "-100, -100, -100"
+   },
+   {
+    "concepto": "Ahorro más",
+    "n": 3,
+    "importes": "-30, -400, -70"
+   },
+   {
+    "concepto": "Transferencia A Favor De Jose Antonio Gomez Ramirez Concepto: Nomina",
+    "n": 2,
+    "importes": "-2500, -7500"
+   },
+   {
+    "concepto": "Liquidacion Del Contrato 0014784 300",
+    "n": 2,
+    "importes": "-3.69, -0.37"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Bankinter Consumer Finance Concepto",
+    "n": 2,
+    "importes": "-9750, -15000"
+   },
+   {
+    "concepto": "Transferencia De Gomez Ramirez Jose Antonio, .",
+    "n": 2,
+    "importes": "78500, 0.37"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De José Antonio Gómez Ramírez Concepto",
+    "n": 2,
+    "importes": "-15000, -922.78"
+   },
+   {
+    "concepto": "Recibo Paypal Europe S.a.r.l. Et Cie S.c.a Nº Recibo 0049 0052 755 Bbr",
+    "n": 2,
+    "importes": "-0.23, -49.99"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 2,
+    "importes": "400, 1000"
+   },
+   {
+    "concepto": "ENVIO DE INSTANT MONEY",
+    "n": 2,
+    "importes": "-20, -100"
+   },
+   {
+    "concepto": "TRANSFERENCIA CURENERG?A COMERCIALIZADOR ?LTIMO RECURS",
+    "n": 2,
+    "importes": "242.15, 9.62"
+   },
+   {
+    "concepto": "INTERESES Y/O COMISIONES CUENTA",
+    "n": 2,
+    "importes": "231.2, -231.2"
+   },
+   {
+    "concepto": "TRANSFERENCIA JOSE ANTONIO GOMEZ RAMIREZ",
+    "n": 2,
+    "importes": "15000, 15000"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE Gomez Ramirez Jose Antonio",
+    "n": 2,
+    "importes": "1500, 15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Jose Antonio Gomez Ramirez",
+    "n": 2,
+    "importes": "-2718, -1270"
+   },
+   {
+    "concepto": "ADEUDO RECIBO WEKIWI SL",
+    "n": 2,
+    "importes": "-38.78, -35.19"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073937",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073938",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073939",
+    "n": 2,
+    "importes": "-74.36, -74.36"
+   },
+   {
+    "concepto": "Jose Antonio Gomez Ramirez",
+    "n": 2,
+    "importes": "500, 365"
+   },
+   {
+    "concepto": "Ahorros mensuales",
+    "n": 2,
+    "importes": "-300, -500"
+   },
+   {
+    "concepto": "CUOTA SEPTIEMBRE PLAN UNI SEG",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA OCTUBRE PLAN UNI SEGUR",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA NOVIEMBRE PLAN UNI SEGU",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "COBRO PLAN UNI SEGUR",
+    "n": 2,
+    "importes": "-53.45, -53.45"
+   },
+   {
+    "concepto": "COBRO PLAN UNI SEGURO",
+    "n": 2,
+    "importes": "-112.74, -112.74"
+   },
+   {
+    "concepto": "Ahorro programado",
+    "n": 2,
+    "importes": "-500, -500"
+   },
+   {
+    "concepto": "Planchas y",
+    "n": 2,
+    "importes": "-800, -800"
+   },
+   {
+    "concepto": "Ahorro Mayo",
+    "n": 2,
+    "importes": "-1000, -1000"
+   },
+   {
+    "concepto": "FRANCISCO JAVIER RAMOS CALLES",
+    "n": 2,
+    "importes": "413.09, 413.09"
+   },
+   {
+    "concepto": "Devolución Fianza T64 4I H4",
+    "n": 2,
+    "importes": "-465, -465"
+   },
+   {
+    "concepto": "Ahorro Agosto",
+    "n": 2,
+    "importes": "-3650, -3650"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For September",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jordan O Sullivan, Concepto Sent From Revol",
+    "n": 1,
+    "importes": "930"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For Aug",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Concepción Ramirez Guerrero Concept",
+    "n": 1,
+    "importes": "-5485.53"
+   },
+   {
+    "concepto": "Transferencia A Favor De Banco Cetelem S.a. Concepto: 43508951n - Cont",
+    "n": 1,
+    "importes": "-3255.74"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Gonzalo Javier González Guedán Conc",
+    "n": 1,
+    "importes": "-1350"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Agosto 2026",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For July",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Julio 2026 ",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Suministros Calle",
+    "n": 1,
+    "importes": "64.16"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Ju",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Giugno - Alq",
+    "n": 1,
+    "importes": "237"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For June",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Junio 2026 ",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For May",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Maggio - Alq",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Mayo 2026 C",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Aprile 2026-",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Abril 2026 ",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Fondo De Garantia",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Compra Internet En Ajuntament De M, Manresa Es, Tarj. : *827754",
+    "n": 1,
+    "importes": "-1038.57"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For March+rent ",
+    "n": 1,
+    "importes": "870"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Minoautos Multimarca Sl Concepto Pa",
+    "n": 1,
+    "importes": "-12240"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Belen Concepto Devolucion Fianza Fu",
+    "n": 1,
+    "importes": "-385"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Crismar Yanez Concepto Devolucionfi",
+    "n": 1,
+    "importes": "-395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Esteban Concepto Devolucion Fianza ",
+    "n": 1,
+    "importes": "-365"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Ovetus Abogados & Consultores Sl Co",
+    "n": 1,
+    "importes": "-430"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Carmen Alonso González Concepto Con",
+    "n": 1,
+    "importes": "-36.4"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Gestio I Administracio De Finques C",
+    "n": 1,
+    "importes": "-7260"
+   },
+   {
+    "concepto": "Intereses, Comisiones Por Operaciones De Prestamos",
+    "n": 1,
+    "importes": "-25.33"
+   },
+   {
+    "concepto": "Cancelacion Anticipada Prestamo 0004821 103",
+    "n": 1,
+    "importes": "-63980.04"
+   },
+   {
+    "concepto": "Transferencia De Cristian Lopez Vineta Pl La Pau, 4 En, Referencia: 00",
+    "n": 1,
+    "importes": "64005.37"
+   },
+   {
+    "concepto": "Transferencia De Cristian Lopez Vineta Pl La Pau, 4 En, 58797 Y 58891 ",
+    "n": 1,
+    "importes": "62901.31"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Gestion Y Ad. De Fincas Candaliga.canal S.l",
+    "n": 1,
+    "importes": "1000"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Alquiler 15",
+    "n": 1,
+    "importes": "547.5"
+   },
+   {
+    "concepto": "Transferencia De Claudia Jimenez Perez, Concepto Pago Mes De Abril . C",
+    "n": 1,
+    "importes": "380"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Ma",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Marzo 2026 -",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Marzo Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De F",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Retirada De Efectivo En Cajero Automatico 004901950010 El A Las 13:18.",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Cristian Lopez Vineta, Concepto Arras Piso ",
+    "n": 1,
+    "importes": "5750"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Affitto Febbraio 202",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Febrero Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Fe",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Bambi Angela, Concepto Affitto Gennaio 2026 - Alquile",
+    "n": 1,
+    "importes": "165.65"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Bambi Angela, Concepto Deposito Cauzionale ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Pago De ",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Enero Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Traspaso: Enviado Por Banco Santander",
+    "n": 1,
+    "importes": "-423"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De D",
+    "n": 1,
+    "importes": "423"
+   },
+   {
+    "concepto": "Transferencia De Gabriela Josefina Medina Garcia, Concepto Alquiler Di",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Diciembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Lucia Garcia Cordoba, Concepto Arras Numero",
+    "n": 1,
+    "importes": "18000"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jesus Jose Fernandez Lanza, Concepto Gabrie",
+    "n": 1,
+    "importes": "790"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Noviembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Noviembre 2",
+    "n": 1,
+    "importes": "1235.26"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Octubre Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Jose Antonio Gomez Concepto Ahorros",
+    "n": 1,
+    "importes": "-1235.26"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Octubre 202",
+    "n": 1,
+    "importes": "1235.26"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Claudia Jimenez Perez, Concepto Claudia Jim",
+    "n": 1,
+    "importes": "608"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Septiembre ",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Septiembre ",
+    "n": 1,
+    "importes": "1235.26"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Medio Mes Pi",
+    "n": 1,
+    "importes": "232.5"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Septiembre",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Fianza Y Me",
+    "n": 1,
+    "importes": "565"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Piso Agosto",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra,",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Fernandez Pumarol Javier, Concepto Alquiler",
+    "n": 1,
+    "importes": "285"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Agosto 2025",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Mes De Julio Alquiler",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Fernandez Pumarol Javier, Concepto Reserva ",
+    "n": 1,
+    "importes": "100"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Mes Julio",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Julio 2025 ",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Depósito Belén Zambran",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Fianza + 1.m",
+    "n": 1,
+    "importes": "930"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Junio 2025 ",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Mayo 2025 -",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler Marzo.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De José Antonio Gómez Ramírez",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiles Mes Hab. 1 Uso ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Mitad Fianza Habitaci",
+    "n": 1,
+    "importes": "182"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Alquiler Abril Habita",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Renta Abril 2025 ",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Ignacio Fernandez Fernandez, Concepto Alqui",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Alquiler Marzo Habita",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiler Mes Hab. 1 Uso ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Marzo, Ten",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia A Favor De Jose Antonio Gomez Ramirez Concepto: Nómina",
+    "n": 1,
+    "importes": "-1200"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Pago Marzo Tender",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler Febrero.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Tenderina ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Fianza Alquiler Hab. 1 U",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiler Mes Hab. 1 Indi",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Febrero 2025.",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Logan Crespo Vieru, Concepto Envio De Dinero - Imagin",
+    "n": 1,
+    "importes": "0.04"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Alquiler Mes.",
+    "n": 1,
+    "importes": "318.55"
+   },
+   {
+    "concepto": "Transferencia De Andres Gavira Blanco, Concepto Fianza Enero.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Alquiler Mes De Enero",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia De Tovazzi Marco, Concepto Alquiler Enero.",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Pernici Maria, Concepto Pago De Alquiler.",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Enero Tend",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "GAS Domestica Gas y Electricidad S.L.U.",
+    "n": 1,
+    "importes": "-37.67"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE JOSE ANTONIO",
+    "n": 1,
+    "importes": "300"
+   },
+   {
+    "concepto": "TRANSFERENCIA A CB Santa Catalina",
+    "n": 1,
+    "importes": "-1490"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE SMARTFLIP DEVELOPMENTS INVESTMENTS S",
+    "n": 1,
+    "importes": "15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA 212128856",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Eloy Gomez Ramirez",
+    "n": 1,
+    "importes": "-500"
+   },
+   {
+    "concepto": "TRANSFERENCIA A MOTORES Y RECTIFICADOS VALENCIA, S.L",
+    "n": 1,
+    "importes": "-3993"
+   },
+   {
+    "concepto": "COMPRA TARJ. 5402XXXXXXXX7016 APPLE.COM/BILL-CORK",
+    "n": 1,
+    "importes": "-34.99"
+   },
+   {
+    "concepto": "PRESTAMOS ADEUDO LIQUIDACIÓN INTERESES N.8078782349",
+    "n": 1,
+    "importes": "-34.98"
+   },
+   {
+    "concepto": "TRANSFERENCIA A JOSÉ ANTONIO GÓMEZ RAMÍREZ",
+    "n": 1,
+    "importes": "-20000"
+   },
+   {
+    "concepto": "PRESTAMOS ABONO DISPOSICIÓN N.8078782349",
+    "n": 1,
+    "importes": "16500"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Jos Antonio G mez Ram rez",
+    "n": 1,
+    "importes": "-80"
+   },
+   {
+    "concepto": "TRANSFERENCIA A 4A Avenida Serviicios Inmobiliarios",
+    "n": 1,
+    "importes": "-2359.5"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Manuel Fernandez",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "PRESTAMOS ABONO DISPOSICIÓN N.8078716546",
+    "n": 1,
+    "importes": "24500"
+   },
+   {
+    "concepto": "Ahorro Enero",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "CDAD TENDE282654-004300001200",
+    "n": 1,
+    "importes": "-80.26"
+   },
+   {
+    "concepto": "CAJ. 18.29 C039089L301",
+    "n": 1,
+    "importes": "-560"
+   },
+   {
+    "concepto": "FCC AQUALIA OVIEDO UTE",
+    "n": 1,
+    "importes": "1562.88"
+   },
+   {
+    "concepto": "Ahorros y más",
+    "n": 1,
+    "importes": "-1200"
+   },
+   {
+    "concepto": "Ahorros y",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "Ahorro y mas",
+    "n": 1,
+    "importes": "-800"
+   },
+   {
+    "concepto": "Ahorros y otros",
+    "n": 1,
+    "importes": "-500"
+   },
+   {
+    "concepto": "Regularizaciones",
+    "n": 1,
+    "importes": "-600"
+   },
+   {
+    "concepto": "Ahorros Junio",
+    "n": 1,
+    "importes": "-1000"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000059013",
+    "n": 1,
+    "importes": "-181.94"
+   },
+   {
+    "concepto": "Devolución fianza HAB2 ACV32",
+    "n": 1,
+    "importes": "-380"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073938",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073939",
+    "n": 1,
+    "importes": "-47.34"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000059013",
+    "n": 1,
+    "importes": "-115.83"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073937",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "Reserva casa",
+    "n": 1,
+    "importes": "-518.75"
+   },
+   {
+    "concepto": "Cancelación ATG 100 José Anton",
+    "n": 1,
+    "importes": "-121"
+   },
+   {
+    "concepto": "Certificado energético",
+    "n": 1,
+    "importes": "-100"
+   },
+   {
+    "concepto": "HONORARIOS INTERMEDIACION VTA",
+    "n": 1,
+    "importes": "-2117.5"
+   },
+   {
+    "concepto": "SOBRANTE CAN PTMO",
+    "n": 1,
+    "importes": "403.11"
+   },
+   {
+    "concepto": "UNICAJA TRAMITACIONES SA",
+    "n": 1,
+    "importes": "121"
+   },
+   {
+    "concepto": "CASER CIA DE SEGUROS Y RE",
+    "n": 1,
+    "importes": "234.17"
+   },
+   {
+    "concepto": "Regularización Tenderina 48",
+    "n": 1,
+    "importes": "-81.96"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I - JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073939",
+    "n": 1,
+    "importes": "-74.36"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073938",
+    "n": 1,
+    "importes": "-165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073937",
+    "n": 1,
+    "importes": "-165.85"
+   }
+  ]
+ }
+]

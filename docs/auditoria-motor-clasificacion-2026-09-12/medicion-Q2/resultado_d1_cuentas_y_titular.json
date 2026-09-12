@@ -1,0 +1,1077 @@
+[
+ {
+  "fichero": "santander_pdf",
+  "total": 255,
+  "clasificadas": 126,
+  "pct": "49.4%",
+  "conFamilia": 126,
+  "interno": 50,
+  "conMetodo": 253,
+  "porPaso": {
+   "ninguno": 129,
+   "concepto": 92,
+   "identificador": 34
+  },
+  "sinClasificar": [
+   {
+    "concepto": "Traspaso:",
+    "n": 60,
+    "importes": "-930, -607.5, -765.04, -395, …"
+   },
+   {
+    "concepto": "Transferencia De Esteban Antonio Yanez Vallenilla, Concepto Pago De Ha",
+    "n": 9,
+    "importes": "200.16, 365, 365, 365, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Claudia Jimenez Perez, Concepto Pago Mes De",
+    "n": 5,
+    "importes": "380, 380, 380, 380, …"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Movimiento Ing.",
+    "n": 4,
+    "importes": "365, 547.5, 158.33, 365"
+   },
+   {
+    "concepto": "Liquidacion Del Contrato 0014784 300",
+    "n": 2,
+    "importes": "-3.69, -0.37"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra, Concep",
+    "n": 2,
+    "importes": "395, 698"
+   },
+   {
+    "concepto": "Recibo Paypal Europe S.a.r.l. Et Cie S.c.a Nº Recibo 0049 0052 755 Bbr",
+    "n": 2,
+    "importes": "-0.23, -49.99"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For September",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jordan O Sullivan, Concepto Sent From Revol",
+    "n": 1,
+    "importes": "930"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For Aug",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Concepción Ramirez Guerrero Concept",
+    "n": 1,
+    "importes": "-5485.53"
+   },
+   {
+    "concepto": "Transferencia A Favor De Banco Cetelem S.a. Concepto: 43508951n - Cont",
+    "n": 1,
+    "importes": "-3255.74"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Smartflip Developments Investments S.a., Co",
+    "n": 1,
+    "importes": "607.5"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For July",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Suministros Calle",
+    "n": 1,
+    "importes": "64.16"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For June",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For May",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Fondo De Garantia",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Compra Internet En Ajuntament De M, Manresa Es, Tarj. : *827754",
+    "n": 1,
+    "importes": "-1038.57"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For March+rent ",
+    "n": 1,
+    "importes": "870"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Minoautos Multimarca Sl Concepto Pa",
+    "n": 1,
+    "importes": "-12240"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Crismar Yanez Concepto Devolucionfi",
+    "n": 1,
+    "importes": "-395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Carmen Alonso González Concepto Con",
+    "n": 1,
+    "importes": "-36.4"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Gestio I Administracio De Finques C",
+    "n": 1,
+    "importes": "-7260"
+   },
+   {
+    "concepto": "Transferencia De Cristian Lopez Vineta Pl La Pau, 4 En, Referencia: 00",
+    "n": 1,
+    "importes": "64005.37"
+   },
+   {
+    "concepto": "Transferencia De Claudia Jimenez Perez, Concepto Pago Mes De Abril . C",
+    "n": 1,
+    "importes": "380"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Marzo Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De F",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Cristian Lopez Vineta, Concepto Arras Piso ",
+    "n": 1,
+    "importes": "5750"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Febrero Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Enero Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Traspaso: Enviado Por Banco Santander",
+    "n": 1,
+    "importes": "-423"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De D",
+    "n": 1,
+    "importes": "423"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Diciembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Lucia Garcia Cordoba, Concepto Arras Numero",
+    "n": 1,
+    "importes": "18000"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Noviembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Octubre Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Septiembre ",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Medio Mes Pi",
+    "n": 1,
+    "importes": "232.5"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Septiembre",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Piso Agosto",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra,",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Fernandez Pumarol Javier, Concepto Reserva ",
+    "n": 1,
+    "importes": "100"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Mes Julio",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Depósito Belén Zambran",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiles Mes Hab. 1 Uso ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Marzo, Ten",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Pago Marzo Tender",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Tenderina ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Febrero 2025.",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Logan Crespo Vieru, Concepto Envio De Dinero - Imagin",
+    "n": 1,
+    "importes": "0.04"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Enero Tend",
+    "n": 1,
+    "importes": "395"
+   }
+  ]
+ },
+ {
+  "fichero": "sabadell_xls",
+  "total": 292,
+  "clasificadas": 267,
+  "pct": "91.4%",
+  "conFamilia": 267,
+  "interno": 35,
+  "conMetodo": 109,
+  "porPaso": {
+   "concepto": 234,
+   "identificador": 33,
+   "ninguno": 25
+  },
+  "sinClasificar": [
+   {
+    "concepto": "ABONO POR DOMICILIACIÓN DE RECIBOS",
+    "n": 7,
+    "importes": "25.64, 35.51, 28.5, 31.53, …"
+   },
+   {
+    "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+    "n": 5,
+    "importes": "-11.98, -22.15, -50.86, -12.75, …"
+   },
+   {
+    "concepto": "TRANSFERENCIA A SMARTFLIP",
+    "n": 3,
+    "importes": "-15000, -15000, -15000"
+   },
+   {
+    "concepto": "ENVIO DE INSTANT MONEY",
+    "n": 2,
+    "importes": "-20, -100"
+   },
+   {
+    "concepto": "ADEUDO RECIBO WEKIWI SL",
+    "n": 2,
+    "importes": "-38.78, -35.19"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE SMARTFLIP DEVELOPMENTS INVESTMENTS S",
+    "n": 1,
+    "importes": "15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA 212128856",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA A MOTORES Y RECTIFICADOS VALENCIA, S.L",
+    "n": 1,
+    "importes": "-3993"
+   },
+   {
+    "concepto": "COMPRA TARJ. 5402XXXXXXXX7016 APPLE.COM/BILL-CORK",
+    "n": 1,
+    "importes": "-34.99"
+   },
+   {
+    "concepto": "TRANSFERENCIA A 4A Avenida Serviicios Inmobiliarios",
+    "n": 1,
+    "importes": "-2359.5"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Manuel Fernandez",
+    "n": 1,
+    "importes": "-15000"
+   }
+  ]
+ },
+ {
+  "fichero": "unicaja_pdf",
+  "total": 387,
+  "clasificadas": 270,
+  "pct": "69.8%",
+  "conFamilia": 270,
+  "interno": 91,
+  "conMetodo": 169,
+  "porPaso": {
+   "ninguno": 117,
+   "concepto": 202,
+   "identificador": 68
+  },
+  "sinClasificar": [
+   {
+    "concepto": "REC.MCARD MOD.ACUM.",
+    "n": 38,
+    "importes": "-25.95, -2.3, -32.05, -577.69, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497-874010012213",
+    "n": 20,
+    "importes": "-57.61, -43.19, -55.18, -42.56, …"
+   },
+   {
+    "concepto": "ENTREGA CUENTA CRED. TARJ.",
+    "n": 14,
+    "importes": "-234.2, -300, -120, -100, …"
+   },
+   {
+    "concepto": "CP TENDERI016B9V-004300001200",
+    "n": 10,
+    "importes": "-80.26, -80.26, -80.26, -80.26, …"
+   },
+   {
+    "concepto": "CUOTA DICIEMBRE PLAN UNI SEGU",
+    "n": 4,
+    "importes": "-37.24, -21.97, -40.23, -23.73"
+   },
+   {
+    "concepto": "CDAD PROP 01B046-000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073937",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073938",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073939",
+    "n": 2,
+    "importes": "-74.36, -74.36"
+   },
+   {
+    "concepto": "CUOTA SEPTIEMBRE PLAN UNI SEG",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA NOVIEMBRE PLAN UNI SEGU",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CDAD TENDE282654-004300001200",
+    "n": 1,
+    "importes": "-80.26"
+   },
+   {
+    "concepto": "CAJ. 18.29 C039089L301",
+    "n": 1,
+    "importes": "-560"
+   },
+   {
+    "concepto": "Regularizaciones",
+    "n": 1,
+    "importes": "-600"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000059013",
+    "n": 1,
+    "importes": "-181.94"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073938",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073939",
+    "n": 1,
+    "importes": "-47.34"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000059013",
+    "n": 1,
+    "importes": "-115.83"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073937",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "Reserva casa",
+    "n": 1,
+    "importes": "-518.75"
+   },
+   {
+    "concepto": "Cancelación ATG 100 José Anton",
+    "n": 1,
+    "importes": "-121"
+   },
+   {
+    "concepto": "Certificado energético",
+    "n": 1,
+    "importes": "-100"
+   },
+   {
+    "concepto": "SOBRANTE CAN PTMO",
+    "n": 1,
+    "importes": "403.11"
+   },
+   {
+    "concepto": "UNICAJA TRAMITACIONES SA",
+    "n": 1,
+    "importes": "121"
+   },
+   {
+    "concepto": "Regularización Tenderina 48",
+    "n": 1,
+    "importes": "-81.96"
+   },
+   {
+    "concepto": "Planchas y",
+    "n": 1,
+    "importes": "-800"
+   },
+   {
+    "concepto": "FRANCISCO JAVIER RAMOS CALLES",
+    "n": 1,
+    "importes": "413.09"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I - JAPA",
+    "n": 1,
+    "importes": "-1065"
+   }
+  ]
+ },
+ {
+  "fichero": "unicaja_xls",
+  "total": 144,
+  "clasificadas": 107,
+  "pct": "74.3%",
+  "conFamilia": 107,
+  "interno": 34,
+  "conMetodo": 60,
+  "porPaso": {
+   "concepto": 81,
+   "ninguno": 37,
+   "identificador": 26
+  },
+  "sinClasificar": [
+   {
+    "concepto": "REC.MCARD MOD.ACUM.",
+    "n": 9,
+    "importes": "-94.9, -183.95, -107, -30, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497 874010012213",
+    "n": 8,
+    "importes": "-68.71, -42.88, -62.95, -44.07, …"
+   },
+   {
+    "concepto": "ENTREGA CUENTA CRED. TARJ.",
+    "n": 8,
+    "importes": "-103.12, -460, -120, -180, …"
+   },
+   {
+    "concepto": "CDAD PROP 01B046 000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "CUOTA DICIEMBRE PLAN UNI SEGU",
+    "n": 2,
+    "importes": "-23.73, -40.23"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "FRANCISCO JAVIER RAMOS CALLES",
+    "n": 1,
+    "importes": "413.09"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073939",
+    "n": 1,
+    "importes": "-74.36"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073938",
+    "n": 1,
+    "importes": "-165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073937",
+    "n": 1,
+    "importes": "-165.85"
+   },
+   {
+    "concepto": "Planchas y",
+    "n": 1,
+    "importes": "-800"
+   }
+  ]
+ },
+ {
+  "fichero": "TOTAL",
+  "total": 1078,
+  "clasificadas": 770,
+  "pct": "71.4%",
+  "conFamilia": 770,
+  "interno": 210,
+  "conMetodo": 591,
+  "porPaso": {
+   "ninguno": 308,
+   "concepto": 609,
+   "identificador": 161
+  },
+  "sinClasificar": [
+   {
+    "concepto": "Traspaso:",
+    "n": 60,
+    "importes": "-930, -607.5, -765.04, -395, …"
+   },
+   {
+    "concepto": "REC.MCARD MOD.ACUM.",
+    "n": 47,
+    "importes": "-25.95, -2.3, -32.05, -577.69, …"
+   },
+   {
+    "concepto": "ENTREGA CUENTA CRED. TARJ.",
+    "n": 22,
+    "importes": "-234.2, -300, -120, -100, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497-874010012213",
+    "n": 20,
+    "importes": "-57.61, -43.19, -55.18, -42.56, …"
+   },
+   {
+    "concepto": "CP TENDERI016B9V-004300001200",
+    "n": 10,
+    "importes": "-80.26, -80.26, -80.26, -80.26, …"
+   },
+   {
+    "concepto": "Transferencia De Esteban Antonio Yanez Vallenilla, Concepto Pago De Ha",
+    "n": 9,
+    "importes": "200.16, 365, 365, 365, …"
+   },
+   {
+    "concepto": "FCC AQUALI447497 874010012213",
+    "n": 8,
+    "importes": "-68.71, -42.88, -62.95, -44.07, …"
+   },
+   {
+    "concepto": "ABONO POR DOMICILIACIÓN DE RECIBOS",
+    "n": 7,
+    "importes": "25.64, 35.51, 28.5, 31.53, …"
+   },
+   {
+    "concepto": "CUOTA DICIEMBRE PLAN UNI SEGU",
+    "n": 6,
+    "importes": "-37.24, -21.97, -40.23, -23.73, …"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Claudia Jimenez Perez, Concepto Pago Mes De",
+    "n": 5,
+    "importes": "380, 380, 380, 380, …"
+   },
+   {
+    "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+    "n": 5,
+    "importes": "-11.98, -22.15, -50.86, -12.75, …"
+   },
+   {
+    "concepto": "Transferencia De Oscar Lirola Casanova, Concepto Movimiento Ing.",
+    "n": 4,
+    "importes": "365, 547.5, 158.33, 365"
+   },
+   {
+    "concepto": "CDAD PROP 01B046-000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "CDAD PROP 01B046 000278300002",
+    "n": 4,
+    "importes": "-38, -38, -38, -38"
+   },
+   {
+    "concepto": "TRANSFERENCIA A SMARTFLIP",
+    "n": 3,
+    "importes": "-15000, -15000, -15000"
+   },
+   {
+    "concepto": "Liquidacion Del Contrato 0014784 300",
+    "n": 2,
+    "importes": "-3.69, -0.37"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra, Concep",
+    "n": 2,
+    "importes": "395, 698"
+   },
+   {
+    "concepto": "Recibo Paypal Europe S.a.r.l. Et Cie S.c.a Nº Recibo 0049 0052 755 Bbr",
+    "n": 2,
+    "importes": "-0.23, -49.99"
+   },
+   {
+    "concepto": "ENVIO DE INSTANT MONEY",
+    "n": 2,
+    "importes": "-20, -100"
+   },
+   {
+    "concepto": "ADEUDO RECIBO WEKIWI SL",
+    "n": 2,
+    "importes": "-38.78, -35.19"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073937",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073938",
+    "n": 2,
+    "importes": "-165.85, -165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000073939",
+    "n": 2,
+    "importes": "-74.36, -74.36"
+   },
+   {
+    "concepto": "CUOTA SEPTIEMBRE PLAN UNI SEG",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "CUOTA NOVIEMBRE PLAN UNI SEGU",
+    "n": 2,
+    "importes": "-40.23, -23.73"
+   },
+   {
+    "concepto": "Planchas y",
+    "n": 2,
+    "importes": "-800, -800"
+   },
+   {
+    "concepto": "FRANCISCO JAVIER RAMOS CALLES",
+    "n": 2,
+    "importes": "413.09, 413.09"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For September",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jordan O Sullivan, Concepto Sent From Revol",
+    "n": 1,
+    "importes": "930"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For Aug",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Concepción Ramirez Guerrero Concept",
+    "n": 1,
+    "importes": "-5485.53"
+   },
+   {
+    "concepto": "Transferencia A Favor De Banco Cetelem S.a. Concepto: 43508951n - Cont",
+    "n": 1,
+    "importes": "-3255.74"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Smartflip Developments Investments S.a., Co",
+    "n": 1,
+    "importes": "607.5"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For July",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Suministros Calle",
+    "n": 1,
+    "importes": "64.16"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For June",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For May",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Fondo De Garantia",
+    "n": 1,
+    "importes": "1350"
+   },
+   {
+    "concepto": "Compra Internet En Ajuntament De M, Manresa Es, Tarj. : *827754",
+    "n": 1,
+    "importes": "-1038.57"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Parwez Adnan, Concepto Rent For March+rent ",
+    "n": 1,
+    "importes": "870"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Minoautos Multimarca Sl Concepto Pa",
+    "n": 1,
+    "importes": "-12240"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Crismar Yanez Concepto Devolucionfi",
+    "n": 1,
+    "importes": "-395"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Carmen Alonso González Concepto Con",
+    "n": 1,
+    "importes": "-36.4"
+   },
+   {
+    "concepto": "Transferencia Inmediata A Favor De Gestio I Administracio De Finques C",
+    "n": 1,
+    "importes": "-7260"
+   },
+   {
+    "concepto": "Transferencia De Cristian Lopez Vineta Pl La Pau, 4 En, Referencia: 00",
+    "n": 1,
+    "importes": "64005.37"
+   },
+   {
+    "concepto": "Transferencia De Claudia Jimenez Perez, Concepto Pago Mes De Abril . C",
+    "n": 1,
+    "importes": "380"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Marzo Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De F",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Cristian Lopez Vineta, Concepto Arras Piso ",
+    "n": 1,
+    "importes": "5750"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Febrero Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Enero Belé",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Traspaso: Enviado Por Banco Santander",
+    "n": 1,
+    "importes": "-423"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Harvin Camilo Duarte Gil, Concepto Mes De D",
+    "n": 1,
+    "importes": "423"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Diciembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Lucia Garcia Cordoba, Concepto Arras Numero",
+    "n": 1,
+    "importes": "18000"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Noviembre.",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Octubre Be",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Jose Adrian Novo Soto, Concepto Septiembre ",
+    "n": 1,
+    "importes": "365"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Medio Mes Pi",
+    "n": 1,
+    "importes": "232.5"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Mensualidad Septiembre",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Piso Agosto",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Vizcaino Escobar Gabriela Alejandra,",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Fernandez Pumarol Javier, Concepto Reserva ",
+    "n": 1,
+    "importes": "100"
+   },
+   {
+    "concepto": "Transferencia Inmediata De Benito Fuentes Galan, Concepto Mes Julio",
+    "n": 1,
+    "importes": "465"
+   },
+   {
+    "concepto": "Transferencia De Zambrano Bravo Belen, Concepto Depósito Belén Zambran",
+    "n": 1,
+    "importes": "385"
+   },
+   {
+    "concepto": "Transferencia De Raul Esteban Peces, Concepto Alquiles Mes Hab. 1 Uso ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Marzo, Ten",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Pago Marzo Tender",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Tenderina ",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "Transferencia De Alisser Real Estate, S.l., Concepto Febrero 2025.",
+    "n": 1,
+    "importes": "1202.78"
+   },
+   {
+    "concepto": "Transferencia De Logan Crespo Vieru, Concepto Envio De Dinero - Imagin",
+    "n": 1,
+    "importes": "0.04"
+   },
+   {
+    "concepto": "Transferencia De Francisco Javier Lopez Carbonell, Concepto Enero Tend",
+    "n": 1,
+    "importes": "395"
+   },
+   {
+    "concepto": "ABONO TRANSFERENCIA DE SMARTFLIP DEVELOPMENTS INVESTMENTS S",
+    "n": 1,
+    "importes": "15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA 212128856",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "TRANSFERENCIA A MOTORES Y RECTIFICADOS VALENCIA, S.L",
+    "n": 1,
+    "importes": "-3993"
+   },
+   {
+    "concepto": "COMPRA TARJ. 5402XXXXXXXX7016 APPLE.COM/BILL-CORK",
+    "n": 1,
+    "importes": "-34.99"
+   },
+   {
+    "concepto": "TRANSFERENCIA A 4A Avenida Serviicios Inmobiliarios",
+    "n": 1,
+    "importes": "-2359.5"
+   },
+   {
+    "concepto": "TRANSFERENCIA A Manuel Fernandez",
+    "n": 1,
+    "importes": "-15000"
+   },
+   {
+    "concepto": "CDAD TENDE282654-004300001200",
+    "n": 1,
+    "importes": "-80.26"
+   },
+   {
+    "concepto": "CAJ. 18.29 C039089L301",
+    "n": 1,
+    "importes": "-560"
+   },
+   {
+    "concepto": "Regularizaciones",
+    "n": 1,
+    "importes": "-600"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564-000000059013",
+    "n": 1,
+    "importes": "-181.94"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073938",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073939",
+    "n": 1,
+    "importes": "-47.34"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000059013",
+    "n": 1,
+    "importes": "-115.83"
+   },
+   {
+    "concepto": "AYUNTAMIEN01886L-000000073937",
+    "n": 1,
+    "importes": "-105.58"
+   },
+   {
+    "concepto": "Reserva casa",
+    "n": 1,
+    "importes": "-518.75"
+   },
+   {
+    "concepto": "Cancelación ATG 100 José Anton",
+    "n": 1,
+    "importes": "-121"
+   },
+   {
+    "concepto": "Certificado energético",
+    "n": 1,
+    "importes": "-100"
+   },
+   {
+    "concepto": "SOBRANTE CAN PTMO",
+    "n": 1,
+    "importes": "403.11"
+   },
+   {
+    "concepto": "UNICAJA TRAMITACIONES SA",
+    "n": 1,
+    "importes": "121"
+   },
+   {
+    "concepto": "Regularización Tenderina 48",
+    "n": 1,
+    "importes": "-81.96"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I - JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "SUSCRIPCI abrdn SICAV I JAPA",
+    "n": 1,
+    "importes": "-1065"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073939",
+    "n": 1,
+    "importes": "-74.36"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073938",
+    "n": 1,
+    "importes": "-165.85"
+   },
+   {
+    "concepto": "AYUNTAMIEN591564 000000073937",
+    "n": 1,
+    "importes": "-165.85"
+   }
+  ]
+ }
+]
