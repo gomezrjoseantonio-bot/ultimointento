@@ -24,16 +24,31 @@
 //     por debajo se cuela cualquier cosa.
 //   · Si una entidad no dice su familia sin dudar, NO entra. ATLAS no inventa.
 //
-// ⚠️ COBERTURA · la hoja `CATALOGO_NACIONAL` de la auditoría (37 entidades) NO
-// está versionada en el repo; aquí están las que la tarea nombra por escrito
-// más las 6 listas que ya vivían en `reglasDuras` y los 7 NIF de
-// `providerDirectoryService` (el de Iberdrola, CORREGIDO: decía A95075578,
-// el real de Iberdrola Clientes es A95554630 · casa con el fixture Sabadell).
-// Las filas de la hoja que no estén aquí se añaden cuando la hoja se versione.
+// EL GRUESO NO ESTÁ AQUÍ. Las 308 entidades reales de España viven en
+// `catalogo-nacional-proveedores.json` y las carga `desdeCatalogoNacional.ts`.
+// Este fichero es el COMPLEMENTO: lo que el fichero de 308 no trae y el corpus
+// real sí necesita —
+//
+//   · las marcas que faltan (Wekiwi y Visalia, con su CIF sacado del propio
+//     extracto; Tuio, Bip&Drive, Ayvens, Feebbo, MetLife, Planeta, Finutive…);
+//   · los ALIAS RECORTADOS que escribe cada banco, que ningún registro
+//     oficial recoge: Unicaja corta el emisor a 16 caracteres
+//     («FCC AQUALI447497», «DIGI SPAIN400245») y BBVA escribe «BIP   DRIVE, S.A.»;
+//   · los PATRONES que no son una empresa pero sí una forma nacional de
+//     escribir a un acreedor («Comunitat de Propietaris», «Ajuntament de…»),
+//     que absorben las listas de `reglasDuras`.
+//
+// Sobre el NIF de Iberdrola · hay DOS y los dos son válidos, porque son dos
+// sociedades distintas: `A95758389` (Iberdrola Clientes, el del fichero de las
+// 308) y `A95554630` (Iberdrola Comercialización de Último Recurso, el que
+// aparece de verdad en la «Referencia 1» de los recibos de Sabadell y cuyo
+// concepto dice «IBERDROLA COMERCIALIZACION DE U»). El que `providerDirectory`
+// traía, `A95075578`, no es ninguno de los dos. Están los dos.
 // ============================================================================
 
 import type { FamiliaId } from '../catalogo/catalogoUnico';
 import type { Ambito } from '../catalogo/catalogoUnico';
+import { entidadesDelFicheroNacional } from './desdeCatalogoNacional';
 
 /** Una entidad del catálogo · lo mismo que aprende un cliente y lo que viene de fábrica. */
 export interface EntidadNacional {
@@ -74,10 +89,7 @@ const FINANCIERAS: readonly EntidadNacional[] = [
   { nombre: 'Bankinter Consumer Finance', alias: ['BANKINTERCONSUMER', 'BANKINTERCONSUMERFINANCE'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
   { nombre: 'Servicios Financieros Carrefour', alias: ['FINANCIERACARREFOUR', 'SERVICIOSFINANCIEROSCARREFOUR', 'CARREFOURPASS'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
   { nombre: 'Financiera El Corte Inglés', alias: ['FINANCIERAELCORTEINGLES', 'FINANCIERACORTEINGLES'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
-  { nombre: 'Cofidis', alias: ['COFIDIS'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
   { nombre: 'Sabadell Consumer Finance', alias: ['SABADELLCONSUMER'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
-  { nombre: 'Santander Consumer Finance', alias: ['SANTANDERCONSUMER'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
-  { nombre: 'CaixaBank Payments & Consumer', alias: ['CAIXABANKPAYMENTS', 'CAIXABANKCONSUMER'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
   { nombre: 'Smartflip', alias: ['SMARTFLIP'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
 ];
 
@@ -85,27 +97,22 @@ const FINANCIERAS: readonly EntidadNacional[] = [
 
 const SUMINISTROS: readonly EntidadNacional[] = [
   // Luz · el NIF de Iberdrola CORREGIDO (A95554630 · Ref 1 del fixture Sabadell).
-  { nombre: 'Iberdrola Clientes', nif: 'A95554630', alias: ['IBERDROLA'], familia: 'suministro', subtipo: 'luz' },
+  // El CUR es el que firma los recibos del corpus real («Referencia 1»
+  // A95554630001 · concepto «IBERDROLA COMERCIALIZACION DE U»). Sin él, el
+  // catálogo de las 308 —que trae el CIF de Iberdrola Clientes— no casaría
+  // ninguno de los recibos de Jose.
+  { nombre: 'Iberdrola Comercialización de Último Recurso', nif: 'A95554630', alias: ['IBERDROLA'], familia: 'suministro', subtipo: 'luz' },
   { nombre: 'Wekiwi', nif: 'B67686782', alias: ['WEKIWI'], familia: 'suministro', subtipo: 'luz' },
-  { nombre: 'Endesa Energía', nif: 'A81948077', alias: ['ENDESA'], familia: 'suministro', subtipo: 'luz' },
-  { nombre: 'EDP España', nif: 'A83052407', alias: ['EDPENERGIA', 'EDPESPANA', 'EDPCOMERCIALIZADORA'], familia: 'suministro', subtipo: 'luz' },
-  { nombre: 'Holaluz', nif: 'B65443077', alias: ['HOLALUZ'], familia: 'suministro', subtipo: 'luz' },
   { nombre: 'Curenergía', alias: ['CURENERGIA'], familia: 'suministro', subtipo: 'luz' },
-  { nombre: 'Octopus Energy', alias: ['OCTOPUSENERGY'], familia: 'suministro', subtipo: 'luz' },
   // Gas
   { nombre: 'Visalia Energía', nif: 'B99340564', alias: ['VISALIA'], familia: 'suministro', subtipo: 'gas' },
-  { nombre: 'Nedgia', alias: ['NEDGIA'], familia: 'suministro', subtipo: 'gas' },
   // Agua · Unicaja escribe «FCC AQUALI447497»: el alias es lo que cabe.
   { nombre: 'Aqualia', alias: ['AQUALI', 'FCCAQUALI'], familia: 'suministro', subtipo: 'agua' },
   { nombre: 'Canal de Isabel II', alias: ['CANALDEISABEL', 'CANALISABEL'], familia: 'suministro', subtipo: 'agua' },
-  { nombre: 'Emasesa', alias: ['EMASESA'], familia: 'suministro', subtipo: 'agua' },
   // Telefonía · Unicaja escribe «DIGI SPAIN400245» y «Simyo     633782».
   { nombre: 'Digi', alias: ['DIGISPAIN', 'DIGIMOBIL'], familia: 'suministro', subtipo: 'telefonia' },
   { nombre: 'Simyo', alias: ['SIMYO'], familia: 'suministro', subtipo: 'telefonia' },
   { nombre: 'Orange España', alias: ['ORANGEESPAGNE', 'ORANGEESPANA', 'ORANGEFRANCETELECOM'], familia: 'suministro', subtipo: 'telefonia' },
-  { nombre: 'Pepephone', alias: ['PEPEPHONE'], familia: 'suministro', subtipo: 'telefonia' },
-  { nombre: 'Lowi', alias: ['LOWI'], familia: 'suministro', subtipo: 'telefonia' },
-  { nombre: 'Finetwork', alias: ['FINETWORK'], familia: 'suministro', subtipo: 'telefonia' },
   { nombre: 'Movistar', alias: ['MOVISTAR', 'TELEFONICADEESPANA'], familia: 'suministro', subtipo: 'telefonia' },
   { nombre: 'Vodafone', alias: ['VODAFONE'], familia: 'suministro', subtipo: 'telefonia' },
   { nombre: 'Yoigo', alias: ['YOIGO'], familia: 'suministro', subtipo: 'telefonia' },
@@ -113,9 +120,7 @@ const SUMINISTROS: readonly EntidadNacional[] = [
   { nombre: 'Jazztel', alias: ['JAZZTEL'], familia: 'suministro', subtipo: 'telefonia' },
   { nombre: 'Euskaltel', alias: ['EUSKALTEL'], familia: 'suministro', subtipo: 'telefonia' },
   // Sin subtipo · la comercializadora vende luz Y gas y el recibo no lo dice.
-  { nombre: 'Naturgy', nif: 'A08015497', alias: ['NATURGY', 'GASNATURALFENOSA'], familia: 'suministro' },
   { nombre: 'Repsol', nif: 'A28129274', alias: ['REPSOLCOMERCIALIZADORA', 'REPSOLLUZ', 'REPSOLGAS'], familia: 'suministro' },
-  { nombre: 'TotalEnergies', nif: 'A83131396', alias: ['TOTALENERGIES'], familia: 'suministro' },
 ];
 
 // ─── Seguros ────────────────────────────────────────────────────────────────
@@ -219,8 +224,11 @@ const OTROS: readonly EntidadNacional[] = [
   { nombre: 'Bricodepot', alias: ['BRICODEPOT'], familia: 'reparacion_mantenimiento' },
 ];
 
-/** La semilla entera · lo que viaja en el código y no se reescribe. */
-export const CATALOGO_NACIONAL_SEMILLA: readonly EntidadNacional[] = [
+/**
+ * El COMPLEMENTO · lo que el fichero de 308 no trae. Se usa junto a él, no en
+ * su lugar: `semillaDelCatalogo()` los junta y es lo que consume el motor.
+ */
+export const COMPLEMENTO_DEL_CATALOGO: readonly EntidadNacional[] = [
   ...FINANCIERAS,
   ...SUMINISTROS,
   ...SEGUROS,
@@ -229,3 +237,17 @@ export const CATALOGO_NACIONAL_SEMILLA: readonly EntidadNacional[] = [
   ...PATRONES,
   ...OTROS,
 ];
+
+/**
+ * La semilla ENTERA que viaja en el código: las 308 entidades reales del
+ * fichero de Jose más el complemento de arriba.
+ *
+ * El COMPLEMENTO va DELANTE a propósito: cuando las dos capas conocen a la
+ * misma entidad, manda la de aquí, porque es la que se ha comprobado contra un
+ * extracto de verdad (el CIF del CUR de Iberdrola, el alias recortado que
+ * escribe Unicaja). El fichero de 308 aporta la cobertura; esto, la precisión
+ * sobre lo que el banco escribe de verdad.
+ */
+export function semillaDelCatalogo(): EntidadNacional[] {
+  return [...COMPLEMENTO_DEL_CATALOGO, ...entidadesDelFicheroNacional()];
+}

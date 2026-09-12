@@ -1,7 +1,8 @@
 // E3.1 · §7.3 · el catálogo nacional · lo que la tarea pide verificar.
 import { clasificarLinea, type ContextoClasificacion } from '../../clasificacion/clasificarLinea';
 import { catalogoDeFabrica, construirCatalogo, desdeProveedoresIrpf, porNif, porNombre } from '../catalogoNacional';
-import { CATALOGO_NACIONAL_SEMILLA } from '../entidadesNacionales';
+import { entidadesDelFicheroNacional } from '../desdeCatalogoNacional';
+import { semillaDelCatalogo } from '../entidadesNacionales';
 import type { Movement } from '../../db';
 
 const catalogo = catalogoDeFabrica();
@@ -18,12 +19,18 @@ const mov = (description: string, amount = -100, extra: Partial<Movement> = {}):
   ({ id: 1, accountId: 1, date: '2026-03-01', amount, description, ...extra }) as Movement;
 
 describe('E3.1 · §7.3 · el catálogo nacional', () => {
-  it('el NIF de Iberdrola está CORREGIDO y casa con el fixture real de Sabadell', () => {
-    // `providerDirectoryService` decía A95075578; el que Sabadell escribe en
-    // «Referencia 1» de los recibos reales es A95554630 (+ el sufijo SEPA 001).
-    const e = porNif(catalogo, 'A95554630');
-    expect(e?.nombre).toBe('Iberdrola Clientes');
+  it('el NIF de Iberdrola está CORREGIDO · y son DOS sociedades, no una', () => {
+    // `providerDirectoryService` decía A95075578, que no es ninguna de las dos.
+    // El fichero nacional trae A95758389 (Iberdrola Clientes) y los recibos
+    // reales de Sabadell traen A95554630 en «Referencia 1» (+ sufijo SEPA 001),
+    // cuyo concepto dice «IBERDROLA COMERCIALIZACION DE U»: el CUR. Sin el
+    // segundo, el catálogo no casaría ni uno de los recibos de Jose.
+    expect(porNif(catalogo, 'A95554630')?.nombre).toContain('Último Recurso');
+    expect(porNif(catalogo, 'A95758389')?.nombre).toBe('Iberdrola Clientes');
     expect(porNif(catalogo, 'A95075578')).toBeUndefined();
+    // Las dos son suministro · la de los recibos, además, luz.
+    expect(porNif(catalogo, 'A95554630')?.familia).toBe('suministro');
+    expect(porNif(catalogo, 'A95758389')?.familia).toBe('suministro');
 
     // Y el motor lo cruza leyendo la referencia tal cual la trae el fichero.
     const c = clasificarLinea(
@@ -55,7 +62,7 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
   it('el alias más largo gana · «Bankinter Consumer Finance» no es «Bankinter»', () => {
     const cat = construirCatalogo([
       { nombre: 'Bankinter', alias: ['BANKINTER'], familia: 'comisiones_bancarias' },
-      ...CATALOGO_NACIONAL_SEMILLA,
+      ...semillaDelCatalogo(),
     ]);
     expect(porNombre(cat, 'BANKINTER CONSUMER FINANCE')?.nombre).toBe('Bankinter Consumer Finance');
     expect(porNombre(cat, 'BANKINTER, S.A.')?.nombre).toBe('Bankinter');
@@ -78,6 +85,42 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     expect(porNif(cat, 'B33558172')?.familia).toBe('reparacion_mantenimiento');
     expect(porNif(cat, 'A82505660')?.familia).toBe('gestion');
     expect(cat.porAlias.map(([a]) => a)).toEqual(['GESTORIAEJEMPLO']);
+  });
+
+  it('CARGA las 308 · y las que no se pueden clasificar sin inventar NO entran', () => {
+    const delFichero = entidadesDelFicheroNacional();
+    // 211 de 308: el resto son bancos, entidades de pago y gestoras.
+    expect(delFichero.length).toBeGreaterThan(180);
+    expect(delFichero.length).toBeLessThan(308);
+    // Decisión 1 · un BANCO no propone familia: en esa lista están Santander,
+    // Sabadell, Unicaja, BBVA e ING, los bancos del propio usuario, y un cargo
+    // suyo puede ser una comisión, no la cuota de un crédito.
+    for (const banco of ['BANCO SANTANDER', 'BANCO SABADELL', 'UNICAJA BANCO', 'CAIXABANK']) {
+      expect([banco, porNombre(catalogo, banco)]).toEqual([banco, undefined]);
+    }
+    // …salvo las monoline de consumo, que se llaman banco pero solo dan crédito.
+    expect(porNombre(catalogo, 'WIZINK BANK')?.subtipo).toBe('credito_consumo');
+    // Decisión 2 · una entidad de pago es el tubo, no el destino.
+    expect(porNombre(catalogo, 'PAYPAL')).toBeUndefined();
+  });
+
+  it('un CIF en DOS categorías pierde el subtipo · el recibo no dice cuál', () => {
+    // Endesa Energía es el mismo CIF en LUZ y en GAS; Mapfre, en coche, hogar
+    // y decesos. Se conserva la familia y NO se inventa el segundo nivel.
+    expect(porNif(catalogo, 'A81948077')).toMatchObject({ familia: 'suministro' });
+    expect(porNif(catalogo, 'A81948077')?.subtipo).toBeUndefined();
+    expect(porNif(catalogo, 'A28141935')).toMatchObject({ familia: 'seguros_alarmas' });
+    expect(porNif(catalogo, 'A28141935')?.subtipo).toBeUndefined();
+    // Una que solo está en una categoría SÍ conserva el subtipo.
+    expect(porNombre(catalogo, 'OCTOPUS ENERGY ESPANA')?.subtipo).toBe('luz');
+  });
+
+  it('un CIF que NO pasa el dígito de control entra solo por nombre', () => {
+    // 6 filas del fichero traen un CIF que no valida. Cruzarlo por NIF cruzaría
+    // un recibo con quien no es; por nombre sigue sirviendo.
+    const octopus = entidadesDelFicheroNacional().find((e) => e.nombre.startsWith('Octopus'));
+    expect(octopus?.nif).toBeUndefined();
+    expect(octopus?.familia).toBe('suministro');
   });
 
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {

@@ -23,7 +23,7 @@
 import type { FamiliaId, Ambito } from '../catalogo/catalogoUnico';
 import { esFamiliaId } from '../catalogo/catalogoUnico';
 import {
-  CATALOGO_NACIONAL_SEMILLA,
+  semillaDelCatalogo,
   claveDeNombreCatalogo,
   MINIMO_ALIAS,
   type EntidadNacional,
@@ -84,7 +84,7 @@ export function construirCatalogo(...capas: ReadonlyArray<readonly EntidadNacion
 
 /** El catálogo de fábrica · sin base, sin cliente. Para tests y para el arranque en frío. */
 export function catalogoDeFabrica(): CatalogoNacional {
-  return construirCatalogo(CATALOGO_NACIONAL_SEMILLA);
+  return construirCatalogo(semillaDelCatalogo());
 }
 
 // ─── consultar ──────────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ export async function cargarCatalogo(
     .filter((e) => esFamiliaId(e.familia))
     .slice()
     .sort((a, b) => (b.confirmaciones ?? 0) - (a.confirmaciones ?? 0));
-  return construirCatalogo(ordenado, CATALOGO_NACIONAL_SEMILLA, desdeProveedoresIrpf(proveedores));
+  return construirCatalogo(ordenado, semillaDelCatalogo(), desdeProveedoresIrpf(proveedores));
 }
 
 /** Lo que el store `proveedores` guarda hoy · `tipos` es AEAT, `familia` es del catálogo único. */

@@ -35,7 +35,7 @@ const salida = path.join(os.tmpdir(), `atlas-motor-${process.pid}.mjs`);
 const ENTRADA = `
 export { clasificarLinea } from './src/services/clasificacion/clasificarLinea';
 export { construirCatalogo, desdeProveedoresIrpf } from './src/services/catalogoNacional/catalogoNacional';
-export { CATALOGO_NACIONAL_SEMILLA } from './src/services/catalogoNacional/entidadesNacionales';
+export { semillaDelCatalogo } from './src/services/catalogoNacional/entidadesNacionales';
 export { nombresDelTitular, traspasosPropios } from './src/services/deterministas/traspasosPropios';
 export { cuotasQueCuadran } from './src/services/deterministas/cuotasDePrestamo';
 export { recurrentesQueCuadran } from './src/services/deterministas/recurrentes';
@@ -59,7 +59,7 @@ const {
   clasificarLinea,
   construirCatalogo,
   desdeProveedoresIrpf,
-  CATALOGO_NACIONAL_SEMILLA,
+  semillaDelCatalogo,
   nombresDelTitular,
   traspasosPropios,
   cuotasQueCuadran,
@@ -73,7 +73,7 @@ const personas = stores.personalData ? [].concat(stores.personalData) : [];
 const proveedores = stores.proveedores ?? [];
 
 const nombres = nombresDelTitular(personas, cuentas);
-const catalogo = construirCatalogo(CATALOGO_NACIONAL_SEMILLA, desdeProveedoresIrpf(proveedores));
+const catalogo = construirCatalogo(semillaDelCatalogo(), desdeProveedoresIrpf(proveedores));
 
 // La línea como movimiento · lo mismo que hace `lineaComoMovimiento`.
 const movimientos = lineas

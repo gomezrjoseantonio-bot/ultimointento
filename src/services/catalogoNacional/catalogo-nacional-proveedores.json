@@ -1,0 +1,2774 @@
+[
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "ABAQUA",
+  "grupo": "Agència Balear de l'Aigua",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "AMVISA",
+  "grupo": "Aguas Municipales de Vitoria-Gasteiz",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Acciona Agua",
+  "grupo": "Acciona",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Agbar",
+  "grupo": "Sociedad General de Aguas de Barcelona / Veolia",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Alicante",
+  "grupo": "Aguas Municipalizadas de Alicante",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Burgos",
+  "grupo": "Aguas de Burgos",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Cádiz",
+  "grupo": "Aguas de Cádiz",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Córdoba",
+  "grupo": "Empresa Provincial de Aguas de Córdoba",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Gijón",
+  "grupo": "Empresa Municipal de Aguas de Gijón",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Huelva",
+  "grupo": "Empresa Municipal de Aguas de Huelva",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Ibiza",
+  "grupo": "Aguas de Ibiza",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Lanzarote",
+  "grupo": "Consorcio del Agua de Lanzarote",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de León",
+  "grupo": "Aguas de León",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Logroño",
+  "grupo": "Aguas de Logroño",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Murcia",
+  "grupo": "Aguas de Murcia",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Pamplona",
+  "grupo": "Mancomunidad de la Comarca de Pamplona",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Salamanca",
+  "grupo": "Aguas de Salamanca",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Telde",
+  "grupo": "Aguas de Telde",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas de Valladolid",
+  "grupo": "Aguas de Valladolid",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas del Añarbe",
+  "grupo": "Aguas del Añarbe",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aguas del Huesna",
+  "grupo": "Consorcio de Aguas del Huesna",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aigües de Barcelona",
+  "grupo": "Aigües de Barcelona",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aigües de Manresa",
+  "grupo": "Aigües de Manresa",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aigües de Mataró",
+  "grupo": "Aigües de Mataró",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aigües de Reus",
+  "grupo": "Reus Serveis Municipals / Aigües",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aigües de Sabadell",
+  "grupo": "CASSA / Aigües de Sabadell",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aljarafesa",
+  "grupo": "Empresa Mancomunada del Aljarafe",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aqualia",
+  "grupo": "FCC / Aqualia",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aquona",
+  "grupo": "Aquona",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "CADASA",
+  "grupo": "Consorcio de Aguas de Asturias",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Canal de Isabel II",
+  "grupo": "Canal de Isabel II",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Canaragua",
+  "grupo": "Canaragua Concesiones",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Consorcio de Aguas Bilbao Bizkaia",
+  "grupo": "CABB",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Consorcio de Aguas de la Zona Gaditana",
+  "grupo": "CAZG",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "EMA",
+  "grupo": "Empresa Municipal de Aguas de Málaga",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "EMACSA",
+  "grupo": "Aguas de Córdoba",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "EMALCSA",
+  "grupo": "Empresa Municipal de Aguas de La Coruña",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "EMIVASA",
+  "grupo": "Empresa Mixta Valenciana de Aguas",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Emacsa",
+  "grupo": "Empresa Municipal de Aguas de Córdoba",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Emasa",
+  "grupo": "Empresa Municipal de Aguas de Santa Cruz de Tenerife",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Emasesa",
+  "grupo": "Empresa Metropolitana de Abastecimiento y Saneamiento de Aguas de Sevilla",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Emaya",
+  "grupo": "Empresa Municipal d'Aigües i Clavegueram",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Espina & Delfín",
+  "grupo": "Espina & Delfín",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "FCC Medio Ambiente / Agua",
+  "grupo": "FCC",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Global Omnium",
+  "grupo": "Global Omnium",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "NILSA",
+  "grupo": "Navarra de Infraestructuras Locales",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Sacyr Agua",
+  "grupo": "Sacyr",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Veolia Water Technologies",
+  "grupo": "Veolia",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Viaqua",
+  "grupo": "Viaqua Gestión Integral de Aguas",
+  "categoria": "AGUA",
+  "subcategoria": "OPERADOR",
+  "ancla": "Concesión municipal/autonómica"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Acciona Energía",
+  "grupo": "Acciona",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Airelec",
+  "grupo": "Airelec",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aldro Energía",
+  "grupo": "Aldro Energía",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Alpiq Energía España",
+  "grupo": "Alpiq",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Audax Renovables",
+  "grupo": "Audax Renovables",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Baser COR",
+  "grupo": "TotalEnergies",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Bassols Energía",
+  "grupo": "Bassols",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Cepsa Comercial Petrólea",
+  "grupo": "Moeve/Cepsa",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Comercializadora Eléctrica de Cádiz",
+  "grupo": "Eléctrica de Cádiz",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Comercializadora Regulada Gas & Power",
+  "grupo": "Naturgy",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Curenergía",
+  "grupo": "Iberdrola",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "ECOoo",
+  "grupo": "Ecooo",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Electra Caldense",
+  "grupo": "Electra Caldense",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Electra Energía",
+  "grupo": "Electra Energía",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Electra Norte Energía",
+  "grupo": "Electra Norte",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Electra del Cardener",
+  "grupo": "Electra del Cardener",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A81948077",
+  "nombreFiscal": null,
+  "marca": "Endesa Energía",
+  "grupo": "Endesa",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A51031920",
+  "nombreFiscal": null,
+  "marca": "Energía Ceuta XXI",
+  "grupo": "Endesa",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B82846825",
+  "nombreFiscal": null,
+  "marca": "Energía XXI",
+  "grupo": "Endesa",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Energías de Portugal Comercializadora",
+  "grupo": "EDP",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B82508441",
+  "nombreFiscal": null,
+  "marca": "Engie España",
+  "grupo": "Engie",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B83393066",
+  "nombreFiscal": null,
+  "marca": "Enérgya-VM",
+  "grupo": "Enérgya-VM",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A62422720",
+  "nombreFiscal": null,
+  "marca": "Estabanell Impulsa",
+  "grupo": "Estabanell",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A61893871",
+  "nombreFiscal": null,
+  "marca": "Factorenergia",
+  "grupo": "Factor Energía",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Gana Energía",
+  "grupo": "Gana Energía",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Gaselec Diversificación",
+  "grupo": "Melilla",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Goiener",
+  "grupo": "Goiener",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Hidroeléctrica del Valira / Peusa",
+  "grupo": "Peusa",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A65445033",
+  "nombreFiscal": null,
+  "marca": "Holaluz",
+  "grupo": "Holaluz-Clidom",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A95758389",
+  "nombreFiscal": null,
+  "marca": "Iberdrola Clientes",
+  "grupo": "Iberdrola",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Lersa Energía",
+  "grupo": "Lersa",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Lucera",
+  "grupo": "Lucera Energía",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A08431090",
+  "nombreFiscal": null,
+  "marca": "Naturgy Iberia",
+  "grupo": "Naturgy",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A62332580",
+  "nombreFiscal": null,
+  "marca": "Nexus Energía",
+  "grupo": "Nexus",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Nosa Enerxía",
+  "grupo": "Nosa Enerxía",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B88290798",
+  "nombreFiscal": null,
+  "marca": "Octopus Energy España",
+  "grupo": "Octopus Energy",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B39793294",
+  "nombreFiscal": null,
+  "marca": "Plenitude",
+  "grupo": "Plenitude",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Podo",
+  "grupo": "Podo",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B86374213",
+  "nombreFiscal": null,
+  "marca": "Repsol Comercializadora de Electricidad y Gas",
+  "grupo": "Repsol",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Repsol Electricidad y Gas",
+  "grupo": "Repsol",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Repsol Solmatch",
+  "grupo": "Repsol",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B87614301",
+  "nombreFiscal": null,
+  "marca": "Régsiti",
+  "grupo": "Repsol",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Shell España",
+  "grupo": "Shell",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "F55091367",
+  "nombreFiscal": null,
+  "marca": "Som Energia",
+  "grupo": "Som Energia",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A33543547",
+  "nombreFiscal": null,
+  "marca": "TotalEnergies Clientes",
+  "grupo": "TotalEnergies",
+  "categoria": "LUZ",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Afrodísio Pascual Alonso, S.L.",
+  "marca": "Afrodísio Pascual Alonso",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0426"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Agri-Energia Elèctrica, S.A.",
+  "marca": "Agri-Energia",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0112"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Aguas de Barbastro Electricidad, S.A.",
+  "marca": "Aguas de Barbastro",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0116"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Alginet Distribución Energía Eléctrica, S.L.U.",
+  "marca": "Alginet",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0361"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Alset Elèctrica, S.L.",
+  "marca": "Alset",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0117"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Anselmo León Distribución, S.L.",
+  "marca": "Anselmo León",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0118"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Distribuidora Eléctrica Bassols, S.A.",
+  "marca": "Bassols",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0122"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Barras Eléctricas Galaico-Asturianas, S.A. (Begasa)",
+  "marca": "Begasa",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0033"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "E-Redes Distribución Eléctrica, S.A.U. (antes Hidrocantábrico)",
+  "marca": "E-Redes",
+  "grupo": "EDP",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0026"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Adúriz Distribución, S.L. (Electra Adúriz)",
+  "marca": "Electra Adúriz",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0172"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Electra Caldense Energia, S.A.",
+  "marca": "Electra Caldense",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0177"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Eléctrica Conquense Distribución, S.A.U.",
+  "marca": "Eléctrica Conquense",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0032"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Eléctrica Ntra. Sra. de los Desamparados",
+  "marca": "Eléctrica Ntra. Sra. Desamparados",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0356"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Suministradora Eléctrica de Cádiz, S.A.",
+  "marca": "Eléctrica de Cádiz",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0034"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Estabanell y Pahisa Energia, S.A.",
+  "marca": "Estabanell",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0113"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Lersa Electricitat, S.L.",
+  "marca": "Lersa",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0336"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Medina Garvey Electricidad, S.L.U.",
+  "marca": "Medina Garvey",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0339"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Serviliano García, S.A.",
+  "marca": "Serviliano García",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0351"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Empresa Municipal d'Energia Elèctrica de Torres de Segre, S.L.",
+  "marca": "Torres de Segre",
+  "grupo": "Distribuidora local",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0365"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "UFD Distribución Electricidad, S.A.",
+  "marca": "UFD",
+  "grupo": "Naturgy",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0022 (+ES0390/ES0397)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Viesgo Distribución Eléctrica, S.L.",
+  "marca": "Viesgo",
+  "grupo": "Viesgo",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0027"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "E-Distribución Redes Digitales, S.L.U.",
+  "marca": "e-distribución",
+  "grupo": "Endesa (Enel)",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0031 (+ES0023/ES0029/ES0288/ES0363/ES0024/ES0396)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "i-DE Redes Eléctricas Distribución, S.A.U.",
+  "marca": "i-DE",
+  "grupo": "Iberdrola",
+  "categoria": "LUZ",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS ES0021"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aldro Energía",
+  "grupo": "Aldro",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Audax Renovables",
+  "grupo": "Audax",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "BP Gas & Power Iberia",
+  "grupo": "BP",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Bahía de Bizkaia Gas",
+  "grupo": "BBG",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Baser COR",
+  "grupo": "TotalEnergies",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Comercializadora Regulada Gas & Power",
+  "grupo": "Naturgy",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B82508441",
+  "nombreFiscal": null,
+  "marca": "ENGIE España",
+  "grupo": "Engie",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A81948077",
+  "nombreFiscal": null,
+  "marca": "Endesa Energía",
+  "grupo": "Endesa",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B82846825",
+  "nombreFiscal": null,
+  "marca": "Energía XXI",
+  "grupo": "Endesa",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B83393066",
+  "nombreFiscal": null,
+  "marca": "Enérgya-VM",
+  "grupo": "Enérgya-VM",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A61893871",
+  "nombreFiscal": null,
+  "marca": "Factorenergia",
+  "grupo": "Factor Energía",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Galp Energía",
+  "grupo": "Galp",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Gas Natural Comercializadora",
+  "grupo": "Naturgy",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A95758389",
+  "nombreFiscal": null,
+  "marca": "Iberdrola Clientes",
+  "grupo": "Iberdrola",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Moeve",
+  "grupo": "Moeve/Cepsa",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Molgás Energía",
+  "grupo": "Molgás",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Naturgy Clientes",
+  "grupo": "Naturgy",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A62332580",
+  "nombreFiscal": null,
+  "marca": "Nexus Energía",
+  "grupo": "Nexus",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B39793294",
+  "nombreFiscal": null,
+  "marca": "Plenitude",
+  "grupo": "Eni/Plenitude",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Repsol Comercializadora de Gas",
+  "grupo": "Repsol",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "B87614301",
+  "nombreFiscal": null,
+  "marca": "Régsiti",
+  "grupo": "Repsol",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Shell España",
+  "grupo": "Shell",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": "A33543547",
+  "nombreFiscal": null,
+  "marca": "TotalEnergies Clientes",
+  "grupo": "TotalEnergies",
+  "categoria": "GAS",
+  "subcategoria": "COMERCIALIZADORA",
+  "ancla": "Registro CNMC comercializadoras"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Domus Mil Natural",
+  "grupo": "Domus Mil",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Gas Directo",
+  "grupo": "Gas Directo",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Gas Extremadura Distribución, S.L.U.",
+  "marca": "Gas Extremadura",
+  "grupo": "Nedgia/Redexis",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Madrileña Red de Gas",
+  "grupo": "MRG",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Madrileña Red de Gas, S.A.U.",
+  "marca": "Madrileña Red de Gas",
+  "grupo": "Madrileña Red de Gas",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Nedgia",
+  "grupo": "Naturgy",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Nedgia, S.A.",
+  "marca": "Nedgia",
+  "grupo": "Naturgy",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Nortegas",
+  "grupo": "Nortegas",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Nortegas Energía Distribución, S.A.U.",
+  "marca": "Nortegas",
+  "grupo": "Nortegas",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Redexis",
+  "grupo": "Redexis",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Redexis, S.A.",
+  "marca": "Redexis",
+  "grupo": "Redexis",
+  "categoria": "GAS",
+  "subcategoria": "DISTRIBUIDORA",
+  "ancla": "CUPS gas (verificar prefijo)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aire Networks",
+  "grupo": "Aire Networks",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Asteo Red Neutra",
+  "grupo": "Asteo",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Cellnex Telecom",
+  "grupo": "Cellnex",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Espanix",
+  "grupo": "Espanix",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Eurona",
+  "grupo": "Eurona",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Excom",
+  "grupo": "Excom",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Guifi.net",
+  "grupo": "Fundació Guifi.net",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Lyntia Networks",
+  "grupo": "Lyntia",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Netllar",
+  "grupo": "Netllar",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Onivia",
+  "grupo": "Onivia",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Redytel",
+  "grupo": "Redytel",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Wifibytes",
+  "grupo": "Wifibytes",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "MAYORISTA/INFRAESTRUCTURA",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Adamo",
+  "grupo": "Adamo Telecom",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Avatel",
+  "grupo": "Avatel",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Avatel Telecom",
+  "grupo": "Avatel",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Carrefour Telecom",
+  "grupo": "Carrefour",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Euskaltel",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Fibracat",
+  "grupo": "Fibracat",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Finetwork",
+  "grupo": "Finetwork",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Guuk",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Hits Mobile",
+  "grupo": "Vodafone",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "ION mobile",
+  "grupo": "ION Mobile",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Jazztel",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Júbilo Telecom",
+  "grupo": "Júbilo",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Lebara",
+  "grupo": "Vodafone",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Llamaya",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Vodafone España, S.A.U. (marca Lowi)",
+  "marca": "Lowi",
+  "grupo": "Vodafone (Zegona)",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Lycamobile",
+  "grupo": "Lyca",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "MásMóvil",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Telefónica Móviles España, S.A.U. (marca O2)",
+  "marca": "O2",
+  "grupo": "Telefónica",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Parlem Telecom",
+  "grupo": "Parlem",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Pepemobile, S.L.U.",
+  "marca": "Pepephone",
+  "grupo": "MásOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "R",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Orange Espagne, S.A.U. (marca Simyo)",
+  "marca": "Simyo",
+  "grupo": "MásOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Suop",
+  "grupo": "Suop",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Telecable",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Virgin telco",
+  "grupo": "MasOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OMV",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Digi Spain Telecom, S.L.U.",
+  "marca": "DIGI Spain",
+  "grupo": "Digi",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Digi Spain Telecom, S.L.U.",
+  "marca": "Digi Mobil",
+  "grupo": "Digi",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Digi Spain Telecom, S.L.U.",
+  "marca": "Digi Spain Telecom",
+  "grupo": "Digi",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Orange Espagne, S.A.U.",
+  "marca": "Orange España",
+  "grupo": "MásOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Telefónica de España, S.A.U. / Telefónica Móviles España, S.A.U.",
+  "marca": "Telefónica / Movistar",
+  "grupo": "Telefónica",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Vodafone España, S.A.U. / Vodafone Ono, S.A.U.",
+  "marca": "Vodafone España",
+  "grupo": "Vodafone (Zegona)",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Xfera Móviles, S.A.U.",
+  "marca": "Yoigo",
+  "grupo": "MásOrange",
+  "categoria": "TELEFONÍA",
+  "subcategoria": "OPERADOR CON RED",
+  "ancla": "Registro de Operadores CNMC"
+ },
+ {
+  "cif": "A70302039",
+  "nombreFiscal": null,
+  "marca": "Abanca",
+  "grupo": "Abanca",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Aresbank",
+  "grupo": "Aresbank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A48265169",
+  "nombreFiscal": null,
+  "marca": "BBVA",
+  "grupo": "BBVA",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "BFF Bank",
+  "grupo": "BFF Banking Group",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "BNP Paribas España",
+  "grupo": "BNP Paribas",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A07004021",
+  "nombreFiscal": null,
+  "marca": "Banca March",
+  "grupo": "Banca March",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banca Nazionale del Lavoro / BNP Paribas",
+  "grupo": "BNP Paribas",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banca Progetto",
+  "grupo": "Banca Progetto",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banca Pueyo",
+  "grupo": "Banca Pueyo",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banco Caminos",
+  "grupo": "Banco Caminos",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banco Cooperativo Español",
+  "grupo": "Grupo Caja Rural",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A58469946",
+  "nombreFiscal": null,
+  "marca": "Banco Mediolanum",
+  "grupo": "Mediolanum",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A08000143",
+  "nombreFiscal": null,
+  "marca": "Banco Sabadell",
+  "grupo": "Sabadell",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A39000013",
+  "nombreFiscal": null,
+  "marca": "Banco Santander",
+  "grupo": "Santander",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banco de la Nación Argentina, Sucursal España",
+  "grupo": "Banco Nación Argentina",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Bank of America Europe DAC, sucursal España",
+  "grupo": "Bank of America",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A28157360",
+  "nombreFiscal": null,
+  "marca": "Bankinter",
+  "grupo": "Bankinter",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Barclays Bank Ireland, sucursal España",
+  "grupo": "Barclays",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Bitpanda",
+  "grupo": "Bitpanda",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Bunq",
+  "grupo": "bunq",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A08663619",
+  "nombreFiscal": null,
+  "marca": "CaixaBank",
+  "grupo": "CaixaBank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Cajasur Banco",
+  "grupo": "Kutxabank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Citibank Europe plc, sucursal España",
+  "grupo": "Citi",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Commerzbank AG, sucursal España",
+  "grupo": "Commerzbank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Crédit Agricole CIB España",
+  "grupo": "Crédit Agricole",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Deutsche Bank AG, sucursal España",
+  "grupo": "Deutsche Bank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A08000614",
+  "nombreFiscal": null,
+  "marca": "Deutsche Bank España",
+  "grupo": "Deutsche Bank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "EVO Banco",
+  "grupo": "Bankinter (integración)",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "HSBC Continental Europe España",
+  "grupo": "HSBC",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "W0037985G",
+  "nombreFiscal": null,
+  "marca": "ING Bank España",
+  "grupo": "ING",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "ING Bank N.V. Sucursal España",
+  "grupo": "ING",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A99319030",
+  "nombreFiscal": null,
+  "marca": "Ibercaja Banco",
+  "grupo": "Ibercaja",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "J.P. Morgan SE, Sucursal España",
+  "grupo": "J.P. Morgan",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Jyske Bank, sucursal España",
+  "grupo": "Jyske Bank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A95653077",
+  "nombreFiscal": null,
+  "marca": "Kutxabank",
+  "grupo": "Kutxabank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "MUFG Bank, sucursal España",
+  "grupo": "MUFG",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Mizuho Bank Europe, sucursal España",
+  "grupo": "Mizuho",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "N26",
+  "grupo": "N26",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Oney",
+  "grupo": "Oney",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A28021079",
+  "nombreFiscal": null,
+  "marca": "Openbank",
+  "grupo": "Santander",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Revolut Bank",
+  "grupo": "Revolut",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Scalable Capital Bank",
+  "grupo": "Scalable Capital",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Société Générale España",
+  "grupo": "Société Générale",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Svenska Handelsbanken, sucursal España",
+  "grupo": "Handelsbanken",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Trade Republic Bank",
+  "grupo": "Trade Republic",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "B38655767",
+  "nombreFiscal": null,
+  "marca": "Triodos Bank España",
+  "grupo": "Triodos",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A93139053",
+  "nombreFiscal": null,
+  "marca": "Unicaja Banco",
+  "grupo": "Unicaja",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A81831067",
+  "nombreFiscal": null,
+  "marca": "Wizink Bank",
+  "grupo": "Wizink",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "BANCO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "F04001475",
+  "nombreFiscal": null,
+  "marca": "Cajamar Caja Rural",
+  "grupo": "Cajamar",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "COOP. CRÉDITO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "F75076935",
+  "nombreFiscal": null,
+  "marca": "Laboral Kutxa",
+  "grupo": "Laboral Kutxa",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "COOP. CRÉDITO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Ruralcaja / Grupo Caja Rural",
+  "grupo": "Grupo Caja Rural",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "COOP. CRÉDITO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "BBVA Consumer Finance",
+  "grupo": "BBVA",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "EFC/FINANCIERA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "CaixaBank Payments & Consumer",
+  "grupo": "CaixaBank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "EFC/FINANCIERA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A78650348",
+  "nombreFiscal": null,
+  "marca": "Cetelem",
+  "grupo": "BNP Paribas",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "EFC/FINANCIERA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Cofidis",
+  "grupo": "Cofidis",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "EFC/FINANCIERA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A78959012",
+  "nombreFiscal": null,
+  "marca": "Santander Consumer Finance",
+  "grupo": "Santander",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "EFC/FINANCIERA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "PayPal",
+  "grupo": "PayPal",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "ENTIDAD DE PAGO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Wise Europe",
+  "grupo": "Wise",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "ENTIDAD DE PAGO",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Allfunds Bank",
+  "grupo": "Allfunds",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Andbank España",
+  "grupo": "Andbank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Banco Alcalá",
+  "grupo": "Crédit Agricole / Andbank histórico",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "CACEIS Bank Spain",
+  "grupo": "CACEIS",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "MyInvestor",
+  "grupo": "Andbank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A78260960",
+  "nombreFiscal": null,
+  "marca": "Renta 4 Banco",
+  "grupo": "Renta 4",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A78260960",
+  "nombreFiscal": null,
+  "marca": "Renta 4 Banco",
+  "grupo": "Renta 4",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": null,
+  "marca": "Santander Investment",
+  "grupo": "Santander",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A86521309",
+  "nombreFiscal": null,
+  "marca": "Singular Bank",
+  "grupo": "Singular Bank",
+  "categoria": "FINANCIERAS",
+  "subcategoria": "INVERSIÓN/PRIVADA",
+  "ancla": "Registro de entidades Banco de España"
+ },
+ {
+  "cif": "A60917978",
+  "nombreFiscal": "AXA Seguros Generales, S.A. de Seguros y Reaseguros",
+  "marca": "AXA",
+  "grupo": "AXA",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0723"
+ },
+ {
+  "cif": "A28007748",
+  "nombreFiscal": "Allianz, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Allianz",
+  "grupo": "Allianz",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0109"
+ },
+ {
+  "cif": "A28119220",
+  "nombreFiscal": "Occident GCO, S.A. de Seguros y Reaseguros",
+  "marca": "Catalana Occidente",
+  "grupo": "Occident",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0468"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Direct Seguros",
+  "marca": "Direct Seguros",
+  "grupo": "AXA",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "FIATC, Mutua de Seguros y Reaseguros a Prima Fija",
+  "marca": "Fiatc",
+  "grupo": "Fiatc",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: M0134"
+ },
+ {
+  "cif": "A28007268",
+  "nombreFiscal": "Generali España, S.A. de Seguros y Reaseguros",
+  "marca": "Generali",
+  "grupo": "Generali",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0072"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Génesis Seguros Generales, S.A. de Seguros y Reaseguros",
+  "marca": "Génesis / Liberty",
+  "grupo": "Generali",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A80871031",
+  "nombreFiscal": "Línea Directa Aseguradora, S.A. Compañía de Seguros y Reaseguros",
+  "marca": "Línea Directa",
+  "grupo": "Línea Directa",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0720"
+ },
+ {
+  "cif": "A28141935",
+  "nombreFiscal": "Mapfre España, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Mapfre",
+  "grupo": "Mapfre",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0058"
+ },
+ {
+  "cif": "V28027118",
+  "nombreFiscal": "Mutua Madrileña Automovilista, Sociedad de Seguros a Prima Fija",
+  "marca": "Mutua Madrileña",
+  "grupo": "Mutua Madrileña",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: M0083"
+ },
+ {
+  "cif": "G28031466",
+  "nombreFiscal": "Pelayo Mutua de Seguros y Reaseguros a Prima Fija",
+  "marca": "Pelayo",
+  "grupo": "Pelayo",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: M0050"
+ },
+ {
+  "cif": "A28119220",
+  "nombreFiscal": "Occident GCO, S.A. de Seguros y Reaseguros",
+  "marca": "Plus Ultra",
+  "grupo": "Occident",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0468"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Admiral Seguros, S.A.U.",
+  "marca": "Qualitas Auto / Balumba",
+  "grupo": "Admiral",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A78520293",
+  "nombreFiscal": "Reale Seguros Generales, S.A.",
+  "marca": "Reale",
+  "grupo": "Reale Mutua",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0613"
+ },
+ {
+  "cif": "A28119220",
+  "nombreFiscal": "Occident GCO, S.A. de Seguros y Reaseguros",
+  "marca": "Seguros Bilbao",
+  "grupo": "Occident",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0468"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Verti Aseguradora, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Verti",
+  "grupo": "Mapfre",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0785"
+ },
+ {
+  "cif": "W0072130H",
+  "nombreFiscal": "Zurich Insurance PLC, Sucursal en España",
+  "marca": "Zurich",
+  "grupo": "Zurich",
+  "categoria": "SEGURO COCHE",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: E0189"
+ },
+ {
+  "cif": "A60917978",
+  "nombreFiscal": "AXA Seguros Generales, S.A. de Seguros y Reaseguros",
+  "marca": "AXA",
+  "grupo": "AXA",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0723"
+ },
+ {
+  "cif": "A28007748",
+  "nombreFiscal": "Allianz, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Allianz",
+  "grupo": "Allianz",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0109"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Caja de Seguros Reunidos, Compañía de Seguros y Reaseguros, S.A. (Caser)",
+  "marca": "Caser",
+  "grupo": "Helvetia",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A28119220",
+  "nombreFiscal": "Occident GCO, S.A. de Seguros y Reaseguros",
+  "marca": "Catalana Occidente",
+  "grupo": "Occident",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0468"
+ },
+ {
+  "cif": "A28007268",
+  "nombreFiscal": "Generali España, S.A. de Seguros y Reaseguros",
+  "marca": "Generali",
+  "grupo": "Generali",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0072"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Helvetia Compañía Suiza, S.A. de Seguros y Reaseguros",
+  "marca": "Helvetia",
+  "grupo": "Helvetia",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A80871031",
+  "nombreFiscal": "Línea Directa Aseguradora, S.A. Compañía de Seguros y Reaseguros",
+  "marca": "Línea Directa",
+  "grupo": "Línea Directa",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0720"
+ },
+ {
+  "cif": "A28141935",
+  "nombreFiscal": "Mapfre España, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Mapfre",
+  "grupo": "Mapfre",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0058"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Mutua de Propietarios, Seguros y Reaseguros a Prima Fija, S.A.",
+  "marca": "Mutua de Propietarios",
+  "grupo": "Mutua de Propietarios",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Ocaso, S.A., Compañía de Seguros y Reaseguros",
+  "marca": "Ocaso",
+  "grupo": "Ocaso",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Santa Lucía, S.A., Compañía de Seguros y Reaseguros",
+  "marca": "Santalucía",
+  "grupo": "Santalucía",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A28011864",
+  "nombreFiscal": "SegurCaixa Adeslas, S.A. de Seguros y Reaseguros",
+  "marca": "SegurCaixa Adeslas",
+  "grupo": "Mutua Madrileña / CaixaBank",
+  "categoria": "SEGURO HOGAR",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0124"
+ },
+ {
+  "cif": "A28007748",
+  "nombreFiscal": "Allianz, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Allianz Vida",
+  "grupo": "Allianz",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0109"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "BBVASeguros, S.A. de Seguros y Reaseguros",
+  "marca": "BBVA Seguros",
+  "grupo": "BBVA",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Bankinter Seguros de Vida, S.A. de Seguros y Reaseguros",
+  "marca": "Bankinter Seguros de Vida",
+  "grupo": "Bankinter / Mapfre",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A28007268",
+  "nombreFiscal": "Generali España, S.A. de Seguros y Reaseguros",
+  "marca": "Generali Vida",
+  "grupo": "Generali",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0072"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Ibercaja Vida, Compañía de Seguros y Reaseguros, S.A.U.",
+  "marca": "Ibercaja Vida",
+  "grupo": "Ibercaja",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Mapfre Vida, S.A. de Seguros y Reaseguros sobre la Vida Humana",
+  "marca": "Mapfre Vida",
+  "grupo": "Mapfre",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Nationale-Nederlanden Vida, Compañía de Seguros y Reaseguros, S.A.E.",
+  "marca": "Nationale-Nederlanden",
+  "grupo": "NN Group",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Santander Seguros y Reaseguros, Compañía Aseguradora, S.A.",
+  "marca": "Santander Vida",
+  "grupo": "Santander",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A58333261",
+  "nombreFiscal": "VidaCaixa, S.A.U. de Seguros y Reaseguros",
+  "marca": "VidaCaixa",
+  "grupo": "CaixaBank",
+  "categoria": "SEGURO VIDA",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Almudena, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Almudena Seguros",
+  "grupo": "Almudena",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A28119220",
+  "nombreFiscal": "Occident GCO, S.A. de Seguros y Reaseguros",
+  "marca": "Catalana Occidente",
+  "grupo": "Occident",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0468"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Divina Pastora Seguros Generales, S.A.",
+  "marca": "Divina Pastora",
+  "grupo": "Divina Pastora",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A28007268",
+  "nombreFiscal": "Generali España, S.A. de Seguros y Reaseguros",
+  "marca": "Generali",
+  "grupo": "Generali",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0072"
+ },
+ {
+  "cif": "A28141935",
+  "nombreFiscal": "Mapfre España, Compañía de Seguros y Reaseguros, S.A.",
+  "marca": "Mapfre",
+  "grupo": "Mapfre",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0058"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Ocaso, S.A., Compañía de Seguros y Reaseguros",
+  "marca": "Ocaso",
+  "grupo": "Ocaso",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": null,
+  "nombreFiscal": "Santa Lucía, S.A., Compañía de Seguros y Reaseguros",
+  "marca": "Santalucía",
+  "grupo": "Santalucía",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP (verificar)"
+ },
+ {
+  "cif": "A28011864",
+  "nombreFiscal": "SegurCaixa Adeslas, S.A. de Seguros y Reaseguros",
+  "marca": "SegurCaixa Adeslas",
+  "grupo": "Mutua Madrileña / CaixaBank",
+  "categoria": "SEGURO DECESOS",
+  "subcategoria": "ENTIDAD ASEGURADORA",
+  "ancla": "Clave DGSFP: C0124"
+ }
+]

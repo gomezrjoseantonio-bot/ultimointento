@@ -98,8 +98,43 @@ resuelve «¿cuál de mis 3 comunidades?». Test corregido con la evidencia dent
 
 ## 4 · PASO 3 · Catálogo nacional (§7.3 · E2.6)
 
-- **Semilla en el código** (`catalogoNacional/entidadesNacionales.ts`, 22 NIF · 146 alias):
-  un cliente nuevo la tiene el día cero sin importar nada.
+**Se CARGA el fichero de Jose**, no se reconstruye: `catalogo-nacional-proveedores.json`,
+**308 entidades reales** (68 luz, 67 financieras, 49 agua, 44 telefonía, 34 gas, 46
+seguros) con marca, grupo, CIF y «ancla de reconocimiento». El catálogo pasa de 22 NIF ·
+146 alias a **47 NIF · 381 alias**.
+
+Traducir al catálogo único tiene **tres decisiones que no son mecánicas**, y las tres
+tienen test:
+
+1. **Un BANCO no es un préstamo.** En `FINANCIERAS · BANCO` están Santander, Sabadell,
+   Unicaja, BBVA e ING — los bancos del propio Jose. Mapearlos a «crédito al consumo»
+   convertiría cada comisión y cada liquidación de intereses de su cuenta en la cuota de
+   un préstamo. Un BANCO entra en el catálogo pero **no propone familia**; las excepciones
+   son las *monoline* de consumo (WiZink, Oney), en una lista corta y auditable.
+2. **Una entidad de pago tampoco.** PayPal y Wise son el tubo, no el destino. Sin familia.
+3. **Un CIF en dos categorías pierde el subtipo.** Endesa es el mismo CIF en LUZ y GAS;
+   Mapfre, en coche, hogar y decesos. Se conserva la familia y se deja el subtipo vacío.
+
+**211 de las 308 se traducen**; las 97 restantes (bancos, entidades de pago, gestoras) se
+quedan fuera a propósito: estar en el fichero no es saber qué es un cargo suyo.
+
+**⚠️ Seis CIF del fichero no pasan el dígito de control** (Octopus Energy España
+`B88290798`, Repsol Comercializadora `B86374213`, Banco Mediolanum `A58469946`, ING Bank
+España `W0037985G`, Renta 4 `A78260960` ×2). Esas filas entran **solo por nombre**: cruzar
+por un CIF mal copiado ataría un recibo a quien no es.
+
+**⚠️ Iberdrola son DOS sociedades, no una.** El fichero trae `A95758389` (Iberdrola
+Clientes); los recibos reales de Sabadell traen `A95554630` en «Referencia 1», y su
+concepto dice «IBERDROLA COMERCIALIZACION DE U» — el Comercializador de Último Recurso.
+Los dos son CIF válidos y **están los dos**: sin el segundo, el catálogo no casaría ni uno
+de los recibos de Jose. El que traía `providerDirectoryService` (`A95075578`) no es ninguno.
+
+- **El complemento** (`entidadesNacionales.ts`): lo que las 308 no traen y el corpus sí
+  necesita — Wekiwi y Visalia con su CIF sacado del propio extracto, Tuio, Bip&Drive,
+  Ayvens, Feebbo, MetLife, Finutive; los **alias recortados** que escribe cada banco
+  («FCC AQUALI447497», «DIGI SPAIN400245», «BIP   DRIVE, S.A.»), que ningún registro
+  oficial recoge; y los **patrones** («Comunitat de Propietaris», «Ajuntament de…») que
+  absorben las listas de `reglasDuras`.
 - **Lo aprendido en la base** (store `catalogoProveedores`, V95): clave única
   `nif:A95554630` / `nombre:WIZINK` + **recuento de confirmaciones**. WiZink lo enseña el
   primero, lo heredan los demás.
@@ -149,6 +184,15 @@ Los tres se verifican por test contra el texto real de los ficheros de esos banc
 El 98,8 % de la auditoría se calculó sobre el corpus multibanco de los 9 ficheros, no sobre
 este snapshot de una cuenta. **Son dos poblaciones distintas y no se pueden comparar.**
 
+**d) Cargar las 308 no mueve ESTE corpus, y eso es exactamente lo esperable.**
+El catálogo pasa de 22 a 47 NIF y de 146 a 381 alias, y el porcentaje se queda **igual, en
+32,0 %**. No es un fallo de carga (verificado: WiZink → crédito al consumo, Endesa → CIF
+compartido sin subtipo, Santander → no propone nada). Es que **Jose no es cliente de esas
+300 empresas**: las suyas —Segurcaixa, Aqualia, la comunidad, el ayuntamiento, Ayvens—
+ya estaban cubiertas. Las 308 no están para mover el corpus de Jose: están para que el
+cliente 2, que tiene Naturgy y Holaluz y Cofidis, **no tenga que enseñar nada**. Ese es
+el valor y no se ve en este número.
+
 **Qué haría falta para medir de verdad el 60 %:** un snapshot con las líneas de las 9
 cuentas, no de una. Con eso, (a) sigue siendo §7.4, pero (c) deja de ser un cero.
 
@@ -158,7 +202,8 @@ cuentas, no de una. Con eso, (a) sigue siendo §7.4, pero (c) deja de ser un cer
 
 | Pedido | Estado | Dónde |
 |---|---|---|
-| % sin reglas duras, antes y después | ✅ 22,8 % → 32,0 % (objetivo 60 % **NO** alcanzado · §6) | `scripts/medir-motor.mjs` |
+| % sin reglas duras, antes y después | ✅ 22,8 % → 32,0 % (objetivo 60 % **NO** alcanzado · §6) | `npm run medir:motor` |
+| Cargar el catálogo de 308, no reconstruirlo | ✅ 211 traducidas · 47 NIF · 381 alias | `desdeCatalogoNacional.ts` |
 | Financiera Carrefour / WiZink / Cetelem / BCF → `prestamo_hipoteca·credito_consumo` | ✅ | `catalogoNacional.test.ts` |
 | Dos Iberdrola de dos pisos → cada uno por su mandato | ✅ | `mandatoYAcreedor.test.ts` |
 | Traspaso entre dos cuentas → ambas patas, cuenta pareja nombrada | ✅ | `cruceDePatas.test.ts` |
