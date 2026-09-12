@@ -17,6 +17,7 @@
 import type { IDBPDatabase } from 'idb';
 import type { Movement } from '../db';
 import type { OrigenDeterminista } from './tipos';
+import { idDePagoDeCuota } from '../prestamoInversionCuadro';
 
 /** Lo que hace falta de la base · para poder probar esto sin abrir IndexedDB. */
 export interface BaseParaCierre {
@@ -64,16 +65,38 @@ async function anotarEnPrestamo(db: BaseParaCierre, o: OrigenDeterminista, m: Mo
   await db.put('prestamos', pr);
 }
 
+type PosicionConPagos = { rendimiento?: { pagos_generados?: Array<Record<string, unknown>> } };
+
 /** Marca el pago de rendimiento como cobrado por este movimiento. */
 async function anotarEnInversion(db: BaseParaCierre, o: OrigenDeterminista, m: Movement): Promise<void> {
-  if (o.desglose?.tipo !== 'rendimiento') return;
-  const pos = (await db.get('inversiones', Number(o.origenId) || o.origenId)) as
-    | { rendimiento?: { pagos_generados?: Array<Record<string, unknown>> } }
-    | undefined;
-  const pagos = pos?.rendimiento?.pagos_generados;
-  if (!pagos) return;
-  const pago = pagos.find((p) => String(p.id) === o.piezaId);
-  if (!pago) return;
+  const desglose = o.desglose;
+  if (desglose?.tipo !== 'rendimiento' && desglose?.tipo !== 'cuota_inversion') return;
+  const pos = (await db.get('inversiones', Number(o.origenId) || o.origenId)) as PosicionConPagos | undefined;
+  if (!pos?.rendimiento) return;
+
+  if (desglose.tipo === 'rendimiento') {
+    const pago = pos.rendimiento.pagos_generados?.find((p) => String(p.id) === o.piezaId);
+    if (!pago) return;
+    pago.estado = 'pagado';
+    pago.movimiento_id = m.id;
+    await db.put('inversiones', pos);
+    return;
+  }
+
+  // E2.4.2-fix2b · la cuota del cuadro. El pago puede existir ya (el alta con
+  // «dar por cobradas» los crea con la fecha del cuadro) o no; en los dos
+  // casos queda con el desglose del cuadro y la huella del movimiento. La
+  // previsión mira `pagado` por fecha para no volver a proponer esta cuota, y
+  // el IRPF lee de aquí el interés bruto y la retención.
+  const pagos = pos.rendimiento.pagos_generados ?? (pos.rendimiento.pagos_generados = []);
+  let pago = pagos.find((p) => String(p.fecha_pago ?? '').startsWith(desglose.fecha));
+  if (!pago) {
+    pago = { id: idDePagoDeCuota(desglose.periodo, desglose.fecha), fecha_pago: desglose.fecha, cuenta_destino_id: m.accountId };
+    pagos.push(pago);
+  }
+  pago.importe_bruto = desglose.interes;
+  pago.retencion_fiscal = desglose.retencion;
+  pago.importe_neto = desglose.neto;
   pago.estado = 'pagado';
   pago.movimiento_id = m.id;
   await db.put('inversiones', pos);

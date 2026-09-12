@@ -20,9 +20,9 @@ import {
 } from '../catalogoUnico';
 
 describe('catalogoUnico · el árbol', () => {
-  it('tiene exactamente las familias del DEFINITIVO · 7 ingreso · 22 gasto · 4 interno', () => {
+  it('tiene exactamente las familias del DEFINITIVO · 8 ingreso · 22 gasto · 4 interno', () => {
     expect(familiasDe('ingreso').map((f) => f.id)).toEqual([
-      'nomina', 'pension', 'autonomo', 'alquiler', 'rendimiento', 'venta', 'otros_ingresos',
+      'nomina', 'pension', 'autonomo', 'alquiler', 'rendimiento', 'venta', 'inversion', 'otros_ingresos',
     ]);
     expect(familiasDe('gasto').map((f) => f.id)).toEqual([
       'comunidad', 'suministro', 'seguros_alarmas', 'impuestos_tasas', 'reparacion_mantenimiento',
@@ -33,7 +33,7 @@ describe('catalogoUnico · el árbol', () => {
     expect(familiasDe('movimiento_interno').map((f) => f.id)).toEqual([
       'traspaso', 'aportacion', 'disposicion_prestamo', 'fianza',
     ]);
-    expect(FAMILIAS).toHaveLength(33);
+    expect(FAMILIAS).toHaveLength(34);
   });
 
   it('los ids son únicos y ninguna familia repite subtipo', () => {

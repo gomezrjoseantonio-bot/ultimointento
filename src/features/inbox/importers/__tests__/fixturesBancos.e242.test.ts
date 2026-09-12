@@ -12,6 +12,8 @@ import { BankParserService } from '../bankParser';
 import { clasificarLinea, type ContextoClasificacion } from '../../../../services/clasificacion/clasificarLinea';
 import type { Movement } from '../../../../services/db';
 import { traspasosPropios } from '../../../../services/deterministas/traspasosPropios';
+import { cuotasDeInversionQueCuadran } from '../../../../services/deterministas/cuotasDeInversion';
+import type { PosicionInversion } from '../../../../types/inversiones';
 import type { Account } from '../../../../services/db/types-contratos';
 
 const parser = new BankParserService();
@@ -159,17 +161,42 @@ describe('Revolut · 5 líneas · fecha-hora y la columna Type', () => {
 // Jose (11 sep 2026): «el motor ya clasifica, la clasificación está enterrada».
 // Este bloque fija lo que el CONCEPTO resuelve del fichero, más lo que
 // reconocen las cuentas propias (`traspasosPropios` · el titular moviéndose
-// dinero). Sin recurrentes y sin el préstamo de socio: eso es otra fuente (D5).
+// dinero) y el préstamo de socio del store (`cuotasDeInversionQueCuadran` ·
+// E2.4.2-fix2b). Sin recurrentes.
 //
 // Los números honestos, con las decisiones de Jose aplicadas: FINUTIVE es
-// gestoría (D3), el IVA NO se clasifica (D4), UNIHOUSER no entra por concepto
-// (D3 · las cuotas van por el préstamo del store, las facturas se quedan hasta
-// que él las confirme) y «JUNIO 2025» no dice nada. 38 de 49 con sus ejes; las
-// 11 que quedan son las que de verdad hay que preguntar.
+// gestoría (D3), el IVA NO se clasifica (D4), las dos cuotas de UNIHOUSER las
+// reconoce el cuadro del préstamo (527,92 y 528,16 · «Inversión · Préstamo
+// P2P»), las 5 facturas de UNIHOUSER no entran por concepto (D0 · regla
+// aprendida, no nombre de Jose en una regla dura) y «JUNIO 2025» no dice nada.
+// 40 de 49 con sus ejes; las 9 que quedan son las que de verdad hay que preguntar.
 
-describe('Abanca · 49 líneas · el concepto y las cuentas propias', () => {
+describe('Abanca · 49 líneas · el concepto, las cuentas propias y el préstamo de socio', () => {
   const TITULAR = ['Jose Antonio Gomez Ramirez'];
   const CUENTAS = [{ id: 5, iban: 'ES0000000000000000000000', status: 'ACTIVE' }] as unknown as Account[];
+  // El préstamo de Jose tal y como está en Inversiones (P3 · parámetros reales):
+  // 30.000 € · TIN 3,25 % · 60 meses · cuota francesa · mensual · retención 19 %
+  // · primer cobro 01-03-2025. El cuadro NO se guarda: se recalcula de esto.
+  const PRESTAMO_SOCIO = {
+    id: 7,
+    nombre: 'Préstamo Socio',
+    entidad: 'Unihouser',
+    tipo: 'prestamo_p2p',
+    activo: true,
+    total_aportado: 30000,
+    valor_actual: 30000,
+    duracion_meses: 60,
+    modalidad_devolucion: 'capital_e_intereses',
+    frecuencia_cobro: 'mensual',
+    retencion_fiscal: 19,
+    rendimiento: {
+      tasa_interes_anual: 3.25,
+      frecuencia_pago: 'mensual',
+      fecha_primer_cobro: '2025-03-01T12:00:00.000Z',
+      retencion_porcentaje: 19,
+      pagos_generados: [],
+    },
+  } as unknown as PosicionInversion;
 
   async function abanca() {
     const buffer = fs.readFileSync(path.join(DIR, 'abanca-fixture.csv'));
@@ -184,8 +211,11 @@ describe('Abanca · 49 líneas · el concepto y las cuentas propias', () => {
       naturaleza: m.amount >= 0 ? 'ingreso' : 'gasto',
       ambito: 'personal',
     }) as Movement);
-    // Lo que las cuentas propias reconocen · el titular moviéndose dinero.
-    const propios = new Map(traspasosPropios(movs, CUENTAS, TITULAR).map((o) => [o.movementId, o]));
+    // Lo que las cuentas propias reconocen · el titular moviéndose dinero · y
+    // lo que el cuadro del préstamo de socio reconoce · sus cuotas.
+    const propios = new Map(
+      [...traspasosPropios(movs, CUENTAS, TITULAR), ...cuotasDeInversionQueCuadran(movs, [PRESTAMO_SOCIO])].map((o) => [o.movementId, o]),
+    );
     return { parsed: r, filas: movs.map((mov) => ({
       desc: mov.description,
       fecha: mov.date,
@@ -226,18 +256,29 @@ describe('Abanca · 49 líneas · el concepto y las cuentas propias', () => {
       expect(f.c.familia).toBeUndefined();
       expect(f.c.motivos.join(' ')).toMatch(/Hacienda.*IVA/);
     }
-    // UNIHOUSER no entra por concepto (D3) · las cuotas las reconoce el préstamo del store.
-    for (const f of todas(/UNIHOUSER/)) expect(f.c.familia).toBeUndefined();
-    expect(todas(/UNIHOUSER/)).toHaveLength(7);
+    // UNIHOUSER · las dos cuotas las reconoce el cuadro del préstamo del store
+    // (E2.4.2-fix2b): un ingreso, uno solo, con la familia que dice el store.
+    const unihouser = todas(/UNIHOUSER/);
+    expect(unihouser).toHaveLength(7);
+    const cuotas = unihouser.filter((f) => f.importe === 527.92 || f.importe === 528.16);
+    expect(cuotas).toHaveLength(2);
+    for (const f of cuotas) {
+      expect(f.c).toMatchObject({ naturaleza: 'ingreso', familia: 'inversion', subtipo: 'prestamo_p2p' });
+      expect(f.c.origen.familia).toBe('identificador');
+      expect(f.c.motivos.join(' ')).toMatch(/Cuota [56]\/60 · Préstamo Socio · Unihouser/);
+    }
+    // Las 5 facturas por servicios NO entran por concepto (D0) · regla aprendida.
+    for (const f of unihouser.filter((x) => !cuotas.includes(x))) expect(f.c.familia).toBeUndefined();
     // «JUNIO 2025» no dice nada · y no se inventa.
     expect(todas(/^JUNIO 2025$/)[0].c.familia).toBeUndefined();
 
     const r = resumen(filas);
     expect(r.total).toBe(49);
-    // 8 + 8 + 8 + 9 por concepto, + 5 traspasos propios = 38 con sus ejes.
-    expect(r.conFamilia).toBe(38);
+    // 8 + 8 + 8 + 9 por concepto, + 5 traspasos propios, + 2 cuotas del
+    // préstamo de socio = 40 con sus ejes.
+    expect(r.conFamilia).toBe(40);
     expect(r.interno).toBe(13);
-    // 7 UNIHOUSER + 3 IVA + 1 JUNIO · las que de verdad hay que preguntar.
-    expect(r.sinFamilia).toBe(11);
+    // 5 facturas UNIHOUSER + 3 IVA + 1 JUNIO · las que de verdad hay que preguntar.
+    expect(r.sinFamilia).toBe(9);
   });
 });

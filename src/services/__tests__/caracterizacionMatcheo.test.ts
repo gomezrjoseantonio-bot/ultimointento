@@ -457,7 +457,8 @@ describe('reconocerDeterministas · el lote de agosto contra los libros del usua
     expect(Array.from(r.origenes.entries())).toEqual([
       [1, { movementId: 1, fuente: 'prestamo', origenId: 'p1', piezaId: '7', titulo: 'Cuota 7/2 · Unicaja Tenderina', como: 'fecha_importe', desglose: { tipo: 'prestamo', periodo: 7, interes: 120.4, amortizacion: 334.26 }, inmuebleId: 4 }],
       [19, { movementId: 19, fuente: 'venta', origenId: '7', piezaId: 'cobro', titulo: 'Cobro de la venta', como: 'fecha_importe', inmuebleId: 5 }],
-      [10, { movementId: 10, fuente: 'inversion', origenId: 'i1', piezaId: '5', titulo: 'Rendimiento · SmartFlip', como: 'fecha_importe', desglose: { tipo: 'rendimiento', bruto: 750, retencion: 142.5, neto: 607.5 } }],
+      // E2.4.2-fix2b · P2 (Jose · 12 sep): «si es un interés, un rendimiento» · el origen trae su familia.
+      [10, { movementId: 10, fuente: 'inversion', origenId: 'i1', piezaId: '5', titulo: 'Rendimiento · SmartFlip', como: 'fecha_importe', familia: 'rendimiento', subtipo: 'interes', desglose: { tipo: 'rendimiento', bruto: 750, retencion: 142.5, neto: 607.5 } }],
       [9, { movementId: 9, fuente: 'nomina', origenId: '1', titulo: 'Nómina · Orange', como: 'concepto_cuenta_dia' }],
       // E2.4 · el recibo de Naturgy (17) casa contra la DEFINICIÓN del recurrente
       // «Gas Tenderina» (texto + 56 € exactos de un fijo) SIN previsión. Hasta

@@ -8,6 +8,8 @@
 import { cuotasQueCuadran } from '../cuotasDePrestamo';
 import { ventasQueCuadran } from '../ventasDeInmueble';
 import { rendimientosQueCuadran } from '../rendimientosDeInversion';
+import { cuotasDeInversionQueCuadran } from '../cuotasDeInversion';
+import type { PosicionInversion } from '../../../types/inversiones';
 import { nominasQueSeReconocen } from '../nominas';
 import { atribucionesDeclaradas } from '../gastoDeclaradoPorInmueble';
 import type { Movement } from '../../db';
@@ -132,6 +134,108 @@ describe('2 · neto de inversión', () => {
 
   it('un cobro de rendimiento ENTRA en la cuenta · un cargo no lo es', () => {
     expect(rendimientosQueCuadran([mov({ id: 2, date: '2026-08-12', amount: -607.5 })], [posicion()])).toHaveLength(0);
+  });
+});
+
+// E2.4.2-fix2b · el préstamo de socio de Jose, con sus parámetros reales:
+// 30.000 € · TIN 3,25 % · 60 meses · cuota francesa · mensual · retención 19 %
+// · primer cobro 01-03-2025. Cuota 5 (01-07-2025): interés 76,23 · retención
+// 14,48 · capital 466,17 → neto 527,92. Cuota 6 (01-08-2025): neto 528,16.
+describe('2 bis · cuota de un préstamo CONCEDIDO · contra el cuadro recalculado', () => {
+  const prestamoSocio = (over: Record<string, unknown> = {}) =>
+    ({
+      id: 7,
+      nombre: 'Préstamo Socio',
+      entidad: 'Unihouser',
+      tipo: 'prestamo_p2p',
+      activo: true,
+      total_aportado: 30000,
+      valor_actual: 30000,
+      duracion_meses: 60,
+      modalidad_devolucion: 'capital_e_intereses',
+      frecuencia_cobro: 'mensual',
+      retencion_fiscal: 19,
+      rendimiento: {
+        tasa_interes_anual: 3.25,
+        frecuencia_pago: 'mensual',
+        fecha_primer_cobro: '2025-03-01T12:00:00.000Z',
+        retencion_porcentaje: 19,
+        pagos_generados: [],
+      },
+      ...over,
+    }) as unknown as PosicionInversion;
+  const cuota = (over: Partial<Movement> & { id: number }) =>
+    mov({ date: '2025-07-01', amount: 527.92, description: 'UNIHOUSER S.L.', naturaleza: 'ingreso', ...over });
+
+  it('el neto de la cuota casa al céntimo · un ingreso «Inversión · Préstamo P2P» con el desglose por detrás', () => {
+    const r = cuotasDeInversionQueCuadran([cuota({ id: 1 })], [prestamoSocio()]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({
+      fuente: 'inversion',
+      origenId: '7',
+      piezaId: 'cuadro:5',
+      titulo: 'Cuota 5/60 · Préstamo Socio · Unihouser',
+      como: 'fecha_importe',
+      familia: 'inversion',
+      subtipo: 'prestamo_p2p',
+      desglose: { tipo: 'cuota_inversion', periodo: 5, fecha: '2025-07-01', interes: 76.23, retencion: 14.48, amortizacion: 466.17, neto: 527.92 },
+    });
+  });
+
+  it('la cuota siguiente también · el interés baja y el capital sube', () => {
+    const r = cuotasDeInversionQueCuadran([cuota({ id: 2, date: '2025-08-01', amount: 528.16 })], [prestamoSocio()]);
+    expect(r).toHaveLength(1);
+    expect(r[0].desglose).toMatchObject({ periodo: 6, interes: 74.97, amortizacion: 467.43, neto: 528.16 });
+  });
+
+  it('la fecha del cuadro se acepta a ±5 días · el importe sigue exacto', () => {
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1, date: '2025-07-04' })], [prestamoSocio()])).toHaveLength(1);
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1, date: '2025-07-09' })], [prestamoSocio()])).toHaveLength(0);
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1, amount: 527.93 })], [prestamoSocio()])).toHaveLength(0);
+  });
+
+  it('una factura de la misma empresa NO es una cuota · se queda sin reconocer', () => {
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1, date: '2025-05-26', amount: 1391.25 })], [prestamoSocio()])).toHaveLength(0);
+  });
+
+  it('un periodo cuyo pago ya tiene movimiento no se vuelve a casar', () => {
+    const ya = prestamoSocio({
+      rendimiento: {
+        tasa_interes_anual: 3.25, frecuencia_pago: 'mensual', fecha_primer_cobro: '2025-03-01T12:00:00.000Z', retencion_porcentaje: 19,
+        pagos_generados: [{ id: 1, fecha_pago: '2025-07-01', importe_neto: 527.92, estado: 'pagado', movimiento_id: 99 }],
+      },
+    });
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1 })], [ya])).toHaveLength(0);
+    // Un pago apuntado SIN movimiento (el alta con «dar por cobradas») sí deja casar.
+    const sinMov = prestamoSocio({
+      rendimiento: {
+        tasa_interes_anual: 3.25, frecuencia_pago: 'mensual', fecha_primer_cobro: '2025-03-01T12:00:00.000Z', retencion_porcentaje: 19,
+        pagos_generados: [{ id: 1, fecha_pago: '2025-07-01', importe_neto: 527.92, estado: 'pagado' }],
+      },
+    });
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1 })], [sinMov])).toHaveLength(1);
+  });
+
+  it('un periodo explica UNA línea · dos abonos iguales, se queda el más cercano', () => {
+    const r = cuotasDeInversionQueCuadran([cuota({ id: 1, date: '2025-07-03' }), cuota({ id: 2, date: '2025-07-01' })], [prestamoSocio()]);
+    expect(r.map((o) => o.movementId)).toEqual([2]);
+  });
+
+  it('dos préstamos con la misma cuota el mismo día · empate, no se elige', () => {
+    const otro = prestamoSocio({ id: 8, nombre: 'Otro préstamo' });
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1 })], [prestamoSocio(), otro])).toHaveLength(0);
+  });
+
+  it('una cuota ENTRA · un cargo no lo es · y sin cuadro no hay nada que casar', () => {
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1, amount: -527.92 })], [prestamoSocio()])).toHaveLength(0);
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1 })], [prestamoSocio({ duracion_meses: undefined })])).toHaveLength(0);
+    expect(cuotasDeInversionQueCuadran([cuota({ id: 1 })], [prestamoSocio({ tipo: 'deposito_plazo' })])).toHaveLength(0);
+  });
+
+  it('P2 · un interés solo, apuntado como pago, trae su familia · rendimiento · interés', () => {
+    const pos = { id: 'i1', nombre: 'Cuenta remunerada', tipo: 'cuenta_remunerada', rendimiento: { pagos_generados: [{ id: 5, fecha_pago: '2026-08-12', importe_bruto: 750, retencion_fiscal: 142.5, importe_neto: 607.5, estado: 'pendiente' }] } } as never;
+    const r = rendimientosQueCuadran([mov({ id: 2, date: '2026-08-12', amount: 607.5 })], [pos]);
+    expect(r[0]).toMatchObject({ familia: 'rendimiento', subtipo: 'interes' });
   });
 });
 
