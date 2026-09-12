@@ -123,28 +123,51 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     expect(octopus?.familia).toBe('suministro');
   });
 
-  it('el catálogo CRECE · una entrada nueva nace con 1 confirmación y la segunda suma', async () => {
-    const filas: Record<string, unknown>[] = [];
+  it('E3.1b · lo aprendido va a `proveedores`, que es el ÚNICO sitio · y suma confirmaciones', async () => {
+    const filas = new Map<string, Record<string, unknown>>();
     const db = {
-      getAll: async () => filas,
+      get: async (_s: string, k: unknown) => filas.get(String(k)),
       put: async (_s: string, v: unknown) => {
-        const fila = v as { clave: string };
-        const i = filas.findIndex((f) => (f as { clave: string }).clave === fila.clave);
-        if (i >= 0) filas[i] = fila as Record<string, unknown>;
-        else filas.push(fila as Record<string, unknown>);
+        const fila = v as { nif: string };
+        filas.set(fila.nif, fila as Record<string, unknown>);
         return 1;
       },
     };
-    const entrada = { nombre: 'WiZink Bank', nif: 'A81831067', alias: ['WIZINK'], familia: 'prestamo_hipoteca' as const };
+    const entrada = { nombre: 'WiZink Bank', nif: 'A81831067', alias: ['WIZINK'], familia: 'prestamo_hipoteca' as const, origen: 'nacional' as const };
     const primera = await aprenderEnCatalogo(db, entrada);
     expect(primera?.confirmaciones).toBe(1);
-    expect(primera?.clave).toBe('nif:A81831067');
-    expect(primera?.procedencia).toBe('aprendido');
+    expect(primera?.nif).toBe('A81831067');
+    expect(primera?.origen).toBe('nacional');
     // La misma entidad otra vez NO se duplica: suma una confirmación.
     const segunda = await aprenderEnCatalogo(db, { ...entrada, alias: ['WIZINK BANK SA'] });
     expect(segunda?.confirmaciones).toBe(2);
-    expect(filas).toHaveLength(1);
+    expect(filas.size).toBe(1);
     expect(segunda?.alias).toEqual(['WIZINK', 'WIZINK BANK SA']);
+  });
+
+  it('aprender NO pisa lo que ya era del cliente · ni sus `tipos` AEAT ni su familia', async () => {
+    // El fontanero ya está en `proveedores` con su casilla AEAT puesta por la
+    // declaración. El motor no puede cambiarle eso por reconocer un recibo.
+    const existente = {
+      nif: 'B33558172',
+      tipos: ['reparacion'],
+      familia: 'reparacion_mantenimiento',
+      origen: 'cliente',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+    const filas = new Map<string, Record<string, unknown>>([['B33558172', existente]]);
+    const db = {
+      get: async (_s: string, k: unknown) => filas.get(String(k)),
+      put: async (_s: string, v: unknown) => {
+        filas.set((v as { nif: string }).nif, v as Record<string, unknown>);
+        return 1;
+      },
+    };
+    const tras = await aprenderEnCatalogo(db, { nif: 'B33558172', familia: 'suministro', origen: 'nacional' });
+    expect(tras?.tipos).toEqual(['reparacion']);
+    expect(tras?.familia).toBe('reparacion_mantenimiento');
+    expect(tras?.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(tras?.confirmaciones).toBe(1);
   });
 
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {

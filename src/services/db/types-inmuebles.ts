@@ -585,33 +585,10 @@ export interface MuebleInmueble {
   updatedAt: string;
 }
 
-export interface Proveedor {
-  nif: string;
-  nombre?: string;
-  tipos: string[];
-  /** E3.1 · §7.3 · familia/subtipo del catálogo único · `tipos` dice la casilla AEAT, esto dice QUÉ ES (ver `desdeProveedoresIrpf`). */
-  familia?: string;
-  subtipo?: string;
-  /**
-   * V77 · wizard import XML V2 (pilar 3) · placeholder creado desde el XML sin
-   * nombre conocido. La UI muestra badge "sin nombre" y el usuario lo completa
-   * después. Sin índice · no requiere bump adicional.
-   */
-  sinNombre?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface OperacionProveedor {
-  id?: number;
-  proveedorNif: string;
-  inmuebleId: number;
-  ejercicio: number;
-  tipo: 'mejora' | 'reparacion' | 'gestion' | 'servicios';
-  importe: number;
-  documentId?: number;
-  createdAt: string;
-}
+// E3.1b · `Proveedor` y `OperacionProveedor` viven en `types-proveedores.ts`:
+// un proveedor no es una cosa de inmuebles, es quien cobra. Se reexportan aquí
+// para no romper a quien ya los importaba de este fichero.
+export type { Proveedor, OperacionProveedor } from './types-proveedores';
 
 // H-OCR: OCR field definition
 export interface OCRField {

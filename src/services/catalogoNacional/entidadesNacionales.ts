@@ -62,6 +62,8 @@ export interface EntidadNacional {
   subtipo?: string;
   /** Sugerido · nunca fija el piso, solo dice dónde suele caer. */
   ambito?: Ambito;
+  /** Veces que el cliente lo ha confirmado · solo lo suyo lo trae; la semilla no. */
+  confirmaciones?: number;
 }
 
 /** Sin espacios, puntos, guiones ni tildes · la forma en que se comparan los alias. */

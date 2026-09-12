@@ -141,9 +141,15 @@ de los recibos de Jose. El que traía `providerDirectoryService` (`A95075578`) n
   («FCC AQUALI447497», «DIGI SPAIN400245», «BIP   DRIVE, S.A.»), que ningún registro
   oficial recoge; y los **patrones** («Comunitat de Propietaris», «Ajuntament de…») que
   absorben las listas de `reglasDuras`.
-- **Lo aprendido en la base** (store `catalogoProveedores`, V95): clave única
-  `nif:A95554630` / `nombre:WIZINK` + **recuento de confirmaciones**. WiZink lo enseña el
-  primero, lo heredan los demás.
+- **Lo aprendido en la base** · **E3.1b · UN SOLO STORE** (decisión de Jose, 12 sep).
+  El store `catalogoProveedores` nació en V95 y se retira en V96: dejaba
+  `familia`/`subtipo` en DOS sitios para la misma pregunta —«¿quién cobra y qué es?»—
+  sin dar nada que `proveedores` no pudiera dar, y `proveedores` ya está indexado por
+  NIF, que es justo la clave del catálogo. Ahora todo vive ahí, con `alias[]`,
+  `confirmaciones` y `origen` (`'cliente'` | `'nacional'`). `origen: 'nacional'` marca lo
+  ÚNICO compartible el día que esto viaje a un servidor, y solo se pone sobre un **CIF de
+  EMPRESA**: el DNI del fontanero de un cliente no sale de su navegador. Aprender NO pisa
+  los `tipos` AEAT ni una familia que el usuario hubiera puesto a mano.
 - **Los proveedores del IRPF** entran por NIF, con `familia` derivada de `tipos` AEAT.
 - **NIF de Iberdrola CORREGIDO**: `providerDirectoryService` decía `A95075578`; el real,
   el que Sabadell escribe en «Referencia 1», es **`A95554630`**. Con test contra el fixture.
