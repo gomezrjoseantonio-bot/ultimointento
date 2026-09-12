@@ -174,3 +174,45 @@ describe('validadores', () => {
     expect(esIban('ES6121037003520030084437')).toBe(false);
   });
 });
+
+// E3.1 · la tarjeta escrita ENTERA · Santander y BBVA no la enmascaran.
+//
+// Antes solo se leía la forma con asteriscos («Revolut**9527*»), así que de
+// «Compra Revolut**0940*, Tarjeta 5489010341469623» ATLAS se quedaba con 0940
+// —que es el número que Revolut mete en el nombre del comercio— y perdía el de
+// la tarjeta que pagaba. Sin él no hay forma de ver que ese cargo y la
+// «Recarga de *9623» del extracto de Revolut son el mismo dinero.
+//
+// Del número completo solo se guardan los cuatro últimos. Los de aquí son
+// inventados: un número de tarjeta real no entra en el repositorio.
+describe('la tarjeta escrita entera', () => {
+  const tarjetasDe = (description: string) =>
+    identificadoresDeMovimiento({ description })
+      .filter((i) => i.tipo === 'tarjeta')
+      .map((i) => i.valor);
+
+  it('se queda con los cuatro últimos, no con el número', () => {
+    expect(tarjetasDe('Compra Meson A Reta De Cobas, Tarjeta 4000000000009623')).toEqual(['9623']);
+  });
+
+  it('un concepto con las dos formas da las dos tarjetas', () => {
+    expect(tarjetasDe('Compra Revolut**0940*, Dublin, Tarjeta 4000000000009623 , Comision 0,00')).toEqual(
+      expect.arrayContaining(['0940', '9623'])
+    );
+  });
+
+  it('«Tarj.», «Tarjeta:» y el número con espacios valen igual', () => {
+    expect(tarjetasDe('Pago Tarj. :4000 0000 0000 9623')).toEqual(['9623']);
+    expect(tarjetasDe('Adeudo mensual de tarjeta 4000000000006701')).toEqual(['6701']);
+  });
+
+  it('sin la palabra delante no se inventa una tarjeta', () => {
+    // Dieciséis cifras sueltas pueden ser cualquier cosa · un nº de recibo, un
+    // expediente. Una tarjeta inventada es peor que ninguna.
+    expect(tarjetasDe('Abono expediente 4000000000009623')).toEqual([]);
+  });
+
+  it('un número que no tiene largo de tarjeta no cuenta', () => {
+    expect(tarjetasDe('Tarjeta 40000000')).toEqual([]);
+  });
+});

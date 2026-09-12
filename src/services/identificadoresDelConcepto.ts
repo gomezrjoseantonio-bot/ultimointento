@@ -291,6 +291,19 @@ export function mandatosDeLaReferencia(referencia: string | null | undefined): I
 /** Los cuatro últimos de la tarjeta · «Revolut**9527*». */
 const TARJETA = /\*+(\d{4})(?!\d)/g;
 
+/**
+ * E3.1 · la tarjeta escrita ENTERA · «Tarjeta 5489010341469623».
+ *
+ * Santander y BBVA no enmascaran: escriben el número completo detrás de la
+ * palabra. De él solo se guardan los CUATRO ÚLTIMOS —que es lo que identifica
+ * la tarjeta y lo único que se puede comparar contra el «*9623» que escribe
+ * Revolut al otro lado—; el resto del número no se queda en ningún sitio.
+ *
+ * Exige la palabra delante a propósito: 16 dígitos sueltos en un concepto
+ * pueden ser cualquier cosa, y una tarjeta inventada es peor que ninguna.
+ */
+const TARJETA_ENTERA = /\bTARJ[A-Z.]*\s*:?\s*(\d[\d -]{12,20}\d)\b/g;
+
 /** Tapa lo ya reconocido para que no lo vuelva a coger otra forma. */
 function tapar(texto: string, desde: number, longitud: number): string {
   return texto.slice(0, desde) + ' '.repeat(longitud) + texto.slice(desde + longitud);
@@ -390,6 +403,17 @@ export function extraerIdentificadores(texto: string | null | undefined): Identi
   r = recoger(t, SANTANDER_RECIBO_ACREEDOR, (m) => {
     const nombre = limpiarNombreAcreedor(m[1]);
     return nombre ? { id: acreedor(nombre) } : null;
+  });
+  t = r.texto; salida.push(...r.encontrados);
+
+  // La tarjeta escrita entera ANTES que la enmascarada: hay conceptos que
+  // llevan las dos («Compra Revolut**0940*, Tarjeta 5489010341469623») y esta
+  // tapa sus cifras para que la otra no lea cuatro de en medio.
+  r = recoger(t, TARJETA_ENTERA, (m) => {
+    const cifras = m[1].replace(/\D/g, '');
+    return cifras.length >= 13 && cifras.length <= 19
+      ? { id: { tipo: 'tarjeta', valor: cifras.slice(-4) } }
+      : null;
   });
   t = r.texto; salida.push(...r.encontrados);
 

@@ -48,6 +48,7 @@ interface Props {
 interface Form {
   alias: string;
   emisora: string;
+  ultimosCuatro: string;
   origen: OrigenTarjeta;
   modalidad: ModalidadTarjeta;
   cuentaLiquidacionId: string;
@@ -60,6 +61,7 @@ interface Form {
 const VACIO: Form = {
   alias: '',
   emisora: '',
+  ultimosCuatro: '',
   origen: 'banco',
   modalidad: 'credito',
   cuentaLiquidacionId: '',
@@ -82,6 +84,7 @@ const DIAS_SEMANA = [
 const desdeTarjeta = (t: Tarjeta): Form => ({
   alias: t.alias,
   emisora: t.emisora ?? '',
+  ultimosCuatro: t.ultimosCuatro ?? '',
   origen: t.origen,
   modalidad: t.modalidad,
   cuentaLiquidacionId: String(t.cuentaLiquidacionId),
@@ -125,6 +128,9 @@ const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuc
   const validar = (): boolean => {
     const errs: Record<string, string> = {};
     if (!form.alias.trim()) errs.alias = 'Ponle un nombre';
+    if (form.ultimosCuatro && !/^\d{4}$/.test(form.ultimosCuatro)) {
+      errs.ultimosCuatro = 'Cuatro cifras';
+    }
     if (!form.cuentaLiquidacionId) errs.cuentaLiquidacionId = 'Elige de qué cuenta sale';
 
     if (esCredito) {
@@ -155,6 +161,7 @@ const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuc
       const datos: AltaTarjeta = {
         alias: form.alias.trim(),
         emisora: form.emisora.trim() || undefined,
+        ultimosCuatro: form.ultimosCuatro.trim() || undefined,
         origen: form.origen,
         modalidad: form.modalidad,
         cuentaLiquidacionId: parseInt(form.cuentaLiquidacionId, 10),
@@ -261,6 +268,31 @@ const TarjetaWizard: React.FC<Props> = ({ open, tarjeta, cuentas, onClose, onSuc
                   onChange={(e) => set('emisora', e.target.value)}
                 />
               </div>
+            </div>
+
+            {/* E3.1 · lo único de la tarjeta que el banco escribe en el
+                extracto. Con ellos, «Compra Revolut**0940*» deja de contarse
+                como gasto: es tu dinero pasando a una tarjeta tuya. */}
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="tj-cuatro">
+                Cuatro últimos del número
+              </label>
+              <input
+                id="tj-cuatro"
+                className={`${styles.input} ${errors.ultimosCuatro ? styles.inputError : ''}`}
+                value={form.ultimosCuatro}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="0940"
+                onChange={(e) => set('ultimosCuatro', e.target.value.replace(/\D/g, ''))}
+              />
+              {errors.ultimosCuatro ? (
+                <div className={styles.errorText}>{errors.ultimosCuatro}</div>
+              ) : (
+                <div className={styles.hint}>
+                  Los que salen en tu extracto · sirven para no contar una recarga como gasto
+                </div>
+              )}
             </div>
 
             {/* §3.2 · de ello dependen dos cosas: si su cuenta es intrínseca o

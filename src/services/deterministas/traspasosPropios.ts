@@ -40,6 +40,8 @@ const DIAS_ESPEJO = 3;
 const PALABRAS_EN_LA_PARTE = 2;
 /** …y cuando no se sabe, en el texto entero. */
 const PALABRAS_EN_EL_TEXTO = 3;
+/** Letras mínimas de un alias para que nombrarlo pruebe algo. */
+const LETRAS_PARA_NOMBRAR_UNA_CUENTA = 4;
 
 /** Lo mínimo de una persona para saber si es ella · `PersonalData` lo cumple. */
 export interface QuienEsElTitular {
@@ -216,6 +218,68 @@ export function hueleATraspaso(m: Movement, nombres: string[]): boolean {
   return nombres.some((n) => palabrasEnComun(t, n) >= PALABRAS_EN_LA_PARTE);
 }
 
+/** Los cuatro últimos de las tarjetas que nombra un movimiento. */
+function tarjetasDe(m: Movement): string[] {
+  return identificadoresDeMovimiento(m)
+    .filter((id) => id.tipo === 'tarjeta')
+    .map((id) => id.valor);
+}
+
+/** ¿El texto de esta pata nombra a esa cuenta? · por su alias o por su banco. */
+function nombraLaCuenta(m: Movement, c: Account): boolean {
+  const texto = textoDe(m);
+  return [c.alias, c.banco?.name]
+    .map((n) => normalizarTexto(n ?? ''))
+    // Un alias de tres letras o menos aparece por casualidad en cualquier
+    // concepto · con ése no se prueba nada.
+    .filter((n) => n.length >= LETRAS_PARA_NOMBRAR_UNA_CUENTA)
+    .some((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`).test(texto));
+}
+
+/**
+ * Las RECARGAS de una cuenta propia hechas con una tarjeta propia.
+ *
+ * Cruza el cargo de un banco contra la recarga que entra en el otro cuando las
+ * dos patas nombran la misma tarjeta Y el cargo nombra a la cuenta que recibe.
+ * Ver el comentario de la primera pasada en `cruzarPatas`, que es donde se
+ * explica por qué con esas dos señales sobra el resto de cautelas.
+ */
+function recargasConTarjetaPropia(
+  enJuego: readonly Movement[],
+  usados: Set<Movement>,
+  out: PatasCruzadas[],
+  cerca: (a: Movement, b: Movement) => boolean,
+  cuentas: readonly Account[],
+): void {
+  if (cuentas.length === 0) return;
+  const porId = new Map(cuentas.filter((c) => c.id != null).map((c) => [c.id as number, c]));
+  const entradas = enJuego.filter((m) => m.amount > 0);
+  if (entradas.length === 0) return;
+
+  for (const salida of enJuego.filter((m) => m.amount < 0)) {
+    if (usados.has(salida)) continue;
+    const deLaSalida = tarjetasDe(salida);
+    if (deLaSalida.length === 0) continue;
+
+    const candidatas = entradas.filter((e) => {
+      if (usados.has(e) || !cerca(salida, e)) return false;
+      if (!tarjetasDe(e).some((t) => deLaSalida.includes(t))) return false;
+      const cuenta = porId.get(e.accountId);
+      return cuenta !== undefined && nombraLaCuenta(salida, cuenta);
+    });
+    if (candidatas.length === 0) continue;
+
+    // La más cercana en fecha · entre gemelas da igual cuál, y así al menos no
+    // se cruza con una de otro día habiendo una del mismo.
+    const entrada = candidatas.reduce((mejor, e) =>
+      Math.abs(dia(e.date) - dia(salida.date)) < Math.abs(dia(mejor.date) - dia(salida.date)) ? e : mejor,
+    );
+    usados.add(salida);
+    usados.add(entrada);
+    out.push({ salida, entrada });
+  }
+}
+
 /** Una pareja de patas cruzada · las dos se marcan, y cada una nombra a la otra. */
 export interface PatasCruzadas {
   salida: Movement;
@@ -232,17 +296,16 @@ export function cruzarPatas(
   movimientos: readonly Movement[],
   cuentasPropias: ReadonlySet<number>,
   nombres: string[],
+  cuentas: readonly Account[] = [],
 ): PatasCruzadas[] {
   // Las parejas se llevan por IDENTIDAD DE OBJETO, no por `id`. Aquí se mezclan
   // dos orígenes —los movimientos sintéticos de las líneas del lote y los
   // `movements` que ya existían— y cada uno tiene su propio contador
   // autoincremental, así que el mismo número puede ser dos movimientos
   // distintos. Con la referencia no hay colisión posible.
-  const vivos = movimientos.filter(
-    (m) => m.id != null && m.amount !== 0 && cuentasPropias.has(m.accountId) && !yaEmparejado(m) && puedeCruzar(m),
+  const enJuego = movimientos.filter(
+    (m) => m.id != null && m.amount !== 0 && cuentasPropias.has(m.accountId) && !yaEmparejado(m),
   );
-  const salidas = vivos.filter((m) => m.amount < 0);
-  const entradas = vivos.filter((m) => m.amount > 0);
   const usados = new Set<Movement>();
   const out: PatasCruzadas[] = [];
 
@@ -251,25 +314,66 @@ export function cruzarPatas(
     mismoImporte(a.amount, b.amount) &&
     Math.abs(dia(a.date) - dia(b.date)) <= DIAS_ESPEJO * MS_DIA;
 
-  for (const salida of salidas) {
-    if (usados.has(salida)) continue;
-    const candidatas = entradas.filter((e) => !usados.has(e) && cerca(e, salida));
-    if (candidatas.length !== 1) continue;
-    const entrada = candidatas[0];
-    // La unicidad se mira POR LOS DOS LADOS. Con dos salidas candidatas y una
-    // sola entrada, la primera salida del array se la llevaba y la segunda se
-    // quedaba fuera: eso es resolver una ambigüedad por el orden del array, que
-    // es no resolverla. Si la entrada tiene más de una salida posible, es una
-    // duda y las dos se quedan sin cruzar.
-    const alReves = salidas.filter((o) => !usados.has(o) && cerca(o, entrada));
-    if (alReves.length !== 1) continue;
-    // Una de las dos tiene que oler a traspaso · si ninguna lo hace, la
-    // coincidencia de importe no basta.
-    if (!hueleATraspaso(salida, nombres) && !hueleATraspaso(entrada, nombres)) continue;
-    usados.add(salida);
-    usados.add(entrada);
-    out.push({ salida, entrada });
-  }
+  /**
+   * Una pasada de emparejado · `casan` dice qué dos patas pueden ser la misma.
+   *
+   * La unicidad se mira POR LOS DOS LADOS. Con dos salidas candidatas y una
+   * sola entrada, la primera salida del array se la llevaba y la segunda se
+   * quedaba fuera: eso es resolver una ambigüedad por el orden del array, que
+   * es no resolverla. Si la entrada tiene más de una salida posible, es una
+   * duda y las dos se quedan sin cruzar.
+   */
+  const pasada = (pool: Movement[], casan: (a: Movement, b: Movement) => boolean): void => {
+    const salidas = pool.filter((m) => m.amount < 0);
+    const entradas = pool.filter((m) => m.amount > 0);
+    for (const salida of salidas) {
+      if (usados.has(salida)) continue;
+      const candidatas = entradas.filter((e) => !usados.has(e) && casan(salida, e));
+      if (candidatas.length !== 1) continue;
+      const entrada = candidatas[0];
+      const alReves = salidas.filter((o) => !usados.has(o) && casan(o, entrada));
+      if (alReves.length !== 1) continue;
+      usados.add(salida);
+      usados.add(entrada);
+      out.push({ salida, entrada });
+    }
+  };
+
+  // PRIMERA PASADA · la RECARGA de una cuenta propia con una tarjeta propia.
+  //
+  // Cuando recargas tu Revolut con la tarjeta del Santander, el Santander
+  // escribe «Compra Revolut**0940*, Tarjeta 5489010341469623» y Revolut escribe
+  // «Recarga de *9623»: los dos extractos traen los mismos cuatro últimos. Dos
+  // cosas tienen que darse a la vez, y juntas no dejan sitio a la duda:
+  //
+  //   · las dos patas nombran la MISMA tarjeta, y
+  //   · el cargo nombra a la cuenta que recibe («Revolut»), por su alias o por
+  //     su banco.
+  //
+  // Lo segundo es lo que separa la recarga de una comida pagada con la misma
+  // tarjeta el mismo día y por el mismo importe: la comida no nombra ninguna
+  // cuenta tuya. Con las dos señales no hace falta que huela a traspaso ni
+  // pasar por `puedeCruzar` —que está para frenar el emparejado A CIEGAS, y
+  // esto no lo es—, y por eso la palabra «COMPRA» deja de ser motivo para
+  // descartarlo: en el banco es una compra, pero es tu dinero cambiando de sitio.
+  //
+  // Aquí SÍ se empareja habiendo varias candidatas, al revés que en la pasada a
+  // ciegas. Con la tarjeta y la cuenta de destino ya probadas, las candidatas
+  // son recargas gemelas —mismo importe, mismos días, misma tarjeta, misma
+  // cuenta— y cualquier pareja dice lo mismo: las dos patas son movimiento
+  // interno. Se toma la más cercana en fecha y no se deja ninguna sin cruzar
+  // por ser idéntica a su vecina.
+  recargasConTarjetaPropia(enJuego, usados, out, cerca, cuentas);
+
+  // SEGUNDA PASADA · por importe y fecha, como siempre: sin identificador que
+  // lo ancle, hace falta que una de las dos huela a traspaso y que ninguna sea
+  // de las que el banco llama otra cosa.
+  const aCiegas = enJuego.filter((m) => !usados.has(m) && puedeCruzar(m));
+  pasada(
+    aCiegas,
+    (a, b) => cerca(a, b) && (hueleATraspaso(a, nombres) || hueleATraspaso(b, nombres)),
+  );
+
   return out;
 }
 
@@ -343,7 +447,7 @@ export function traspasosPropios(
   // había en las demás cuentas, y deja un mapa movimiento → su pareja. Marca
   // las DOS patas: hasta E3.1 solo se marcaba la que traía el nombre.
   const cruzados = new Map<Movement, Movement>();
-  for (const { salida, entrada } of cruzarPatas([...movimientos, ...otrosMovimientos], idsEnUso, nombres)) {
+  for (const { salida, entrada } of cruzarPatas([...movimientos, ...otrosMovimientos], idsEnUso, nombres, enUso)) {
     cruzados.set(salida, entrada);
     cruzados.set(entrada, salida);
   }
