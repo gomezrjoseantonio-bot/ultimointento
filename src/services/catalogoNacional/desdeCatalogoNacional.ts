@@ -76,6 +76,55 @@ function plano(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
 }
 
+/**
+ * LA MARCA CORTA · «Naturgy Iberia» → «Naturgy», «Endesa Energía» → «Endesa».
+ *
+ * El fichero trae el nombre de la SOCIEDAD y el banco escribe la MARCA. Como
+ * los alias se comparan por contención (el texto del banco tiene que CONTENER
+ * el alias), un alias largo no casa nunca con un texto corto: «RECIBO NATURGY»
+ * no contiene «NATURGYIBERIA». Sin esto, Naturgy, Endesa y Orange —tres de las
+ * marcas más comunes de España— no se reconocían.
+ *
+ * La regla que decide si se puede recortar: solo cuando lo que sobra son
+ * SUFIJOS CORPORATIVOS (España, Iberia, Clientes, S.A.), que no cambian de qué
+ * es la empresa. Si lo que sobra es una palabra de SECTOR, NO se recorta,
+ * porque entonces el nombre entero es la información:
+ *
+ *   · «Carrefour Telecom» → recortar daría «CARREFOUR», y la compra del
+ *     supermercado se iría a telefonía;
+ *   · «Acciona Agua» → «ACCIONA» es un grupo que hace de todo;
+ *   · «Servicios Financieros Carrefour» → una FINANCIERA no se recorta nunca
+ *     (son justo las que comparten marca con un comercio: ahí el nombre largo
+ *     ES la señal, y por eso la financiera y el súper se distinguen).
+ */
+const SUFIJO_CORPORATIVO = new Set([
+  'ESPANA', 'ESPAÑA', 'IBERIA', 'CLIENTES', 'GROUP', 'GRUPO', 'SA', 'SAU', 'SL',
+  'SLU', 'SAE', 'COMERCIALIZADORA', 'COMERCIALIZACION', 'DISTRIBUCION',
+  'SUCURSAL', 'EN', 'DE', 'DEL', 'LA', 'EL', 'Y', 'ENERGIA', 'ENERGY',
+]);
+
+/** Palabras que no identifican a nadie por sí solas. */
+const PALABRA_GENERICA = new Set([
+  'AGUAS', 'AGUA', 'CANAL', 'COMUNIDAD', 'COMUNITAT', 'SERVICIOS', 'FINANCIERA',
+  'BANCO', 'BANCA', 'GRUPO', 'SOCIEDAD', 'EMPRESA', 'COMPANIA', 'GENERAL',
+  'NUEVA', 'LINEA', 'MUTUA', 'SEGUROS', 'SEGURO', 'PLAN', 'ENERGIA', 'GAS',
+  'ELECTRICA', 'ELECTRICIDAD', 'TELECOM', 'MOVIL',
+  // REPSOL se queda fuera a propósito: «COMPRA REPSOL» es la gasolinera, no la
+  // luz. Ahí manda la regla de transporte y el catálogo no debe pisarla.
+  'REPSOL',
+]);
+
+function marcaCorta(nombre: string, categoria: string): string | undefined {
+  if (plano(categoria) === 'FINANCIERAS') return undefined;
+  const palabras = plano(nombre).split(/[^A-ZÑ0-9]+/).filter(Boolean);
+  const primera = palabras[0];
+  if (!primera || primera.length < 4 || PALABRA_GENERICA.has(primera)) return undefined;
+  if (palabras.length < 2) return undefined;
+  // Solo se recorta si cada palabra que sobra es un sufijo corporativo.
+  if (!palabras.slice(1).every((w) => SUFIJO_CORPORATIVO.has(w))) return undefined;
+  return primera;
+}
+
 function claseDe(fila: FilaCatalogoNacional): { familia: FamiliaId; subtipo?: string; ambito?: Ambito } | undefined {
   const categoria = plano(fila.categoria ?? '');
   const directa = POR_CATEGORIA[fila.categoria ?? ''] ?? POR_CATEGORIA[categoria];
@@ -125,7 +174,8 @@ export function entidadesDelFicheroNacional(
     if (!nombre) continue;
     const cif = cifValido(fila.cif);
     const ambiguo = cif ? (subtiposPorCif.get(cif)?.size ?? 0) > 1 : false;
-    const alias = [nombre, ...(fila.nombreFiscal ? [fila.nombreFiscal] : [])];
+    const corta = marcaCorta(nombre, fila.categoria ?? '');
+    const alias = [nombre, ...(fila.nombreFiscal ? [fila.nombreFiscal] : []), ...(corta ? [corta] : [])];
     // Una entidad por CIF cuando lo hay (Endesa LUZ y Endesa GAS son una), y
     // por nombre cuando no. Las filas que repiten entidad suman sus alias.
     const clave = cif ?? plano(nombre);

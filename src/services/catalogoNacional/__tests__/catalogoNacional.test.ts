@@ -214,6 +214,28 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     expect(porNombre(cat, 'ELECTRICIDAD IBERDROLA')?.familia).toBe('reparacion_mantenimiento');
   });
 
+  it('el banco escribe la MARCA, no la sociedad · «RECIBO NATURGY» tiene que casar', () => {
+    // El fichero trae «Naturgy Iberia», «Endesa Energía», «Orange España». Los
+    // alias se comparan por contención, así que un alias largo NO casa con un
+    // texto corto: «RECIBO NATURGY» no contiene «NATURGYIBERIA». Cuatro de las
+    // marcas más comunes de España se quedaban fuera por esto.
+    for (const texto of ['RECIBO NATURGY', 'RECIBO ORANGE', 'RECIBO ENDESA', 'RECIBO IBERDROLA']) {
+      expect([texto, porNombre(catalogo, texto)?.familia]).toEqual([texto, 'suministro']);
+    }
+  });
+
+  it('…pero NO se recorta cuando la marca significa otra cosa fuera de su sector', () => {
+    // Éstas son las que NO pueden casar, y el motivo es distinto en cada una:
+    //  · «Carrefour Telecom» recortado mandaría la compra del súper a telefonía;
+    //  · una FINANCIERA nunca se recorta: su nombre largo ES la señal;
+    //  · «Repsol» a secas es la gasolinera, no la comercializadora de luz.
+    for (const texto of ['COMPRA CARREFOUR', 'RECIBO EL CORTE INGLES', 'COMPRA REPSOL']) {
+      expect([texto, porNombre(catalogo, texto)]).toEqual([texto, undefined]);
+    }
+    // Y con el nombre largo, la financiera sí casa.
+    expect(porNombre(catalogo, 'ADEUDO FINANCIERA CARREFOUR')?.subtipo).toBe('credito_consumo');
+  });
+
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {
     const c = clasificarLinea(mov('Recibo WiZink Bank'), { cuentas: [], tarjetas: [], nombresTitular: [] });
     expect(c.origen.familia).not.toBe('identificador');
