@@ -13,6 +13,7 @@
 | `clasificacion.csv` | lo mismo, plano, para grep |
 | `motor-propuesto.py` | el motor de reglas con el que se ha clasificado (reproducible: `python3 parse.py && python3 motor-propuesto.py`) |
 | `parse.py` | el parseo de los 9 ficheros a `movimientos.csv` |
+| `snapshot_cruce.py` | la capa STORES: cruce con el volcado real de tu base (`docs/audit-inputs/atlas-snapshot-20260426-10.json`) |
 | `medicion-Q2/` | los tests temporales y la salida de jest con los que se midió el motor actual (pregunta 2) |
 
 ---
@@ -28,7 +29,8 @@
 7. **Con un motor en capas (propuesto aquí), sin una sola keyword de comercio, el mismo corpus se clasifica al 98,8 %**: 62,5 % solo con lo que trae el fichero + cruce entre cuentas; 35,5 % necesitó un catálogo NIF/nombre → proveedor; 1,7 % conocimiento externo; **1,2 % (14 líneas) solo lo sabe el usuario**.
 8. **145 entidades distintas cubren los 1.205 movimientos: 11 entidades = 50 %, 35 = 80 %, 57 = 90 %.** Ese es el coste real del aprendizaje: con ~60 decisiones del cliente se cubre el 90 % de dos años de 5 cuentas. Eso sí escala; una lista de keywords no.
 9. **Faltan datos que ningún motor puede inventar:** hay una **segunda cuenta Santander no aportada** (recibe los 61 «Traspaso:» y ninguno tiene pareja) y una **cuenta de ahorro destino** de 20 «Ahorros…» de Unicaja (Unicaja no exporta el beneficiario).
-10. El plan no es parchear `reglasDuras.ts`: es **(1) catálogo nacional por NIF/nombre, (2) cruce entre cuentas propias, (3) mandato SEPA como identificador universal, (4) aprendizaje por contraparte, (5) reglas duras solo para palabras del PROPIO BANCO** (préstamo, cajero, comisión, traspaso), nunca de comercios.
+10. **Cruzado con el volcado real de tu base (snapshot 26-abr-2026, 59 stores):** los 8 inmuebles de `properties` son los que deduje del texto; los stores **cierran 246 pendientes** (préstamos por cuota, inmuebles, Smartflip, la 2ª cuenta Santander) pero **les falta el dato en 686**: `prestamos` no guarda ningún nº de contrato y 4 de 7 cuadros no coinciden al céntimo con el banco; `contracts` tiene los 6 inquilinos VACÍOS; `compromisosRecurrentes`, `tarjetas`, `movementLearningRules` y `movements` están a **cero**; `proveedores` (IRPF) no coincide con ningún acreedor bancario. **La app en abril no tenía ni un movimiento importado.** (§2.5)
+11. El plan no es parchear `reglasDuras.ts`: es **(1) catálogo nacional por NIF/nombre, (2) cruce entre cuentas propias, (3) mandato SEPA como identificador universal, (4) aprendizaje por contraparte, (5) reglas duras solo para palabras del PROPIO BANCO** (préstamo, cajero, comisión, traspaso), nunca de comercios.
 
 ---
 
@@ -52,7 +54,7 @@
 
 | falta | evidencia | efecto |
 |---|---|---|
-| **2ª cuenta Santander** | los 61 «Traspaso:» de Santander (≈ 100 % de los cobros de alquiler) no tienen pareja en NINGUNA de las otras 4 cuentas · los «Abono de nómina · Enviado por banco santander» de BBVA (9) no salen de la cuenta Santander aportada | 70 movimientos se quedan en «traspaso a cuenta propia desconocida» |
+| **2ª cuenta Santander** | los 61 «Traspaso:» de Santander (≈ 100 % de los cobros de alquiler) no tienen pareja en NINGUNA de las otras 4 cuentas · los «Abono de nómina · Enviado por banco santander» de BBVA (9) no salen de la cuenta Santander aportada · **el snapshot lo confirma: `accounts` #1 es Santander ES61 0049 0052 6322 1041 2715, y la cuenta del PDF (ES54 …8676) NO está en el store** | 70 movimientos se quedan en «traspaso a cuenta propia» sin el extracto de esa cuenta |
 | **cuenta de ahorro destino** | 20 de 24 «Ahorro…» de Unicaja (5.000 + 5.000 + 3.650 + 5.000 + 5.000 en ago/sep-26) sin pareja · Unicaja **no exporta el beneficiario** de una transferencia emitida (solo el concepto tecleado) | 24 movimientos en «traspaso a ahorro» sin destino |
 | **extractos de tarjeta** | 38 `REC.MCARD` + 14 `ENTREGA CUENTA CRED. TARJ.` (Unicaja) · 26 `Adeudo mensual de tarjeta` + 13 `Traspaso a tarjeta` (BBVA) · 24 `Pago en Revolut**9527*` (ING) | 115 movimientos (9,5 %) son la liquidación de una tarjeta: el gasto real está en otro sitio |
 
@@ -95,7 +97,7 @@ Cruzando los 9 ficheros entre sí y leyendo el texto, sin la app, se reconstruye
 - **2 ventas** completas, cada una con su cadena: **Tenderina 48**: arras 18.000 (12/11/25) → última cuota préstamo Unicaja 0500230959 (24/11) → cheque 73.251,66 en BBVA (28/11) → honorarios intermediación 2.117,50 (01/12) → sobrante cancelación 403,11 (02/12) → certificado energético, provisión gestoría 121 y su devolución. **Manresa**: reserva 1.000 (Finques Candal, 16/03/26) → arras 5.750 (05/02) → precio 64.005,37 + 62.901,31 (17/03) → cancelación préstamo Santander 0004821 103 por 63.980,04 el mismo día → honoraris 7.260 → plusvalía 1.038,57 al Ajuntament (31/03).
 - **8 préstamos** por su nº: Unicaja 0500230959 (407,49 hasta nov-25) y 0500106068 (454,66), Sabadell 8078716546 (304,26; disposición 24.500 el 04/07/25) y 8078782349 (204,91; disposición 16.500 el 15/09/25), BBVA 0182-5322-27-0830842450 (285,40), hipoteca ING (329,97), Bankinter Consumer Finance (351,43 hasta abr-26; cancelado desde Santander el 13/05/26 con 15.000 + 9.750), Cetelem contrato 40070968660905 (cancelado 05/08/26 con 3.255,74).
 - **Una posible COMPRA** en jul-25: disposición Sabadell 24.500 el 04/07 → 15.000 a «Manuel Fernández» el mismo día → 2.359,50 a «4A Avenida Servicios Inmobiliarios» el 16/07. El catálogo de la app **no tiene familia para «compra de inmueble»** (es un activo, no un gasto) → NO CLASIFICABLE (§2.4).
-- **Una inversión**: 4 × 15.000 a Smartflip (30/12/25 → 05/01/26, una de ellas sin beneficiario en el fichero Sabadell) → 607,50/mes «Pago Intereses Prestamo Smart Yield» desde ene-26 = 12,15 % anual sobre 60.000.
+- **Una inversión**: 4 × 15.000 a Smartflip desde Sabadell (30/12/25 → 05/01/26, una de ellas sin beneficiario en el fichero) → 607,50/mes «Pago Intereses Prestamo Smart Yield» desde ene-26. **Solo con los ficheros** deduje 60.000 al 12,15 %. **El store `inversiones` dice 90.000 al 10 % con retención del 19 %: 750 − 142,50 = 607,50 exacto.** Los otros 30.000 salieron de una cuenta no aportada. Buen ejemplo de lo que el fichero no puede saber y el store sí.
 - **25 inquilinos** distintos por nombre, en 4 idiomas (alquiler · rent · affitto · mensualidad), con habitación en el texto en 39 de 132 líneas de alquiler/fianza. Para las otras 93 hace falta el contrato (nombre → habitación).
 - **La etiqueta «nómina» de los bancos es mentira en 3 de 4 casos:** BBVA «Abono de nómina · Gomez ramirez jose antonio», Sabadell «NOMINA DE Gomez Ramirez Jose Antonio», Santander «A favor de Jose Antonio Gomez Ramirez Concepto: Nomina» son **el propio titular** moviendo dinero. Solo ING «Nomina recibida» (600/900, sin ordenante) queda en duda. Un motor que confíe en la palabra NÓMINA se equivoca aquí 21 veces.
 
@@ -136,9 +138,32 @@ Hoja `PENDIENTES`. Los 941 «con pendiente» se reparten así (un movimiento pue
 | Unicaja 17/11/25 −518,75 | Reserva casa | idem · ¿reserva de vivienda? ¿viaje? | idem |
 | Unicaja 18/05/26 −800 | Planchas y | idem · ¿reforma? ¿mobiliario? | idem |
 | Unicaja 29/12/25 −81,96 | Regularización Tenderina 48 | el piso sí (Tenderina 48, recién vendido); la familia no (¿liquidación con Alisser? ¿suministro?) | detalle de la transferencia |
-| Sabadell 31/12/25 −15.000 | TRANSFERENCIA 212128856 | Sabadell no trae el beneficiario. Está entre las 3 de Smartflip (30/12, 02/01, 05/01) y 4 × 15.000 cuadran con el 12,15 % · clasificado como «aportación · inversión (probable)» con confianza BAJA | USUARIO confirmar |
+| Sabadell 31/12/25 −15.000 | TRANSFERENCIA 212128856 | Sabadell no trae el beneficiario. Está entre las 3 de Smartflip (30/12, 02/01, 05/01) y el store dice que la aportación total fue 90.000 · clasificado como «aportación · inversión (probable)» con confianza BAJA | USUARIO confirmar |
 
 **Patrón común:** 13 de 14 son **transferencias a/de particulares o sin beneficiario**. Ningún catálogo ni keyword las resolverá jamás. Lo único que escala es que la app **pregunte una vez por contraparte** («¿qué es Eloy Gómez Ramírez?») y lo **aprenda por contraparte** (no por texto normalizado, que aquí es vacío).
+
+
+### 2.5 · Cruce con el volcado REAL de tu base · `docs/audit-inputs/atlas-snapshot-20260426-10.json`
+
+Esto no lo hice en la primera pasada y es un fallo mío: el volcado de tu IndexedDB (26 abr 2026, 59 stores) estaba en el repo. Ahora cada línea del Excel lleva 6 columnas más (`store_cuenta`, `store_inmueble`, `store_prestamo`, `store_inversion`, `store_resuelve`, `store_falta`) y hay dos hojas nuevas (`STORES (snapshot abril)` y `STORE resuelve · falta`).
+
+**Qué hay en el store y qué hace con los 1.205 movimientos:**
+
+| store | registros | qué resuelve | qué le falta |
+|---|---|---|---|
+| `accounts` | 8 | confirma la cuenta que falta: **#1 Santander ES61 0049 0052 6322 1041 2715** (destino de los 61 «Traspaso:» y origen de los 9 «Enviado por Banco Santander» de BBVA). ING, BBVA, Unicaja y Sabadell casan por IBAN | **la cuenta Santander del PDF (ES54 …8676) no está en el store.** Abanca, Bankinter y Revolut están en el store y no entre los ficheros. Ninguna cuenta de ahorro → los 30 «Ahorros…» siguen sin destino |
+| `properties` | 8 | **los 7 inmuebles que deduje del texto son exactamente los del store**: #1 Fuertes Acevedo 32 · #2 Carles Buigas 15 (Sant Fruitós) · #3 Tenderina 48 · #4 Tenderina 64 4ºD · #5 Tenderina 64 4ºI · #6 Sant Joan d'en Coll 53 (Manresa) · #7 Tenderina 64 5º1 (accesoria de #4) · #8 Vic 178 garaje (accesorio de #6; «58797 y 58891 RP Manresa» = piso + garaje). 147 movimientos quedan atados a un id de `properties` | `state` sigue «activo» en #3 (vendido nov-25), #6 y #8 (vendidos mar-26): **el store no se actualizó**. Los 3 mandatos CCPP de Tenderina 64 son las 3 unidades #4/#5/#7, pero sin el mandato en el store no se sabe cuál es cuál (42 movs) |
+| `prestamos` | 13 | 101 cuotas casan por importe: Sabadell 16.500 (204,91 **exacto**), BBVA 26.000 (285,40 **exacto**), Bankintercard 30.000 (351,43 **exacto**, y su cancelación 15.000 + 9.750), Tenderina 48 97.300, Tenderina 64 4ºD 85.000, Buigas 97.500 (= hipoteca ING → Sant Fruitós), Sabadell 24.500, Manresa 73.800 (la cancelada), disposiciones = principal exacto | **ningún préstamo tiene nº de contrato** → el paso «identificador» de la app no puede casar nada por nº. **4 de 7 cuadros no coinciden al céntimo con el banco** (T48 407,69 vs 407,49 · T64 4D 454,57 vs 454,66 · Buigas 329,52 vs 329,97 · Sabadell 304,25 vs 304,26): `cuotasDePrestamo.ts` exige importe exacto → **47 cuotas no casarían hoy**. Cetelem no existe. La garantía del préstamo «Tenderina 64 4 Dr» apunta al inmueble #3 (Tenderina 48): dato erróneo. 5 préstamos (FA32 52.500, Santander 17.675 y 50.000, ING 47.000, EVO 20.000) se cargan en cuentas no aportadas |
+| `contracts` | 6 | nada | **inquilino vacío en los 6**, renta = anual del IRPF / 12 (713 · 330 · 1.476 · 597 · 604 · 420), sin habitación. 132 líneas de alquiler/fianza siguen sin poder ir de «nombre del ordenante» a «habitación». `rentas.ts` (nombre + renta vigente) no casaría ninguna |
+| `inversiones` | 12 | **Smartflip: 90.000 al 10 % con retención 19 % → 607,50/mes exacto** (13 movs). Corrige mi inferencia desde el fichero | abrdn SICAV no identificable (2 fondos guardados solo por NIF). Unihouser sin movimientos en los ficheros |
+| `proveedores` (IRPF) | 11 | nada | 11 NIF sin nombre, todos contratistas de obra/gestión. **Cero coincidencias** con Iberdrola, Wekiwi, Visalia, Gana, Simyo, Digi, Aqualia… El IRPF no nutre el catálogo que hace falta para los recibos |
+| `gastosInmueble` (IRPF 2022-24) | 109 | **confirma un mandato**: comunidad 2024 de Tenderina 48 = 963,12 = 80,26 × 12 → el mandato `…004300001200` es Tenderina 48 (11 movs). Seguro Sant Fruitós 393,16 ≈ NN Generales 440 | para el resto solo da el total anual por piso y tipo; no da mandatos, CUPS ni proveedores |
+| `nominas` | 1 | Orange · 95.178 brutos · 14 pagas | la nómina real no llega a ninguna de las 5 cuentas aportadas; ING «Nomina recibida» 600/900 no es esa nómina |
+| `compromisosRecurrentes` · `movementLearningRules` · `tarjetas` · `movements` | **0** | nada | **En abril la app no tenía ni un movimiento bancario, ni un recurrente, ni una regla aprendida, ni una tarjeta.** Con este store, el motor de la app clasifica por reglas duras y nada más (la medición de P2 con contexto vacío es EXACTAMENTE tu instalación) |
+
+**En números:** el store **resuelve 246 pendientes (20,4 %)** y **le falta el dato en 686 (56,9 %)**. Lo que resuelve: 101 cuotas de préstamo → préstamo y piso · 70 traspasos → la cuenta Santander …2715 · 50 líneas → inmueble por texto que existe en `properties` · 13 Smartflip · 11 comunidad → Tenderina 48 por el IRPF. Lo que le falta, por orden: 185 recibos sin `compromisosRecurrentes` (vacío) · 132 alquileres sin inquilino en `contracts` · 115 tarjetas sin store de tarjetas · 56 seguros sin store de pólizas · 47 cuotas cuyo cuadro no cuadra al céntimo · 42 CCPP con 3 unidades candidatas · 31 cuotas sin nº de contrato · 30 «Ahorros» sin cuenta de ahorro.
+
+**Lo que esto cambia en el veredicto:** la pregunta 1 («¿el cruce con stores llega vacío?») tiene respuesta empírica: **en tu instalación, sí, llega vacío**, no porque el cableado falle sino porque los stores que el motor cruza (`compromisosRecurrentes`, `movementLearningRules`, `tarjetas`) están a cero, `prestamos` no tiene el campo que el casador busca (`numeroContrato`) y `contracts` no tiene lo que el casador de rentas busca (nombre del inquilino). El IRPF nutre `properties`, `prestamos` (sin nº), `contracts` (sin inquilino), `proveedores` (contratistas) y `gastosInmueble`: sirve para **verificar** (mandato …1200 = Tenderina 48; Smartflip 90.000), no para **clasificar** un extracto.
 
 ---
 
@@ -313,6 +338,7 @@ No son parches. Es cambiar en qué se apoya el motor. Cada punto dice qué const
 - La etiqueta «nómina» del banco **nunca** decide sola: si el ordenante es el titular, es traspaso (21 casos en este corpus).
 
 ### 7.2 · El mandato SEPA como identificador universal (mueve 250 movs · 21 %)
+- **Añadir `numeroContrato` a `prestamos`** (hoy ninguno lo tiene) y que el cuadro se corrija con la cuota REAL del banco (4 de 7 difieren en céntimos y el casador exige exactitud). Tolerancia de ±1 € en `cuotasDePrestamo.ts` mientras tanto.
 - Extraer en `identificadoresDelConcepto.ts`: (a) la Referencia 2 de Sabadell aunque sean 12 dígitos desnudos; (b) el patrón Unicaja `EMISOR######-############` → emisor + mandato; (c) el `N 2026176000297555` de BBVA como nº de adeudo (volátil) + el nombre del acreedor que va detrás; (d) permitir guiones tras etiqueta (`:145`).
 - Un recurrente = un mandato. Con el mandato, **dos pisos con Iberdrola se distinguen solos** (5 mandatos aquí), y «cuál de mis 3 comunidades» también.
 
@@ -324,7 +350,7 @@ No son parches. Es cambiar en qué se apoya el motor. Cada punto dice qué const
 
 ### 7.4 · Aprendizaje por CONTRAPARTE, no solo por texto (mueve los 14 no clasificables + 111 de contratos)
 - Clave alternativa: **contraparte normalizada** (nombre del ordenante/beneficiario, o IBAN si el banco lo da). «Eloy Gómez Ramírez» = X se aprende una vez aunque el concepto esté vacío o sea de una palabra.
-- Un inquilino = una contraparte = un contrato: el nombre → contrato → habitación → piso. Aquí 93 de 132 líneas de alquiler/fianza necesitan eso.
+- Un inquilino = una contraparte = un contrato: el nombre → contrato → habitación → piso. Aquí 93 de 132 líneas de alquiler/fianza necesitan eso. **Los 6 `contracts` importados del IRPF tienen el inquilino vacío**: el importador de contratos (TAREA-CC-importador-contratos) es la pieza que falta, no el motor.
 - Aprender también sin familia (solo ámbito/piso) y avisar cuando no se puede crear clave (`aplicarSugerencia.ts:81` hoy calla).
 - Preparar la clave para multi-cliente (un `clienteId` en `movementLearningRules`) aunque hoy sea una sola instalación.
 
@@ -373,4 +399,5 @@ En este corpus, exactamente eso resuelve los 19 de Bankinter Consumer Finance y 
 - Parseo: `parse.py` (pdfplumber para los PDF, xlrd/openpyxl para XLS/XLSX). Validación: el saldo de cada línea = saldo anterior + importe, en los 9 ficheros, 0 roturas.
 - Motor propuesto: `motor-propuesto.py` → `clasificacion.csv` → `clasificacion-9-ficheros.xlsx`.
 - Medición del motor actual: `medicion-Q2/` (tests jest temporales, ejecutados con `npm ci` en el repo y borrados; `run.log` con la salida literal; `resultado_*.json` por pasada).
+- Cruce con el store real: `snapshot_cruce.py` sobre `docs/audit-inputs/atlas-snapshot-20260426-10.json` (8 accounts · 8 properties · 13 prestamos + cuadros en keyval · 6 contracts · 12 inversiones · 11 proveedores · 109 gastosInmueble).
 - Auditoría de código: tres lecturas independientes del repo en `602a9b6` (contexto/aprendizaje · catálogo/identificadores · medición), cruzadas entre sí.

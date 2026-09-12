@@ -17,6 +17,7 @@ FUENTES (lo que pide Jose: qué se resolvió solo con el fichero y qué hubo que
   USUARIO            · solo el usuario puede decirlo · NO CLASIFICABLE con lo que hay
 """
 import csv, re, collections, datetime, unicodedata, json
+from snapshot_cruce import enriquecer  # capa STORES · volcado real de la base
 
 def norm(s):
     s = unicodedata.normalize('NFD', s or '')
@@ -480,6 +481,7 @@ def main():
             c = clasificar(r)
             if c is None: c = R(naturaleza='gasto' if r['importe'] < 0 else 'ingreso', regla='— SIN REGLA —', fuente='USUARIO', confianza='baja', estado='NO_CLASIFICABLE', motivo='ninguna regla casó', pendiente='REVISAR')
             r['c'] = c
+            enriquecer(r, c)
         else:
             p = idx.get((r['cuenta'], r['fecha'], round(r['importe'], 2), round(r['saldo'], 2)))
             r['c'] = dict(p['c']) if p else R(regla='DUP sin primario', fuente='', confianza='', estado='NO_CLASIFICABLE', motivo='', pendiente='')
@@ -491,7 +493,8 @@ def main():
         if c.get('naturaleza') != 'movimiento_interno': c.pop('sentido', None)
         out.append(r)
     campos = ['id', 'fichero', 'banco', 'cuenta', 'fecha', 'fecha_valor', 'concepto', 'importe', 'saldo', 'ref1', 'ref2', 'duplicado_de',
-              'naturaleza', 'familia', 'subtipo', 'metodo', 'ambito', 'inmueble', 'sentido', 'regla', 'fuente', 'confianza', 'estado', 'motivo', 'pendiente']
+              'naturaleza', 'familia', 'subtipo', 'metodo', 'ambito', 'inmueble', 'sentido', 'regla', 'fuente', 'confianza', 'estado', 'motivo', 'pendiente',
+              'store_cuenta', 'store_inmueble', 'store_prestamo', 'store_inversion', 'store_resuelve', 'store_falta']
     with open('clasificacion.csv', 'w', newline='') as fh:
         w = csv.DictWriter(fh, fieldnames=campos); w.writeheader()
         for r in out:
