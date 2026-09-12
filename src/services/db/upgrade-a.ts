@@ -196,14 +196,14 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           lineasStore.createIndex('estado', 'estado', { unique: false });
         }
 
-        // V95 · E3.1 · §7.3 · `catalogoProveedores`: el catálogo nacional que
-        // el cliente amplía. `clave` es ÚNICA («nif:A95554630» o
-        // «nombre:WIZINK») porque una entidad se aprende una vez y luego se
-        // confirma; `nif` para poder cruzar por la clave fuerte sin recorrer.
-        if (!db.objectStoreNames.contains('catalogoProveedores')) {
-          const catalogoStore = db.createObjectStore('catalogoProveedores', { keyPath: 'id', autoIncrement: true });
-          catalogoStore.createIndex('clave', 'clave', { unique: true });
-          catalogoStore.createIndex('nif', 'nif', { unique: false });
+        // V96 · E3.1b · se retira `catalogoProveedores`, que nació en V95 y duró
+        // un commit. «Quién cobra y qué es» se pregunta en UN sitio:
+        // `proveedores`, que ya está indexado por NIF. No hay dato que
+        // preservar — el store nunca llegó a escribirse en producción.
+        // `as never`: el nombre ya no está en el schema `AtlasHorizonDB`, así
+        // que ni `.contains()` ni `.deleteObjectStore()` lo aceptan tipado.
+        if (db.objectStoreNames.contains('catalogoProveedores' as never)) {
+          db.deleteObjectStore('catalogoProveedores' as never);
         }
 
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble

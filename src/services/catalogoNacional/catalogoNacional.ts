@@ -2,16 +2,23 @@
 // E3.1 · §7.3 · CATÁLOGO NACIONAL · el servicio
 // ============================================================================
 //
-// La pieza que hace que «nadie tenga que añadir WIZINK a una lista». Tres
-// capas, y se preguntan en este orden:
+// La pieza que hace que «nadie tenga que añadir WIZINK a una lista». DOS capas
+// (eran tres hasta E3.1b, cuando el store aparte se retiró), en este orden:
 //
-//   1 · APRENDIDO · lo que este cliente (o cualquiera, el día que esto viaje a
-//       un servidor) ha confirmado sobre un NIF o un nombre. Store
-//       `catalogoProveedores`, con recuento de confirmaciones.
-//   2 · SEMILLA · `entidadesNacionales.ts` · lo que viaja en el código.
-//   3 · PROVEEDORES DEL IRPF · el store `proveedores` del propio cliente, por
-//       NIF. Trae el NIF de sus albañiles y fontaneros, que no están —ni van a
-//       estar— en un catálogo nacional.
+//   1 · LO QUE SABE EL CLIENTE · el store `proveedores`, indexado por NIF. UN
+//       SOLO SITIO (E3.1b · decisión de Jose): ahí están tanto el NIF de su
+//       fontanero como lo que ha confirmado sobre Iberdrola, con su recuento de
+//       confirmaciones. Lo marcado `origen: 'nacional'` va anclado a un CIF de
+//       EMPRESA y es lo único compartible el día que esto viaje a un servidor;
+//       lo demás es un DNI y no sale de su navegador.
+//   2 · EL FICHERO NACIONAL · las 308 entidades reales + el complemento, que
+//       viajan en el CÓDIGO (`entidadesNacionales.semillaDelCatalogo`) para que
+//       un cliente nuevo las tenga el día cero sin importar nada.
+//
+// Hubo un store aparte (`catalogoProveedores`) y se retiró en E3.1b: dejaba
+// `familia`/`subtipo` en dos sitios para la misma pregunta («¿quién cobra y qué
+// es?») sin aportar nada que `proveedores` no pudiera dar. Un proveedor es un
+// proveedor.
 //
 // Lo que devuelve NO es una decisión: es un `Parcial` que el motor aplica en
 // su paso 2 (identificador) con las mismas reglas de signo que todo lo demás.
@@ -22,25 +29,14 @@
 
 import type { FamiliaId, Ambito } from '../catalogo/catalogoUnico';
 import { esFamiliaId } from '../catalogo/catalogoUnico';
+import { esCif } from '../identificadoresDelConcepto';
+import { claveDeProveedor } from '../db/types-proveedores';
 import {
   semillaDelCatalogo,
   claveDeNombreCatalogo,
   MINIMO_ALIAS,
   type EntidadNacional,
 } from './entidadesNacionales';
-
-/** Una fila APRENDIDA · lo mismo que la semilla, más de dónde salió. */
-export interface EntradaCatalogoProveedor extends EntidadNacional {
-  id?: number;
-  /** `nif:A95554630` o `nombre:WIZINK` · la clave con la que se aprendió. */
-  clave: string;
-  /** Cuántas veces se ha confirmado · una sola confirmación ya vale, pero manda la más confirmada. */
-  confirmaciones: number;
-  /** `semilla` nunca se persiste; `aprendido` es del cliente; `irpf` sale del store `proveedores`. */
-  procedencia: 'aprendido' | 'irpf';
-  createdAt: string;
-  updatedAt: string;
-}
 
 /** Lo que el motor lleva en el bolsillo · se carga una vez por lote. */
 export interface CatalogoNacional {
@@ -65,15 +61,19 @@ export function construirCatalogo(...capas: ReadonlyArray<readonly EntidadNacion
   const vistos = new Set<string>();
   for (const capa of capas) {
     for (const e of capa) {
-      if (e.nif) {
-        const nif = e.nif.toUpperCase().replace(/[\s.\-/]/g, '');
-        if (!porNif.has(nif)) porNif.set(nif, e);
-      }
+      const nif = e.nif ? claveDeProveedor(e.nif) : undefined;
+      if (nif && !porNif.has(nif)) porNif.set(nif, e);
+      // Si una capa de MÁS peso ya conoce este NIF, sus alias apuntan a ELLA.
+      // Sin esto, «la corrección del cliente manda» solo era cierta buscando
+      // por NIF: el alias del fichero nacional seguía devolviendo la entidad
+      // del fichero, así que la misma empresa se clasificaba de dos maneras
+      // según el banco escribiera el CIF o el nombre.
+      const destino = (nif ? porNif.get(nif) : undefined) ?? e;
       for (const a of e.alias) {
         const clave = claveDeNombreCatalogo(a);
         if (clave.length < MINIMO_ALIAS || vistos.has(clave)) continue;
         vistos.add(clave);
-        alias.push([clave, e] as const);
+        alias.push([clave, destino] as const);
       }
     }
   }
@@ -92,7 +92,7 @@ export function catalogoDeFabrica(): CatalogoNacional {
 /** La entidad de un NIF · `undefined` si el catálogo no lo conoce. */
 export function porNif(cat: CatalogoNacional, nif: string | null | undefined): EntidadNacional | undefined {
   if (!nif) return undefined;
-  return cat.porNif.get(nif.toUpperCase().replace(/[\s.\-/]/g, ''));
+  return cat.porNif.get(claveDeProveedor(nif));
 }
 
 /**
@@ -112,62 +112,55 @@ export function porNombre(cat: CatalogoNacional, nombre: string | null | undefin
 
 // ─── aprender ───────────────────────────────────────────────────────────────
 
-/** La clave con la que se guarda lo aprendido · el NIF si lo hay, si no el nombre. */
-export function claveDeEntrada(e: { nif?: string; nombre: string }): string {
-  return e.nif ? `nif:${e.nif.toUpperCase().replace(/[\s.\-/]/g, '')}` : `nombre:${claveDeNombreCatalogo(e.nombre)}`;
-}
 
-/** Lo mínimo de la base que hace falta · para poder probar sin IndexedDB. */
-export interface BaseParaCatalogo {
-  getAll(store: string): Promise<unknown[]>;
-  put(store: string, value: unknown): Promise<unknown>;
-}
+// ─── leer de la base ────────────────────────────────────────────────────────
 
-/**
- * Las tres capas leídas de la base, ya construidas. Si algo falla se AVISA y se
- * sigue con lo que haya (§P1.d: un fallo no puede degradar en silencio).
- */
-export async function cargarCatalogo(
-  db: BaseParaCatalogo,
-  avisar: (mensaje: string, err: unknown) => void = () => {},
-): Promise<CatalogoNacional> {
-  const leer = async <T>(store: string): Promise<T[]> => {
-    try {
-      return ((await db.getAll(store)) ?? []) as T[];
-    } catch (err) {
-      avisar(`no se pudo leer '${store}' para el catálogo nacional · se sigue sin esa capa`, err);
-      return [];
-    }
-  };
-  const [aprendido, proveedores] = await Promise.all([
-    leer<EntradaCatalogoProveedor>('catalogoProveedores'),
-    leer<ProveedorIrpf>('proveedores'),
-  ]);
-  const ordenado = aprendido
-    .filter((e) => esFamiliaId(e.familia))
-    .slice()
-    .sort((a, b) => (b.confirmaciones ?? 0) - (a.confirmaciones ?? 0));
-  return construirCatalogo(ordenado, semillaDelCatalogo(), desdeProveedoresIrpf(proveedores));
-}
-
-/** Lo que el store `proveedores` guarda hoy · `tipos` es AEAT, `familia` es del catálogo único. */
+/** Lo que el store `proveedores` guarda · `tipos` es AEAT, `familia` es del catálogo único. */
 export interface ProveedorIrpf {
   nif: string;
   nombre?: string;
   tipos?: string[];
   familia?: string;
   subtipo?: string;
+  ambito?: Ambito;
+  alias?: string[];
+  confirmaciones?: number;
+  origen?: 'cliente' | 'nacional';
   sinNombre?: boolean;
 }
 
 /**
- * Los proveedores del IRPF como entidades de catálogo · SOLO por NIF.
+ * El catálogo con el que clasifica el motor: lo que sabe el cliente (store
+ * `proveedores`) DELANTE del fichero nacional que viaja en el código.
  *
- * ⚠️ Estos son los albañiles y administradores de ESTE cliente, no marcas
- * nacionales, y hoy llegan casi todos `sinNombre` (13 de 13 en el snapshot de
- * sep-2026): sin nombre no hay alias, así que aportan la clave fuerte (NIF) y
- * nada más. Su familia sale de `familia` si ya la tienen y, si no, del `tipos`
- * AEAT que sí traen.
+ * Delante a propósito: si el cliente corrige a Iberdrola, su corrección manda.
+ * Y dentro de lo suyo, manda lo más confirmado. Si la lectura falla se AVISA y
+ * se sigue con el fichero nacional (§P1.d: un fallo no degrada en silencio).
+ */
+export async function cargarCatalogo(
+  db: { getAll(store: string): Promise<unknown[]> },
+  avisar: (mensaje: string, err?: unknown) => void = () => {},
+): Promise<CatalogoNacional> {
+  let proveedores: ProveedorIrpf[] = [];
+  try {
+    proveedores = ((await db.getAll('proveedores')) ?? []) as ProveedorIrpf[];
+  } catch (err) {
+    avisar("no se pudo leer 'proveedores' · se clasifica solo con el catálogo nacional", err);
+  }
+  const delCliente = desdeProveedoresIrpf(proveedores).sort(
+    (a, b) => (b.confirmaciones ?? 0) - (a.confirmaciones ?? 0),
+  );
+  return construirCatalogo(delCliente, semillaDelCatalogo());
+}
+
+/**
+ * El store `proveedores` como entidades de catálogo · la clave es el NIF.
+ *
+ * Aquí caben las dos cosas, porque ahora es un solo sitio: los albañiles y
+ * administradores de ESTE cliente (que llegan casi todos `sinNombre` — 13 de 13
+ * en el snapshot de sep-2026, así que aportan la clave fuerte y nada más) y lo
+ * que haya confirmado sobre una empresa nacional. Su familia sale de `familia`
+ * si ya la tiene y, si no, del `tipos` AEAT que sí traen.
  */
 export function desdeProveedoresIrpf(proveedores: readonly ProveedorIrpf[]): EntidadNacional[] {
   const out: EntidadNacional[] = [];
@@ -175,13 +168,17 @@ export function desdeProveedoresIrpf(proveedores: readonly ProveedorIrpf[]): Ent
     if (!p.nif) continue;
     const familia = esFamiliaId(p.familia) ? p.familia : familiaDeTipoAeat(p.tipos);
     if (!familia) continue;
+    const nombre = p.nombre?.trim();
     out.push({
-      nombre: p.nombre?.trim() || `Proveedor ${p.nif}`,
+      nombre: nombre || `Proveedor ${p.nif}`,
       nif: p.nif,
-      alias: p.nombre?.trim() && !p.sinNombre ? [p.nombre.trim()] : [],
+      alias: unirAlias(p.alias ?? [], nombre && !p.sinNombre ? [nombre] : []),
       familia,
       ...(p.subtipo ? { subtipo: p.subtipo } : {}),
-      ambito: 'inmueble' as Ambito,
+      // Sin ámbito dicho, lo del cliente cae en inmueble: es de donde salen sus
+      // proveedores del IRPF. Lo nacional trae el suyo.
+      ambito: (p.ambito ?? 'inmueble') as Ambito,
+      ...(p.confirmaciones != null ? { confirmaciones: p.confirmaciones } : {}),
     });
   }
   return out;
@@ -197,28 +194,77 @@ function familiaDeTipoAeat(tipos: readonly string[] | undefined): FamiliaId | un
   return undefined;
 }
 
+// ─── aprender ───────────────────────────────────────────────────────────────
+
+/** Lo mínimo de la base que hace falta · para poder probar sin IndexedDB. */
+export interface BaseParaCatalogo {
+  get(store: string, key: unknown): Promise<unknown>;
+  put(store: string, value: unknown): Promise<unknown>;
+}
+
 /**
- * Guarda lo que un cliente acaba de enseñar · WiZink lo enseña el primero y lo
- * heredan los demás. Si la entrada ya existía, SUMA una confirmación en vez de
- * duplicarla. Idempotente por `clave`.
+ * Guarda lo que un cliente acaba de enseñar sobre quien cobra · va al store
+ * `proveedores`, que ya está indexado por NIF y es el único sitio donde vive
+ * «quién cobra y qué es».
+ *
+ * Tres cosas que NO hace, y las tres importan:
+ *   · no pisa el `tipos` AEAT que ese proveedor ya tuviera (eso es fiscal y lo
+ *     escribe la declaración, no el motor);
+ *   · no pisa una `familia` que el usuario ya hubiera puesto a mano;
+ *   · no duplica: si el NIF ya está, SUMA una confirmación.
+ *
+ * `origen: 'nacional'` se COMPRUEBA aquí, no en quien llama: si el NIF no pasa
+ * el dígito de control de un CIF de EMPRESA, la fila se degrada a `'cliente'`
+ * y se avisa. Dejar la invariante en manos del llamador significa que el
+ * próximo llamador puede romperla sin enterarse, y lo que está en juego es que
+ * el DNI de una persona acabe marcado como compartible.
+ *
+ * Nunca lanza: aprender es oportunista y una confirmación no se rompe por esto.
  */
 export async function aprenderEnCatalogo(
   db: BaseParaCatalogo,
-  entrada: Omit<EntradaCatalogoProveedor, 'id' | 'clave' | 'confirmaciones' | 'procedencia' | 'createdAt' | 'updatedAt'>,
+  entrada: {
+    nif: string;
+    nombre?: string;
+    alias?: string[];
+    familia: FamiliaId;
+    subtipo?: string;
+    ambito?: Ambito;
+    origen?: 'cliente' | 'nacional';
+  },
   avisar: (mensaje: string, err: unknown) => void = () => {},
-): Promise<EntradaCatalogoProveedor | undefined> {
-  const clave = claveDeEntrada(entrada);
+): Promise<ProveedorIrpf | undefined> {
+  const nif = claveDeProveedor(entrada.nif);
+  if (!nif) return undefined;
+  // La frontera de privacidad se defiende AQUÍ · un DNI nunca es compartible.
+  let origenPedido = entrada.origen ?? 'cliente';
+  if (origenPedido === 'nacional' && !esCif(nif)) {
+    avisar(`«${nif}» no es un CIF de empresa · se guarda como 'cliente', no compartible`, undefined);
+    origenPedido = 'cliente';
+  }
   const ahora = new Date().toISOString();
   try {
-    const todas = ((await db.getAll('catalogoProveedores')) ?? []) as EntradaCatalogoProveedor[];
-    const ya = todas.find((e) => e.clave === clave);
-    const fila: EntradaCatalogoProveedor = ya
-      ? { ...ya, ...entrada, alias: unirAlias(ya.alias, entrada.alias), confirmaciones: (ya.confirmaciones ?? 0) + 1, updatedAt: ahora }
-      : { ...entrada, clave, confirmaciones: 1, procedencia: 'aprendido', createdAt: ahora, updatedAt: ahora };
-    await db.put('catalogoProveedores', fila);
+    const ya = (await db.get('proveedores', nif)) as ProveedorIrpf | undefined;
+    const fila: ProveedorIrpf & { tipos: string[]; createdAt: string; updatedAt: string } = {
+      ...(ya ?? { tipos: [], createdAt: ahora }),
+      nif,
+      tipos: ya?.tipos ?? [],
+      // El nombre solo se rellena si no había uno bueno.
+      ...(entrada.nombre && (!ya?.nombre || ya.sinNombre) ? { nombre: entrada.nombre, sinNombre: false } : {}),
+      // La familia que el usuario ya hubiera puesto manda sobre la aprendida.
+      familia: ya?.familia ?? entrada.familia,
+      ...(ya?.subtipo ?? entrada.subtipo ? { subtipo: ya?.subtipo ?? entrada.subtipo } : {}),
+      ...(ya?.ambito ?? entrada.ambito ? { ambito: (ya?.ambito ?? entrada.ambito) as Ambito } : {}),
+      alias: unirAlias(ya?.alias ?? [], entrada.alias ?? []),
+      confirmaciones: (ya?.confirmaciones ?? 0) + 1,
+      origen: ya?.origen === 'nacional' ? 'nacional' : origenPedido,
+      createdAt: (ya as { createdAt?: string } | undefined)?.createdAt ?? ahora,
+      updatedAt: ahora,
+    };
+    await db.put('proveedores', fila);
     return fila;
   } catch (err) {
-    avisar('no se pudo guardar lo aprendido en el catálogo nacional', err);
+    avisar('no se pudo guardar lo aprendido sobre este proveedor', err);
     return undefined;
   }
 }

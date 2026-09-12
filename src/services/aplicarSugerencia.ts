@@ -106,13 +106,14 @@ export async function feedLearningRule(
 }
 
 /**
- * E3.1 · §7.3 · el catálogo nacional CRECE con cada confirmación.
+ * E3.1 · §7.3 · lo que se sabe de quien cobra CRECE con cada confirmación.
  *
- * Con UN límite que no es negociable: solo se aprende lo anclado en un CIF de
- * EMPRESA. El catálogo es compartido, y el DNI del fontanero de un cliente no
- * puede acabar en una tabla que ven los demás — ése vive en su store
- * `proveedores`, que es suyo. Un nombre sin CIF tampoco sube: «Pepe» no
- * identifica a nadie fuera de la casa de quien lo escribió.
+ * Se guarda en `proveedores` (E3.1b · un solo sitio), y con UN límite que no es
+ * negociable: solo se marca `origen: 'nacional'` —o sea, compartible— lo
+ * anclado en un CIF de EMPRESA. El DNI del fontanero de un cliente se queda en
+ * su navegador y no entra en ninguna tabla que vean los demás. Un nombre sin
+ * CIF tampoco sube: «Pepe» no identifica a nadie fuera de casa de quien lo
+ * escribió.
  *
  * Nunca lanza: aprender es oportunista y una confirmación no se rompe por esto.
  */
@@ -130,12 +131,13 @@ async function aprenderProveedorDelMovimiento(
     await aprenderEnCatalogo(
       db as unknown as BaseParaCatalogo,
       {
-        nombre: nombre || cif.valor,
         nif: cif.valor,
-        alias: nombre ? [nombre] : [],
+        ...(nombre ? { nombre, alias: [nombre] } : {}),
         familia: derived.familia,
         ...(derived.subtipo ? { subtipo: derived.subtipo } : {}),
         ...(derived.ambito ? { ambito: derived.ambito } : {}),
+        // Anclado a un CIF de EMPRESA · esto sí es compartible.
+        origen: 'nacional',
       },
       (mensaje, err) => console.warn(`[catalogo] ${mensaje}`, err),
     );
