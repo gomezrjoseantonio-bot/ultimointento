@@ -46,3 +46,16 @@ pids
 *.pid.lock
 # Local Netlify folder
 .netlify
+
+# ─── §9.1 · extractos bancarios REALES · NUNCA se versionan ─────────────────
+# Un extracto descargado del banco lleva dentro el IBAN, el nombre del titular
+# y el de los inquilinos que pagan la renta. Esto NO es una preferencia de
+# estilo: una vez está en un commit, está para siempre y para todo el que
+# clone. Los ficheros para probar el importador van ANONIMIZADOS a
+# `src/**/__fixtures__/`, con IBANes y nombres inventados.
+/*.xlsx
+/*.xls
+/*.csv
+/profiles-input/*.xlsx
+/profiles-input/*.xls
+/profiles-input/*.csv

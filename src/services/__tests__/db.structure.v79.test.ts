@@ -61,6 +61,8 @@ const EXPECTED_STORES: Record<string, string[]> = {
   propertyDays: ['property-year', 'propertyId', 'taxYear'],
   property_sales: ['property-status', 'propertyId', 'saleDate', 'status'],
   proveedores: [],
+  // V95 · E3.1 · §7.3 · el catálogo nacional que el cliente amplía.
+  catalogoProveedores: ['clave', 'nif'],
   resultadosEjercicio: ['ejercicio', 'ejercicio-estado', 'estadoEjercicio', 'origen'],
   retos: ['estado', 'mes', 'tipo'],
   snapshotsDeclaracion: ['ejercicio', 'fechaSnapshot', 'origen'],

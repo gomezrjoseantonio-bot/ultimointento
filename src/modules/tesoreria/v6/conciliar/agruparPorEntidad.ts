@@ -57,16 +57,45 @@ export interface Entidad {
 
 // ─── la clave ────────────────────────────────────────────────────────────────
 
-/** De más a menos identificador · un CUPS dice más que un NIF, y un NIF más que una tarjeta. */
-const FUERZA: Record<TipoIdentificador, number> = { cups: 5, contrato: 4, nif: 3, iban: 2, tarjeta: 1 };
+/**
+ * De más a menos identificador. Un CUPS dice más que un NIF, y un NIF más que
+ * una tarjeta. E3.1 mete el MANDATO por encima del NIF: dos recibos de
+ * Iberdrola de dos pisos comparten el NIF y NO comparten el mandato, así que
+ * agrupar por NIF los junta —que es justo lo que hay que poder separar—.
+ *
+ * El ACREEDOR queda FUERA (fuerza 0): es un nombre, no una clave. Agrupar por
+ * él sería agrupar por contraparte con otro nombre —eso ya lo hace
+ * `nombreDeContraparte`— y convertiría en «entidad con identificador» un recibo
+ * del que solo sabemos quién cobra. Su sitio es el catálogo nacional (§7.3),
+ * que es quien lo traduce a una familia.
+ */
+const FUERZA: Record<TipoIdentificador, number> = {
+  cups: 7,
+  contrato: 6,
+  mandato: 5,
+  nif: 4,
+  iban: 3,
+  tarjeta: 2,
+  acreedor: 0,
+};
 
+/**
+ * §9.5 · el identificador ya NO se re-extrae del texto si la línea lo trae
+ * guardado: el motor lo extrajo al clasificar y lo persistió
+ * (`LineaExtractoPersistida.identificadores`). Solo se recalcula para las
+ * líneas anteriores a E3.1, que no lo tienen.
+ */
 function identificadorMasFuerte(l: LineaExtracto): Identificador | undefined {
-  const ids = identificadoresDeMovimiento({
-    description: l.textoBanco,
-    counterparty: l.contraparte,
-    reference: l.referencia,
-  });
-  return ids.slice().sort((a, b) => FUERZA[b.tipo] - FUERZA[a.tipo])[0];
+  const ids =
+    l.identificadores ??
+    identificadoresDeMovimiento({
+      description: l.textoBanco,
+      counterparty: l.contraparte,
+      reference: l.referencia,
+    });
+  return ids
+    .filter((id) => FUERZA[id.tipo] > 0)
+    .sort((a, b) => FUERZA[b.tipo] - FUERZA[a.tipo])[0];
 }
 
 function esInterno(l: LineaExtracto): boolean {

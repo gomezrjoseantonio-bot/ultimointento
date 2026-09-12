@@ -90,8 +90,13 @@ function identidadDe(
     if (id.tipo === 'cups' && referencia && id.valor === referencia) return 'cups';
   }
   for (const id of ids) {
-    if (id.tipo === 'contrato' && contrato && id.valor === contrato) return 'numeroContrato';
-    if (id.tipo === 'contrato' && referencia && id.valor === referencia) return 'numeroContrato';
+    // E3.1 · §7.2 · el MANDATO cuenta como nº de contrato aquí. Lo que el banco
+    // etiqueta «Ref. Mandato 07085234611» era hasta ahora un `contrato` a secas
+    // y es lo que el usuario guardó en `numeroContrato` de su compromiso; darle
+    // tipo propio no puede romper ese cruce.
+    if (id.tipo !== 'contrato' && id.tipo !== 'mandato') continue;
+    if (contrato && id.valor === contrato) return 'numeroContrato';
+    if (referencia && id.valor === referencia) return 'numeroContrato';
   }
   for (const id of ids) {
     if (id.tipo === 'nif' && nif && id.valor === nif) return 'nif';

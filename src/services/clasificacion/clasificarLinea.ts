@@ -10,10 +10,12 @@
 //       lo que el usuario YA confirmó · máxima prioridad · si casa, los ejes
 //       de clasificación quedan y se para.
 //   2 · IDENTIFICADOR · lo reconocido contra una definición o un cuadro por
-//       CUPS / nº contrato / IBAN / nº tarjeta (deterministas · vía A por
-//       identidad) · y la tarjeta o cuenta PROPIA por sus cuatro últimos.
+//       CUPS / nº contrato / mandato / IBAN / nº tarjeta (deterministas · vía A
+//       por identidad) · la tarjeta o cuenta PROPIA por sus cuatro últimos · y
+//       (E3.1 · §7.3) el CATÁLOGO NACIONAL por NIF o por el nombre del acreedor.
 //   3 · CONCEPTO explícito · las reglas duras (`reglasDuras`) con límite de
-//       palabra.
+//       palabra. ÚLTIMO RECURSO: el catálogo del paso 2 le gana siempre, y eso
+//       es lo que impide que «Financiera Carrefour» acabe en Supermercado.
 //   4 · RECURRENCIA · un recurrente que casa por texto (vía A sin identidad) ·
 //       el piso que declaraste el año pasado (atribución).
 //   5 · DEFECTO · naturaleza por signo, método por el texto, «personal», sin
@@ -32,6 +34,12 @@ import type { Movement } from '../db';
 import type { MovementSuggestion } from '../movementSuggestionService';
 import type { AtribucionDeterminista, OrigenDeterminista } from '../deterministas/tipos';
 import { identificadoresDeMovimiento, normalizarIdentificador } from '../identificadoresDelConcepto';
+import {
+  porNif as entidadPorNif,
+  porNombre as entidadPorNombre,
+  CATALOGO_VACIO,
+  type CatalogoNacional,
+} from '../catalogoNacional/catalogoNacional';
 import {
   esFamiliaId,
   naturalezaDe,
@@ -61,6 +69,33 @@ export interface ContextoClasificacion {
   tarjetas: ReadonlyArray<{ id?: number; ultimosCuatro?: string; activa?: boolean }>;
   /** Los nombres con los que el usuario aparece en un extracto. */
   nombresTitular: readonly string[];
+  /**
+   * E3.1 · §7.2 · los CONTRATOS de los préstamos del usuario · solo el número.
+   *
+   * El cuadro de amortización dice CUÁL es la cuota; esto dice solo QUÉ ES el
+   * cargo. Son cosas distintas y la segunda vale aunque falle la primera: en el
+   * corpus real hay 54 «Liquidacion Periodica Prestamo 0049 0052 143 …» cuyo
+   * periodo no cuadra (el cuadro no llega a esas fechas, o el préstamo se dio
+   * de alta después) y que, con el nº de contrato delante, son obviamente la
+   * cuota de un préstamo. Sin esto se quedaban sin familia esperando a que las
+   * salvara una palabra.
+   */
+  contratosDePrestamo?: ReadonlyArray<{ numeroContrato?: string; inmuebleId?: number | string }>;
+  /**
+   * E3.1 · §7.3 · el CATÁLOGO NACIONAL · NIF/nombre → proveedor → familia.
+   * No es del cliente: Iberdrola cobra igual en Cádiz que en Bilbao. Si no se
+   * pasa, el motor funciona igual y este paso simplemente no aporta nada.
+   */
+  catalogo?: CatalogoNacional;
+  /**
+   * E3.1 · MEDIR · apaga el paso 3 (`reglasDuras`) para poder contar qué
+   * porcentaje sale clasificado con SOLO lo que escala: cruce entre cuentas
+   * propias, identificadores del fichero y catálogo nacional. No es una opción
+   * de producción — nadie la enciende en la app — pero sin ella el número de
+   * §7 no se puede medir sobre el corpus real, y un objetivo que no se mide no
+   * es un objetivo.
+   */
+  sinReglasDuras?: boolean;
 }
 
 // ─── el signo manda ──────────────────────────────────────────────────────────
@@ -237,6 +272,98 @@ function tarjetaOCuentaPropia(m: Movement, ctx: ContextoClasificacion): Parcial 
   return undefined;
 }
 
+/**
+ * E3.1 · §7.3 · el CATÁLOGO NACIONAL, dentro del paso 2 (identificador).
+ *
+ * Se cruza por el NIF que el banco escribe (Sabadell lo pone en «Referencia 1»)
+ * y, si no hay NIF, por el NOMBRE del acreedor que el extractor sacó del
+ * concepto («Recibo FCC AQUALIA OVIEDO», «N 2025…  BANKINTER CONSUMER FINANCE»).
+ *
+ * Va ANTES que cualquier regla de texto A PROPÓSITO: «Financiera Carrefour»
+ * lleva CARREFOUR dentro y por texto cae en Supermercado, que es contar el
+ * recibo de un crédito al consumo como la compra de la semana. El catálogo lo
+ * saca de ahí antes de que la regla lo vea.
+ */
+function porCatalogo(m: Movement, ctx: ContextoClasificacion): Parcial | undefined {
+  const cat = ctx.catalogo ?? CATALOGO_VACIO;
+  if (cat.porNif.size === 0 && cat.porAlias.length === 0) return undefined;
+  const ids = identificadoresDeMovimiento(m);
+  for (const id of ids) {
+    const e = id.tipo === 'nif' ? entidadPorNif(cat, id.valor) : undefined;
+    if (e) {
+      return {
+        naturaleza: naturalezaDe(e.familia),
+        familia: e.familia,
+        ...(e.subtipo ? { subtipo: e.subtipo } : {}),
+        ...(e.ambito ? { ambito: e.ambito } : {}),
+        motivo: `catálogo · NIF ${id.valor} = ${e.nombre}`,
+      };
+    }
+  }
+  for (const id of ids) {
+    const e = id.tipo === 'acreedor' ? entidadPorNombre(cat, id.texto ?? id.valor) : undefined;
+    if (e) {
+      return {
+        naturaleza: naturalezaDe(e.familia),
+        familia: e.familia,
+        ...(e.subtipo ? { subtipo: e.subtipo } : {}),
+        ...(e.ambito ? { ambito: e.ambito } : {}),
+        motivo: `catálogo · ${id.texto ?? id.valor} = ${e.nombre}`,
+      };
+    }
+  }
+  // Sin acreedor extraído, el nombre que el banco puso como contraparte.
+  const porContraparte = entidadPorNombre(cat, m.counterparty);
+  if (porContraparte) {
+    return {
+      naturaleza: naturalezaDe(porContraparte.familia),
+      familia: porContraparte.familia,
+      ...(porContraparte.subtipo ? { subtipo: porContraparte.subtipo } : {}),
+      ...(porContraparte.ambito ? { ambito: porContraparte.ambito } : {}),
+      motivo: `catálogo · ${m.counterparty} = ${porContraparte.nombre}`,
+    };
+  }
+  return undefined;
+}
+
+/** Los dígitos de un nº de contrato · lo que se compara, sin entidad ni guiones. */
+function digitosDeContrato(v: string): string {
+  return normalizarIdentificador(v).replace(/\D/g, '');
+}
+
+const DIGITOS_MINIMOS_CONTRATO = 8;
+
+/**
+ * E3.1 · §7.2 · el nº de contrato del fichero contra los préstamos del usuario.
+ *
+ * NO dice qué cuota es (eso es del cuadro, `cuotasDePrestamo`), solo que este
+ * cargo es de ese préstamo. Se compara por los dígitos y basta con que uno
+ * termine en el otro: el banco escribe «0049 0052 143 0004926» y el usuario
+ * pudo guardarlo sin la entidad delante.
+ */
+function porContratoDePrestamo(m: Movement, ctx: ContextoClasificacion): Parcial | undefined {
+  const prestamos = ctx.contratosDePrestamo ?? [];
+  if (prestamos.length === 0 || m.amount >= 0) return undefined;
+  const delFichero = identificadoresDeMovimiento(m)
+    .filter((id) => id.tipo === 'contrato' || id.tipo === 'mandato')
+    .map((id) => digitosDeContrato(id.valor))
+    .filter((d) => d.length >= DIGITOS_MINIMOS_CONTRATO);
+  if (delFichero.length === 0) return undefined;
+  for (const pr of prestamos) {
+    const propio = digitosDeContrato(pr.numeroContrato ?? '');
+    if (propio.length < DIGITOS_MINIMOS_CONTRATO) continue;
+    if (!delFichero.some((d) => d === propio || d.endsWith(propio) || propio.endsWith(d))) continue;
+    return {
+      naturaleza: 'gasto',
+      familia: 'prestamo_hipoteca',
+      metodo: 'domiciliacion',
+      ...(pr.inmuebleId != null && Number.isFinite(Number(pr.inmuebleId)) ? { inmuebleId: Number(pr.inmuebleId) } : {}),
+      motivo: `nº de contrato del fichero = un préstamo tuyo (${pr.numeroContrato?.trim()})`,
+    };
+  }
+  return undefined;
+}
+
 function identificador(m: Movement, ctx: ContextoClasificacion): Parcial[] {
   const out: Parcial[] = [];
   if (ctx.origen) out.push(parcialDeOrigen(ctx.origen));
@@ -247,6 +374,13 @@ function identificador(m: Movement, ctx: ContextoClasificacion): Parcial[] {
   }
   const propia = tarjetaOCuentaPropia(m, ctx);
   if (propia) out.push(propia);
+  const contrato = porContratoDePrestamo(m, ctx);
+  if (contrato) out.push(contrato);
+  // El catálogo va el ÚLTIMO de este paso —lo que reconoce el propio libro del
+  // usuario sabe más que una tabla nacional— pero todo el paso 2 va antes que
+  // el paso 3, así que el catálogo sigue ganando a `reglasDuras`.
+  const cat = porCatalogo(m, ctx);
+  if (cat) out.push(cat);
   return out;
 }
 
@@ -292,8 +426,10 @@ export function clasificarLinea(m: Movement, ctx: ContextoClasificacion): Clasif
   for (const p of identificador(m, ctx)) aplicar(c, p, 'identificador', m.amount);
 
   // 3 · concepto
-  const concepto = porConcepto({ description: m.description ?? '', reference: m.reference, amount: m.amount }, ctx);
-  if (concepto) aplicar(c, concepto, 'concepto', m.amount);
+  if (!ctx.sinReglasDuras) {
+    const concepto = porConcepto({ description: m.description ?? '', reference: m.reference, amount: m.amount }, ctx);
+    if (concepto) aplicar(c, concepto, 'concepto', m.amount);
+  }
 
   // 4 · recurrencia
   for (const p of recurrencia(ctx)) aplicar(c, p, 'recurrencia', m.amount);

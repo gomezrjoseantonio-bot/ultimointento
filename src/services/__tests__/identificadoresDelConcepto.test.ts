@@ -35,10 +35,13 @@ describe('extraerIdentificadores · identificadores ESTABLES', () => {
       'contrato:004900525020011256',
     ]);
     // El nº de recibo («0049 0052 755 Bbrtxrx») cambia cada mes y NO entra; el
-    // mandato es el que identifica la póliza.
+    // mandato es el que identifica la póliza. E3.1 · §7.2: lo que el banco
+    // etiqueta MANDATO deja de ser un `contrato` genérico y pasa a ser su
+    // propio tipo (un recurrente = un mandato), y el nombre del acreedor que
+    // va pegado a RECIBO se extrae para poder cruzarlo con el catálogo.
     expect(
       ids('Recibo Segurcaixa, S.a. De Seguros Y Reaseguros Nº Recibo 0049 0052 755 Bbrtxrx Ref. Mandato 07085234611, De')
-    ).toEqual(['contrato:07085234611']);
+    ).toEqual(['mandato:07085234611', 'acreedor:SEGURCAIXASADESEGUROSYREASEGUROS']);
   });
 
   it('Unicaja · el préstamo con su contrato en grupos', () => {
@@ -55,7 +58,11 @@ describe('extraerIdentificadores · identificadores ESTABLES', () => {
   });
 
   it('CUPS · con y sin los dos caracteres de frontera', () => {
-    expect(ids('RECIBO IBERDROLA CUPS ES0021000012345678AB0F')).toEqual(['cups:ES0021000012345678AB0F']);
+    // E3.1 · el CUPS sigue mandando; el nombre del acreedor lo acompaña.
+    expect(ids('RECIBO IBERDROLA CUPS ES0021000012345678AB0F')).toEqual([
+      'cups:ES0021000012345678AB0F',
+      'acreedor:IBERDROLA',
+    ]);
     expect(ids('CUPS ES0021000012345678AB')).toEqual(['cups:ES0021000012345678AB']);
   });
 
@@ -83,7 +90,6 @@ describe('extraerIdentificadores · identificadores ESTABLES', () => {
 describe('extraerIdentificadores · NO inventa sobre ruido volátil', () => {
   it.each([
     ['BBVA · nº de recibo mensual', 'Adeudo nº 2026036000123456'],
-    ['BBVA · nº de recibo con prestamista', 'N 2026126000711287 BANKINTER CONSUMER FINANCE'],
     ['Santander · referencia de compra', 'Transferencia De Jesus Escudero Santiuste, Concepto 4-acevedo-h2 - 7949807tp6074n0006ym.'],
     ['ING · referencia de Amazon', 'Pago en Amazon Prime*Z12968TU5 amazon.espr LU'],
     ['ING · referencia de Prime Video', 'Pago en Prime Video *JI9428475 primevideo.e ES'],
@@ -92,7 +98,6 @@ describe('extraerIdentificadores · NO inventa sobre ruido volátil', () => {
     ['Sabadell · referencia SLMP', 'SLMP023352742'],
     ['Sabadell · nº de operación', '173518339'],
     ['ING · hipoteca sin número', 'Cargo cuota de Hipoteca ING Direct'],
-    ['heurística · cuota sin número', 'RECIBO PRESTAMO UNICAJA 0123 CUOTA 07/2026'],
     ['test antiguo · REF volátil', 'ENDESA ESPAÑA SA RECIBO LUZ ENE2024 REF123456'],
     ['sin nada', 'NETFLIX.COM'],
     ['vacío', ''],
@@ -100,11 +105,29 @@ describe('extraerIdentificadores · NO inventa sobre ruido volátil', () => {
     expect(ids(texto)).toEqual([]);
   });
 
-  it('Unicaja · el código pegado al nombre y el nº de recibo de doce cifras NO se toman por identificador', () => {
-    // «CCPP CL TE0146B7 006300001100» → el 0063… cambia cada mes (…1100, …1000,
-    // …0900 en el mismo fichero) y «TE0146B7» no tiene forma verificable.
-    expect(ids('CCPP CL TE0146B7 006300001100')).toEqual([]);
-    expect(ids('FCC AQUALI447497 874010012213')).toEqual([]);
+  it('E3.1 · el nº VOLÁTIL del adeudo se sigue tirando · lo que entra es el NOMBRE de detrás', () => {
+    // El 2026·126 de «N 2026126000711287» es año + día juliano: cambia en cada
+    // recibo. No entra. El acreedor que va detrás sí, y es un NOMBRE, no una
+    // clave: no cierra nada por sí solo, solo permite cruzar el catálogo.
+    expect(ids('N 2026126000711287 BANKINTER CONSUMER FINANCE')).toEqual([
+      'acreedor:BANKINTERCONSUMERFINANCE',
+    ]);
+    expect(ids('N 2026126000711287 BANKINTER CONSUMER FINANCE').join()).not.toContain('2026126');
+    // «RECIBO PRESTAMO UNICAJA 0123 CUOTA 07/2026»: el 0123 y la fecha siguen
+    // fuera (no hay contrato); queda el nombre de quien cobra.
+    expect(ids('RECIBO PRESTAMO UNICAJA 0123 CUOTA 07/2026')).toEqual(['acreedor:PRESTAMOUNICAJA']);
+  });
+
+  it('E3.1 · CORRIGE E2.1 · las doce cifras de Unicaja son el MANDATO, no un nº de recibo mensual', () => {
+    // E2.1 leyó «…1100 / …1000 / …0900 en el mismo fichero» como un número que
+    // cambia cada mes. El fichero real dice lo contrario: los tres salen el
+    // MISMO día (2025-08-28), así que son TRES acreedores distintos —las tres
+    // comunidades de Jose—, no uno cambiando. Y «…0900» reaparece tal cual en
+    // otra fecha (`__fixtures__/unicaja-fixture.csv`), o sea que es estable.
+    // Eso es exactamente lo que resuelve «¿cuál de mis 3 comunidades?».
+    expect(ids('CCPP CL TE0146B7 006300001100')).toEqual(['mandato:006300001100', 'acreedor:CCPPCLTE']);
+    expect(ids('CCPP CL TE0146B7 006300001000')).toEqual(['mandato:006300001000', 'acreedor:CCPPCLTE']);
+    expect(ids('FCC AQUALI447497 874010012213')).toEqual(['mandato:874010012213', 'acreedor:FCCAQUALI']);
   });
 });
 

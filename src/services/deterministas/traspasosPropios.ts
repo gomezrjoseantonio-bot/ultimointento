@@ -99,6 +99,30 @@ export function parteDeLaTransferencia(textoNormalizado: string): string | null 
   return parte.length >= 3 ? parte : null;
 }
 
+/**
+ * E3.1 · §7.1 · la ETIQUETA del banco no decide sola.
+ *
+ * «NOMINA GOMEZ RAMIREZ JOSE ANTONIO» y «Nomina recibida GOMEZ RAMIREZ JOSE
+ * ANTONIO» los escribe el banco como nómina, pero el ordenante es el PROPIO
+ * titular: es dinero suyo que cambia de cuenta, no un sueldo que entra. 21
+ * casos en el corpus, 21 ingresos inventados que movían el patrimonio.
+ *
+ * Se exige que el nombre vaya DETRÁS de la etiqueta de nómina (no en cualquier
+ * parte del texto) y que sea el titular con el mismo listón que la parte de una
+ * transferencia. Una nómina de verdad trae el nombre de la EMPRESA, no el tuyo.
+ */
+const CABECERA_NOMINA = /\b(?:NOMINAS?|ABONO DE NOMINA|NOMINA RECIBIDA|SALARIO|HABERES)\b[ .:-]*(?:RECIBIDA|ABONO|DE|A FAVOR DE)?[ .:-]*(.+)$/;
+
+export function esNominaDelPropioTitular(texto: string, nombres: string[]): boolean {
+  if (nombres.length === 0) return false;
+  const norm = normalizarTexto(texto);
+  const m = CABECERA_NOMINA.exec(norm);
+  if (!m) return false;
+  const parte = m[1].replace(FIN_DE_LA_PARTE, '').trim();
+  if (parte.length < 3) return false;
+  return nombres.some((n) => palabrasEnComun(parte, n) >= PALABRAS_EN_LA_PARTE);
+}
+
 /** ¿El otro lado de esta transferencia es el propio titular? */
 export function laParteEsElTitular(texto: string, nombres: string[]): boolean {
   if (nombres.length === 0) return false;
@@ -153,6 +177,110 @@ export function espejoDe(m: Movement, otros: Movement[], cuentasPropias: Readonl
   return candidatos.length === 1 ? candidatos[0] : undefined;
 }
 
+// ─── E3.1 · §7.1 · el CRUCE DE PATAS ────────────────────────────────────────
+//
+// Hasta aquí el traspaso se reconocía por el NOMBRE del titular o por el IBAN:
+// si el banco no escribía ninguno de los dos, no había traspaso. El cruce mira
+// el OTRO dato que siempre está: una salida en la cuenta A que es una entrada
+// en la cuenta B a ±3 días por el mismo importe.
+//
+// Dos guardas, porque sin ellas esto convierte en traspaso cualquier
+// coincidencia de importe:
+//
+//   · una de las dos patas tiene que OLER a traspaso (el nombre del titular,
+//     «ahorro», «traspaso», «enviado por»). Dos alquileres de 400 € el mismo
+//     día en dos cuentas NO son un traspaso;
+//   · NUNCA sobre lo que el banco ya dice que es otra cosa: un recibo
+//     domiciliado, un cajero, un alquiler. Ahí la coincidencia es casualidad.
+
+/** Lo que huele a traspaso aunque el banco no diga el nombre de nadie. */
+const HUELE_A_TRASPASO = /\b(?:AHORROS?|TRASPASO|TRASPASOS|ENVIADO POR|ENVIADA DESDE|ENTRE CUENTAS|A MI CUENTA)\b/;
+
+/** Lo que NUNCA es un traspaso propio por mucho que los importes casen. */
+const NO_ES_TRASPASO =
+  /\b(?:RECIBO|ADEUDO|DOMICILIACION|CAJERO|REINTEGRO|RETIRADA|ALQUILER|RENTA|NOMINA|COMPRA|PAGO EN|TARJETA|COMISION|PRESTAMO|HIPOTECA)\b/;
+
+function textoDe(m: Movement): string {
+  return normalizarTexto(`${m.description ?? ''} ${m.counterparty ?? ''}`);
+}
+
+/** ¿Esta pata puede entrar en un cruce? · lo que el banco llama otra cosa, no. */
+export function puedeCruzar(m: Movement): boolean {
+  return !NO_ES_TRASPASO.test(textoDe(m));
+}
+
+/** ¿Esta pata HUELE a traspaso? · basta con que lo haga UNA de las dos. */
+export function hueleATraspaso(m: Movement, nombres: string[]): boolean {
+  const t = textoDe(m);
+  if (HUELE_A_TRASPASO.test(t)) return true;
+  return nombres.some((n) => palabrasEnComun(t, n) >= PALABRAS_EN_LA_PARTE);
+}
+
+/** Una pareja de patas cruzada · las dos se marcan, y cada una nombra a la otra. */
+export interface PatasCruzadas {
+  salida: Movement;
+  entrada: Movement;
+}
+
+/**
+ * Las parejas (salida en A ↔ entrada en B) de un conjunto de movimientos de
+ * VARIAS cuentas propias. Cada movimiento entra en UNA pareja como mucho, y
+ * solo se cruza cuando la pareja es ÚNICA: dos entradas candidatas para una
+ * salida es una duda, y una duda no se resuelve inventando.
+ */
+export function cruzarPatas(
+  movimientos: readonly Movement[],
+  cuentasPropias: ReadonlySet<number>,
+  nombres: string[],
+): PatasCruzadas[] {
+  const vivos = movimientos.filter(
+    (m) => m.id != null && m.amount !== 0 && cuentasPropias.has(m.accountId) && !yaEmparejado(m) && puedeCruzar(m),
+  );
+  const salidas = vivos.filter((m) => m.amount < 0);
+  const entradas = vivos.filter((m) => m.amount > 0);
+  const usados = new Set<number>();
+  const out: PatasCruzadas[] = [];
+
+  for (const salida of salidas) {
+    if (usados.has(salida.id as number)) continue;
+    const t = dia(salida.date);
+    const candidatas = entradas.filter(
+      (e) =>
+        !usados.has(e.id as number) &&
+        e.accountId !== salida.accountId &&
+        mismoImporte(e.amount, salida.amount) &&
+        Math.abs(dia(e.date) - t) <= DIAS_ESPEJO * MS_DIA,
+    );
+    if (candidatas.length !== 1) continue;
+    const entrada = candidatas[0];
+    // Una de las dos tiene que oler a traspaso · si ninguna lo hace, la
+    // coincidencia de importe no basta.
+    if (!hueleATraspaso(salida, nombres) && !hueleATraspaso(entrada, nombres)) continue;
+    usados.add(salida.id as number);
+    usados.add(entrada.id as number);
+    out.push({ salida, entrada });
+  }
+  return out;
+}
+
+/**
+ * §7.1 · las cuentas que FALTAN · una pata cruzada cuya cuenta contraria no
+ * está dada de alta significa que el usuario tiene una cuenta que ATLAS no
+ * conoce. No se crea sola: se propone.
+ */
+export function cuentasQueFaltan(
+  cruces: readonly PatasCruzadas[],
+  cuentas: Account[],
+): number[] {
+  const conocidas = new Set(cuentas.filter((c) => c.id != null && !estaDeBaja(c)).map((c) => c.id as number));
+  const faltan = new Set<number>();
+  for (const { salida, entrada } of cruces) {
+    if (!conocidas.has(salida.accountId)) faltan.add(salida.accountId);
+    if (!conocidas.has(entrada.accountId)) faltan.add(entrada.accountId);
+  }
+  return Array.from(faltan);
+}
+
 // ─── el reconocimiento ──────────────────────────────────────────────────────
 
 /** Cómo se llama la cuenta en pantalla · alias, banco o el final del IBAN. */
@@ -166,7 +294,12 @@ export function nombreDeCuenta(c: Account): string {
  */
 export function pareceTraspasoPropio(m: Movement, cuentas: Account[], nombres: string[]): boolean {
   if (m.id == null || m.amount === 0) return false;
-  return !!cuentaPropiaPorIban(m, cuentas) || laParteEsElTitular(`${m.description ?? ''} ${m.counterparty ?? ''}`, nombres);
+  const texto = `${m.description ?? ''} ${m.counterparty ?? ''}`;
+  return (
+    !!cuentaPropiaPorIban(m, cuentas) ||
+    laParteEsElTitular(texto, nombres) ||
+    esNominaDelPropioTitular(texto, nombres)
+  );
 }
 
 /**
@@ -186,25 +319,47 @@ export function traspasosPropios(
   const idsPropios = new Set(cuentas.map((c) => c.id as number).filter((id) => id != null));
   if (idsPropios.size === 0) return out;
 
+  // §7.1 · el CRUCE DE PATAS · se hace UNA vez sobre el lote entero + lo que ya
+  // había en las demás cuentas, y deja un mapa movimiento → su pareja. Marca
+  // las DOS patas: hasta E3.1 solo se marcaba la que traía el nombre.
+  const cruzados = new Map<number, Movement>();
+  for (const { salida, entrada } of cruzarPatas([...movimientos, ...otrosMovimientos], idsPropios, nombres)) {
+    cruzados.set(salida.id as number, entrada);
+    cruzados.set(entrada.id as number, salida);
+  }
+
   for (const m of movimientos) {
     if (m.id == null || m.amount === 0) continue;
     const texto = `${m.description ?? ''} ${m.counterparty ?? ''}`;
 
     const porIban = cuentaPropiaPorIban(m, cuentas);
     const porTitular = !porIban && laParteEsElTitular(texto, nombres);
-    if (!porIban && !porTitular) continue;
+    // §7.1 · la etiqueta «nómina» del banco NO decide sola: si el ordenante
+    // es el propio titular, es un traspaso y no un ingreso.
+    const porNomina = !porIban && !porTitular && esNominaDelPropioTitular(texto, nombres);
+    // §7.1 · el CRUCE · esta pata no dice nada por sí sola, pero su pareja al
+    // otro lado sí, y el cruce ya las emparejó.
+    const cruce = !porIban && !porTitular && !porNomina ? cruzados.get(m.id) : undefined;
+    if (!porIban && !porTitular && !porNomina && !cruce) continue;
 
     const sentido = m.amount < 0 ? 'salida' : 'entrada';
-    const espejo = espejoDe(m, otrosMovimientos, idsPropios);
+    const espejo = espejoDe(m, otrosMovimientos, idsPropios) ?? cruce;
     // La cuenta contraria: la del IBAN, o la del espejo. Solo si sigue en uso:
     // a una cuenta de baja no se le escribe una pata nueva.
     const contraria =
       (porIban && !estaDeBaja(porIban) ? porIban : undefined) ??
       (espejo ? enUso.find((c) => c.id === espejo.accountId) : undefined);
 
-    const titulo = contraria
-      ? `Traspaso ${sentido === 'salida' ? 'a' : 'desde'} ${nombreDeCuenta(contraria)}`
-      : 'Traspaso entre tus cuentas';
+    // §7.1 · el título DICE por qué, porque el usuario tiene que poder no
+    // estar de acuerdo: una «nómina» que ATLAS convierte en traspaso sin
+    // explicarse es una cifra que cambia sola.
+    const titulo = porNomina
+      ? contraria
+        ? `Traspaso ${sentido === 'salida' ? 'a' : 'desde'} ${nombreDeCuenta(contraria)} · el banco lo llama nómina, pero el ordenante eres tú`
+        : 'Traspaso entre tus cuentas · el banco lo llama nómina, pero el ordenante eres tú'
+      : contraria
+        ? `Traspaso ${sentido === 'salida' ? 'a' : 'desde'} ${nombreDeCuenta(contraria)}`
+        : 'Traspaso entre tus cuentas';
 
     out.push({
       movementId: m.id,

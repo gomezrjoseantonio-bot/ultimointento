@@ -235,7 +235,7 @@ export function buildLearnKeyV1(movement: Movement): string | null {
  * by computing the same learnKey from a just-imported movement.
  */
 export function buildLearnKey(movement: Movement): string | null {
-  const ids = identificadoresDeMovimiento(movement);
+  const ids = clavesEstables(movement);
   // Sin identificador, la v1 manda · y puede decir que no hay con qué agrupar.
   if (ids.length === 0) return buildLearnKeyV1(movement);
   // Con identificador SÍ hay con qué: un CUPS o un NIF agrupa por sí solo,
@@ -243,9 +243,22 @@ export function buildLearnKey(movement: Movement): string | null {
   return simpleHash(piezasV2(movement, ids.map(claveDeIdentificador)));
 }
 
+/**
+ * E3.1 · las CLAVES del movimiento · los identificadores menos el `acreedor`.
+ *
+ * El acreedor es el NOMBRE de quien cobra («BIP   DRIVE, S.A.»), no una clave:
+ * lo escribe el banco y cambia de un extracto a otro. Sirve para cruzar el
+ * catálogo nacional (§7.3), no para identificar una regla aprendida: si
+ * entrara en `learnKey`, el mismo recibo escrito de dos maneras daría dos
+ * reglas, que es justo lo contrario de lo que hace falta.
+ */
+function clavesEstables(movement: Movement) {
+  return identificadoresDeMovimiento(movement).filter((id) => id.tipo !== 'acreedor');
+}
+
 /** Los identificadores del movimiento, como se guardan en la regla · «tipo:valor». */
 export function identificadoresDeRegla(movement: Movement): string[] {
-  return identificadoresDeMovimiento(movement).map(claveDeIdentificador);
+  return clavesEstables(movement).map(claveDeIdentificador);
 }
 
 /**

@@ -40,7 +40,7 @@ import { reconocerDeterministasDeLineas } from './deterministas/matcheoDetermini
 import { leerExtractoBancoPdf } from './leerExtractoBancoPdf';
 import type { ParsedMovement } from '../types/bankProfiles';
 import type { DescarteLineaExtracto, LineaExtractoPersistida } from './db/types-lineasExtracto';
-import { lineaDesdeFila, lineasDelLote } from './lineasExtractoService';
+import { lineaDesdeFila, lineasDelLote, huellaFuerteDeFila } from './lineasExtractoService';
 import {
   entraAlMatcheo,
   type LoQueSeReconocePorLinea,
@@ -89,6 +89,13 @@ export interface OrchestratorResult {
    * que casar. Ese es el motivo real de que se reconocieran dos de cien.
    */
   reconocido: LoQueSeReconocePorLinea;
+  /**
+   * E3.1 · §P1.d · lo que se rompió por el camino, en cristiano. Vacío cuando
+   * todo fue bien. Un fallo de lectura deja líneas «sin clasificar» y eso es
+   * INDISTINGUIBLE de que el motor no sepa: aquí queda dicho cuál de las dos
+   * cosas pasó, para que llegue a la pantalla y no solo a la consola.
+   */
+  avisos: string[];
   /**
    * E2.4.2 · lo que el MOTOR sabe de cada línea · los 4 ejes con su origen
    * (`clasificarLinea`), en el orden aprendidas → identificador → concepto →
@@ -310,7 +317,10 @@ async function procesarLoteParseado(
     duplicatesSkipped: insertResult.duplicates,
     ...propuesta,
     bankProfileUsed: ctx.bankProfileUsed,
-    warnings: ctx.warnings,
+    // §P1.d · los avisos del análisis viajan TAMBIÉN por `warnings`, que es lo
+    // que la pantalla del import ya enseña. Sin esto se quedaban en el campo
+    // nuevo que todavía no mira nadie, o sea, en silencio otra vez.
+    warnings: [...ctx.warnings, ...propuesta.avisos],
   };
 }
 
@@ -325,17 +335,30 @@ async function procesarLoteParseado(
 export async function analizarLineas(
   lineas: LineaExtractoPersistida[],
   matchOptions?: MatchOptions
-): Promise<Pick<OrchestratorResult, 'matchResult' | 'suggestions' | 'reconocido' | 'clasificacion'>> {
+): Promise<Pick<OrchestratorResult, 'matchResult' | 'suggestions' | 'reconocido' | 'clasificacion' | 'avisos'>> {
   const entran = lineas.filter(entraAlMatcheo);
   const matchResult = await matchLineas(entran, matchOptions);
-  const sinMatch = new Set(matchResult.sinMatch);
-  const sinCasar = entran.filter((l) => sinMatch.has(l.id as number));
-  const suggestions = await suggestForLineas(sinCasar);
+  const avisos: string[] = [];
+  const avisar = (mensaje: string, err?: unknown) => {
+    // §P1.d · un fallo NO puede degradar a «sin clasificar» en silencio: se
+    // escribe en consola para quien depura Y se devuelve para quien mira la
+    // pantalla, que es el que se cree que ATLAS «no sabe».
+    console.warn(`[orchestrator] ${mensaje}`, err);
+    avisos.push(mensaje);
+  };
+  // E3.1 · §P1.a · los pasos 1 (sugeridor) y 2 (deterministas) corren sobre
+  // TODAS las líneas que entran, no solo sobre las que NO casaron con una
+  // previsión. Casar con un previsto dice CUÁNDO se esperaba ese dinero, no
+  // QUÉ es: una línea que cuadraba con la cuota de un préstamo perdía el
+  // origen y el sugeridor, y llegaba al motor sin la señal más fuerte que
+  // tenía. El cuadre sigue mandando sobre lo suyo — esto solo deja de
+  // esconderle al motor lo que ya se sabía.
+  const suggestions = await suggestForLineas(entran);
   const reconocido = await (async (): Promise<LoQueSeReconocePorLinea> => {
     try {
-      return await reconocerDeterministasDeLineas(sinCasar);
+      return await reconocerDeterministasDeLineas(entran);
     } catch (err) {
-      console.warn('[orchestrator] no se pudo reconocer contra los libros del usuario', err);
+      avisar('no se pudo reconocer contra los libros del usuario · las líneas se clasifican sin esa señal', err);
       return { origenes: new Map(), atribuciones: new Map() };
     }
   })();
@@ -347,16 +370,16 @@ export async function analizarLineas(
     try {
       const db = await initDB();
       const base = db as unknown as BaseParaClasificar;
-      const ctx = await contextoDelLote(base);
+      const ctx = await contextoDelLote(base, avisar);
       const c = clasificarLineas(entran, { suggestions, reconocido }, ctx);
       await guardarClasificacionEnLineas(base, c, new Date().toISOString());
       return c;
     } catch (err) {
-      console.warn('[orchestrator] no se pudo clasificar el lote', err);
+      avisar('no se pudo clasificar el lote · las líneas quedan sin clasificar, pero NO porque el motor no sepa', err);
       return new Map();
     }
   })();
-  return { matchResult, suggestions, reconocido, clasificacion };
+  return { matchResult, suggestions, reconocido, clasificacion, avisos };
 }
 
 // Reads the destination account from IndexedDB and infers its bank-profile key
@@ -625,7 +648,9 @@ async function insertLineas(
       await persistir({ descarte: 'sin_importe' });
       continue;
     }
-    if (existingHashes.has(huella)) {
+    // E3.1 · §7.1 · duplicada si la reconoce CUALQUIERA de las dos huellas.
+    const huellaFuerte = huellaFuerteDeFila(row, { accountId, fechaOperacion: date, importe: importeSeguro });
+    if (existingHashes.porConcepto.has(huella) || (huellaFuerte && existingHashes.fuertes.has(huellaFuerte))) {
       duplicates++;
       await persistir({ descarte: 'duplicada' });
       continue;
@@ -638,17 +663,31 @@ async function insertLineas(
   return { lineas, inserted, duplicates };
 }
 
-/** Las huellas de todo lo que ya se importó · movimientos Y líneas (M4). */
-async function huellasExistentes(db: Awaited<ReturnType<typeof initDB>>): Promise<Set<string>> {
+/**
+ * Las huellas de todo lo que ya se importó · movimientos Y líneas (M4), y
+ * (E3.1 · §7.1) también las huellas FUERTES de las líneas.
+ *
+ * Son dos conjuntos porque miden cosas distintas: `hashMovement` lleva el
+ * concepto dentro y falla cuando el banco reexporta el mismo movimiento con el
+ * texto un pelo distinto; la huella fuerte (nº de movimiento, o fecha+importe+
+ * saldo) no. Una línea es duplicada si cae en CUALQUIERA de los dos.
+ */
+async function huellasExistentes(
+  db: Awaited<ReturnType<typeof initDB>>,
+): Promise<{ porConcepto: Set<string>; fuertes: Set<string> }> {
   const existing = ((await db.getAll('movements')) ?? []) as Movement[];
-  const huellas = new Set(existing.map(hashMovement));
+  const porConcepto = new Set(existing.map(hashMovement));
+  const fuertes = new Set<string>();
   try {
     const lineas = ((await db.getAll('lineasExtracto')) ?? []) as LineaExtractoPersistida[];
-    for (const l of lineas) if (l.hashMovement) huellas.add(l.hashMovement);
+    for (const l of lineas) {
+      if (l.hashMovement) porConcepto.add(l.hashMovement);
+      if (l.huellaFuerte) fuertes.add(l.huellaFuerte);
+    }
   } catch {
     // Base anterior a V91 · sin líneas que mirar.
   }
-  return huellas;
+  return { porConcepto, fuertes };
 }
 
 /**

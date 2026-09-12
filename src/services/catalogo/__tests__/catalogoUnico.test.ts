@@ -47,7 +47,10 @@ describe('catalogoUnico · el árbol', () => {
 
   it('el subtipo es opcional · hay familias sin segundo nivel y eso es válido', () => {
     expect(subtiposDe('reforma_mejora')).toEqual([]);
-    expect(subtiposDe('prestamo_hipoteca')).toEqual([]);
+    // E3.1 · §7.3 · `prestamo_hipoteca` gana segundo nivel: el catálogo
+    // nacional tiene que poder decir que el recibo de WiZink es un crédito al
+    // consumo y no la cuota de un piso. Sigue siendo OPCIONAL.
+    expect(subtiposDe('prestamo_hipoteca').map((s) => s.id)).toEqual(['hipoteca', 'credito_consumo']);
     expect(subtiposDe('suministro').map((s) => s.id)).toEqual(['luz', 'agua', 'gas', 'internet', 'telefonia', 'otros']);
   });
 
