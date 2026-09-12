@@ -251,7 +251,9 @@ function limpiarNombreAcreedor(bruto: string): string | null {
     if (/\d/.test(palabra)) break;
     if (palabra) palabras.push(palabra);
   }
-  const nombre = palabras.join(' ').replace(/[\s,.\-]+$/, '').trim();
+  // El guion va el ÚLTIMO de la clase, sin escapar: escaparlo ahí dentro no
+  // hace nada y `no-useless-escape` lo rechaza (y en CI eso tumba el build).
+  const nombre = palabras.join(' ').replace(/[\s,.-]+$/, '').trim();
   // Con menos de cuatro letras no se identifica a nadie.
   return (nombre.match(/[A-ZÑ]/g) ?? []).length >= 4 ? nombre : null;
 }
