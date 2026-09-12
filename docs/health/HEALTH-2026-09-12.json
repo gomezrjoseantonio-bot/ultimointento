@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-09-12",
-  "generatedAt": "2026-09-12T22:22:09.221Z",
+  "generatedAt": "2026-09-12T22:29:30.284Z",
   "git": {
     "branch": "claude/lucid-albattani-6ic6ch",
-    "head": "afa93d3"
+    "head": "05870a9"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [

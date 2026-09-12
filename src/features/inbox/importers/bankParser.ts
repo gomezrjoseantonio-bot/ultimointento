@@ -665,14 +665,18 @@ export class BankParserService {
     
     for (let row = startRow; row < data.length; row++) {
       const rowData = data[row];
-      if (!rowData || this.isJunkRow(rowData)) continue;
-      
+      if (!rowData) continue;
+
       try {
         const movement = this.parseMovementRow(rowData, columns, numericData?.[row]);
-        if (movement) {
-          movement.originalRow = row; // Track original row number
-          movements.push(movement);
-        }
+        // Lo que NO es un movimiento se cae solo: sin fecha y sin importe no hay
+        // fila que valga. Ahí se quedan los rótulos, los pies de página y las
+        // filas vacías, sin tener que adivinarlo por las palabras que llevan.
+        if (!movement) continue;
+        // De las que SÍ lo son, solo sobra la que repite el saldo.
+        if (this.esFilaDeSaldo(rowData)) continue;
+        movement.originalRow = row; // Track original row number
+        movements.push(movement);
       } catch (error) {
         console.warn(`Error parsing row ${row + 1}:`, error);
         // Continue with other rows
@@ -767,23 +771,28 @@ export class BankParserService {
   }
 
   /**
-   * Check if row is junk (totals, separators, etc.)
+   * ¿Esta fila es la que el banco usa para REPETIR el saldo?
+   *
+   * Antes aquí había una lista de palabras —«total», «suma», «página»,
+   * «resumen»— aplicada a la fila ENTERA y sin límite de palabra. Se comía
+   * movimientos de verdad: en el extracto real de ING, «Amortización total de
+   * préstamo» (−25.162,54 €) desaparecía por llevar la palabra «total» dentro.
+   *
+   * Ya no hace falta adivinar: una fila que no trae fecha e importe no llega a
+   * ser un movimiento y se cae sola. Lo único que sí los trae y aun así no es
+   * un movimiento es la fila de saldo —el banco la escribe con su fecha y su
+   * número—, y contarla sería duplicar dinero. Solo eso se mira aquí.
    */
-  private isJunkRow(rowData: string[]): boolean {
-    const text = rowData.join(' ').toLowerCase();
-    
-    // Common junk patterns in Spanish bank statements
-    const junkPatterns = [
-      /total|suma|subtotal/,
-      /saldo inicial|saldo final|saldo anterior/,
-      /página|page|hoja/,
-      /^[\s\-_=]*$/, // Only whitespace or separators
-      /continúa|continuación/,
-      /resumen|summary/
-    ];
-    
-    return junkPatterns.some(pattern => pattern.test(text)) || 
-           rowData.every(cell => !cell || cell.trim() === '');
+  private esFilaDeSaldo(rowData: string[]): boolean {
+    const texto = rowData
+      .join(' ')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    return (
+      /\bsaldo (inicial|final|anterior|a fecha)\b/.test(texto) ||
+      /\b(continua|continuacion)\b/.test(texto)
+    );
   }
 
   /**
