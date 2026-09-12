@@ -13,6 +13,7 @@ import { cuentasEnUso } from '../../../services/cuentasEnUso';
 import { pareceRetiradaDeCajero } from '../../../services/retiradaCajero';
 import { importeConSigno, fechaLarga } from './formatoV6';
 import { veredictoEfectivo, type LineaExtracto, type DecisionesSesion } from './extractoSesion';
+import { estaClasificada, etiquetaDeClasificacion } from '../../../services/clasificacion/clasificada';
 import styles from './DrawerExtracto.module.css';
 
 export interface LineaExtractoItemProps {
@@ -143,15 +144,26 @@ const LineaExtractoItem: React.FC<LineaExtractoItemProps> = ({
           </button>
         </div>
       ) : v === 'cuadra' ? (
-        <div className={styles.veredicto}>
-          <Icons.Check size={13} aria-hidden="true" />
-          <span>
-            cuadra con{' '}
-            {previstoMostrado
-              ? nombrarPrevisto(previstoMostrado)
-              : l.previsto?.descripcion ?? (l.confirmado ? 'lo que ya tenías anotado' : 'un previsto')}
-          </span>
-        </div>
+        // Solo lo que es VERDAD: con qué previsto o confirmado casó, o qué es
+        // (su clasificación). Sin nada real que decir, no se dice nada: antes
+        // aquí salía un texto de reserva inventado sobre líneas sin previsto.
+        (() => {
+          const conQue = previstoMostrado
+            ? `cuadra con ${nombrarPrevisto(previstoMostrado)}`
+            : l.previsto?.descripcion
+              ? `cuadra con ${l.previsto.descripcion}`
+              : l.confirmado
+                ? 'cuadra con lo que ya tenías anotado'
+                : l.clasificacion && estaClasificada(l.clasificacion)
+                  ? etiquetaDeClasificacion(l.clasificacion)
+                  : null;
+          return conQue ? (
+            <div className={styles.veredicto}>
+              <Icons.Check size={13} aria-hidden="true" />
+              <span>{conQue}</span>
+            </div>
+          ) : null;
+        })()
       ) : asignando === l.lineaId ? (
         <div className={styles.acciones}>
           <select

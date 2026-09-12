@@ -8,8 +8,8 @@
 //
 // El saldo es el que ya calcula el cuadre con el banco (`PropuestaDeApertura`
 // · el saldo del banco a la línea más reciente). Aquí NO se calcula nada: si el
-// fichero no trae saldo, no se enseña, y si no cuadra, lo dice
-// `CuadreConElBanco` debajo. El debe del cálculo de apertura es otra tarea.
+// fichero no trae saldo, no se enseña. El aviso de cuadre/apertura no se pinta
+// en esta pantalla (Jose · 12 sep): el saldo es un debe aparte.
 //
 // Colores (guía V5 §2.2.1): importes en tinta · sobre navy, la rampa
 // `on-navy` remapeada como en `HeroTesoreria`. Ni verde ni rojo: el signo lo
@@ -53,7 +53,12 @@ const Lado: React.FC<{ etiqueta: string; lado: ResumenFlujo['entro'] }> = ({ eti
         <MoneyValue value={f.total} showSign decimals={0} tone="inherit" className={styles.famVal} />
       </div>
     ))}
-    {lado.familias.length === 0 && <div className={styles.famRow}><span className={styles.famNom}>nada todavía</span></div>}
+    {lado.familias.length === 0 && lado.total !== 0 && (
+      <div className={styles.famRow}>
+        <span className={styles.famNom}>sin clasificar</span>
+        <MoneyValue value={lado.total} showSign decimals={0} tone="inherit" className={styles.famVal} />
+      </div>
+    )}
   </div>
 );
 

@@ -1,41 +1,6 @@
-/* El cuadre con el banco y las líneas que ya estaban · E1.5-anclaje-saldo.
-   Aparte de PanelConciliar.module.css para que aquél no pase de 800 líneas. */
-/* ── El cuadre con el banco · E1.5-anclaje-saldo ─────────────────────────── */
-
-.banco {
-  margin: 0 26px 10px;
-  padding: 10px 12px;
-  border-radius: 9px;
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.banco svg { flex-shrink: 0; margin-top: 1px; }
-.banco b { font-family: var(--atlas-v5-font-mono-num); font-weight: 700; }
-.bancoOk {
-  background: var(--atlas-v5-pos-wash);
-  border: 1px solid var(--atlas-v5-pos);
-  color: var(--atlas-v5-pos);
-}
-.bancoAviso {
-  background: var(--atlas-v5-warn-wash);
-  border: 1px solid var(--atlas-v5-warn-border);
-  color: var(--atlas-v5-warn);
-}
-.bancoTexto { display: flex; flex-direction: column; gap: 6px; }
-.bancoCheck {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  cursor: pointer;
-  color: var(--atlas-v5-on-navy-1);
-}
-.bancoCheck input { margin-top: 2px; }
-.bancoNota { opacity: 0.85; font-size: 11px; }
-
-/* ── Las que ya estaban en ATLAS · plegadas ─────────────────────────────── */
+/* Las líneas que ya estaban · E1.5 · aparte de PanelConciliar.module.css para que
+   aquél no pase de 800 líneas. (El bloque de cuadre/apertura se retiró de esta
+   pantalla · Jose · 12 sep 2026 · el saldo es un debe aparte.) */
 
 .yaEstaban {
   margin: 0 26px 10px;

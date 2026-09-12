@@ -55,6 +55,11 @@ export interface Propuesta {
    * la vía heurística no escribe regla, así que ahí no se enseña el sello.
    */
   seRecuerda: boolean;
+  /**
+   * El piso que ATLAS supone (tu declaración de otros años) · el botón en oro
+   * de la tarjeta («Fuertes Acevedo 32»). Solo cuando lo sabe de verdad.
+   */
+  pisoProbable?: { id: number; alias: string };
 }
 
 /** De la clasificación al nombre que el usuario usa · `null` si no la hay. */
@@ -138,7 +143,7 @@ function ayudaDe(s: SugerenciaLegible): string {
  */
 export function propuestaDeLinea(
   sugerencias: SugerenciaLegible[],
-  atribucion?: { alias?: string; concepto: string; ejercicio: number } | null,
+  atribucion?: { inmuebleId?: number; alias?: string; concepto: string; ejercicio: number } | null,
   /** E2.4.2-fix2 · lo que el motor dice de una línea que deja SIN clasificar a propósito (el IVA). */
   aviso?: string | null,
 ): Propuesta {
@@ -151,6 +156,9 @@ export function propuestaDeLinea(
     ? `en tu declaración de ${atribucion.ejercicio}, ${atribucion.concepto.toLowerCase()} es de ${atribucion.alias ?? 'uno de tus pisos'}`
     : null;
 
+  const pisoProbable =
+    atribucion?.inmuebleId != null && atribucion.alias ? { pisoProbable: { id: atribucion.inmuebleId, alias: atribucion.alias } } : {};
+
   if (!s) {
     return {
       tono: 'pregunta',
@@ -159,6 +167,7 @@ export function propuestaDeLinea(
       // Hacienda · IVA» explica por qué está aquí y no parece un olvido.
       ayuda: porLaDeclaracion ?? aviso ?? 'si subes la factura, la leo y relleno proveedor e importe solo',
       seRecuerda: false,
+      ...pisoProbable,
     };
   }
 
@@ -171,6 +180,7 @@ export function propuestaDeLinea(
     ayuda: porLaDeclaracion ? `${ayudaDe(s)} · ${porLaDeclaracion}` : ayudaDe(s),
     // La heurística no escribe regla · prometer que se recuerda sería mentir.
     seRecuerda: s.via !== 'heuristica' && s.action.kind !== 'ignore',
+    ...pisoProbable,
   };
 }
 
@@ -194,7 +204,7 @@ export function propuestasDeLineas(
       propuestaDeLinea(
         sugerencias?.get(l.lineaId) ?? [],
         a
-          ? { alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias, concepto: a.concepto, ejercicio: a.ejercicio }
+          ? { inmuebleId: a.inmuebleId, alias: inmuebles.find((i) => i.id === a.inmuebleId)?.alias, concepto: a.concepto, ejercicio: a.ejercicio }
           : null,
         avisoDeClasificacion(l.clasificacion),
       ),
