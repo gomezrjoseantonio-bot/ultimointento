@@ -38,11 +38,12 @@ import {
 } from './extractoSesion';
 import { useDecisionesDeSesion } from './decisionesDeSesion';
 import { decisionesDesdeFilas, type LoteAMedias } from './decisionesPersistidas';
-import { leerSesionDelLote, tituloDeLaSesion, persistirCambios, useLotesAMedias } from './montarSesion';
+import { leerSesionDelLote, nombreDeLaCuenta, persistirCambios, useLotesAMedias } from './montarSesion';
 import { clasificarLasElegidas } from './clasificarEnBloque';
 import { useArrastreConTope } from './aprendizajeEnSesion';
 import AvisoArrastre from './conciliar/AvisoArrastre';
 import { prerrellenoDeFicha } from './prerrellenoDeFicha';
+import { useClasificarVarias } from './clasificarVariasEnSesion';
 import LineaExtractoItem from './LineaExtractoItem';
 import { detectarCuenta, type DeteccionCuenta } from './detectarCuenta';
 import { esPdf } from '../../../services/personal/extractoTarjeta';
@@ -122,9 +123,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     marcarTraspasoLote,
     marcarCreado,
   } = useDecisionesDeSesion(lineas, { onCambio: persistirCambios });
-  // Las elegidas que se van a clasificar de un gesto · la ficha se abre UNA vez
-  // y su concepto se aplica a todas, con el importe y la fecha de cada una.
-  const [clasificandoVarias, setClasificandoVarias] = useState<LineaExtracto[] | null>(null);
+  // «Clasificar las N como…» · la ficha una vez para varias, con o sin piso (P1).
+  const { clasificandoVarias, pisoPrefijado, abrir: abrirClasificarVarias, cerrar: cerrarClasificarVarias } = useClasificarVarias(lineas);
   const [asignando, setAsignando] = useState<number | null>(null);
   const [traspasando, setTraspasando] = useState<number | null>(null);
   const [previstos, setPrevistos] = useState<TreasuryEvent[]>([]);
@@ -241,7 +241,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setTarjetaDestino(null);
     setAsignando(null);
     setTraspasando(null);
-    setClasificandoVarias(null);
+    cerrarClasificarVarias();
     setCreando(null);
     descartarArrastre();
     ficheroRef.current = null;
@@ -249,7 +249,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     setReglas([]);
     setAbiertoEn('');
     if (!cuenta) setCuentaElegida(null);
-  }, [cuenta, reiniciarDecisiones, descartarArrastre]);
+  }, [cuenta, reiniciarDecisiones, descartarArrastre, cerrarClasificarVarias]);
 
   /**
    * Montar la sesión a partir de lo que devuelve el orquestador · vale para
@@ -633,7 +633,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // nada y romper el orden de los hooks lo rompe todo.
   const clasificarVarias = async (v: GuardadoFicha) => {
     await clasificarLasElegidas(v, clasificandoVarias ?? [], crearDesdeFicha);
-    setClasificandoVarias(null);
+    cerrarClasificarVarias();
   };
 
   // §4.5 prerrellenada · "Crear movimiento" desde una línea sin cuadre. Se monta
@@ -642,13 +642,13 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     <FichaMovimiento
       abierta={creando != null || clasificandoVarias != null}
       esEdicion={false}
-      inicial={prerrellenoDeFicha(creando, clasificandoVarias, cuentaActiva?.id ?? null)}
+      inicial={prerrellenoDeFicha(creando, clasificandoVarias, cuentaActiva?.id ?? null, pisoPrefijado)}
       cuentas={cuentaActiva ? [cuentaActiva] : cuentas}
       inmuebles={inmuebles}
       tarjetas={tarjetas}
       onCerrar={() => {
         setCreando(null);
-        setClasificandoVarias(null);
+        cerrarClasificarVarias();
       }}
       onGuardar={(v) =>
         creando ? crearDesdeFicha(creando, v) : clasificandoVarias ? clasificarVarias(v) : undefined
@@ -665,8 +665,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     return (
       <>
         <PanelConciliar
-          titularCuenta={tituloDeLaSesion(cuentaActiva, lineas.length)}
-          colorBanco={cuentaActiva ? colorDeBanco(cuentaActiva) : undefined}
+          titularCuenta={nombreDeLaCuenta(cuentaActiva)}
           elCuadre={elCuadre}
           necesitan={necesitan}
           resueltas={resueltas}
@@ -694,9 +693,11 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
           onIgnorarVarias={ignorarVarias}
           cuentasTraspaso={cuentasDestino}
           onTraspasarVarias={traspasarVarias}
-          onClasificarVarias={(ids) =>
-            setClasificandoVarias(lineas.filter((l) => ids.includes(l.lineaId)))
-          }
+          onClasificarVarias={(ids) => abrirClasificarVarias(ids)}
+          // P1 (Jose) · el botón de piso abre la MISMA ficha, prerrellenada con
+          // ese piso; se confirma ahí. La ficha sigue siendo lo único que escribe.
+          onClasificarVariasEnPiso={(ids, inmuebleId) => abrirClasificarVarias(ids, { inmuebleId })}
+          inmuebles={inmuebles}
           onGuardar={guardar}
           onOtroFichero={salirSinGuardar}
         />

@@ -18,7 +18,7 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PanelConciliar from '../conciliar/PanelConciliar';
-import ColumnaResto from '../conciliar/ColumnaResto';
+import ZonaColocado from '../conciliar/ZonaColocado';
 import type { LineaExtracto } from '../extractoSesion';
 import type { Cuadre } from '../conciliarBuckets';
 
@@ -35,13 +35,17 @@ const linea = (id: number, texto: string, importe = -66.9): LineaExtracto => ({
 
 // ─── La columna derecha · abrir y corregir ──────────────────────────────────
 
-function pintarResto(over: Partial<React.ComponentProps<typeof ColumnaResto>> = {}) {
+function pintarResto(over: Partial<React.ComponentProps<typeof ZonaColocado>> = {}) {
   return render(
-    <ColumnaResto
+    <ZonaColocado
       resueltas={[]}
       personales={[]}
       ignoradas={[]}
       aprendido={{ nuevas: [], deAntes: 0, total: 0 }}
+      dadasPorBuenas={new Set()}
+      onDarPorBuena={() => undefined}
+      onDeshacerBuena={() => undefined}
+      onDarTodasPorBuenas={() => undefined}
       onRecuperar={() => undefined}
       onNoEsEsto={() => undefined}
       {...over}
@@ -50,8 +54,8 @@ function pintarResto(over: Partial<React.ComponentProps<typeof ColumnaResto>> = 
 }
 
 describe('el montón se abre · ver qué hay dentro de un «ok»', () => {
-  // Dos cargos de la misma luz · agrupan porque casaron con la misma previsión,
-  // que es como agrupa `agruparResueltas`, no por el churro del banco.
+  // Dos cargos de la misma luz · son UNA entidad porque casaron con la misma
+  // previsión (`agruparPorEntidad`), no por el churro del banco.
   const previsto = { id: 9, descripcion: 'Gas comercializadora', importe: -165, fecha: '2026-08-24' };
   const gas = [
     { ...linea(1, 'RECIBO GAS REGULADA 08/2026', -165.08), previsto },
@@ -63,13 +67,13 @@ describe('el montón se abre · ver qué hay dentro de un «ok»', () => {
 
     // Plegado: no está el texto crudo del banco de ninguna de las dos.
     expect(screen.queryByText(/08\/2026/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /gas comercializadora/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^gas comercializadora/i })).toBeInTheDocument();
   });
 
   it('al abrirlo salen las líneas, una a una, con su texto del banco', () => {
     pintarResto({ resueltas: gas });
 
-    fireEvent.click(screen.getByRole('button', { name: /gas comercializadora/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^gas comercializadora/i }));
 
     expect(screen.getByText(/08\/2026/)).toBeInTheDocument();
     expect(screen.getByText(/07\/2026/)).toBeInTheDocument();
@@ -79,12 +83,16 @@ describe('el montón se abre · ver qué hay dentro de un «ok»', () => {
     const noEsEsto = jest.fn();
     pintarResto({ resueltas: gas, onNoEsEsto: noEsEsto });
 
-    fireEvent.click(screen.getByRole('button', { name: /gas comercializadora/i }));
-    const botones = screen.getAllByRole('button', { name: /no es esto/i });
+    fireEvent.click(screen.getByRole('button', { name: /^gas comercializadora/i }));
+    const botones = screen.getAllByRole('button', { name: /^no es esto/i });
     expect(botones).toHaveLength(2);
 
     fireEvent.click(botones[1]);
     expect(noEsEsto).toHaveBeenCalledWith(102);
+
+    // Y «Reasignar los 2» devuelve la entidad entera a «Confirma el destino».
+    fireEvent.click(screen.getByRole('button', { name: /reasignar los 2/i }));
+    expect(noEsEsto).toHaveBeenCalledWith(101);
   });
 
   it('el montón PERSONAL también se abre y también se corrige', () => {
@@ -96,8 +104,8 @@ describe('el montón se abre · ver qué hay dentro de un «ok»', () => {
       onNoEsEsto: noEsEsto,
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /CUOTA PRESTAMO/i }));
-    fireEvent.click(screen.getByRole('button', { name: /no es esto/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^CUOTA PRESTAMO/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^no es esto/i }));
 
     expect(noEsEsto).toHaveBeenCalledWith(109);
   });
@@ -188,13 +196,14 @@ describe('actuar sobre varias a la vez', () => {
     const ignorarVarias = jest.fn();
     pintarPanel({ onIgnorarVarias: ignorarVarias });
 
-    const casillas = screen.getAllByRole('checkbox', { name: /elegir/i });
-    fireEvent.click(casillas[0]);
-    fireEvent.click(casillas[1]);
+    // Cada casilla es una ENTIDAD · aquí cada bizum es la suya (contrapartes distintas).
+    fireEvent.click(screen.getByRole('checkbox', { name: /elegir compra bizum iryo/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /elegir bizum a favor de luis/i }));
 
     fireEvent.click(screen.getByRole('button', { name: /ignorar las 2/i }));
 
-    expect(ignorarVarias).toHaveBeenCalledWith([101, 102]);
+    expect(ignorarVarias).toHaveBeenCalledTimes(1);
+    expect(new Set(ignorarVarias.mock.calls[0][0])).toEqual(new Set([101, 102]));
   });
 
   it('«elegir las 3 que se ven» coge lo filtrado · el flujo entero de un bizum', () => {
@@ -207,7 +216,7 @@ describe('actuar sobre varias a la vez', () => {
     fireEvent.click(screen.getByRole('button', { name: /elegir las 3/i }));
     fireEvent.click(screen.getByRole('button', { name: /ignorar las 3/i }));
 
-    expect(ignorarVarias).toHaveBeenCalledWith([101, 102, 103]);
+    expect(new Set(ignorarVarias.mock.calls[0][0])).toEqual(new Set([101, 102, 103]));
   });
 
   it('sin nada marcado no hay barra · no estorba mientras no hace falta', () => {
@@ -230,9 +239,9 @@ describe('actuar sobre varias a la vez', () => {
     const ignorarVarias = jest.fn();
     pintarPanel({ onIgnorarVarias: ignorarVarias });
 
-    fireEvent.click(screen.getAllByRole('checkbox', { name: /elegir/i })[3]); // el gas
+    fireEvent.click(screen.getByRole('checkbox', { name: /elegir gas visalia/i })); // el gas
     fireEvent.change(buscador(), { target: { value: 'bizum' } });
-    fireEvent.click(screen.getAllByRole('checkbox', { name: /elegir/i })[0]); // un bizum
+    fireEvent.click(screen.getByRole('checkbox', { name: /elegir compra bizum iryo/i })); // un bizum
 
     fireEvent.click(screen.getByRole('button', { name: /ignorar la 1/i }));
     expect(ignorarVarias).toHaveBeenCalledWith([101]);
@@ -250,7 +259,7 @@ describe('clasificar varias de una vez · no sólo ignorarlas', () => {
     fireEvent.click(screen.getByRole('button', { name: /elegir las 3/i }));
     fireEvent.click(screen.getByRole('button', { name: /clasificar las 3 como/i }));
 
-    expect(clasificarVarias).toHaveBeenCalledWith([101, 102, 103]);
+    expect(new Set(clasificarVarias.mock.calls[0][0])).toEqual(new Set([101, 102, 103]));
   });
 
   it('con una sola elegida el botón habla en singular', () => {
@@ -269,11 +278,14 @@ describe('clasificar varias de una vez · no sólo ignorarlas', () => {
 
     fireEvent.change(buscador(), { target: { value: 'bizum' } });
     fireEvent.click(screen.getByRole('button', { name: /elegir las 3/i }));
-    fireEvent.change(screen.getByRole('combobox', { name: /son traspaso a/i }), {
+    // El desplegable de la BARRA (el de cada entidad lleva su nombre detrás).
+    fireEvent.change(screen.getByRole('combobox', { name: 'Son traspaso a la cuenta' }), {
       target: { value: '7' },
     });
 
-    expect(traspasarVarias).toHaveBeenCalledWith([101, 102, 103], 7);
+    expect(traspasarVarias).toHaveBeenCalledTimes(1);
+    expect(new Set(traspasarVarias.mock.calls[0][0])).toEqual(new Set([101, 102, 103]));
+    expect(traspasarVarias.mock.calls[0][1]).toBe(7);
   });
 
   it('no se ofrece sobre un ingreso · la salida de un traspaso es un cargo', () => {

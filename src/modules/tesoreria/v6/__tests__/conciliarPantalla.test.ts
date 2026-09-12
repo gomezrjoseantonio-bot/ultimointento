@@ -14,7 +14,8 @@ import {
   esPersonalReconocido,
   etiquetaDeCategoria,
 } from '../conciliar/propuestaDeLinea';
-import { agruparResueltas, claveDeGrupo } from '../conciliar/agruparResueltas';
+import { claveDeGrupo } from '../conciliar/agruparResueltas';
+import { agruparPorEntidad } from '../conciliar/agruparPorEntidad';
 import { loQueYaReconoce } from '../conciliar/loQueYaReconoce';
 import type { MovementSuggestion } from '../../../../services/movementSuggestionService';
 import type { MovementLearningRule } from '../../../../services/db/types-movimientos';
@@ -225,13 +226,13 @@ describe('el cuadre aguanta con el cuarto montón lleno', () => {
   });
 });
 
-describe('el resumen de la derecha · agrupa por lo que ATLAS sabe que es', () => {
+describe('«Colocado en su sitio» · agrupa por ENTIDAD, por lo que ATLAS sabe que es', () => {
   it('dos cuotas del mismo préstamo son UN grupo, aunque el banco escriba el número', () => {
     expect(claveDeGrupo('Cuota préstamo 3/240')).toBe(claveDeGrupo('Cuota préstamo 4/240'));
   });
 
-  it('cuenta y suma el grupo', () => {
-    const g = agruparResueltas([
+  it('cuenta y suma la entidad', () => {
+    const g = agruparPorEntidad([
       linea(1, { veredicto: 'cuadra', importe: -454.66, previsto: { id: 1, descripcion: 'Cuota préstamo 3/240', importe: -454.66, fecha: '2026-08-01' } }),
       linea(2, { veredicto: 'cuadra', importe: -253.97, previsto: { id: 2, descripcion: 'Cuota préstamo 4/240', importe: -253.97, fecha: '2026-08-01' } }),
       linea(3, { veredicto: 'cuadra', importe: 3940, previsto: { id: 3, descripcion: 'Nómina', importe: 3940, fecha: '2026-08-25' } }),
@@ -239,37 +240,28 @@ describe('el resumen de la derecha · agrupa por lo que ATLAS sabe que es', () =
     expect(g).toHaveLength(2);
     expect(g[0].cuantas).toBe(2);
     expect(g[0].total).toBeCloseTo(-708.63, 2);
+    expect(g[0].nombre).toBe('Cuota préstamo 3/240');
   });
 
-  it('cuando no casó con nada, el título es el texto literal del banco', () => {
-    const g = agruparResueltas([linea(9, { veredicto: 'cuadra', textoBanco: 'ADEUDO RECIBO AQUALIA' })]);
-    expect(g[0].titulo).toBe('ADEUDO RECIBO AQUALIA');
+  it('cuando no casó con nada ni tiene identificador, el nombre es la contraparte del banco', () => {
+    const g = agruparPorEntidad([linea(9, { veredicto: 'cuadra', textoBanco: 'ADEUDO RECIBO AQUALIA' })]);
+    expect(g[0].nombre).toBe('ADEUDO RECIBO AQUALIA');
+    expect(g[0].tipo).toBe('contraparte');
   });
 
-  it('el detalle no repite el título · cuatro cargos de la misma luz dan fechas', () => {
-    const g = agruparResueltas([
+  it('el renglón pequeño dice cuándo · dos cargos de la misma luz dan un rango de fechas', () => {
+    const g = agruparPorEntidad([
       linea(1, { veredicto: 'cuadra', textoBanco: 'Gas', fecha: '2026-08-03' }),
       linea(2, { veredicto: 'cuadra', textoBanco: 'Gas', fecha: '2026-08-17' }),
     ]);
-    expect(g[0].titulo).toBe('Gas');
-    expect(g[0].detalle).not.toBe('Gas');
-    expect(g[0].detalle).toBe('2026-08-03 a 2026-08-17');
-  });
-
-  it('con nombres distintos dentro del grupo sí los lista · ahí el detalle informa', () => {
-    // Mismo grupo (la clave ignora los números) pero nombres literales distintos.
-    const g = agruparResueltas([
-      linea(1, { veredicto: 'cuadra', previsto: { id: 1, descripcion: 'Cuota préstamo 3/240', importe: -454, fecha: '2026-08-01' } }),
-      linea(2, { veredicto: 'cuadra', previsto: { id: 2, descripcion: 'Cuota préstamo 4/240', importe: -253, fecha: '2026-09-01' } }),
-    ]);
     expect(g).toHaveLength(1);
-    expect(g[0].detalle).toContain('3/240');
-    expect(g[0].detalle).toContain('4/240');
+    expect(g[0].nombre).toBe('Gas');
+    expect(g[0].sub).toBe('03/08/26 a 17/08/26');
   });
 
   it('una sola línea del mismo día no inventa un rango', () => {
-    const g = agruparResueltas([linea(1, { veredicto: 'cuadra', fecha: '2026-08-03' })]);
-    expect(g[0].detalle).toBe('2026-08-03');
+    const g = agruparPorEntidad([linea(1, { veredicto: 'cuadra', fecha: '2026-08-03' })]);
+    expect(g[0].sub).toBe('03/08/26');
   });
 });
 
@@ -344,25 +336,29 @@ describe('E2.4.2-fix2 · «resuelto = tiene sus 4 ejes puestos»', () => {
   });
 });
 
-describe('E2.4.2-fix2 · la columna derecha agrupa por la etiqueta, no por el texto', () => {
-  it('«AHORRO» y «AHORROS JUNIO» son UNA fila · «Traspaso · A ahorro»', () => {
-    const g = agruparResueltas([
+describe('E2.4.2-fix2 · los internos son UNA entidad, no montones por texto', () => {
+  it('«AHORRO» y «AHORROS JUNIO» son UNA entidad · «Ahorro · lo que apartas»', () => {
+    const g = agruparPorEntidad([
       linea(1, { textoBanco: 'AHORROS', importe: -800, clasificacion: ahorro }),
       linea(2, { textoBanco: 'AHORRO', importe: -1400, clasificacion: ahorro }),
       linea(3, { textoBanco: 'AHORROS JUNIO', importe: -79, clasificacion: ahorro }),
     ]);
     expect(g).toHaveLength(1);
-    expect(g[0].titulo).toBe('Traspaso · A ahorro');
+    expect(g[0].nombre).toBe('Ahorro · lo que apartas');
+    expect(g[0].interno).toBe(true);
     expect(g[0].cuantas).toBe(3);
     expect(g[0].total).toBeCloseTo(-2279, 2);
   });
-  it('lo que casó con un previsto sigue llamándose como el previsto', () => {
-    const g = agruparResueltas([linea(1, { veredicto: 'cuadra', textoBanco: 'AHORROS', clasificacion: ahorro, previsto: { id: 7, descripcion: 'Ahorro mensual', importe: -800, fecha: '2025-06-01' } })]);
-    expect(g[0].titulo).toBe('Ahorro mensual');
+  it('un interno que además casó con un previsto sigue en la entidad interna · y la línea se llama como el previsto', () => {
+    const l = linea(1, { veredicto: 'cuadra', textoBanco: 'AHORROS', clasificacion: ahorro, previsto: { id: 7, descripcion: 'Ahorro mensual', importe: -800, fecha: '2025-06-01' } });
+    const g = agruparPorEntidad([l, linea(2, { textoBanco: 'AHORRO', clasificacion: ahorro })]);
+    expect(g).toHaveLength(1);
+    expect(g[0].clave).toBe('interno:a_ahorro');
   });
-  it('sin clasificación que valga, el texto del banco · como siempre', () => {
-    const g = agruparResueltas([linea(1, { textoBanco: 'UNIHOUSER S.L.', clasificacion: soloSigno })]);
-    expect(g[0].titulo).toBe('UNIHOUSER S.L.');
+  it('sin clasificación que valga, la contraparte del banco · como siempre', () => {
+    const g = agruparPorEntidad([linea(1, { textoBanco: 'UNIHOUSER S.L.', clasificacion: soloSigno })]);
+    expect(g[0].nombre).toBe('UNIHOUSER S.L.');
+    expect(g[0].destino).toBe('sin clasificar');
   });
 });
 

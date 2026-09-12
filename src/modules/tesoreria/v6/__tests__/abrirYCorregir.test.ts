@@ -22,7 +22,7 @@
 // sobre justo las líneas donde más falta hace.
 // ============================================================================
 
-import { agruparResueltas } from '../conciliar/agruparResueltas';
+import { agruparPorEntidad } from '../conciliar/agruparPorEntidad';
 import { bucketDeLinea, cuadre } from '../conciliarBuckets';
 import { decisionesVacias, type DecisionesSesion, type LineaExtracto } from '../extractoSesion';
 
@@ -50,7 +50,7 @@ describe('el montón se abre · las líneas llegan hasta la fila', () => {
       linea({ movementId: 2, veredicto: 'cuadra', importe: -43, previsto: { id: 9, descripcion: 'Gas', importe: -43, fecha: '2026-09-03' } }),
     ];
 
-    const [grupo] = agruparResueltas(lineas);
+    const [grupo] = agruparPorEntidad(lineas);
 
     expect(grupo.cuantas).toBe(2);
     // Sin esto la columna derecha no puede enseñar qué hay dentro de «2 · Gas».
@@ -62,7 +62,7 @@ describe('el montón se abre · las líneas llegan hasta la fila', () => {
       linea({ movementId: 7, veredicto: 'cuadra', textoBanco: 'RECIBO GAS POWER1229 AGOSTO', importe: -165.08 }),
     ];
 
-    const [grupo] = agruparResueltas(lineas);
+    const [grupo] = agruparPorEntidad(lineas);
 
     expect(grupo.lineas[0]).toMatchObject({
       movementId: 7,
@@ -78,7 +78,7 @@ describe('el montón se abre · las líneas llegan hasta la fila', () => {
       linea({ movementId: 3, textoBanco: 'RECIBO IBERDROLA' }),
     ];
 
-    const grupos = agruparResueltas(lineas);
+    const grupos = agruparPorEntidad(lineas);
 
     expect(grupos.reduce((n, g) => n + g.lineas.length, 0)).toBe(3);
     expect(new Set(grupos.flatMap((g) => g.lineas.map((l) => l.movementId)))).toEqual(

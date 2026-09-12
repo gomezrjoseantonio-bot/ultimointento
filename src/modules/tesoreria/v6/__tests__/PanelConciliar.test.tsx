@@ -7,7 +7,7 @@
 // contador a cero que parece un dato.
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PanelConciliar from '../conciliar/PanelConciliar';
 import type { LineaExtracto } from '../extractoSesion';
@@ -68,34 +68,71 @@ function pintar(over: Partial<React.ComponentProps<typeof PanelConciliar>> = {})
   );
 }
 
-describe('PanelConciliar · lo que el usuario ve', () => {
-  it('canta el cuadre en la cabecera · es la promesa de la pantalla', () => {
-    pintar();
-    expect(screen.getAllByText('124').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText(/ninguna se pierde/)).toBeInTheDocument();
+const clasificada = (id: number, extra: Partial<LineaExtracto> = {}): LineaExtracto =>
+  linea(id, {
+    clasificacion: {
+      naturaleza: 'gasto', familia: 'comunidad', subtipo: 'cuota_mensual', metodo: 'domiciliacion', ambito: 'inmueble', inmuebleId: 4,
+      origen: { naturaleza: 'concepto', familia: 'concepto', subtipo: 'concepto', metodo: 'concepto', ambito: 'concepto' }, motivos: [],
+    },
+    ...extra,
   });
 
-  it('enseña los cuatro montones con sus cifras', () => {
-    pintar();
-    expect(screen.getByText('resueltas solas')).toBeInTheDocument();
-    expect(screen.getByText('te necesitan · una vez')).toBeInTheDocument();
-    expect(screen.getByText('personal')).toBeInTheDocument();
-    expect(screen.getByText('ignorados')).toBeInTheDocument();
-    expect(screen.getByText('78')).toBeInTheDocument();
-    expect(screen.getByText('32')).toBeInTheDocument();
+describe('PanelConciliar · las tres zonas · lo que el usuario ve', () => {
+  it('el hero dice la cuenta, el rango real y cuántos movimientos', () => {
+    pintar({ necesitan: [linea(1, { fecha: '2026-01-05' }), linea(2, { fecha: '2026-08-30' })] });
+    expect(screen.getByText('Santander · ****2715 · 124 líneas')).toBeInTheDocument();
+    expect(screen.getByText(/desde el 5\/1\/2026 a 30\/8\/2026 · 2 movimientos/)).toBeInTheDocument();
+    expect(screen.getByText('Conciliar extracto')).toBeInTheDocument();
   });
 
-  it('la tarjeta lleva la propuesta encima de la línea del banco', () => {
+  it('el saldo del hero es el que dice el banco a la línea más reciente · y sin saldo no se inventa', () => {
+    pintar({
+      apertura: {
+        extremos: {} as never, fecha: '2026-08-31', saldoBanco: 12480.55, saldoAtlas: 12480.55, descuadre: 0, cuadra: true,
+        modo: 'ajuste', apertura: {} as never, aperturaActual: { saldo: 0, fecha: null }, proponer: false, saldoAtlasTrasAplicar: 0, cuadraTrasAplicar: true,
+      } as never,
+      onAplicarApertura: () => undefined,
+    });
+    expect(screen.getByText('Saldo · 31 ago 2026')).toBeInTheDocument();
+    // El saldo sale en el hero (y el cuadre con el banco lo repite debajo · es el mismo dato).
+    expect(screen.getAllByText(/12\.480,55/).length).toBeGreaterThanOrEqual(1);
     pintar();
+    expect(screen.getByText('el fichero no trae saldo')).toBeInTheDocument();
+  });
+
+  it('«Confirma el destino» cuenta ENTIDADES · y la tarjeta lleva la propuesta encima de la línea del banco', () => {
+    pintar();
+    expect(screen.getByText('Confirma el destino')).toBeInTheDocument();
     expect(screen.getByText('Parece un gasto de un piso')).toBeInTheDocument();
     expect(screen.getByText('se recordará')).toBeInTheDocument();
+    // La línea del banco está DENTRO · plegada hasta que se abre la entidad.
+    expect(screen.queryByText('línea 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /GESTIÓ I ADMINISTRACIÓ DE FINQUES/i }));
     expect(screen.getByText('línea 1')).toBeInTheDocument();
   });
 
-  it('sin sugerencia para esa línea sigue habiendo tarjeta · pregunta abierta', () => {
+  it('sin sugerencia para esa entidad sigue habiendo tarjeta · pregunta abierta', () => {
     pintar({ propuestas: new Map() });
     expect(screen.getByText(/No sé qué es/)).toBeInTheDocument();
-    expect(screen.getByText('línea 1')).toBeInTheDocument();
+  });
+
+  it('una respuesta coloca TODOS los movimientos de la entidad · el botón de piso abre la ficha con ese piso (P1)', () => {
+    const enPiso = jest.fn();
+    const clasificar = jest.fn();
+    // Dos recibos de la misma comunidad · la misma contraparte · una entidad.
+    pintar({
+      necesitan: [linea(1, { textoBanco: 'GESTIO FINQUES 08/26' }), linea(2, { textoBanco: 'GESTIO FINQUES 09/26' })],
+      propuestas: new Map(),
+      inmuebles: [{ id: 4, alias: 'Tenderina 64' }, { id: 5, alias: 'Sant Joan 3' }],
+      onClasificarVariasEnPiso: enPiso,
+      onClasificarVarias: clasificar,
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Tenderina 64/ }));
+    expect(enPiso).toHaveBeenCalledWith([101, 102], 4);
+    fireEvent.click(screen.getByRole('button', { name: /Es personal/ }));
+    expect(enPiso).toHaveBeenCalledWith([101, 102], null);
+    fireEvent.click(screen.getByRole('button', { name: /Clasificar los 2 como/ }));
+    expect(clasificar).toHaveBeenCalledWith([101, 102]);
   });
 
   it('cuando NO cuadra, el pie lo dice y no disimula', () => {
@@ -112,15 +149,7 @@ describe('PanelConciliar · lo que el usuario ve', () => {
 
   it('con la cuenta virgen no presume de saber nada', () => {
     pintar();
-    expect(screen.getByText(/todavía no reconoce nada de esta cuenta/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Aquí caerá lo que ya me hayas dicho que es tuyo/),
-    ).toBeInTheDocument();
-  });
-
-  it('dice cuántas cosas reconoce cuando reconoce alguna', () => {
-    pintar({ aprendido: { nuevas: [], deAntes: 12, total: 12 } });
-    expect(screen.getByText(/ATLAS ya reconoce 12 cosas de esta cuenta/)).toBeInTheDocument();
+    expect(screen.getByText(/Todavía no reconozco nada de esta cuenta/)).toBeInTheDocument();
   });
 
   it('las ignoradas se pueden reactivar · nada se aparta sin vuelta atrás', () => {
@@ -128,8 +157,55 @@ describe('PanelConciliar · lo que el usuario ve', () => {
     expect(screen.getByText('reactivar')).toBeInTheDocument();
   });
 
-  it('sin nada que preguntar, lo dice en vez de dejar la columna muerta', () => {
+  it('sin nada que preguntar, lo dice en vez de dejar la zona muerta', () => {
     pintar({ necesitan: [] });
     expect(screen.getByText(/Nada que preguntarte/)).toBeInTheDocument();
+  });
+});
+
+describe('«Colocado en su sitio» · visto bueno en bloque y por entidad (P2 · no escribe)', () => {
+  const colocadas = [
+    clasificada(1, { textoBanco: 'COMUNIDAD TENDERINA 08/26', importe: -80.26 }),
+    clasificada(2, { textoBanco: 'COMUNIDAD TENDERINA 07/26', importe: -80.26 }),
+    clasificada(3, { textoBanco: 'AQUALIA AGUA 3T', importe: -43, clasificacion: { naturaleza: 'gasto', familia: 'suministro', subtipo: 'agua', ambito: 'inmueble', inmuebleId: 4, origen: { naturaleza: 'concepto', familia: 'concepto', ambito: 'concepto' }, motivos: [] } }),
+  ];
+
+  it('enseña las entidades con sus ejes y su piso · e importe en tinta', () => {
+    pintar({ resueltas: colocadas, inmuebles: [{ id: 4, alias: 'Tenderina 64' }] });
+    expect(screen.getByText('Colocado en su sitio')).toBeInTheDocument();
+    expect(screen.getByText(/ATLAS colocó/)).toBeInTheDocument();
+    expect(screen.getByText(/3 movimientos en 2 entidades/)).toBeInTheDocument();
+    expect(screen.getByText('Tenderina 64 · Gasto · Comunidad · Cuota mensual · domiciliación · 01/08/26')).toBeInTheDocument();
+    expect(screen.getByText('2 recibos')).toBeInTheDocument();
+  });
+
+  it('«OK» retira la entidad de la lista · y se puede deshacer · sin escribir nada', () => {
+    const guardar = jest.fn();
+    pintar({ resueltas: colocadas, onGuardar: guardar });
+    fireEvent.click(screen.getByRole('button', { name: /OK · COMUNIDAD TENDERINA/i }));
+    expect(screen.queryByRole('button', { name: /OK · COMUNIDAD TENDERINA/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/1 entidad dada por buena/)).toBeInTheDocument();
+    expect(guardar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /deshacer/i }));
+    expect(screen.getByRole('button', { name: /OK · COMUNIDAD TENDERINA/i })).toBeInTheDocument();
+  });
+
+  it('«Está todo bien · confirmar» las da todas por buenas y destaca Guardar · pero NO guarda solo', () => {
+    const guardar = jest.fn();
+    pintar({ necesitan: [], resueltas: colocadas, onGuardar: guardar });
+    fireEvent.click(screen.getByRole('button', { name: /Está todo bien · confirmar/ }));
+    expect(screen.queryByText(/ATLAS colocó/)).not.toBeInTheDocument();
+    expect(screen.getByText(/2 entidades dadas por buenas/)).toBeInTheDocument();
+    expect(screen.getByText(/Todo confirmado · guarda y esta cuenta queda conciliada/)).toBeInTheDocument();
+    expect(guardar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Guardar extracto/ }));
+    expect(guardar).toHaveBeenCalledTimes(1);
+  });
+
+  it('los internos van en su entidad · «no cuenta como gasto ni ingreso» · sin cifra coloreada', () => {
+    const ahorro = clasificada(7, { textoBanco: 'AHORROS', importe: -800, clasificacion: { naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro', ambito: 'personal', origen: { naturaleza: 'concepto', familia: 'concepto', ambito: 'defecto' }, motivos: [] } });
+    pintar({ resueltas: [ahorro] });
+    expect(screen.getByText(/movimiento interno · no cuenta como gasto ni ingreso/)).toBeInTheDocument();
+    expect(screen.getByText('neutro')).toBeInTheDocument();
   });
 });

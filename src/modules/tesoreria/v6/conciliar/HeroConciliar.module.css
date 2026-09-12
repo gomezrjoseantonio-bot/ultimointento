@@ -1,0 +1,150 @@
+/* ===========================================================================
+   Conciliar · hero navy (patrón HeroTesoreria · mockup-conciliacion_11).
+   Tinta sobre navy: SOLO la rampa `--atlas-v5-on-navy-*`. Los importes van en
+   tinta (remapeada a on-navy), nunca en verde ni rojo (guía §2.2.1). El oro
+   queda para el eyebrow y el hilo de arriba.
+   =========================================================================== */
+
+.hero {
+  position: relative;
+  background: linear-gradient(
+    150deg,
+    var(--atlas-v5-cartera-hero-top) 0%,
+    var(--atlas-v5-brand) 42%,
+    var(--atlas-v5-brand-ink) 100%
+  );
+  border-radius: 15px;
+  box-shadow: var(--atlas-v5-shadow-lift);
+  overflow: hidden;
+  padding: 16px 24px 18px;
+  margin-bottom: 18px;
+  color: var(--atlas-v5-on-navy-2);
+  font-family: var(--atlas-v5-font-ui);
+  /* Remapeo de ámbito · MoneyValue (DS) pinta con `--atlas-v5-ink`. */
+  --atlas-v5-ink: var(--atlas-v5-on-navy-1);
+  --atlas-v5-ink-2: var(--atlas-v5-on-navy-2);
+  --atlas-v5-ink-3: var(--atlas-v5-on-navy-3);
+  --atlas-v5-ink-4: var(--atlas-v5-on-navy-5);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-soft));
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.eyebrowBlock { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold-2);
+  box-shadow: 0 0 0 3px var(--atlas-v5-cartera-gold-glow);
+  flex-shrink: 0;
+}
+.lab {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-2);
+  white-space: nowrap;
+}
+.cuenta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-on-navy-1);
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+.rango { font-size: 12.5px; color: var(--atlas-v5-on-navy-3); padding-left: 17px; }
+
+.btnHero {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--atlas-v5-on-brand-fill);
+  color: var(--atlas-v5-on-navy-2);
+  border: 1px solid var(--atlas-v5-on-brand-border);
+  padding: 9px 15px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btnHero:hover { background: var(--atlas-v5-on-brand-fill-hover); }
+
+/* ── La banda · saldo | entró | salió · una fila compacta ─────────────────── */
+
+.cols {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  border-top: 1px solid var(--atlas-v5-navy-line);
+  padding-top: 14px;
+}
+@media (max-width: 900px) {
+  .cols { grid-template-columns: 1fr; gap: 12px; }
+  .saldo { border-right: none; padding-right: 0; }
+  .flujo { padding: 0; }
+  .flujo + .flujo { border-left: none; }
+}
+.saldo { padding-right: 24px; border-right: 1px solid var(--atlas-v5-navy-line); min-width: 0; }
+.saldoLab,
+.flujoLab {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-on-navy-5);
+}
+.saldoVal {
+  display: block;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--atlas-v5-on-navy-1);
+  margin-top: 5px;
+}
+.saldoNo { font-size: 12.5px; color: var(--atlas-v5-on-navy-5); margin-top: 8px; }
+
+.flujo { padding: 0 24px; min-width: 0; }
+.flujo + .flujo { border-left: 1px solid var(--atlas-v5-navy-line); }
+.flujoCab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.flujoTot {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--atlas-v5-on-navy-1);
+  white-space: nowrap;
+}
+.famRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2.5px 0; font-size: 12px; }
+.famNom { color: var(--atlas-v5-on-navy-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; min-width: 0; }
+.famVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-v5-on-navy-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
