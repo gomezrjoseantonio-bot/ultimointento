@@ -710,7 +710,7 @@ export class BankParserService {
     }
     
     // Parse and validate date
-    const date = this.parseSpanishDate(dateStr);
+    const date = this.fechaDe(rowData, numericRow, dateCol);
     if (!date || isNaN(date.getTime())) {
       return null; // Invalid date
     }
@@ -739,8 +739,8 @@ export class BankParserService {
     }
     
     // Optional fields
-    const valueDateStr = columns.valueDate !== undefined ? rowData[columns.valueDate]?.trim() : undefined;
-    const valueDate = valueDateStr ? this.parseSpanishDate(valueDateStr) : undefined;
+    const valueDate =
+      columns.valueDate !== undefined ? this.fechaDe(rowData, numericRow, columns.valueDate) : undefined;
     const balance = columns.balance !== undefined ? this.importeDe(rowData, numericRow, columns.balance) : undefined;
     // E2.4.2 · todas las columnas de referencia, juntas y sin vacíos. El
     // separador « · » no aparece en un identificador, así que el extractor
@@ -789,23 +789,50 @@ export class BankParserService {
   /**
    * Parse Spanish date formats (dd/mm/yyyy, dd-mm-yyyy, etc.)
    */
+  /**
+   * E3.1 · La FECHA de una columna · el valor CRUDO de la celda cuando lo hay.
+   *
+   * Mismo motivo que `importeDe`, y el mismo arreglo. `rawData` se lee con
+   * `raw: false`, así que una celda de fecha llega ya FORMATEADA con el formato
+   * que le puso el banco — y ING y Unicaja le ponen `m/d/yy`. El 11 de
+   * septiembre de 2026 llegaba como «9/11/26» y el lector español lo leía como
+   * el 9 de NOVIEMBRE. Peor todavía: del día 13 en adelante no hay mes que
+   * valga, la fecha no parseaba y la fila entera desaparecía sin avisar. En los
+   * ficheros reales de Jose eso se llevaba por delante 362 movimientos de 672 y
+   * dejaba el saldo de dos cuentas imposible de cuadrar.
+   *
+   * La celda cruda no tiene ese problema: es la SERIE de Excel (46276), que no
+   * es ambigua. Solo cuando no hay número —CSV, celdas de texto— se vuelve al
+   * texto formateado.
+   */
+  private fechaDe(rowData: string[], numericRow: unknown[] | undefined, col: number): Date | null {
+    const crudo = numericRow?.[col];
+    // Con `cellDates` la librería devuelve la fecha ya montada.
+    if (crudo instanceof Date && !isNaN(crudo.getTime())) {
+      return new Date(crudo.getFullYear(), crudo.getMonth(), crudo.getDate());
+    }
+    if (typeof crudo === 'number' && Number.isFinite(crudo)) {
+      const deLaSerie = this.fechaDeSerieExcel(crudo);
+      if (deLaSerie) return deLaSerie;
+    }
+    return this.parseSpanishDate(rowData[col]?.trim() ?? '');
+  }
+
+  /** Una serie de Excel (días desde 1899-12-30) a fecha, o `null` si no lo es. */
+  private fechaDeSerieExcel(n: number): Date | null {
+    // 1970-01-01 = 25569 · 2100-01-01 = 73051 · fuera de eso no es una fecha.
+    if (!Number.isFinite(n) || n < 25569 || n > 73051) return null;
+    const base = new Date(1899, 11, 30);
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate() + Math.trunc(n));
+  }
+
   private parseSpanishDate(dateStr: string): Date | null {
     if (!dateStr) return null;
 
-    // E2.4.2 · una SERIE de Excel («46265») · Unicaja exporta la fecha como
-    // número de días desde 1899-12-30 y la celda llega sin formato. Antes la
-    // fila entera caía a `sin_fecha` y el motor no veía nada de ese banco.
+    // E2.4.2 · una SERIE de Excel («46265») · la celda llega sin formato y su
+    // número en texto. Antes la fila entera caía a `sin_fecha`.
     const serie = dateStr.trim();
-    if (/^\d{5}$/.test(serie)) {
-      const n = Number(serie);
-      // 1970-01-01 = 25569 · 2100-01-01 = 73051 · fuera de eso no es una fecha.
-      if (n >= 25569 && n <= 73051) {
-        const base = new Date(1899, 11, 30);
-        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
-        return d;
-      }
-      return null;
-    }
+    if (/^\d{5}$/.test(serie)) return this.fechaDeSerieExcel(Number(serie));
 
     // E2.4.2 · una FECHA-HORA («2026-08-28 10:15:00» · Revolut) · solo cuenta el
     // día. Sin esto la hora se pegaba a la fecha al limpiar y no casaba nada.
