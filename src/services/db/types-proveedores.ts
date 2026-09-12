@@ -46,3 +46,15 @@ export interface OperacionProveedor {
   documentId?: number;
   createdAt: string;
 }
+
+/**
+ * E3.1b · LA clave del store, y una sola forma de calcularla.
+ *
+ * `proveedores` usa `nif` como keyPath, así que la clave tiene que salir igual
+ * la escriba quien la escriba. Sin esto, un escritor que guarde «b33558172 » y
+ * otro que busque «B33558172» crean DOS filas del mismo proveedor, y la segunda
+ * nace sin sus `tipos` AEAT, sin su familia y sin su historial.
+ */
+export function claveDeProveedor(nif: string): string {
+  return nif.toUpperCase().replace(/[\s.\-/]/g, '');
+}

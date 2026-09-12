@@ -2,8 +2,8 @@
 // E3.1 · §7.3 · CATÁLOGO NACIONAL · el servicio
 // ============================================================================
 //
-// La pieza que hace que «nadie tenga que añadir WIZINK a una lista». Tres
-// capas, y se preguntan en este orden:
+// La pieza que hace que «nadie tenga que añadir WIZINK a una lista». DOS capas
+// (eran tres hasta E3.1b, cuando el store aparte se retiró), en este orden:
 //
 //   1 · LO QUE SABE EL CLIENTE · el store `proveedores`, indexado por NIF. UN
 //       SOLO SITIO (E3.1b · decisión de Jose): ahí están tanto el NIF de su
@@ -29,6 +29,8 @@
 
 import type { FamiliaId, Ambito } from '../catalogo/catalogoUnico';
 import { esFamiliaId } from '../catalogo/catalogoUnico';
+import { esCif } from '../identificadoresDelConcepto';
+import { claveDeProveedor } from '../db/types-proveedores';
 import {
   semillaDelCatalogo,
   claveDeNombreCatalogo,
@@ -59,15 +61,19 @@ export function construirCatalogo(...capas: ReadonlyArray<readonly EntidadNacion
   const vistos = new Set<string>();
   for (const capa of capas) {
     for (const e of capa) {
-      if (e.nif) {
-        const nif = e.nif.toUpperCase().replace(/[\s.\-/]/g, '');
-        if (!porNif.has(nif)) porNif.set(nif, e);
-      }
+      const nif = e.nif ? claveDeProveedor(e.nif) : undefined;
+      if (nif && !porNif.has(nif)) porNif.set(nif, e);
+      // Si una capa de MÁS peso ya conoce este NIF, sus alias apuntan a ELLA.
+      // Sin esto, «la corrección del cliente manda» solo era cierta buscando
+      // por NIF: el alias del fichero nacional seguía devolviendo la entidad
+      // del fichero, así que la misma empresa se clasificaba de dos maneras
+      // según el banco escribiera el CIF o el nombre.
+      const destino = (nif ? porNif.get(nif) : undefined) ?? e;
       for (const a of e.alias) {
         const clave = claveDeNombreCatalogo(a);
         if (clave.length < MINIMO_ALIAS || vistos.has(clave)) continue;
         vistos.add(clave);
-        alias.push([clave, e] as const);
+        alias.push([clave, destino] as const);
       }
     }
   }
@@ -86,7 +92,7 @@ export function catalogoDeFabrica(): CatalogoNacional {
 /** La entidad de un NIF · `undefined` si el catálogo no lo conoce. */
 export function porNif(cat: CatalogoNacional, nif: string | null | undefined): EntidadNacional | undefined {
   if (!nif) return undefined;
-  return cat.porNif.get(nif.toUpperCase().replace(/[\s.\-/]/g, ''));
+  return cat.porNif.get(claveDeProveedor(nif));
 }
 
 /**
@@ -207,8 +213,11 @@ export interface BaseParaCatalogo {
  *   · no pisa una `familia` que el usuario ya hubiera puesto a mano;
  *   · no duplica: si el NIF ya está, SUMA una confirmación.
  *
- * `origen: 'nacional'` solo lo pone quien llama, y solo cuando el ancla es un
- * CIF de EMPRESA: un DNI no se marca como compartible nunca.
+ * `origen: 'nacional'` se COMPRUEBA aquí, no en quien llama: si el NIF no pasa
+ * el dígito de control de un CIF de EMPRESA, la fila se degrada a `'cliente'`
+ * y se avisa. Dejar la invariante en manos del llamador significa que el
+ * próximo llamador puede romperla sin enterarse, y lo que está en juego es que
+ * el DNI de una persona acabe marcado como compartible.
  *
  * Nunca lanza: aprender es oportunista y una confirmación no se rompe por esto.
  */
@@ -225,8 +234,14 @@ export async function aprenderEnCatalogo(
   },
   avisar: (mensaje: string, err: unknown) => void = () => {},
 ): Promise<ProveedorIrpf | undefined> {
-  const nif = entrada.nif.toUpperCase().replace(/[\s.\-/]/g, '');
+  const nif = claveDeProveedor(entrada.nif);
   if (!nif) return undefined;
+  // La frontera de privacidad se defiende AQUÍ · un DNI nunca es compartible.
+  let origenPedido = entrada.origen ?? 'cliente';
+  if (origenPedido === 'nacional' && !esCif(nif)) {
+    avisar(`«${nif}» no es un CIF de empresa · se guarda como 'cliente', no compartible`, undefined);
+    origenPedido = 'cliente';
+  }
   const ahora = new Date().toISOString();
   try {
     const ya = (await db.get('proveedores', nif)) as ProveedorIrpf | undefined;
@@ -242,7 +257,7 @@ export async function aprenderEnCatalogo(
       ...(ya?.ambito ?? entrada.ambito ? { ambito: (ya?.ambito ?? entrada.ambito) as Ambito } : {}),
       alias: unirAlias(ya?.alias ?? [], entrada.alias ?? []),
       confirmaciones: (ya?.confirmaciones ?? 0) + 1,
-      origen: ya?.origen === 'nacional' ? 'nacional' : (entrada.origen ?? 'cliente'),
+      origen: ya?.origen === 'nacional' ? 'nacional' : origenPedido,
       createdAt: (ya as { createdAt?: string } | undefined)?.createdAt ?? ahora,
       updatedAt: ahora,
     };

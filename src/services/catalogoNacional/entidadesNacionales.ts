@@ -8,8 +8,9 @@
 // que este cliente la haya dado de alta.
 //
 // Esto es la SEMILLA que viaja en el código. Lo que un cliente enseñe encima
-// vive en el store `catalogoProveedores` (`catalogoNacional.ts`) y se suma a
-// esto; la semilla nunca se reescribe.
+// vive en el store `proveedores` —el mismo donde están sus propios proveedores
+// del IRPF, porque «quién cobra» se pregunta en UN solo sitio (E3.1b)— y se
+// suma a esto; la semilla nunca se reescribe.
 //
 // Reglas de la tabla:
 //   · El NIF es la clave fuerte. Un NIF con su letra de control bien no admite

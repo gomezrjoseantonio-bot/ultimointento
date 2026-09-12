@@ -127,7 +127,10 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     const filas = new Map<string, Record<string, unknown>>();
     const db = {
       get: async (_s: string, k: unknown) => filas.get(String(k)),
-      put: async (_s: string, v: unknown) => {
+      put: async (store: string, v: unknown) => {
+        // Afirmar el DESTINO es el punto de este test: si una regresión vuelve
+        // a escribir en un store aparte, esto tiene que caerse.
+        expect(store).toBe('proveedores');
         const fila = v as { nif: string };
         filas.set(fila.nif, fila as Record<string, unknown>);
         return 1;
@@ -158,7 +161,8 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     const filas = new Map<string, Record<string, unknown>>([['B33558172', existente]]);
     const db = {
       get: async (_s: string, k: unknown) => filas.get(String(k)),
-      put: async (_s: string, v: unknown) => {
+      put: async (store: string, v: unknown) => {
+        expect(store).toBe('proveedores');
         filas.set((v as { nif: string }).nif, v as Record<string, unknown>);
         return 1;
       },
@@ -168,6 +172,46 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     expect(tras?.familia).toBe('reparacion_mantenimiento');
     expect(tras?.createdAt).toBe('2026-01-01T00:00:00.000Z');
     expect(tras?.confirmaciones).toBe(1);
+  });
+
+  it('un DNI NO se puede marcar como compartible · lo comprueba quien ESCRIBE', () => {
+    // La invariante no puede vivir solo en el llamador: el próximo llamador la
+    // rompe sin enterarse, y lo que está en juego es el DNI de una persona.
+    const filas = new Map<string, Record<string, unknown>>();
+    const db = {
+      get: async (_s: string, k: unknown) => filas.get(String(k)),
+      put: async (_s: string, v: unknown) => {
+        filas.set((v as { nif: string }).nif, v as Record<string, unknown>);
+        return 1;
+      },
+    };
+    const avisos: string[] = [];
+    return (async () => {
+      // Un DNI de persona, pedido como 'nacional' → se degrada y se avisa.
+      const dni = await aprenderEnCatalogo(
+        db,
+        { nif: '04621623A', familia: 'reparacion_mantenimiento', origen: 'nacional' },
+        (m) => avisos.push(m),
+      );
+      expect(dni?.origen).toBe('cliente');
+      expect(avisos.join()).toContain('no es un CIF de empresa');
+      // Un CIF de empresa sí.
+      const cif = await aprenderEnCatalogo(db, { nif: 'A81831067', familia: 'prestamo_hipoteca', origen: 'nacional' });
+      expect(cif?.origen).toBe('nacional');
+    })();
+  });
+
+  it('la corrección del cliente gana TAMBIÉN buscando por nombre, no solo por NIF', () => {
+    // Si el cliente corrige una entidad del fichero nacional y el banco escribe
+    // el NOMBRE (no el CIF), el alias tiene que devolver SU versión. Antes
+    // devolvía la del fichero: la misma empresa se clasificaba de dos maneras
+    // según lo que el banco hubiera escrito.
+    const delCliente = [
+      { nombre: 'Iberdrola (lo mío)', nif: 'A95554630', alias: [], familia: 'reparacion_mantenimiento' as const },
+    ];
+    const cat = construirCatalogo(delCliente, semillaDelCatalogo());
+    expect(porNif(cat, 'A95554630')?.familia).toBe('reparacion_mantenimiento');
+    expect(porNombre(cat, 'ELECTRICIDAD IBERDROLA')?.familia).toBe('reparacion_mantenimiento');
   });
 
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {
