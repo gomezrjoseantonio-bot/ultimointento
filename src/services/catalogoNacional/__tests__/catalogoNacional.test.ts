@@ -214,6 +214,39 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     expect(porNombre(cat, 'ELECTRICIDAD IBERDROLA')?.familia).toBe('reparacion_mantenimiento');
   });
 
+  it('el banco escribe la MARCA, no la sociedad · «RECIBO NATURGY» tiene que casar', () => {
+    // El fichero trae «Naturgy Iberia», «Endesa Energía», «Orange España». Los
+    // alias se comparan por contención, así que un alias largo NO casa con un
+    // texto corto: «RECIBO NATURGY» no contiene «NATURGYIBERIA». Cuatro de las
+    // marcas más comunes de España se quedaban fuera por esto.
+    for (const texto of ['RECIBO NATURGY', 'RECIBO ORANGE', 'RECIBO ENDESA', 'RECIBO IBERDROLA']) {
+      expect([texto, porNombre(catalogo, texto)?.familia]).toEqual([texto, 'suministro']);
+    }
+  });
+
+  it('la COMPRA con tarjeta no pregunta al catálogo · ahí manda el comercio', () => {
+    // Ésta es la pieza que quita la ambigüedad de raíz, sin listas de marcas:
+    // «Shell España» comercializa luz, pero «COMPRA SHELL» es la gasolinera; la
+    // tarjeta de Carrefour se cobra como RECIBO y la compra del súper llega
+    // como COMPRA. Mismo nombre, apunte distinto.
+    const ctxCat = ctx();
+    for (const compra of ['COMPRA SHELL ESPANA', 'COMPRA CARREFOUR', 'Pago en Mercadona', 'BIZUM A FAVOR DE ORANGE']) {
+      const c = clasificarLinea(mov(compra), ctxCat);
+      expect([compra, c.origen.familia]).not.toEqual([compra, 'identificador']);
+    }
+    // Y lo domiciliado sí, aunque el banco no escriba la palabra «recibo»:
+    // Sabadell pone «ELECTRICIDAD WEKIWI SL» a secas y eso es un adeudo SEPA.
+    expect(clasificarLinea(mov('ELECTRICIDAD WEKIWI SL', -34.47), ctxCat).familia).toBe('suministro');
+    expect(clasificarLinea(mov('Recibo Shell España', -60), ctxCat).familia).toBe('suministro');
+  });
+
+  it('una FINANCIERA no se recorta nunca · su nombre largo ES la señal', () => {
+    // «Servicios Financieros Carrefour» recortado daría «CARREFOUR». El nombre
+    // entero es lo que distingue la financiera del comercio.
+    expect(porNombre(catalogo, 'ADEUDO FINANCIERA CARREFOUR')?.subtipo).toBe('credito_consumo');
+    expect(porNombre(catalogo, 'CARREFOUR')).toBeUndefined();
+  });
+
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {
     const c = clasificarLinea(mov('Recibo WiZink Bank'), { cuentas: [], tarjetas: [], nombresTitular: [] });
     expect(c.origen.familia).not.toBe('identificador');

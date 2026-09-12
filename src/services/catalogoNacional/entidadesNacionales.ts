@@ -31,7 +31,7 @@
 // real sí necesita —
 //
 //   · las marcas que faltan (Wekiwi y Visalia, con su CIF sacado del propio
-//     extracto; Tuio, Bip&Drive, Ayvens, Feebbo, MetLife, Planeta, Finutive…);
+//     extracto; Tuio, MetLife, Planeta, Ayvens, Finutive…);
 //   · los ALIAS RECORTADOS que escribe cada banco, que ningún registro
 //     oficial recoge: Unicaja corta el emisor a 16 caracteres
 //     («FCC AQUALI447497», «DIGI SPAIN400245») y BBVA escribe «BIP   DRIVE, S.A.»;
@@ -130,6 +130,9 @@ const SUMINISTROS: readonly EntidadNacional[] = [
 
 const SEGUROS: readonly EntidadNacional[] = [
   { nombre: 'Tuio Seguros', alias: ['TUIO', 'GCRETUIO'], familia: 'seguros_alarmas', subtipo: 'hogar' },
+  // Las dos llegan como RECIBO domiciliado en el corpus real.
+  { nombre: 'MetLife Europe', alias: ['METLIFE'], familia: 'seguros_alarmas', subtipo: 'vida' },
+  { nombre: 'Planeta Seguros', alias: ['PLANETASEGUROS'], familia: 'seguros_alarmas' },
   { nombre: 'Unicaja Plan Seguro', alias: ['PLANUNISEGUR', 'UNICAJAPLANSEGURO'], familia: 'seguros_alarmas' },
   { nombre: 'Mapfre', alias: ['MAPFRE'], familia: 'seguros_alarmas' },
   { nombre: 'Nationale-Nederlanden', alias: ['NATIONALENEDERLANDEN'], familia: 'seguros_alarmas', subtipo: 'vida' },
@@ -152,80 +155,18 @@ const SEGUROS: readonly EntidadNacional[] = [
   { nombre: 'Verti', alias: ['VERTI'], familia: 'seguros_alarmas', subtipo: 'vehiculo' },
 ];
 
-// ─── Transporte ─────────────────────────────────────────────────────────────
 
-const TRANSPORTE: readonly EntidadNacional[] = [
-  { nombre: 'Bip&Drive', alias: ['BIPDRIVE'], familia: 'transporte', subtipo: 'peajes', ambito: 'personal' },
-  { nombre: 'Telpark', alias: ['TELPARK'], familia: 'transporte', subtipo: 'parking', ambito: 'personal' },
-  { nombre: 'EasyPark', alias: ['EASYPARK'], familia: 'transporte', subtipo: 'parking', ambito: 'personal' },
-  { nombre: 'Renfe', alias: ['RENFE'], familia: 'transporte', subtipo: 'transporte_publico', ambito: 'personal' },
-  { nombre: 'Iryo', alias: ['IRYO'], familia: 'transporte', subtipo: 'transporte_publico', ambito: 'personal' },
-  { nombre: 'Ouigo', alias: ['OUIGO'], familia: 'transporte', subtipo: 'transporte_publico', ambito: 'personal' },
-  { nombre: 'Alsa', alias: ['ALSA'], familia: 'transporte', subtipo: 'transporte_publico', ambito: 'personal' },
-  { nombre: 'Cabify', alias: ['CABIFY'], familia: 'transporte', subtipo: 'taxi', ambito: 'personal' },
-  { nombre: 'Uber', alias: ['UBER'], familia: 'transporte', subtipo: 'taxi', ambito: 'personal' },
-  { nombre: 'Free Now', alias: ['FREENOW'], familia: 'transporte', subtipo: 'taxi', ambito: 'personal' },
-];
-
-// ─── Suscripciones ──────────────────────────────────────────────────────────
-
-const SUSCRIPCIONES: readonly EntidadNacional[] = [
-  { nombre: 'Netflix', alias: ['NETFLIX'], familia: 'suscripciones', subtipo: 'streaming', ambito: 'personal' },
-  { nombre: 'HBO Max', alias: ['HBOMAX'], familia: 'suscripciones', subtipo: 'streaming', ambito: 'personal' },
-  { nombre: 'Disney+', alias: ['DISNEYPLUS'], familia: 'suscripciones', subtipo: 'streaming', ambito: 'personal' },
-  { nombre: 'Prime Video', alias: ['PRIMEVIDEO'], familia: 'suscripciones', subtipo: 'streaming', ambito: 'personal' },
-  { nombre: 'DAZN', alias: ['DAZN'], familia: 'suscripciones', subtipo: 'streaming', ambito: 'personal' },
-  { nombre: 'Filmin', alias: ['FILMIN'], familia: 'suscripciones', subtipo: 'streaming', ambito: 'personal' },
-  { nombre: 'Spotify', alias: ['SPOTIFY'], familia: 'suscripciones', subtipo: 'musica', ambito: 'personal' },
-  { nombre: 'Apple Music', alias: ['APPLEMUSIC'], familia: 'suscripciones', subtipo: 'musica', ambito: 'personal' },
-  { nombre: 'Deezer', alias: ['DEEZER'], familia: 'suscripciones', subtipo: 'musica', ambito: 'personal' },
-  { nombre: 'iCloud', alias: ['ICLOUD'], familia: 'suscripciones', subtipo: 'cloud', ambito: 'personal' },
-  { nombre: 'Google One', alias: ['GOOGLEONE', 'GOOGLESTORAGE'], familia: 'suscripciones', subtipo: 'cloud', ambito: 'personal' },
-  { nombre: 'Dropbox', alias: ['DROPBOX'], familia: 'suscripciones', subtipo: 'cloud', ambito: 'personal' },
-  { nombre: 'Microsoft 365', alias: ['MICROSOFT365', 'OFFICE365'], familia: 'suscripciones', subtipo: 'software', ambito: 'personal' },
-  { nombre: 'Adobe', alias: ['ADOBE'], familia: 'suscripciones', subtipo: 'software', ambito: 'personal' },
-  { nombre: 'OpenAI', alias: ['OPENAI', 'CHATGPT'], familia: 'suscripciones', subtipo: 'software', ambito: 'personal' },
-  { nombre: 'Basic-Fit', alias: ['BASICFIT'], familia: 'suscripciones', subtipo: 'gimnasio', ambito: 'personal' },
-];
 
 // ─── Gestión, ocio, comercio · lo que no admite dos lecturas ────────────────
 
-// ─── Lo que NO es una marca pero sí es un patrón nacional ───────────────────
-//
-// «Comunitat de Propietaris», «Ajuntament de …», «Aigües de …» no son empresas
-// concretas: son la forma en que TODA España escribe a un acreedor de ese tipo,
-// en las cuatro lenguas. Absorben las listas COMUNIDAD / IMPUESTOS /
-// SUMINISTRO_AGUA de `reglasDuras` (§7.3 · «absorber las 6 listas actuales»),
-// con la diferencia de que aquí van en el paso 2 y no en el 3.
-
-const PATRONES: readonly EntidadNacional[] = [
-  { nombre: 'Comunidad de propietarios', alias: ['COMUNIDADDEPROPIETARIOS', 'COMUNITATDEPROPIETARIS', 'COMUNIDADPROPIETARIOS', 'COMUNIDADEDEPROPIETARIOS', 'CCPP', 'ADMINISTRACIONDEFINCAS', 'ADMINFINCAS'], familia: 'comunidad', ambito: 'inmueble' },
-  { nombre: 'Ayuntamiento', alias: ['AYUNTAMIENTO', 'AJUNTAMENT', 'CONCELLODE', 'UDALA'], familia: 'impuestos_tasas', ambito: 'inmueble' },
-  { nombre: 'Agencia Tributaria', alias: ['AGENCIATRIBUTARIA', 'AEAT'], familia: 'impuestos_tasas' },
-  { nombre: 'Diputación / recaudación', alias: ['DIPUTACION', 'SUMAGESTION', 'RECAUDACIONEJECUTIVA'], familia: 'impuestos_tasas', ambito: 'inmueble' },
-  { nombre: 'Aguas municipales', alias: ['AIGUESDE', 'AGUASDE', 'AGUESDE'], familia: 'suministro', subtipo: 'agua', ambito: 'inmueble' },
-];
 
 const OTROS: readonly EntidadNacional[] = [
   // Renting de vehículo · ALD/LeasePlan pasaron a llamarse Ayvens en 2024.
+  // Llega como recibo domiciliado (12 en el corpus real).
   { nombre: 'Ayvens', alias: ['AYVENS', 'ALDAUTOMOTIVE', 'LEASEPLAN'], familia: 'alquiler_renting', ambito: 'personal' },
-  { nombre: 'Planeta Seguros', alias: ['PLANETASEGUROS'], familia: 'seguros_alarmas' },
-  { nombre: 'MetLife', alias: ['METLIFE'], familia: 'seguros_alarmas', subtipo: 'vida' },
   { nombre: 'Finutive', alias: ['FINUTIVE'], familia: 'gestion', subtipo: 'gestoria' },
-  // Feebbo · paga estudios de mercado · ingreso, no alquiler ni nómina.
-  { nombre: 'Feebbo Solutions', alias: ['FEEBBO', 'FEEBBOSOLUTIONS'], familia: 'otros_ingresos', ambito: 'personal' },
-  { nombre: 'Mercadona', alias: ['MERCADONA'], familia: 'supermercado', ambito: 'personal' },
-  { nombre: 'Lidl', alias: ['LIDL'], familia: 'supermercado', ambito: 'personal' },
-  { nombre: 'Alcampo', alias: ['ALCAMPO'], familia: 'supermercado', ambito: 'personal' },
-  { nombre: 'Eroski', alias: ['EROSKI'], familia: 'supermercado', ambito: 'personal' },
-  { nombre: 'Amazon', alias: ['AMAZON'], familia: 'compra_online', ambito: 'personal' },
-  { nombre: 'AliExpress', alias: ['ALIEXPRESS'], familia: 'compra_online', ambito: 'personal' },
-  { nombre: 'Shein', alias: ['SHEIN'], familia: 'compra_online', ambito: 'personal' },
-  { nombre: 'Temu', alias: ['TEMUCOM'], familia: 'compra_online', ambito: 'personal' },
-  { nombre: 'Leroy Merlin', alias: ['LEROYMERLIN'], familia: 'reparacion_mantenimiento' },
-  { nombre: 'Bricomart', alias: ['BRICOMART'], familia: 'reparacion_mantenimiento' },
-  { nombre: 'Bricodepot', alias: ['BRICODEPOT'], familia: 'reparacion_mantenimiento' },
 ];
+
 
 /**
  * El COMPLEMENTO · lo que el fichero de 308 no trae. Se usa junto a él, no en
@@ -235,9 +176,6 @@ export const COMPLEMENTO_DEL_CATALOGO: readonly EntidadNacional[] = [
   ...FINANCIERAS,
   ...SUMINISTROS,
   ...SEGUROS,
-  ...TRANSPORTE,
-  ...SUSCRIPCIONES,
-  ...PATRONES,
   ...OTROS,
 ];
 
