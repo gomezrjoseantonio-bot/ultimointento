@@ -13,6 +13,7 @@
 // ============================================================================
 
 import type { ClasificacionLinea } from '../../../services/clasificacion/tipos';
+import type { Identificador } from '../../../services/identificadoresDelConcepto';
 import type { MatchResultPorLinea } from '../../../services/lineaComoMovimiento';
 import { entraAlMatcheo, movementDesdeLinea } from '../../../services/lineaComoMovimiento';
 import type { MovimientoConfirmadoRef } from '../../../services/conciliacionConfirmados';
@@ -50,6 +51,12 @@ export interface LineaExtracto {
   movementIds?: number[];
   /** Identidad estable de la línea · sobrevive a reimportar el mismo fichero. */
   hashLinea: string;
+  /**
+   * E3.1 · §9.5 · los identificadores que el motor extrajo al clasificar
+   * (CUPS, mandato, NIF, acreedor…), tal como quedaron persistidos. Quien los
+   * necesite los LEE; re-extraerlos del texto era trabajo duplicado.
+   */
+  identificadores?: Identificador[];
   /** El texto LITERAL del banco · §4.7 lo exige, sin limpiar ni embellecer. */
   textoBanco: string;
   fecha: string;
@@ -260,6 +267,11 @@ export function construirLineas(
       ...(movementIds.length > 0 ? { movementId: movementIds[0] } : {}),
       movementIds,
       hashLinea: fila.hashLinea,
+      // E3.1 · §9.5 · los identificadores que se extrajeron AL IMPORTAR viajan
+      // a la sesión. Sin esto el campo se persistía y no lo leía nadie:
+      // `agruparPorEntidad` caía siempre a su rama de respaldo y volvía a
+      // parsear el texto, que es justo el trabajo duplicado que §9.5 quita.
+      ...(fila.identificadores?.length ? { identificadores: fila.identificadores } : {}),
       textoBanco: fila.conceptoLiteral,
       // Vacío o en blanco no se propaga: un renglón vacío debajo del texto
       // sería un hueco que parece un fallo de carga.

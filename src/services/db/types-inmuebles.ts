@@ -589,10 +589,13 @@ export interface Proveedor {
   nif: string;
   nombre?: string;
   tipos: string[];
+  /** E3.1 · §7.3 · familia/subtipo del catálogo único · `tipos` dice la casilla AEAT, esto dice QUÉ ES (ver `desdeProveedoresIrpf`). */
+  familia?: string;
+  subtipo?: string;
   /**
    * V77 · wizard import XML V2 (pilar 3) · placeholder creado desde el XML sin
    * nombre conocido. La UI muestra badge "sin nombre" y el usuario lo completa
-   * después desde el detalle del gasto. Sin índice · no requiere bump adicional.
+   * después. Sin índice · no requiere bump adicional.
    */
   sinNombre?: boolean;
   createdAt: string;

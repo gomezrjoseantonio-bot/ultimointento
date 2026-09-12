@@ -393,7 +393,11 @@ export const FAMILIAS: readonly Familia[] = [
     id: 'prestamo_hipoteca',
     naturaleza: 'gasto',
     label: 'Préstamo / hipoteca',
-    subtipos: [],
+    // E3.1 · §7.3 · el crédito al consumo se separa de la hipoteca: el recibo
+    // de WiZink o de Financiera Carrefour no es la cuota de un piso, y sin
+    // subtipo el catálogo nacional no podía decirlo. Subtipo OPCIONAL como
+    // todos: lo que ya estaba guardado sin subtipo sigue valiendo.
+    subtipos: [sub('hipoteca', 'Hipoteca'), sub('credito_consumo', 'Crédito al consumo')],
     ambitosAplicables: 'ambos',
     descripcion: 'El cargo ENTERO · interés y capital los da el cuadro del préstamo',
   },

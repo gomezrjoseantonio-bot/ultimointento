@@ -17,7 +17,19 @@ import type { Tarjeta } from '../../types/tarjetas';
 import type { SugerenciaPorLinea, LoQueSeReconocePorLinea } from '../lineaComoMovimiento';
 import { entraAlMatcheo, movementDesdeLinea } from '../lineaComoMovimiento';
 import { nombresDelTitular, type QuienEsElTitular } from '../deterministas/traspasosPropios';
+import { cargarCatalogo, CATALOGO_VACIO, type CatalogoNacional } from '../catalogoNacional/catalogoNacional';
 import { clasificarLinea, type ClasificacionLinea, type ContextoClasificacion } from './clasificarLinea';
+
+/**
+ * §P1.d · a dónde va un fallo. Un `console.warn` no lo ve nadie: si el catálogo
+ * no carga, media clasificación se degrada a «sin clasificar» y el usuario cree
+ * que el motor no sabe, cuando lo que pasa es que se rompió una lectura. Quien
+ * llama pasa su canal (el orquestador, sus `warnings`); el defecto sigue siendo
+ * la consola para los sitios que aún no lo tengan.
+ */
+export type Avisar = (mensaje: string, err?: unknown) => void;
+
+const AVISO_A_CONSOLA: Avisar = (mensaje, err) => console.warn(`[clasificacion] ${mensaje}`, err);
 
 /** Lo que hace falta de la base · para poder probar sin IndexedDB. */
 export interface BaseParaClasificar {
@@ -30,24 +42,42 @@ export interface ContextoDelLote {
   cuentas: ContextoClasificacion['cuentas'];
   tarjetas: ContextoClasificacion['tarjetas'];
   nombresTitular: string[];
+  /** E3.1 · §7.3 · el catálogo nacional · vacío si no se pudo cargar. */
+  catalogo: CatalogoNacional;
+  /** E3.1 · §7.2 · los nº de contrato de los préstamos del usuario. */
+  contratosDePrestamo: ContextoClasificacion['contratosDePrestamo'];
 }
 
-/** Una lectura por store · si una falla, esa señal aporta cero y el resto sigue. */
-export async function contextoDelLote(db: BaseParaClasificar): Promise<ContextoDelLote> {
+/** Una lectura por store · si una falla, esa señal aporta cero, se AVISA y el resto sigue. */
+export async function contextoDelLote(
+  db: BaseParaClasificar,
+  avisar: Avisar = AVISO_A_CONSOLA,
+): Promise<ContextoDelLote> {
   const leer = async <T>(store: string): Promise<T[]> => {
     try {
       return ((await db.getAll(store)) ?? []) as T[];
     } catch (err) {
-      console.warn(`[clasificacion] no se pudo leer '${store}'`, err);
+      avisar(`no se pudo leer '${store}' · esa señal no entra en esta clasificación`, err);
       return [];
     }
   };
-  const [cuentas, tarjetas, personas] = await Promise.all([
+  const [cuentas, tarjetas, personas, prestamos, catalogo] = await Promise.all([
     leer<Account>('accounts'),
     leer<Tarjeta>('tarjetas'),
     leer<QuienEsElTitular>('personalData'),
+    leer<{ numeroContrato?: string; inmuebleId?: number | string }>('prestamos'),
+    cargarCatalogo(db, avisar).catch((err) => {
+      avisar('no se pudo cargar el catálogo nacional · se clasifica sin él', err);
+      return CATALOGO_VACIO;
+    }),
   ]);
-  return { cuentas, tarjetas, nombresTitular: nombresDelTitular(personas, cuentas) };
+  return {
+    cuentas,
+    tarjetas,
+    nombresTitular: nombresDelTitular(personas, cuentas),
+    catalogo,
+    contratosDePrestamo: prestamos,
+  };
 }
 
 /**
@@ -74,6 +104,8 @@ export function clasificarLineas(
         origen: senales.reconocido?.origenes.get(lineaId),
         atribucion: senales.reconocido?.atribuciones.get(lineaId),
         cuentas: ctx.cuentas,
+        catalogo: ctx.catalogo,
+        contratosDePrestamo: ctx.contratosDePrestamo,
         tarjetas: ctx.tarjetas,
         nombresTitular: ctx.nombresTitular,
       }),

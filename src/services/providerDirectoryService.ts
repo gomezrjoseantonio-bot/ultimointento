@@ -147,9 +147,20 @@ export const initializeDefaultProviders = async (): Promise<void> => {
       aliases: ['TotalEnergies Gas y Electricidad España', 'Total Energies']
     },
     {
-      canonicalName: 'IBERDROLA',
-      nif: 'A95075578',
-      aliases: ['Iberdrola Clientes', 'Iberdrola Comercializacion']
+      // E3.1 · CORREGIDO. `A95075578` no es el CIF de ninguna sociedad de
+      // Iberdrola que cobre recibos: son DOS y estas son las dos. `A95758389`
+      // es Iberdrola Clientes (catálogo nacional) y `A95554630` el
+      // Comercializador de Último Recurso, que es el que firma los recibos
+      // reales del corpus («Referencia 1» A95554630001). Este directorio lo
+      // lee el OCR de facturas; con el CIF viejo no casaba ninguna de las dos.
+      canonicalName: 'IBERDROLA CLIENTES',
+      nif: 'A95758389',
+      aliases: ['Iberdrola', 'Iberdrola Clientes']
+    },
+    {
+      canonicalName: 'IBERDROLA COMERCIALIZACION DE ULTIMO RECURSO',
+      nif: 'A95554630',
+      aliases: ['Iberdrola Comercializacion', 'Iberdrola Comercializacion de Ultimo Recurso', 'Iberdrola CUR']
     }
   ];
   

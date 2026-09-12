@@ -75,7 +75,9 @@ export function llevaElContrato(m: Movement, prestamo: Prestamo): boolean {
   const propio = normalizarIdentificador(prestamo.numeroContrato ?? '').replace(/\D/g, '');
   if (propio.length < DIGITOS_MINIMOS_CONTRATO) return false;
   for (const id of identificadoresDeMovimiento(m)) {
-    if (id.tipo !== 'contrato') continue;
+    // E3.1 · el mandato vale igual que el contrato: es el mismo número que el
+    // usuario pudo guardar como `numeroContrato` de su préstamo.
+    if (id.tipo !== 'contrato' && id.tipo !== 'mandato') continue;
     const ajeno = id.valor.replace(/\D/g, '');
     if (ajeno.length < DIGITOS_MINIMOS_CONTRATO) continue;
     if (ajeno === propio || ajeno.endsWith(propio) || propio.endsWith(ajeno)) return true;

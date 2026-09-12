@@ -324,7 +324,10 @@ describe('bankStatementOrchestrator', () => {
     expect(result.duplicatesSkipped).toBe(0);
     expect(result.matchResult.matches).toHaveLength(11);
     expect(result.matchResult.sinMatch).toHaveLength(3);
-    expect(result.suggestions.size).toBe(3);
+    // E3.1 · §P1.a · el sugeridor corre sobre las 14, no solo sobre las 3 que
+    // NO casaron. Casar con un previsto dice CUÁNDO se esperaba ese dinero, no
+    // QUÉ es: las 11 que cuadraban llegaban al motor sin su señal más fuerte.
+    expect(result.suggestions.size).toBe(14);
     expect(result.bankProfileUsed).toBe('Sabadell');
     expect(result.warnings).toEqual([]); // confidence 88 ≥ 80 → no low-confidence warning · sin duplicadas, sin aviso
     expect(stores.importBatches).toHaveLength(1);
@@ -336,7 +339,7 @@ describe('bankStatementOrchestrator', () => {
     const ids = lineasQueEntran().map((l) => l.id);
     expect(result.matchResult.matches.map((m) => m.lineaId)).toEqual(ids.slice(0, 11));
     expect(result.matchResult.sinMatch).toEqual(ids.slice(11));
-    expect([...result.suggestions.keys()]).toEqual(ids.slice(11));
+    expect([...result.suggestions.keys()]).toEqual(ids);
     // Al emparejador le llegaron las líneas persistidas, con su id.
     expect((matchLineas as jest.Mock).mock.calls[0][0].map((l: any) => l.id)).toEqual(ids);
   });

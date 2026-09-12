@@ -47,6 +47,8 @@ export async function reabrirLote(
     bankProfileUsed: batch.origenBanco,
     warnings: [
       `Sesión retomada · el extracto se importó el ${batch.timestampImport.slice(0, 10)} (${batch.filename}).`,
+      // §P1.d · lo que se rompió al reanalizar también se cuenta.
+      ...propuesta.avisos,
     ],
   };
 }

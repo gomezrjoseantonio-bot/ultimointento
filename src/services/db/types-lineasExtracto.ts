@@ -20,6 +20,7 @@
 // un pago que junta fianza + dos meses): `movementIds` es plural y la suma de los
 // importes de esos movimientos debe ser igual a `importe`. Vacío si aún no ha
 // generado ninguno. La regla no aplica a una línea con `descarte`.
+import type { Identificador } from '../identificadoresDelConcepto';
 import type { ClasificacionLinea } from '../clasificacion/tipos';
 
 export type EstadoLineaExtracto = 'sin_procesar' | 'pendiente' | 'resuelta';
@@ -95,6 +96,23 @@ export interface LineaExtractoPersistida {
   hashLinea: string;
   /** `bankStatementOrchestrator.hashMovement` · `cuenta|fecha|céntimos|concepto.trim()` (sin normalizar: mayúsculas, acentos y espacios internos cuentan). */
   hashMovement: string;
+  /**
+   * E3.1 · §9.5 · huella FUERTE del fichero · lo que el banco da y no se repite
+   * nunca dentro de una cuenta: su nº de movimiento (Unicaja) o, si no lo trae,
+   * fecha + importe + SALDO. `hashMovement` no lo cubre porque lleva el
+   * concepto dentro, y el mismo movimiento reexportado con el concepto un
+   * espacio distinto entra dos veces. `undefined` si el fichero no da ninguna
+   * de las dos cosas.
+   */
+  huellaFuerte?: string;
+  /**
+   * E3.1 · §9.5 · los identificadores del banco (CUPS, mandato, NIF, acreedor,
+   * contrato, IBAN, tarjeta), extraídos UNA vez al importar. Antes cada lector
+   * los re-extraía del texto con la misma función pura; ahora se guardan y se
+   * leen. Ausente en las líneas anteriores a E3.1: quien los use debe seguir
+   * sabiendo recalcularlos.
+   */
+  identificadores?: Identificador[];
 
   // ── Estado ────────────────────────────────────────────────────────────────
   estado: EstadoLineaExtracto;

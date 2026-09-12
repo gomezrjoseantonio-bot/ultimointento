@@ -196,6 +196,16 @@ export function applyUpgradeA(db: UpgradeDB, oldVersion: number, transaction: Up
           lineasStore.createIndex('estado', 'estado', { unique: false });
         }
 
+        // V95 · E3.1 · §7.3 · `catalogoProveedores`: el catálogo nacional que
+        // el cliente amplía. `clave` es ÚNICA («nif:A95554630» o
+        // «nombre:WIZINK») porque una entidad se aprende una vez y luego se
+        // confirma; `nif` para poder cruzar por la clave fuerte sin recorrer.
+        if (!db.objectStoreNames.contains('catalogoProveedores')) {
+          const catalogoStore = db.createObjectStore('catalogoProveedores', { keyPath: 'id', autoIncrement: true });
+          catalogoStore.createIndex('clave', 'clave', { unique: true });
+          catalogoStore.createIndex('nif', 'nif', { unique: false });
+        }
+
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
         if (!db.objectStoreNames.contains('mueblesInmueble')) {
           const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });
