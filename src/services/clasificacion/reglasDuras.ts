@@ -64,7 +64,18 @@ const NOMINA = ['NOMINA', 'NOMINAS', 'SALARIO', 'HABERES'];
 const PENSION = ['PENSION', 'INSS'];
 // La TGSS · la cuota RETA en negativo y su regularización en positivo (la
 // devolución de esa misma familia · §7). Va ANTES que PENSION.
-const TGSS = ['TGSS', 'TESORERIA GENERAL', 'TESORERIA GRAL', 'REGIMEN ESPECIAL AUTONOMOS', 'CUOTA AUTONOMOS', 'RETA'];
+// Abanca escribe «T.G.S.S.-R.E. AUTONOMOS» (las siglas se parten en letras al
+// normalizar) y «TGSS. COTIZACION 005 R.E.AUTONOMOS»: «COTIZACION» y «AUTONOMOS»
+// sueltos también son la cuota.
+const TGSS = ['TGSS', 'TESORERIA GENERAL', 'TESORERIA GRAL', 'REGIMEN ESPECIAL AUTONOMOS', 'CUOTA AUTONOMOS', 'COTIZACION', 'AUTONOMOS', 'RETA'];
+// El IVA (modelo 303) NO es un gasto ni un tributo propio: es dinero de
+// Hacienda de paso (Jose · 11 sep 2026 · D4). Se reconoce para DECIRLO, no
+// para clasificarlo: queda sin familia, honesto, hasta la fase de autónomo.
+const HACIENDA_IVA = ['VALOR AÑADIDO', 'MODELO 303', 'IMPUESTO SOBRE EL VALOR'];
+const IMP_303 = /\bIMP:?\s?303\d*/i;
+// «AHORRO» / «AHORROS» (con o sin mes detrás) · el usuario apartando dinero a su
+// cuenta de ahorro. Es un traspaso, no un gasto: dos grafías, UNA categoría.
+const AHORRO = ['AHORRO', 'AHORROS'];
 const FIANZA = ['FIANZA'];
 const EFECTIVO_SALE = ['CAJERO', 'REINTEGRO', 'RETIRADA EFECTIVO', 'DISPOSICION EFECTIVO', 'RETIRADA'];
 const EFECTIVO_ENTRA = ['INGRESO EFECTIVO', 'INGRESO EN EFECTIVO'];
@@ -103,7 +114,10 @@ const SUSCRIPCION_MUSICA = ['SPOTIFY', 'APPLE MUSIC', 'DEEZER', 'TIDAL'];
 const SUSCRIPCION_CLOUD = ['ICLOUD', 'GOOGLE ONE', 'GOOGLE STORAGE', 'DROPBOX', 'ONEDRIVE'];
 const SUSCRIPCION_SOFTWARE = ['MICROSOFT 365', 'OFFICE 365', 'ADOBE', 'CHATGPT', 'OPENAI', 'CLAUDE AI', 'GITHUB', 'NOTION'];
 const SUSCRIPCION_GIMNASIO = ['GIMNASIO', 'GYM', 'BASIC FIT', 'BASIC-FIT', 'FITNESS'];
-const GESTION_GESTORIA = ['GESTORIA'];
+// «FINUTIVE» es un nombre propio (la gestoría de Jose), no una palabra del
+// catálogo. Entra aquí por decisión suya (11 sep 2026 · D3) hasta que exista
+// el catálogo de proveedores (E2.6).
+const GESTION_GESTORIA = ['GESTORIA', 'FINUTIVE'];
 const GESTION_ASESORIA = ['ASESORIA', 'ASESORES'];
 const GESTION_ABOGADO = ['ABOGADO', 'ABOGADOS', 'DESPACHO ABOGADOS', 'PROCURADOR'];
 const GESTION_OTROS = ['HONORARIOS', 'NOTARIA', 'NOTARIO', 'REGISTRO PROPIEDAD', 'INTERMEDIACION', 'INMOBILIARIA', 'ADMINISTRADOR'];
@@ -183,6 +197,11 @@ const REGLAS: Regla[] = [
   (m) => (entra(m) && tieneAlguna(texto(m), ['AEAT', 'AGENCIA TRIBUTARIA', 'HACIENDA', 'DEVOLUCION RENTA', 'TESORO PUBLICO'])
     ? { naturaleza: 'ingreso', familia: 'otros_ingresos', motivo: 'devolución de Hacienda' }
     : undefined),
+  // El IVA se reconoce y NO se clasifica (D4) · solo el motivo, para que la
+  // línea diga en «te necesitan» por qué está ahí y no parezca un olvido.
+  (m) => (IMP_303.test(texto(m)) || tieneAlguna(texto(m), HACIENDA_IVA)
+    ? { motivo: 'movimiento con Hacienda · IVA (modelo 303) · dinero de paso, no un gasto · se decide en la fase de autónomo' }
+    : undefined),
   // La cuota de autónomos y su devolución · ANTES que la pensión: hasta aquí
   // un abono de la TGSS («TESORERIA GENERAL DE LA SEGURIDAD SOCIAL» +283,03)
   // se leía como pensión, y es la cuota que vuelve.
@@ -192,6 +211,11 @@ const REGLAS: Regla[] = [
     : undefined),
 
   // ── interno · fianza, efectivo, recarga, aportación ──
+  // El ahorro · «AHORROS», «AHORRO JULIO» · en negativo sale hacia la cuenta de
+  // ahorro; en positivo vuelve de ella. Ninguno de los dos es gasto ni ingreso.
+  (m) => (tieneAlguna(texto(m), AHORRO)
+    ? { naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro', sentido: entra(m) ? 'entra' : 'sale', metodo: 'transferencia', motivo: '«ahorro» en el concepto · dinero que cambia de sitio, no gasto' }
+    : undefined),
   (m) => (tieneAlguna(texto(m), FIANZA)
     ? { naturaleza: 'movimiento_interno', familia: 'fianza', subtipo: entra(m) ? 'entra' : 'devuelve', sentido: entra(m) ? 'entra' : 'sale', motivo: 'fianza · dinero del inquilino que se custodia, no es tuyo' }
     : undefined),

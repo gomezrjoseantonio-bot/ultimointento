@@ -10,6 +10,7 @@ import { bucketDeLinea, cuadre } from '../conciliarBuckets';
 import { decisionesVacias, type LineaExtracto } from '../extractoSesion';
 import {
   propuestaDeLinea,
+  propuestasDeLineas,
   esPersonalReconocido,
   etiquetaDeCategoria,
 } from '../conciliar/propuestaDeLinea';
@@ -17,6 +18,7 @@ import { agruparResueltas, claveDeGrupo } from '../conciliar/agruparResueltas';
 import { loQueYaReconoce } from '../conciliar/loQueYaReconoce';
 import type { MovementSuggestion } from '../../../../services/movementSuggestionService';
 import type { MovementLearningRule } from '../../../../services/db/types-movimientos';
+import type { ClasificacionLinea } from '../../../../services/clasificacion/tipos';
 
 const linea = (id: number, extra: Partial<LineaExtracto> = {}): LineaExtracto => ({
   lineaId: 100 + id,
@@ -305,5 +307,75 @@ describe('«la próxima vez, sola» · dice la verdad de lo aprendido', () => {
       new Map([['4', 'Carles Buigas 15']]),
     );
     expect(r.nuevas[0].enQue).toBe('Comunidad de Carles Buigas 15');
+  });
+});
+
+// ── E2.4.2-fix2 · la clasificación del motor llega a la pantalla ─────────────
+//
+// Jose (11 sep 2026): «el motor ya clasifica, la clasificación está enterrada,
+// nadie la lee». Desenterrada: el bucket la mira, la columna derecha agrupa por
+// la etiqueta y no por el texto (AHORRO/AHORROS = una fila), y la tarjeta de lo
+// que se queda sin clasificar a propósito (el IVA) dice por qué.
+
+const ahorro: ClasificacionLinea = { naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro', ambito: 'personal', origen: { naturaleza: 'concepto', ambito: 'defecto', familia: 'concepto' }, motivos: ['«ahorro» en el concepto'] };
+const soloSigno: ClasificacionLinea = { naturaleza: 'ingreso', ambito: 'personal', origen: { naturaleza: 'defecto', ambito: 'defecto' }, motivos: [] };
+
+describe('E2.4.2-fix2 · «resuelto = tiene sus 4 ejes puestos»', () => {
+  it('una línea clasificada por el motor va a «resueltas»', () => {
+    expect(bucketDeLinea(linea(1), decisionesVacias(), new Set(), new Set(), new Set(), new Set([101]))).toBe('resueltas');
+  });
+  it('una que solo tiene el signo sigue en «te necesitan»', () => {
+    expect(bucketDeLinea(linea(1), decisionesVacias(), new Set(), new Set(), new Set(), new Set())).toBe('te_necesitan');
+  });
+  it('«No es esto» la devuelve a «te necesitan» · e ignorar manda sobre todo', () => {
+    const d = decisionesVacias();
+    d.desemparejados.add(101);
+    expect(bucketDeLinea(linea(1), d, new Set(), new Set(), new Set(), new Set([101]))).toBe('te_necesitan');
+    const i = decisionesVacias();
+    i.ignorados.add(101);
+    expect(bucketDeLinea(linea(1), i, new Set(), new Set(), new Set(), new Set([101]))).toBe('ignorados');
+  });
+  it('el cuadre las cuenta en «resueltas» y sigue cuadrando', () => {
+    const lineas = [linea(1), linea(2), linea(3)];
+    const c = cuadre(lineas, decisionesVacias(), new Set(), new Set(), new Set(), new Set([101, 102]));
+    expect(c.cuadra).toBe(true);
+    expect(c.porBucket.resueltas).toBe(2);
+    expect(c.porBucket.te_necesitan).toBe(1);
+  });
+});
+
+describe('E2.4.2-fix2 · la columna derecha agrupa por la etiqueta, no por el texto', () => {
+  it('«AHORRO» y «AHORROS JUNIO» son UNA fila · «Traspaso · A ahorro»', () => {
+    const g = agruparResueltas([
+      linea(1, { textoBanco: 'AHORROS', importe: -800, clasificacion: ahorro }),
+      linea(2, { textoBanco: 'AHORRO', importe: -1400, clasificacion: ahorro }),
+      linea(3, { textoBanco: 'AHORROS JUNIO', importe: -79, clasificacion: ahorro }),
+    ]);
+    expect(g).toHaveLength(1);
+    expect(g[0].titulo).toBe('Traspaso · A ahorro');
+    expect(g[0].cuantas).toBe(3);
+    expect(g[0].total).toBeCloseTo(-2279, 2);
+  });
+  it('lo que casó con un previsto sigue llamándose como el previsto', () => {
+    const g = agruparResueltas([linea(1, { veredicto: 'cuadra', textoBanco: 'AHORROS', clasificacion: ahorro, previsto: { id: 7, descripcion: 'Ahorro mensual', importe: -800, fecha: '2025-06-01' } })]);
+    expect(g[0].titulo).toBe('Ahorro mensual');
+  });
+  it('sin clasificación que valga, el texto del banco · como siempre', () => {
+    const g = agruparResueltas([linea(1, { textoBanco: 'UNIHOUSER S.L.', clasificacion: soloSigno })]);
+    expect(g[0].titulo).toBe('UNIHOUSER S.L.');
+  });
+});
+
+describe('E2.4.2-fix2 · la tarjeta de lo que se queda sin clasificar dice por qué', () => {
+  it('el IVA · «movimiento con Hacienda»', () => {
+    const iva: ClasificacionLinea = { ...soloSigno, naturaleza: 'gasto', motivos: ['movimiento con Hacienda · IVA (modelo 303) · dinero de paso, no un gasto · se decide en la fase de autónomo'] };
+    const p = propuestasDeLineas([{ lineaId: 1, clasificacion: iva }], new Map([[1, []]]), undefined, []).get(1)!;
+    expect(p.tono).toBe('pregunta');
+    expect(p.titular).toMatch(/dímelo tú/);
+    expect(p.ayuda).toMatch(/Hacienda.*IVA/);
+  });
+  it('sin aviso, la frase de siempre', () => {
+    const p = propuestasDeLineas([{ lineaId: 1, clasificacion: soloSigno }], new Map([[1, []]]), undefined, []).get(1)!;
+    expect(p.ayuda).toMatch(/subes la factura/);
   });
 });

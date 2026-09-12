@@ -88,6 +88,13 @@ describe('la devolución de un gasto es de la familia de ese gasto', () => {
     expect(cuota.motivos.join(' ')).not.toMatch(/devolución/);
   });
 
+  it('las siglas partidas y las palabras sueltas de Abanca también son la cuota (fix2)', () => {
+    // «T.G.S.S.» se normaliza a «T G S S» y ya no es la palabra TGSS; lo que
+    // queda entero es «AUTONOMOS». Y «COTIZACION» sola también es la cuota.
+    expect(clasificarLinea(mov('052107081079 T.G.S.S.-R.E. AUTONOMOS', -314), ctx())).toMatchObject({ naturaleza: 'gasto', familia: 'cuota_reta' });
+    expect(clasificarLinea(mov('052107081079 TGSS. COTIZACION 005 R.E.AUTONOMOS', -314), ctx())).toMatchObject({ naturaleza: 'gasto', familia: 'cuota_reta' });
+  });
+
   it('la pensión sigue siendo pensión · con «pensión» o con INSS', () => {
     expect(clasificarLinea(mov('PENSION INSS SEPTIEMBRE', 900), ctx())).toMatchObject({ naturaleza: 'ingreso', familia: 'pension' });
     expect(clasificarLinea(mov('ABONO PENSION SEGURIDAD SOCIAL', 900), ctx())).toMatchObject({ naturaleza: 'ingreso', familia: 'pension' });
@@ -283,10 +290,14 @@ describe('regla 8 · ATLAS no inventa', () => {
     expect(c.familia).toBeUndefined();
     expect(c.metodo).toBe('tarjeta');
   });
-  it('«Ahorros Septiembre» no se adivina como traspaso ni como gasto de nada', () => {
+  it('«Ahorros Septiembre» es un traspaso a ahorro · lo que no se inventa es A DÓNDE', () => {
+    // Criterio revisado por Jose (11 sep 2026 · E2.4.2-fix2): la palabra SÍ
+    // dice qué es —dinero que cambia de sitio, no un gasto— aunque no diga a
+    // qué cuenta. Antes se dejaba sin familia y caía como gasto, que era peor:
+    // inventaba un gasto de 500 € que nunca existió.
     const c = clasificarLinea(mov('Ahorros Septiembre', -500), ctx());
-    expect(c.familia).toBeUndefined();
-    expect(c.naturaleza).toBe('gasto');
+    expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro', sentido: 'sale' });
+    expect(c.inmuebleId).toBeUndefined();
   });
 });
 
@@ -306,5 +317,41 @@ describe('regla 10 · lo interno y lo del piso', () => {
   it('una transferencia a un exchange es aportación a inversión', () => {
     const c = clasificarLinea(mov('To Binance', -200, { reference: 'TRANSFER' }), ctx());
     expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'aportacion', subtipo: 'inversion' });
+  });
+});
+
+// ── E2.4.2-fix2 · lo que Abanca destapó · el concepto lo resuelve ─────────────
+//
+// Jose (11 sep 2026): «AHORRO» y «AHORROS» son LA MISMA cosa (un traspaso a la
+// cuenta de ahorro, no un gasto); FINUTIVE es su gestoría; el IVA del 303 NO se
+// clasifica —es dinero de Hacienda de paso— pero tiene que decir por qué está
+// sin resolver.
+
+describe('E2.4.2-fix2 · Abanca · el concepto resuelve', () => {
+  it('«AHORRO» y «AHORROS» son un traspaso a ahorro · una sola categoría, en los dos signos', () => {
+    for (const texto of ['AHORROS', 'AHORRO', 'AHORROS JUNIO', 'AHORRO AGOSTO']) {
+      const c = clasificarLinea(mov(texto, -800), ctx());
+      expect(c).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro', sentido: 'sale', metodo: 'transferencia' });
+      expect(c.origen.familia).toBe('concepto');
+    }
+    // Lo que vuelve del ahorro entra, y sigue sin ser un ingreso.
+    expect(clasificarLinea(mov('AHORROS', 500), ctx())).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro', sentido: 'entra' });
+  });
+
+  it('FINUTIVE es la gestoría · y su devolución también (D3)', () => {
+    expect(clasificarLinea(mov('Y8CSFFT GC re FINUTIVE', -29.04), ctx())).toMatchObject({ naturaleza: 'gasto', familia: 'gestion', subtipo: 'gestoria' });
+    expect(clasificarLinea(mov('Y8CSFFT GC RE FINUTIVE', 29.04), ctx())).toMatchObject({ naturaleza: 'gasto', familia: 'gestion', subtipo: 'gestoria' });
+  });
+
+  it('el IVA del 303 se reconoce y NO se clasifica · sin familia, con su motivo (D4)', () => {
+    const c = clasificarLinea(mov('000000000001 IMP:303560385004,NIF:00000000X', -2257.82), ctx());
+    expect(c.naturaleza).toBe('gasto');
+    expect(c.familia).toBeUndefined();
+    expect(c.origen.familia).toBeUndefined();
+    expect(c.motivos.join(' ')).toMatch(/Hacienda.*IVA/);
+    // Y con la palabra entera, igual.
+    const d = clasificarLinea(mov('IMPTO SOBRE EL VALOR AÑADIDO 2T', -536.27), ctx());
+    expect(d.familia).toBeUndefined();
+    expect(d.motivos.join(' ')).toMatch(/IVA/);
   });
 });

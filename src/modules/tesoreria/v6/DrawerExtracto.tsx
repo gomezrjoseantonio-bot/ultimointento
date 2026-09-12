@@ -57,6 +57,7 @@ import PanelConciliar from './conciliar/PanelConciliar';
 import ZonaSoltar from './conciliar/ZonaSoltar';
 import { esPersonalReconocido, propuestasDeLineas } from './conciliar/propuestaDeLinea';
 import { autoPorReglaDe, lineasResueltasPorRegla, reglasCorregidas } from './resueltasPorRegla';
+import { clasificadasDe, lineasResueltasPorConcepto } from './clasificadasPorConcepto';
 import { loQueYaReconoce } from './conciliar/loQueYaReconoce';
 import { listRules } from '../../../services/movementLearningService';
 import type { MovementLearningRule } from '../../../services/db/types-movimientos';
@@ -212,9 +213,12 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
     [resultado],
   );
 
+  // E2.4.2-fix2 · lo que el motor clasificó al importar · la fila lo traía y nadie lo leía.
+  const clasificadas = useMemo(() => clasificadasDe(lineas), [lineas]);
+
   const elCuadre = useMemo(
-    () => cuadre(lineas, decisiones, personales, reconocidas, autoResueltas),
-    [lineas, decisiones, personales, reconocidas, autoResueltas],
+    () => cuadre(lineas, decisiones, personales, reconocidas, autoResueltas, clasificadas),
+    [lineas, decisiones, personales, reconocidas, autoResueltas, clasificadas],
   );
 
   const aprendido = useMemo(
@@ -409,6 +413,8 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
         // el usuario desmintió con «No es esto».
         resueltasPorRegla: lineasResueltasPorRegla(lineas, decisiones, autoPorRegla, reconocidas),
         reglasCorregidas: reglasCorregidas(lineas, decisiones, autoPorRegla),
+        // E2.4.2-fix2 · lo que el motor clasificó y nadie tocó · nace con sus ejes.
+        resueltasPorConcepto: lineasResueltasPorConcepto(lineas, decisiones, clasificadas, reconocidas, autoResueltas),
       });
 
       // El ignorado se persiste por hash de línea (D4 · vive en el fichero).
@@ -463,7 +469,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
       setError(err instanceof Error ? err.message : 'No se pudo guardar el extracto.');
       setPaso('resolver');
     }
-  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, aplicarLaApertura, apertura, onGuardado, reiniciar, onCerrar, autoPorRegla, reconocidas]);
+  }, [resultado, cuentaActiva, cuentaEfectivo, lineas, decisiones, elCuadre, aplicarLaApertura, apertura, onGuardado, reiniciar, onCerrar, autoPorRegla, reconocidas, autoResueltas, clasificadas]);
 
   // ── Salir sin guardar ─────────────────────────────────────────────────────
   const salirSinGuardar = useCallback(async () => {
@@ -488,9 +494,9 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   const sinDecidir = useCallback(
     (id: number) => {
       const l = lineas.find((x) => x.lineaId === id);
-      return !!l && bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas) === 'te_necesitan';
+      return !!l && bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas, clasificadas) === 'te_necesitan';
     },
-    [lineas, decisiones, personales, reconocidas, autoResueltas],
+    [lineas, decisiones, personales, reconocidas, autoResueltas, clasificadas],
   );
   /**
    * "Crear movimiento" de §4.7 · la línea no responde a ningún previsto. E1.5 ·
@@ -562,7 +568,7 @@ const DrawerExtracto: React.FC<DrawerExtractoProps> = ({
   // Los cuatro montones del mockup. `bucketDeLinea` es total, así que esto no
   // puede dejar una línea fuera: la suma de los cuatro es siempre `lineas`.
   const enBucket = (b: Bucket) =>
-    lineas.filter((l) => bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas) === b);
+    lineas.filter((l) => bucketDeLinea(l, decisiones, personales, reconocidas, autoResueltas, clasificadas) === b);
   const necesitan = enBucket('te_necesitan');
   const resueltas = enBucket('resueltas');
   const personalesLineas = enBucket('personal');

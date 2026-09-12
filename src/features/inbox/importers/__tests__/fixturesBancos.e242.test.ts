@@ -11,6 +11,8 @@ import * as path from 'path';
 import { BankParserService } from '../bankParser';
 import { clasificarLinea, type ContextoClasificacion } from '../../../../services/clasificacion/clasificarLinea';
 import type { Movement } from '../../../../services/db';
+import { traspasosPropios } from '../../../../services/deterministas/traspasosPropios';
+import type { Account } from '../../../../services/db/types-contratos';
 
 const parser = new BankParserService();
 const DIR = path.resolve(__dirname, '../__fixtures__');
@@ -111,12 +113,14 @@ describe('Unicaja · 8 líneas · fechas en serie Excel', () => {
     expect(por(/PRESTAMO 2103/)).toMatchObject({ familia: 'prestamo_hipoteca' });
     expect(por(/Simyo/)).toMatchObject({ familia: 'suministro', subtipo: 'telefonia' });
     expect(por(/AQUALIA/)).toMatchObject({ familia: 'suministro', subtipo: 'agua' });
-    expect(por(/Ahorros/).familia).toBeUndefined();
+    // fix2 · «Ahorros Septiembre» es un traspaso a ahorro (criterio revisado por Jose).
+    expect(por(/Ahorros/)).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro' });
     expect(por(/PLAN UNI SEGUR/)).toMatchObject({ familia: 'seguros_alarmas' });
     expect(por(/fianza/)).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'fianza', subtipo: 'devuelve' });
     expect(por(/HONORARIOS/)).toMatchObject({ familia: 'gestion' });
     // Unicaja escribe poco: solo «PRESTAMO» y «CUOTA» dicen cómo se cobran.
-    expect(resumen(f)).toEqual({ total: 8, conFamilia: 7, interno: 1, conMetodo: 2, sinFamilia: 1 });
+    // fix2 · el ahorro gana familia (traspaso) y método (transferencia): 8 de 8.
+    expect(resumen(f)).toEqual({ total: 8, conFamilia: 8, interno: 2, conMetodo: 3, sinFamilia: 0 });
   });
 });
 
@@ -147,5 +151,93 @@ describe('Revolut · 5 líneas · fecha-hora y la columna Type', () => {
     expect(por(/Binance/)).toMatchObject({ naturaleza: 'movimiento_interno', familia: 'aportacion', subtipo: 'inversion' });
     expect(por(/Telpark/)).toMatchObject({ familia: 'transporte', subtipo: 'parking' });
     expect(resumen(f)).toEqual({ total: 5, conFamilia: 4, interno: 2, conMetodo: 5, sinFamilia: 1 });
+  });
+});
+
+// ── E2.4.2-fix2 · Abanca · 49 líneas · el fichero real, anonimizado ─────────
+//
+// Jose (11 sep 2026): «el motor ya clasifica, la clasificación está enterrada».
+// Este bloque fija lo que el CONCEPTO resuelve del fichero, más lo que
+// reconocen las cuentas propias (`traspasosPropios` · el titular moviéndose
+// dinero). Sin recurrentes y sin el préstamo de socio: eso es otra fuente (D5).
+//
+// Los números honestos, con las decisiones de Jose aplicadas: FINUTIVE es
+// gestoría (D3), el IVA NO se clasifica (D4), UNIHOUSER no entra por concepto
+// (D3 · las cuotas van por el préstamo del store, las facturas se quedan hasta
+// que él las confirme) y «JUNIO 2025» no dice nada. 38 de 49 con sus ejes; las
+// 11 que quedan son las que de verdad hay que preguntar.
+
+describe('Abanca · 49 líneas · el concepto y las cuentas propias', () => {
+  const TITULAR = ['Jose Antonio Gomez Ramirez'];
+  const CUENTAS = [{ id: 5, iban: 'ES0000000000000000000000', status: 'ACTIVE' }] as unknown as Account[];
+
+  async function abanca() {
+    const buffer = fs.readFileSync(path.join(DIR, 'abanca-fixture.csv'));
+    const r = await parser.parseFile(new File([buffer], 'abanca.csv', { type: 'text/csv' }));
+    const movs = r.movements.map((m, i) => ({
+      id: i + 1,
+      accountId: 5,
+      date: (m.date as Date).toISOString().slice(0, 10),
+      amount: m.amount,
+      description: m.description,
+      reference: m.reference,
+      naturaleza: m.amount >= 0 ? 'ingreso' : 'gasto',
+      ambito: 'personal',
+    }) as Movement);
+    // Lo que las cuentas propias reconocen · el titular moviéndose dinero.
+    const propios = new Map(traspasosPropios(movs, CUENTAS, TITULAR).map((o) => [o.movementId, o]));
+    return { parsed: r, filas: movs.map((mov) => ({
+      desc: mov.description,
+      fecha: mov.date,
+      importe: mov.amount,
+      c: clasificarLinea(mov, { ...ctx, cuentas: CUENTAS, nombresTitular: TITULAR, origen: propios.get(mov.id as number) }),
+    })) };
+  }
+
+  it('el parser lee las 49 con saldo y fecha contable', async () => {
+    const { parsed, filas } = await abanca();
+    expect(filas).toHaveLength(49);
+    // «Fecha ctble» es la de cargo · antes caía en la fecha valor y avisaba.
+    expect(filas[7].fecha).toBe('2025-02-03');
+    expect(parsed.movements.every((m) => typeof m.balance === 'number')).toBe(true);
+    expect(parsed.movements[0].balance).toBe(3549.67);
+  });
+
+  it('cada concepto sale con sus ejes · y lo que no se sabe, sin inventar', async () => {
+    const { filas } = await abanca();
+    const todas = (t: RegExp) => filas.filter((x) => t.test(x.desc));
+    const cada = (t: RegExp, esperado: Record<string, unknown>, n: number) => {
+      const lista = todas(t);
+      expect(lista).toHaveLength(n);
+      for (const f of lista) expect(f.c).toMatchObject(esperado);
+    };
+    cada(/FINUTIVE/i, { naturaleza: 'gasto', familia: 'gestion', subtipo: 'gestoria' }, 8);
+    cada(/INTERESES CTA/, { naturaleza: 'ingreso', familia: 'rendimiento', subtipo: 'interes' }, 8);
+    cada(/^AHORRO/, { naturaleza: 'movimiento_interno', familia: 'traspaso', subtipo: 'a_ahorro' }, 8);
+    cada(/T\.G\.S\.S|TGSS/, { naturaleza: 'gasto', familia: 'cuota_reta' }, 9);
+    // La regularización de la TGSS entra y es la cuota que vuelve (§7).
+    expect(todas(/DDPP de la TGSS/)[0]).toMatchObject({ importe: 283.03, c: { naturaleza: 'gasto', familia: 'cuota_reta' } });
+    // El titular moviéndose dinero · reconocido por las cuentas propias.
+    cada(/GOMEZ RAMIREZ/, { naturaleza: 'movimiento_interno', familia: 'traspaso' }, 5);
+    // El IVA: sin familia a propósito, y diciendo por qué.
+    const iva = todas(/IMP:303/);
+    expect(iva).toHaveLength(3);
+    for (const f of iva) {
+      expect(f.c.familia).toBeUndefined();
+      expect(f.c.motivos.join(' ')).toMatch(/Hacienda.*IVA/);
+    }
+    // UNIHOUSER no entra por concepto (D3) · las cuotas las reconoce el préstamo del store.
+    for (const f of todas(/UNIHOUSER/)) expect(f.c.familia).toBeUndefined();
+    expect(todas(/UNIHOUSER/)).toHaveLength(7);
+    // «JUNIO 2025» no dice nada · y no se inventa.
+    expect(todas(/^JUNIO 2025$/)[0].c.familia).toBeUndefined();
+
+    const r = resumen(filas);
+    expect(r.total).toBe(49);
+    // 8 + 8 + 8 + 9 por concepto, + 5 traspasos propios = 38 con sus ejes.
+    expect(r.conFamilia).toBe(38);
+    expect(r.interno).toBe(13);
+    // 7 UNIHOUSER + 3 IVA + 1 JUNIO · las que de verdad hay que preguntar.
+    expect(r.sinFamilia).toBe(11);
   });
 });

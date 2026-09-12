@@ -12,6 +12,7 @@
 // por tanto conciliado—; lo no resuelto no se materializa.
 // ============================================================================
 
+import type { ClasificacionLinea } from '../../../services/clasificacion/tipos';
 import type { MatchResultPorLinea } from '../../../services/lineaComoMovimiento';
 import { entraAlMatcheo, movementDesdeLinea } from '../../../services/lineaComoMovimiento';
 import type { MovimientoConfirmadoRef } from '../../../services/conciliacionConfirmados';
@@ -84,6 +85,12 @@ export interface LineaExtracto {
    * elige por su cuenta: §4.7 manda a "a resolver" y deja que el usuario asigne.
    */
   candidatos?: Array<{ id: number; descripcion: string; importe: number; fecha: string }>;
+  /**
+   * E2.4.2-fix2 · lo que el MOTOR sabe de esta línea · los 4 ejes con su
+   * origen, tal como quedó en la fila al importar. Hasta hoy se calculaba y se
+   * guardaba y la pantalla no lo leía.
+   */
+  clasificacion?: ClasificacionLinea;
 }
 
 export interface ResumenSesion {
@@ -263,6 +270,7 @@ export function construirLineas(
       veredicto,
       ...(previsto ? { previsto } : {}),
       ...(confirmado ? { confirmado } : {}),
+      ...(fila.clasificacion ? { clasificacion: fila.clasificacion } : {}),
       ...(candidatosIds
         ? {
             candidatos: candidatosIds

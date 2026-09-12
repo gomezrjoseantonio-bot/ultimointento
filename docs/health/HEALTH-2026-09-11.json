@@ -2,10 +2,10 @@
   "protocolo": "GARANTIA-ATLAS-v1",
   "schema": 1,
   "date": "2026-09-11",
-  "generatedAt": "2026-09-11T23:10:44.631Z",
+  "generatedAt": "2026-09-11T23:25:03.181Z",
   "git": {
-    "branch": "claude/nifty-dirac-kjjeic",
-    "head": "0ab4a9f"
+    "branch": "claude/audit-categories-types-scopes-p5966s",
+    "head": "7f319c6"
   },
   "gobernanza": "Recalibrar solo ANTES de una tarea, nunca durante. AMPLIAR (capturar más) siempre permitido y deseable, sin autorización (si sube, es el nuevo baseline, no regresión). ESTRECHAR (capturar menos) requiere autorización explícita de Jose y registro. El sistema descubre, no esconde.",
   "recalibraciones": [
@@ -150,7 +150,7 @@
       "objetivo": 0,
       "measurable": true,
       "approx": false,
-      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 999 · dead 0 · solo_tests 52 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
+      "note": "grafo de alcanzabilidad desde 24 raíces estrictas · alive 1001 · dead 0 · solo_tests 52 · solo_stories 2 · indeterminado 0. Un módulo es muerto si NINGÚN camino de imports lo alcanza desde una raíz (app-entry · netlify · npm script). Antes se miraban importadores directos (ciego a muerte transitiva). Ver scripts/lib/deadcode.mjs.",
       "detail": [],
       "calibracion": {
         "fecha": "2026-07-19",
@@ -327,7 +327,7 @@
       "objetivo": 0,
       "measurable": false,
       "approx": false,
-      "note": "NO MEDIBLE · sin node_modules (jest no disponible)",
+      "note": "NO MEDIBLE · usa `npm run health:ci` (--with-tests) para ejecutar la suite",
       "detail": null,
       "calibracion": null
     },
