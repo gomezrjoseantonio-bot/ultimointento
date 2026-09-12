@@ -295,6 +295,14 @@ function tarjetaOCuentaPropia(m: Movement, ctx: ContextoClasificacion): Parcial 
 function porCatalogo(m: Movement, ctx: ContextoClasificacion): Parcial | undefined {
   const cat = ctx.catalogo ?? CATALOGO_VACIO;
   if (cat.porNif.size === 0 && cat.porAlias.length === 0) return undefined;
+  // El catálogo es de quien DOMICILIA: suministros, seguros, financieras. Una
+  // COMPRA con tarjeta no se pregunta aquí, y eso resuelve solo la ambigüedad
+  // que ninguna lista de marcas resuelve bien: «Shell España» comercializa luz,
+  // pero «COMPRA SHELL» es la gasolinera; la tarjeta de Carrefour se cobra como
+  // RECIBO y la compra del súper llega como COMPRA. En el corpus real de 1.341
+  // líneas: 130 recibos (Segurcaixa, Aqualia, Ayvens…) y ni un supermercado
+  // entre ellos; los 218 «COMPRA» son justo lo otro.
+  if (!puedePreguntarAlCatalogo(m)) return undefined;
   const ids = identificadoresDeMovimiento(m);
   for (const id of ids) {
     const e = id.tipo === 'nif' ? entidadPorNif(cat, id.valor) : undefined;
@@ -332,6 +340,33 @@ function porCatalogo(m: Movement, ctx: ContextoClasificacion): Parcial | undefin
     };
   }
   return undefined;
+}
+
+/**
+ * ¿Puede este apunte preguntar al catálogo?
+ *
+ * El catálogo es de quien DOMICILIA: suministros, seguros, financieras. Y la
+ * forma fiable de saber que no lo es NO es buscar la palabra «recibo» —Sabadell
+ * escribe «ELECTRICIDAD WEKIWI SL» a secas y eso es una domiciliación—, sino
+ * descartar lo que sí se identifica solo: la COMPRA con tarjeta, el cajero y el
+ * Bizum.
+ *
+ * Esto es lo que resuelve la ambigüedad que ninguna lista de marcas resuelve
+ * bien. La tarjeta de un comercio (Carrefour, El Corte Inglés) se cobra como
+ * RECIBO domiciliado y es crédito al consumo; la compra en ese mismo comercio
+ * llega como COMPRA y es el súper. Mismo nombre, apunte distinto. En el corpus
+ * real: 130 recibos —Segurcaixa, Aqualia, Ayvens…— sin un solo supermercado
+ * entre ellos, y 218 «COMPRA» que son justo lo otro.
+ */
+const COBRO_NO_DOMICILIADO =
+  /\b(?:COMPRA|COMPRAS|PAGO EN|PAGO MOVIL|TRANSACCION|CONTACTLESS|CAJERO|REINTEGRO|RETIRADA|BIZUM)\b/;
+
+function puedePreguntarAlCatalogo(m: Movement): boolean {
+  const texto = `${m.description ?? ''} ${m.counterparty ?? ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  return !COBRO_NO_DOMICILIADO.test(texto);
 }
 
 /** Los dígitos de un nº de contrato · lo que se compara, sin entidad ni guiones. */

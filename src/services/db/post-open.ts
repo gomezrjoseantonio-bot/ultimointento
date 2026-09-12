@@ -2,6 +2,7 @@
 // readwrite normales fuera de la versionchange). Extraídas LITERALMENTE de db.ts; el
 // cuerpo de los .then es idéntico. db.ts hace `dbPromise = runPostOpenMigrations(dbPromise)`.
 import type { IDBPDatabase } from 'idb';
+import { sembrarCatalogoEnApertura, type BaseParaSembrar } from '../catalogoNacional/sembrarCatalogo';
 import type { AtlasHorizonDB } from '../db';
 import type { BoteAnualSinIdentificar,Contract,Property,TreasuryEvent } from './types';
 import { repoblarNifsBotesDesdeArchivo, recalcularFechaFinContratosAEAT, backfillDocumentoFirmado } from '../alquileresV3FixService';
@@ -264,6 +265,15 @@ export function runPostOpenMigrations(
       } catch (err) {
         console.warn('[DB V78.1 limpieza huérfanos] falló:', err);
       }
+      return db;
+    });
+
+    // ── V96.1 · E3.1c · sembrar el CATÁLOGO NACIONAL en `proveedores` ──
+    // Sin flag: corre en CADA apertura, que es lo que hace que publicar una
+    // versión con el catálogo ampliado llegue a quien ya lo tenía. Barato y
+    // nunca pisa una fila que hayas tocado tú (ver `sembrarCatalogo.ts`).
+    dbPromise = dbPromise.then(async (db) => {
+      await sembrarCatalogoEnApertura(db as unknown as BaseParaSembrar);
       return db;
     });
 

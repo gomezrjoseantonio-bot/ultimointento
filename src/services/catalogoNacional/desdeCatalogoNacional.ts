@@ -85,23 +85,24 @@ function plano(s: string): string {
  * no contiene «NATURGYIBERIA». Sin esto, Naturgy, Endesa y Orange —tres de las
  * marcas más comunes de España— no se reconocían.
  *
- * La regla que decide si se puede recortar: solo cuando lo que sobra son
- * SUFIJOS CORPORATIVOS (España, Iberia, Clientes, S.A.), que no cambian de qué
- * es la empresa. Si lo que sobra es una palabra de SECTOR, NO se recorta,
- * porque entonces el nombre entero es la información:
+ * Recortar tiene DOS peligros y cada uno se ataja por su lado:
  *
- *   · «Carrefour Telecom» → recortar daría «CARREFOUR», y la compra del
- *     supermercado se iría a telefonía;
- *   · «Acciona Agua» → «ACCIONA» es un grupo que hace de todo;
- *   · «Servicios Financieros Carrefour» → una FINANCIERA no se recorta nunca
- *     (son justo las que comparten marca con un comercio: ahí el nombre largo
- *     ES la señal, y por eso la financiera y el súper se distinguen).
+ *   1 · que lo que sobre sea una palabra de SECTOR y no un sufijo de sociedad.
+ *       «Carrefour Telecom» recortado daría «CARREFOUR» y la compra del súper
+ *       se iría a telefonía. Solo se recorta si TODAS las palabras que sobran
+ *       son sufijos de sociedad (España, Iberia, Clientes, Energía, S.A.).
+ *   2 · que la marca SIGNIFIQUE OTRA COSA fuera de su sector: «Shell España»
+ *       comercializa luz, pero «COMPRA SHELL» es la gasolinera. Eso NO se
+ *       resuelve aquí con listas de marcas: se resuelve en el motor, que solo
+ *       cruza el catálogo sobre movimientos DOMICILIADOS. Una compra con
+ *       tarjeta no llega nunca a preguntar por el catálogo.
  */
-const SUFIJO_CORPORATIVO = new Set([
+const SUFIJO_DE_SOCIEDAD = new Set([
   'ESPANA', 'ESPAÑA', 'IBERIA', 'CLIENTES', 'GROUP', 'GRUPO', 'SA', 'SAU', 'SL',
   'SLU', 'SAE', 'COMERCIALIZADORA', 'COMERCIALIZACION', 'DISTRIBUCION',
   'SUCURSAL', 'EN', 'DE', 'DEL', 'LA', 'EL', 'Y', 'ENERGIA', 'ENERGY',
 ]);
+
 
 /** Palabras que no identifican a nadie por sí solas. */
 const PALABRA_GENERICA = new Set([
@@ -109,19 +110,19 @@ const PALABRA_GENERICA = new Set([
   'BANCO', 'BANCA', 'GRUPO', 'SOCIEDAD', 'EMPRESA', 'COMPANIA', 'GENERAL',
   'NUEVA', 'LINEA', 'MUTUA', 'SEGUROS', 'SEGURO', 'PLAN', 'ENERGIA', 'GAS',
   'ELECTRICA', 'ELECTRICIDAD', 'TELECOM', 'MOVIL',
-  // REPSOL se queda fuera a propósito: «COMPRA REPSOL» es la gasolinera, no la
-  // luz. Ahí manda la regla de transporte y el catálogo no debe pisarla.
-  'REPSOL',
 ]);
 
 function marcaCorta(nombre: string, categoria: string): string | undefined {
+  // De una FINANCIERA no se recorta NUNCA: son justo las que comparten marca
+  // con un comercio, y ahí el nombre largo ES la señal.
   if (plano(categoria) === 'FINANCIERAS') return undefined;
   const palabras = plano(nombre).split(/[^A-ZÑ0-9]+/).filter(Boolean);
   const primera = palabras[0];
-  if (!primera || primera.length < 4 || PALABRA_GENERICA.has(primera)) return undefined;
+  if (!primera || primera.length < 4) return undefined;
+  if (PALABRA_GENERICA.has(primera)) return undefined;
   if (palabras.length < 2) return undefined;
-  // Solo se recorta si cada palabra que sobra es un sufijo corporativo.
-  if (!palabras.slice(1).every((w) => SUFIJO_CORPORATIVO.has(w))) return undefined;
+  // Solo se recorta si cada palabra que sobra es un sufijo de sociedad.
+  if (!palabras.slice(1).every((w) => SUFIJO_DE_SOCIEDAD.has(w))) return undefined;
   return primera;
 }
 
@@ -166,7 +167,21 @@ export function entidadesDelFicheroNacional(
     subtiposPorCif.get(cif)!.add(clase.subtipo);
   }
 
+  // Una marca corta puede señalar a DOS filas con subtipo distinto: «Naturgy
+  // Iberia» es luz y «Naturgy Clientes» es gas. El recibo no dice cuál, así que
+  // ese alias corto pierde el subtipo y se queda en la familia. Es la misma
+  // regla que ya aplica un CIF que sale en dos categorías: no se inventa.
+  const subtiposPorMarcaCorta = new Map<string, Set<string>>();
+  for (const fila of origen) {
+    const clase = claseDe(fila);
+    const corta = marcaCorta((fila.marca ?? '').trim(), fila.categoria ?? '');
+    if (!clase?.subtipo || !corta) continue;
+    if (!subtiposPorMarcaCorta.has(corta)) subtiposPorMarcaCorta.set(corta, new Set());
+    subtiposPorMarcaCorta.get(corta)!.add(clase.subtipo);
+  }
+
   const porClave = new Map<string, EntidadNacional>();
+  const degradadas: EntidadNacional[] = [];
   for (const fila of origen) {
     const clase = claseDe(fila);
     if (!clase) continue;
@@ -175,7 +190,12 @@ export function entidadesDelFicheroNacional(
     const cif = cifValido(fila.cif);
     const ambiguo = cif ? (subtiposPorCif.get(cif)?.size ?? 0) > 1 : false;
     const corta = marcaCorta(nombre, fila.categoria ?? '');
-    const alias = [nombre, ...(fila.nombreFiscal ? [fila.nombreFiscal] : []), ...(corta ? [corta] : [])];
+    const cortaAmbigua = corta ? (subtiposPorMarcaCorta.get(corta)?.size ?? 0) > 1 : false;
+    const alias = [nombre, ...(fila.nombreFiscal ? [fila.nombreFiscal] : []), ...(corta && !cortaAmbigua ? [corta] : [])];
+    if (corta && cortaAmbigua && !degradadas.some((d) => d.alias[0] === corta)) {
+      // La marca corta entra igual, pero SIN subtipo y con su propio registro.
+      degradadas.push({ nombre: corta, alias: [corta], familia: clase.familia, ...(clase.ambito ? { ambito: clase.ambito } : {}) });
+    }
     // Una entidad por CIF cuando lo hay (Endesa LUZ y Endesa GAS son una), y
     // por nombre cuando no. Las filas que repiten entidad suman sus alias.
     const clave = cif ?? plano(nombre);
@@ -193,5 +213,7 @@ export function entidadesDelFicheroNacional(
       ...(clase.ambito ? { ambito: clase.ambito } : {}),
     });
   }
-  return Array.from(porClave.values());
+  // Las degradadas van al FINAL: una fila con su nombre completo siempre gana
+  // a la marca corta sin subtipo.
+  return [...porClave.values(), ...degradadas];
 }

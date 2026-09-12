@@ -224,16 +224,27 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     }
   });
 
-  it('…pero NO se recorta cuando la marca significa otra cosa fuera de su sector', () => {
-    // Éstas son las que NO pueden casar, y el motivo es distinto en cada una:
-    //  · «Carrefour Telecom» recortado mandaría la compra del súper a telefonía;
-    //  · una FINANCIERA nunca se recorta: su nombre largo ES la señal;
-    //  · «Repsol» a secas es la gasolinera, no la comercializadora de luz.
-    for (const texto of ['COMPRA CARREFOUR', 'RECIBO EL CORTE INGLES', 'COMPRA REPSOL']) {
-      expect([texto, porNombre(catalogo, texto)]).toEqual([texto, undefined]);
+  it('la COMPRA con tarjeta no pregunta al catálogo · ahí manda el comercio', () => {
+    // Ésta es la pieza que quita la ambigüedad de raíz, sin listas de marcas:
+    // «Shell España» comercializa luz, pero «COMPRA SHELL» es la gasolinera; la
+    // tarjeta de Carrefour se cobra como RECIBO y la compra del súper llega
+    // como COMPRA. Mismo nombre, apunte distinto.
+    const ctxCat = ctx();
+    for (const compra of ['COMPRA SHELL ESPANA', 'COMPRA CARREFOUR', 'Pago en Mercadona', 'BIZUM A FAVOR DE ORANGE']) {
+      const c = clasificarLinea(mov(compra), ctxCat);
+      expect([compra, c.origen.familia]).not.toEqual([compra, 'identificador']);
     }
-    // Y con el nombre largo, la financiera sí casa.
+    // Y lo domiciliado sí, aunque el banco no escriba la palabra «recibo»:
+    // Sabadell pone «ELECTRICIDAD WEKIWI SL» a secas y eso es un adeudo SEPA.
+    expect(clasificarLinea(mov('ELECTRICIDAD WEKIWI SL', -34.47), ctxCat).familia).toBe('suministro');
+    expect(clasificarLinea(mov('Recibo Shell España', -60), ctxCat).familia).toBe('suministro');
+  });
+
+  it('una FINANCIERA no se recorta nunca · su nombre largo ES la señal', () => {
+    // «Servicios Financieros Carrefour» recortado daría «CARREFOUR». El nombre
+    // entero es lo que distingue la financiera del comercio.
     expect(porNombre(catalogo, 'ADEUDO FINANCIERA CARREFOUR')?.subtipo).toBe('credito_consumo');
+    expect(porNombre(catalogo, 'CARREFOUR')).toBeUndefined();
   });
 
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {
