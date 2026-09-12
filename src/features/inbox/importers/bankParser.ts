@@ -11,13 +11,23 @@ import { safeMatch } from '../../../utils/safe';
 const COLUMN_ALIASES = {
   // Order matters - more specific patterns first
   valueDate: [
-    'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor', 'valor'
+    'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor', 'valor',
+    // Revolut da DOS fechas: cuando empezó la operación y cuando quedó hecha.
+    // La de inicio es la de la compra; la de finalización es la que mueve el
+    // saldo, así que esa es la fecha de cargo (abajo, en `date`).
+    'fecha de inicio', 'fecha inicio', 'started date'
   ],
   date: [
     'fecha', 'fecha operacion', 'fecha operación', 
     'f operacion', 'f operación', 'f. operacion', 'f. operación', 'date', 
     'fecha mov', 'fecha movimiento', 'fecha de operacion', 'fecha de operación',
-    'completed date', // Revolut
+    // Revolut · la fecha en que la operación queda hecha y el saldo se mueve.
+    // Sin estos alias el fichero no traía NINGUNA columna de fecha y el
+    // importador lo mandaba entero a mapeo manual: 1.224 movimientos con cero
+    // leídos, entre ellos las 548 recargas de tarjeta que cruzan contra el
+    // cargo del otro banco.
+    'completed date', 'fecha de finalizacion', 'fecha de finalización',
+    'fecha finalizacion', 'fecha finalización',
     // Sabadell escribe «F. Operativa» (cabecera real del export xlsx). Sin este
     // alias la columna no casaba, `date` caía en la fecha VALOR y un recibo con
     // operativa 02/01 y valor 31/12 se iba al ejercicio anterior.
