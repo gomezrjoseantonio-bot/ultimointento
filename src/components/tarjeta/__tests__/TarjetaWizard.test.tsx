@@ -184,3 +184,57 @@ describe('editar', () => {
     expect(mockRegenerar).not.toHaveBeenCalled();
   });
 });
+
+// E3.1 · los cuatro últimos son lo único de la tarjeta que el banco escribe en
+// el extracto («Compra Revolut**0940*»). El modelo los tenía y el motor de
+// clasificación los leía, pero no había ningún sitio donde escribirlos: la
+// señal existía y nadie podía encenderla.
+describe('los cuatro últimos del número', () => {
+  it('se guardan al dar de alta', async () => {
+    pintar();
+
+    fireEvent.change(screen.getByLabelText(/^Nombre/i), { target: { value: 'Santander débito' } });
+    fireEvent.change(screen.getByLabelText(/De qué cuenta sale/i), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/Cuatro últimos/i), { target: { value: '9623' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar/i }));
+
+    await waitFor(() => expect(mockCrear).toHaveBeenCalled());
+    expect(mockCrear.mock.calls[0][0].ultimosCuatro).toBe('9623');
+  });
+
+  it('solo admite cifras, y cuatro', () => {
+    pintar();
+
+    const campo = screen.getByLabelText(/Cuatro últimos/i) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: '96a2b3' } });
+
+    expect(campo.value).toBe('9623');
+  });
+
+  it('dejarlos en blanco sigue valiendo · la tarjeta funciona igual sin ellos', async () => {
+    pintar();
+
+    fireEvent.change(screen.getByLabelText(/^Nombre/i), { target: { value: 'Carrefour' } });
+    fireEvent.change(screen.getByLabelText(/De qué cuenta sale/i), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar/i }));
+
+    await waitFor(() => expect(mockCrear).toHaveBeenCalled());
+    expect(mockCrear.mock.calls[0][0].ultimosCuatro).toBeUndefined();
+  });
+
+  it('los de una tarjeta ya guardada salen en el formulario', () => {
+    pintar({
+      id: 7,
+      alias: 'Revolut',
+      origen: 'externa',
+      modalidad: 'debito',
+      cuentaLiquidacionId: 1,
+      ultimosCuatro: '0940',
+      activa: true,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    } as Tarjeta);
+
+    expect((screen.getByLabelText(/Cuatro últimos/i) as HTMLInputElement).value).toBe('0940');
+  });
+});

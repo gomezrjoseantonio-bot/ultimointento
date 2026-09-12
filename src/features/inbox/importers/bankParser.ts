@@ -11,13 +11,23 @@ import { safeMatch } from '../../../utils/safe';
 const COLUMN_ALIASES = {
   // Order matters - more specific patterns first
   valueDate: [
-    'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor', 'valor'
+    'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor', 'valor',
+    // Revolut da DOS fechas: cuando empezó la operación y cuando quedó hecha.
+    // La de inicio es la de la compra; la de finalización es la que mueve el
+    // saldo, así que esa es la fecha de cargo (abajo, en `date`).
+    'fecha de inicio', 'fecha inicio', 'started date'
   ],
   date: [
     'fecha', 'fecha operacion', 'fecha operación', 
     'f operacion', 'f operación', 'f. operacion', 'f. operación', 'date', 
     'fecha mov', 'fecha movimiento', 'fecha de operacion', 'fecha de operación',
-    'completed date', // Revolut
+    // Revolut · la fecha en que la operación queda hecha y el saldo se mueve.
+    // Sin estos alias el fichero no traía NINGUNA columna de fecha y el
+    // importador lo mandaba entero a mapeo manual: 1.224 movimientos con cero
+    // leídos, entre ellos las 548 recargas de tarjeta que cruzan contra el
+    // cargo del otro banco.
+    'completed date', 'fecha de finalizacion', 'fecha de finalización',
+    'fecha finalizacion', 'fecha finalización',
     // Sabadell escribe «F. Operativa» (cabecera real del export xlsx). Sin este
     // alias la columna no casaba, `date` caía en la fecha VALOR y un recibo con
     // operativa 02/01 y valor 31/12 se iba al ejercicio anterior.
@@ -665,14 +675,18 @@ export class BankParserService {
     
     for (let row = startRow; row < data.length; row++) {
       const rowData = data[row];
-      if (!rowData || this.isJunkRow(rowData)) continue;
-      
+      if (!rowData) continue;
+
       try {
         const movement = this.parseMovementRow(rowData, columns, numericData?.[row]);
-        if (movement) {
-          movement.originalRow = row; // Track original row number
-          movements.push(movement);
-        }
+        // Lo que NO es un movimiento se cae solo: sin fecha y sin importe no hay
+        // fila que valga. Ahí se quedan los rótulos, los pies de página y las
+        // filas vacías, sin tener que adivinarlo por las palabras que llevan.
+        if (!movement) continue;
+        // De las que SÍ lo son, solo sobra la que repite el saldo.
+        if (this.esFilaDeSaldo(rowData)) continue;
+        movement.originalRow = row; // Track original row number
+        movements.push(movement);
       } catch (error) {
         console.warn(`Error parsing row ${row + 1}:`, error);
         // Continue with other rows
@@ -710,7 +724,7 @@ export class BankParserService {
     }
     
     // Parse and validate date
-    const date = this.parseSpanishDate(dateStr);
+    const date = this.fechaDe(rowData, numericRow, dateCol);
     if (!date || isNaN(date.getTime())) {
       return null; // Invalid date
     }
@@ -739,8 +753,8 @@ export class BankParserService {
     }
     
     // Optional fields
-    const valueDateStr = columns.valueDate !== undefined ? rowData[columns.valueDate]?.trim() : undefined;
-    const valueDate = valueDateStr ? this.parseSpanishDate(valueDateStr) : undefined;
+    const valueDate =
+      columns.valueDate !== undefined ? this.fechaDe(rowData, numericRow, columns.valueDate) : undefined;
     const balance = columns.balance !== undefined ? this.importeDe(rowData, numericRow, columns.balance) : undefined;
     // E2.4.2 · todas las columnas de referencia, juntas y sin vacíos. El
     // separador « · » no aparece en un identificador, así que el extractor
@@ -767,45 +781,77 @@ export class BankParserService {
   }
 
   /**
-   * Check if row is junk (totals, separators, etc.)
+   * ¿Esta fila es la que el banco usa para REPETIR el saldo?
+   *
+   * Antes aquí había una lista de palabras —«total», «suma», «página»,
+   * «resumen»— aplicada a la fila ENTERA y sin límite de palabra. Se comía
+   * movimientos de verdad: en el extracto real de ING, «Amortización total de
+   * préstamo» (−25.162,54 €) desaparecía por llevar la palabra «total» dentro.
+   *
+   * Ya no hace falta adivinar: una fila que no trae fecha e importe no llega a
+   * ser un movimiento y se cae sola. Lo único que sí los trae y aun así no es
+   * un movimiento es la fila de saldo —el banco la escribe con su fecha y su
+   * número—, y contarla sería duplicar dinero. Solo eso se mira aquí.
    */
-  private isJunkRow(rowData: string[]): boolean {
-    const text = rowData.join(' ').toLowerCase();
-    
-    // Common junk patterns in Spanish bank statements
-    const junkPatterns = [
-      /total|suma|subtotal/,
-      /saldo inicial|saldo final|saldo anterior/,
-      /página|page|hoja/,
-      /^[\s\-_=]*$/, // Only whitespace or separators
-      /continúa|continuación/,
-      /resumen|summary/
-    ];
-    
-    return junkPatterns.some(pattern => pattern.test(text)) || 
-           rowData.every(cell => !cell || cell.trim() === '');
+  private esFilaDeSaldo(rowData: string[]): boolean {
+    const texto = rowData
+      .join(' ')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    return (
+      /\bsaldo (inicial|final|anterior|a fecha)\b/.test(texto) ||
+      /\b(continua|continuacion)\b/.test(texto)
+    );
   }
 
   /**
    * Parse Spanish date formats (dd/mm/yyyy, dd-mm-yyyy, etc.)
    */
+  /**
+   * E3.1 · La FECHA de una columna · el valor CRUDO de la celda cuando lo hay.
+   *
+   * Mismo motivo que `importeDe`, y el mismo arreglo. `rawData` se lee con
+   * `raw: false`, así que una celda de fecha llega ya FORMATEADA con el formato
+   * que le puso el banco — y ING y Unicaja le ponen `m/d/yy`. El 11 de
+   * septiembre de 2026 llegaba como «9/11/26» y el lector español lo leía como
+   * el 9 de NOVIEMBRE. Peor todavía: del día 13 en adelante no hay mes que
+   * valga, la fecha no parseaba y la fila entera desaparecía sin avisar. En los
+   * ficheros reales de Jose eso se llevaba por delante 362 movimientos de 672 y
+   * dejaba el saldo de dos cuentas imposible de cuadrar.
+   *
+   * La celda cruda no tiene ese problema: es la SERIE de Excel (46276), que no
+   * es ambigua. Solo cuando no hay número —CSV, celdas de texto— se vuelve al
+   * texto formateado.
+   */
+  private fechaDe(rowData: string[], numericRow: unknown[] | undefined, col: number): Date | null {
+    const crudo = numericRow?.[col];
+    // Con `cellDates` la librería devuelve la fecha ya montada.
+    if (crudo instanceof Date && !isNaN(crudo.getTime())) {
+      return new Date(crudo.getFullYear(), crudo.getMonth(), crudo.getDate());
+    }
+    if (typeof crudo === 'number' && Number.isFinite(crudo)) {
+      const deLaSerie = this.fechaDeSerieExcel(crudo);
+      if (deLaSerie) return deLaSerie;
+    }
+    return this.parseSpanishDate(rowData[col]?.trim() ?? '');
+  }
+
+  /** Una serie de Excel (días desde 1899-12-30) a fecha, o `null` si no lo es. */
+  private fechaDeSerieExcel(n: number): Date | null {
+    // 1970-01-01 = 25569 · 2100-01-01 = 73051 · fuera de eso no es una fecha.
+    if (!Number.isFinite(n) || n < 25569 || n > 73051) return null;
+    const base = new Date(1899, 11, 30);
+    return new Date(base.getFullYear(), base.getMonth(), base.getDate() + Math.trunc(n));
+  }
+
   private parseSpanishDate(dateStr: string): Date | null {
     if (!dateStr) return null;
 
-    // E2.4.2 · una SERIE de Excel («46265») · Unicaja exporta la fecha como
-    // número de días desde 1899-12-30 y la celda llega sin formato. Antes la
-    // fila entera caía a `sin_fecha` y el motor no veía nada de ese banco.
+    // E2.4.2 · una SERIE de Excel («46265») · la celda llega sin formato y su
+    // número en texto. Antes la fila entera caía a `sin_fecha`.
     const serie = dateStr.trim();
-    if (/^\d{5}$/.test(serie)) {
-      const n = Number(serie);
-      // 1970-01-01 = 25569 · 2100-01-01 = 73051 · fuera de eso no es una fecha.
-      if (n >= 25569 && n <= 73051) {
-        const base = new Date(1899, 11, 30);
-        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
-        return d;
-      }
-      return null;
-    }
+    if (/^\d{5}$/.test(serie)) return this.fechaDeSerieExcel(Number(serie));
 
     // E2.4.2 · una FECHA-HORA («2026-08-28 10:15:00» · Revolut) · solo cuenta el
     // día. Sin esto la hora se pegaba a la fecha al limpiar y no casaba nada.
