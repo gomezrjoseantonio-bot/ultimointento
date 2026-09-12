@@ -13,8 +13,14 @@ del usuario (sus cuentas, su nombre, sus préstamos, sus recurrentes, su catálo
 
 | | antes (HEAD `5d79651`) | después (E3.1) |
 |---|---|---|
-| **SIN reglas duras** · solo cruce + identificador + catálogo | **22,8 %** (306/1.341) | **32,0 %** (429/1.341) |
+| **SIN reglas duras · SOLO cruce + identificador + catálogo** | **21,5 %** (288/1.341) | **32,0 %** (429/1.341) |
+| Sin reglas duras · + préstamos y recurrentes (lo que ATLAS ya sabía) | 22,8 % (306/1.341) | 32,0 % (429/1.341) |
 | CON reglas duras · el motor entero | 57,9 % (776/1.341) | **63,0 %** (845/1.341) |
+
+La primera fila es la de §7 y es la que cuenta: nada de reglas de texto y nada de
+los libros del usuario. La segunda está por honestidad — la primera medida que
+hice mezclaba las dos cosas (lo pilló la revisión de Copilot) y el guion ahora
+las separa. La conclusión no cambia; el punto de partida era medio punto más bajo.
 
 **El objetivo de la tarea era >60 % sin reglas duras. No se alcanza: se llega al 32,0 %.**
 No lo tapo. Las razones están medidas, no supuestas, y son tres (§6).

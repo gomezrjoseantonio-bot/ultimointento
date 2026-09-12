@@ -38,6 +38,16 @@ describe('E3.1 · §7.1 · la huella fuerte', () => {
     expect(uno).not.toBe(dos);
   });
 
+  it('la MISMA fila repetida dentro del propio fichero da la MISMA huella fuerte', () => {
+    // El dedupe no mira las otras filas del fichero a propósito (dos cargos
+    // idénticos el mismo día son dos operaciones). Pero si además coincide el
+    // SALDO, no son dos: es la misma fila dos veces, y ahí sí hay que parar.
+    const a = huellaFuerteDeFila(fila({ balance: 1768.42 }), d);
+    const b = huellaFuerteDeFila(fila({ balance: 1768.42 }), d);
+    expect(a).toBe(b);
+    expect(a).toBeDefined();
+  });
+
   it('si el fichero no da ninguna de las dos cosas, no hay huella fuerte · manda la de siempre', () => {
     expect(huellaFuerteDeFila(fila(), d)).toBeUndefined();
     expect(huellaFuerteDeFila(fila({ balance: 10 }), { ...d, fechaOperacion: '' })).toBeUndefined();

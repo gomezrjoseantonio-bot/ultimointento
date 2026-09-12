@@ -233,31 +233,41 @@ export function cruzarPatas(
   cuentasPropias: ReadonlySet<number>,
   nombres: string[],
 ): PatasCruzadas[] {
+  // Las parejas se llevan por IDENTIDAD DE OBJETO, no por `id`. Aquí se mezclan
+  // dos orígenes —los movimientos sintéticos de las líneas del lote y los
+  // `movements` que ya existían— y cada uno tiene su propio contador
+  // autoincremental, así que el mismo número puede ser dos movimientos
+  // distintos. Con la referencia no hay colisión posible.
   const vivos = movimientos.filter(
     (m) => m.id != null && m.amount !== 0 && cuentasPropias.has(m.accountId) && !yaEmparejado(m) && puedeCruzar(m),
   );
   const salidas = vivos.filter((m) => m.amount < 0);
   const entradas = vivos.filter((m) => m.amount > 0);
-  const usados = new Set<number>();
+  const usados = new Set<Movement>();
   const out: PatasCruzadas[] = [];
 
+  const cerca = (a: Movement, b: Movement): boolean =>
+    a.accountId !== b.accountId &&
+    mismoImporte(a.amount, b.amount) &&
+    Math.abs(dia(a.date) - dia(b.date)) <= DIAS_ESPEJO * MS_DIA;
+
   for (const salida of salidas) {
-    if (usados.has(salida.id as number)) continue;
-    const t = dia(salida.date);
-    const candidatas = entradas.filter(
-      (e) =>
-        !usados.has(e.id as number) &&
-        e.accountId !== salida.accountId &&
-        mismoImporte(e.amount, salida.amount) &&
-        Math.abs(dia(e.date) - t) <= DIAS_ESPEJO * MS_DIA,
-    );
+    if (usados.has(salida)) continue;
+    const candidatas = entradas.filter((e) => !usados.has(e) && cerca(e, salida));
     if (candidatas.length !== 1) continue;
     const entrada = candidatas[0];
+    // La unicidad se mira POR LOS DOS LADOS. Con dos salidas candidatas y una
+    // sola entrada, la primera salida del array se la llevaba y la segunda se
+    // quedaba fuera: eso es resolver una ambigüedad por el orden del array, que
+    // es no resolverla. Si la entrada tiene más de una salida posible, es una
+    // duda y las dos se quedan sin cruzar.
+    const alReves = salidas.filter((o) => !usados.has(o) && cerca(o, entrada));
+    if (alReves.length !== 1) continue;
     // Una de las dos tiene que oler a traspaso · si ninguna lo hace, la
     // coincidencia de importe no basta.
     if (!hueleATraspaso(salida, nombres) && !hueleATraspaso(entrada, nombres)) continue;
-    usados.add(salida.id as number);
-    usados.add(entrada.id as number);
+    usados.add(salida);
+    usados.add(entrada);
     out.push({ salida, entrada });
   }
   return out;
@@ -298,7 +308,12 @@ export function pareceTraspasoPropio(m: Movement, cuentas: Account[], nombres: s
   return (
     !!cuentaPropiaPorIban(m, cuentas) ||
     laParteEsElTitular(texto, nombres) ||
-    esNominaDelPropioTitular(texto, nombres)
+    esNominaDelPropioTitular(texto, nombres) ||
+    // §7.1 · esto decide si se leen los movimientos de las OTRAS cuentas para
+    // buscar la pata contraria. Sin la señal del cruce, un lote que solo trae
+    // «Ahorros mensuales» no cargaba nada y el cruce no tenía contra qué mirar:
+    // la pata de enfrente existía y no se veía.
+    (puedeCruzar(m) && hueleATraspaso(m, nombres))
   );
 }
 
@@ -317,15 +332,20 @@ export function traspasosPropios(
   const out: OrigenDeterminista[] = [];
   const enUso = cuentas.filter((c) => c.id != null && !estaDeBaja(c));
   const idsPropios = new Set(cuentas.map((c) => c.id as number).filter((id) => id != null));
+  // El cruce solo mira cuentas EN USO: a una cuenta de baja no se le escribe una
+  // pata nueva (líneas de abajo), así que cruzar contra sus movimientos
+  // históricos solo produce traspasos sin destino que nadie puede resolver.
+  // El espejo por IBAN sigue mirando todas, que es como estaba.
+  const idsEnUso = new Set(enUso.map((c) => c.id as number));
   if (idsPropios.size === 0) return out;
 
   // §7.1 · el CRUCE DE PATAS · se hace UNA vez sobre el lote entero + lo que ya
   // había en las demás cuentas, y deja un mapa movimiento → su pareja. Marca
   // las DOS patas: hasta E3.1 solo se marcaba la que traía el nombre.
-  const cruzados = new Map<number, Movement>();
-  for (const { salida, entrada } of cruzarPatas([...movimientos, ...otrosMovimientos], idsPropios, nombres)) {
-    cruzados.set(salida.id as number, entrada);
-    cruzados.set(entrada.id as number, salida);
+  const cruzados = new Map<Movement, Movement>();
+  for (const { salida, entrada } of cruzarPatas([...movimientos, ...otrosMovimientos], idsEnUso, nombres)) {
+    cruzados.set(salida, entrada);
+    cruzados.set(entrada, salida);
   }
 
   for (const m of movimientos) {
@@ -339,7 +359,7 @@ export function traspasosPropios(
     const porNomina = !porIban && !porTitular && esNominaDelPropioTitular(texto, nombres);
     // §7.1 · el CRUCE · esta pata no dice nada por sí sola, pero su pareja al
     // otro lado sí, y el cruce ya las emparejó.
-    const cruce = !porIban && !porTitular && !porNomina ? cruzados.get(m.id) : undefined;
+    const cruce = !porIban && !porTitular && !porNomina ? cruzados.get(m) : undefined;
     if (!porIban && !porTitular && !porNomina && !cruce) continue;
 
     const sentido = m.amount < 0 ? 'salida' : 'entrada';

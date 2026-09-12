@@ -88,17 +88,24 @@ const movimientos = lineas
     reference: l.referencia,
   }));
 
-// Los deterministas PUROS · lo que ATLAS reconoce contra los libros que el
-// usuario ya le dio, sin tocar la base. El cruce (§7.1) va el último para que
-// no pise una cuota ni un recurrente ya reconocidos.
-const origenes = new Map();
-const pon = (lista) => { for (const o of lista) if (!origenes.has(o.movementId)) origenes.set(o.movementId, o); };
+// DOS mapas de orígenes, y la diferencia es justo lo que se está midiendo:
+//
+//   · `soloEscala` · SOLO el cruce entre cuentas propias (§7.1). Es lo que esta
+//     tarea construye y lo único que puede entrar en el número «sin reglas».
+//   · `todos` · además, lo que ATLAS ya reconocía contra los libros del usuario
+//     (cuadro del préstamo, recurrentes). Eso NO es identificador ni catálogo:
+//     meterlo en el número de §7 lo infla y mide otra cosa.
+//
+// El cruce va el último para no pisar una cuota ni un recurrente ya reconocidos.
+const cruce = traspasosPropios(movimientos, cuentas, nombres, []);
+const soloEscala = new Map(cruce.map((o) => [o.movementId, o]));
+const todos = new Map();
+const pon = (lista) => { for (const o of lista) if (!todos.has(o.movementId)) todos.set(o.movementId, o); };
 pon(cuotasQueCuadran(movimientos, stores.prestamos ?? []));
 pon(recurrentesQueCuadran(movimientos, stores.compromisosRecurrentes ?? []));
-const cruce = traspasosPropios(movimientos, cuentas, nombres, []);
 pon(cruce);
 
-function medir({ conReglas }) {
+function medir({ conReglas, origenes }) {
   const ctx = {
     cuentas,
     tarjetas,
@@ -147,6 +154,9 @@ function pinta(titulo, r) {
 
 console.log(`corpus: ${movimientos.length} líneas · ${cuentas.length} cuentas · ${proveedores.length} proveedores`);
 console.log(`catálogo: ${catalogo.porNif.size} NIF · ${catalogo.porAlias.length} alias`);
-console.log(`cruce (§7.1): ${cruce.length} líneas · deterministas en total: ${origenes.size}`);
-pinta('SIN reglas duras · solo cruce + identificador + catálogo', medir({ conReglas: false }));
-pinta('CON reglas duras · el motor entero', medir({ conReglas: true }));
+console.log(`cruce §7.1: ${cruce.length} líneas · con préstamos y recurrentes: ${todos.size}`);
+// ÉSTE es el número de §7: nada de reglas de texto y nada de los libros del
+// usuario. Solo lo que escala: cruce entre cuentas + identificador + catálogo.
+pinta('SIN reglas duras · SOLO cruce + identificador + catálogo', medir({ conReglas: false, origenes: soloEscala }));
+pinta('SIN reglas duras · + préstamos y recurrentes (lo que ATLAS ya sabía)', medir({ conReglas: false, origenes: todos }));
+pinta('CON reglas duras · el motor entero', medir({ conReglas: true, origenes: todos }));

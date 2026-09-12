@@ -1,6 +1,6 @@
 // E3.1 · §7.3 · el catálogo nacional · lo que la tarea pide verificar.
 import { clasificarLinea, type ContextoClasificacion } from '../../clasificacion/clasificarLinea';
-import { catalogoDeFabrica, construirCatalogo, desdeProveedoresIrpf, porNif, porNombre } from '../catalogoNacional';
+import { aprenderEnCatalogo, catalogoDeFabrica, construirCatalogo, desdeProveedoresIrpf, porNif, porNombre } from '../catalogoNacional';
 import { entidadesDelFicheroNacional } from '../desdeCatalogoNacional';
 import { semillaDelCatalogo } from '../entidadesNacionales';
 import type { Movement } from '../../db';
@@ -121,6 +121,30 @@ describe('E3.1 · §7.3 · el catálogo nacional', () => {
     const octopus = entidadesDelFicheroNacional().find((e) => e.nombre.startsWith('Octopus'));
     expect(octopus?.nif).toBeUndefined();
     expect(octopus?.familia).toBe('suministro');
+  });
+
+  it('el catálogo CRECE · una entrada nueva nace con 1 confirmación y la segunda suma', async () => {
+    const filas: Record<string, unknown>[] = [];
+    const db = {
+      getAll: async () => filas,
+      put: async (_s: string, v: unknown) => {
+        const fila = v as { clave: string };
+        const i = filas.findIndex((f) => (f as { clave: string }).clave === fila.clave);
+        if (i >= 0) filas[i] = fila as Record<string, unknown>;
+        else filas.push(fila as Record<string, unknown>);
+        return 1;
+      },
+    };
+    const entrada = { nombre: 'WiZink Bank', nif: 'A81831067', alias: ['WIZINK'], familia: 'prestamo_hipoteca' as const };
+    const primera = await aprenderEnCatalogo(db, entrada);
+    expect(primera?.confirmaciones).toBe(1);
+    expect(primera?.clave).toBe('nif:A81831067');
+    expect(primera?.procedencia).toBe('aprendido');
+    // La misma entidad otra vez NO se duplica: suma una confirmación.
+    const segunda = await aprenderEnCatalogo(db, { ...entrada, alias: ['WIZINK BANK SA'] });
+    expect(segunda?.confirmaciones).toBe(2);
+    expect(filas).toHaveLength(1);
+    expect(segunda?.alias).toEqual(['WIZINK', 'WIZINK BANK SA']);
   });
 
   it('sin catálogo el motor funciona igual · este paso solo suma', () => {

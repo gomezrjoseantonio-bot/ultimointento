@@ -17,6 +17,9 @@
 import type { Movement, TreasuryEvent } from './db';
 import type { FamiliaId } from './catalogo/catalogoUnico';
 import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
+import { initDB } from './db';
+import { esCif, identificadoresDeMovimiento } from './identificadoresDelConcepto';
+import { aprenderEnCatalogo, type BaseParaCatalogo } from './catalogoNacional/catalogoNacional';
 
 /**
  * Lo que se aprende al resolver una línea · categoría, ámbito y piso.
@@ -95,5 +98,48 @@ export async function feedLearningRule(
   } catch (err) {
     // Learning is opportunistic — do not block confirmation if it fails.
     console.warn('[orchestrator] feedLearningRule failed', err);
+  }
+  // E3.1 · §7.3 · lo que el usuario acaba de enseñar sobre un proveedor sube
+  // TAMBIÉN al catálogo nacional. Es lo que hace que «nadie tenga que añadir
+  // WIZINK a una lista»: lo enseña el primer cliente y lo heredan los demás.
+  await aprenderProveedorDelMovimiento(movement, derived);
+}
+
+/**
+ * E3.1 · §7.3 · el catálogo nacional CRECE con cada confirmación.
+ *
+ * Con UN límite que no es negociable: solo se aprende lo anclado en un CIF de
+ * EMPRESA. El catálogo es compartido, y el DNI del fontanero de un cliente no
+ * puede acabar en una tabla que ven los demás — ése vive en su store
+ * `proveedores`, que es suyo. Un nombre sin CIF tampoco sube: «Pepe» no
+ * identifica a nadie fuera de la casa de quien lo escribió.
+ *
+ * Nunca lanza: aprender es oportunista y una confirmación no se rompe por esto.
+ */
+async function aprenderProveedorDelMovimiento(
+  movement: Movement,
+  derived: DerivedCategory | null,
+): Promise<void> {
+  if (!derived?.familia) return;
+  try {
+    const ids = identificadoresDeMovimiento(movement);
+    const cif = ids.find((id) => id.tipo === 'nif' && esCif(id.valor));
+    if (!cif) return;
+    const nombre = ids.find((id) => id.tipo === 'acreedor')?.texto?.trim();
+    const db = await initDB();
+    await aprenderEnCatalogo(
+      db as unknown as BaseParaCatalogo,
+      {
+        nombre: nombre || cif.valor,
+        nif: cif.valor,
+        alias: nombre ? [nombre] : [],
+        familia: derived.familia,
+        ...(derived.subtipo ? { subtipo: derived.subtipo } : {}),
+        ...(derived.ambito ? { ambito: derived.ambito } : {}),
+      },
+      (mensaje, err) => console.warn(`[catalogo] ${mensaje}`, err),
+    );
+  } catch (err) {
+    console.warn('[catalogo] no se pudo aprender el proveedor de este movimiento', err);
   }
 }

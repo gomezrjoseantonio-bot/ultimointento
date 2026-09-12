@@ -267,6 +267,11 @@ export function construirLineas(
       ...(movementIds.length > 0 ? { movementId: movementIds[0] } : {}),
       movementIds,
       hashLinea: fila.hashLinea,
+      // E3.1 · §9.5 · los identificadores que se extrajeron AL IMPORTAR viajan
+      // a la sesión. Sin esto el campo se persistía y no lo leía nadie:
+      // `agruparPorEntidad` caía siempre a su rama de respaldo y volvía a
+      // parsear el texto, que es justo el trabajo duplicado que §9.5 quita.
+      ...(fila.identificadores?.length ? { identificadores: fila.identificadores } : {}),
       textoBanco: fila.conceptoLiteral,
       // Vacío o en blanco no se propaga: un renglón vacío debajo del texto
       // sería un hueco que parece un fallo de carga.

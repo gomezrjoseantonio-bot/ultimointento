@@ -655,7 +655,13 @@ async function insertLineas(
       await persistir({ descarte: 'duplicada' });
       continue;
     }
-    // La huella de la nueva NO se añade al set: ver DEDUPE arriba.
+    // La huella POR CONCEPTO no se añade: dos cargos idénticos el mismo día
+    // (la comunidad de dos pisos) son dos operaciones reales y entran las dos.
+    // La huella FUERTE sí, y no se contradicen: el saldo corrido es distinto en
+    // cada línea de una cuenta, y el nº de movimiento del banco no se repite.
+    // Si dos filas del MISMO fichero coinciden en las dos cosas, es la misma
+    // fila repetida y la segunda no debe entrar.
+    if (huellaFuerte) existingHashes.fuertes.add(huellaFuerte);
     await persistir({});
     inserted++;
   }

@@ -137,6 +137,14 @@ function aplicar(c: ClasificacionLinea, p: Parcial, origen: OrigenEje, amount: n
     c.origen.familia = origen;
     if (p.subtipo) { c.subtipo = p.subtipo; c.origen.subtipo = origen; }
     tocado = true;
+  } else if (p.familia && p.subtipo && c.familia === p.familia && c.subtipo === undefined) {
+    // E3.1 · completar el SEGUNDO nivel no es pisar el primero. El nº de
+    // contrato dice «esto es un préstamo» y se queda sin subtipo; si el
+    // catálogo dice además que el acreedor es una financiera, ese
+    // `credito_consumo` se perdía solo porque la familia ya estaba puesta.
+    c.subtipo = p.subtipo;
+    c.origen.subtipo = origen;
+    tocado = true;
   }
   if (p.metodo && c.metodo === undefined) { c.metodo = p.metodo; c.origen.metodo = origen; tocado = true; }
   if (p.inmuebleId != null && c.inmuebleId == null) {

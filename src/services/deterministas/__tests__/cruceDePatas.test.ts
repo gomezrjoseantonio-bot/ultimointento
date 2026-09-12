@@ -1,5 +1,5 @@
 // E3.1 · §7.1 · el cruce entre cuentas propias · las DOS patas.
-import { cruzarPatas, traspasosPropios, esNominaDelPropioTitular, cuentasQueFaltan } from '../traspasosPropios';
+import { cruzarPatas, traspasosPropios, esNominaDelPropioTitular, cuentasQueFaltan, pareceTraspasoPropio } from '../traspasosPropios';
 import type { Movement } from '../../db';
 import type { Account } from '../../db/types-contratos';
 
@@ -52,6 +52,47 @@ describe('E3.1 · §7.1 · el cruce de patas', () => {
     const e1 = mov(41, 2, 300, 'Abono');
     const e2 = mov(42, 2, 300, 'Abono');
     expect(cruzarPatas([salida, e1, e2], propias, NOMBRES)).toHaveLength(0);
+  });
+
+  it('la duda se mira por LOS DOS LADOS · dos salidas para una entrada tampoco cruzan', () => {
+    // Con la unicidad mirada solo desde la salida, la PRIMERA del array se
+    // llevaba la entrada y la segunda se quedaba fuera: eso es resolver una
+    // ambigüedad por el orden del array, que es no resolverla.
+    const s1 = mov(43, 1, -300, 'Ahorro');
+    const s2 = mov(44, 1, -300, 'Ahorro');
+    const entrada = mov(45, 2, 300, 'Abono');
+    expect(cruzarPatas([s1, s2, entrada], propias, NOMBRES)).toHaveLength(0);
+  });
+
+  it('los ids de las líneas y los de los movimientos NO se confunden', () => {
+    // `lineasExtracto` y `movements` son dos contadores autoincrementales
+    // independientes, así que el mismo número puede ser dos movimientos
+    // distintos. Aquí el id 1 es a la vez una línea del lote y un movimiento ya
+    // guardado en otra cuenta: si el cruce fuera por `id`, uno descartaría al
+    // otro o se pisarían la pareja.
+    const delLote = mov(1, 1, -500, 'Ahorros mensuales', '2026-03-10');
+    const yaGuardado = mov(1, 2, 500, 'Abono', '2026-03-11');
+    const cruces = cruzarPatas([delLote, yaGuardado], propias, NOMBRES);
+    expect(cruces).toHaveLength(1);
+    expect(cruces[0].salida).toBe(delLote);
+    expect(cruces[0].entrada).toBe(yaGuardado);
+  });
+
+  it('una cuenta DE BAJA no cruza · su pata no se podría resolver', () => {
+    const deBaja = { ...cuenta(2, 'Vieja'), activa: false, deletedAt: '2026-01-01' } as unknown as Account;
+    const salida = mov(46, 1, -500, 'Ahorro');
+    const entrada = mov(47, 2, 500, 'Abono');
+    const origenes = traspasosPropios([salida, entrada], [cuenta(1, 'Santander'), deBaja], NOMBRES);
+    // La salida no tiene con quién cruzarse: la de enfrente está de baja.
+    expect(origenes.map((o) => o.movementId)).not.toContain(46);
+  });
+
+  it('el prefetch VE lo que huele a traspaso · si no, el cruce no tiene contra qué mirar', () => {
+    // `pareceTraspasoPropio` decide si se leen los movimientos de las otras
+    // cuentas. Un lote que solo trae «Ahorros mensuales» no cargaba nada.
+    expect(pareceTraspasoPropio(mov(48, 1, -500, 'Ahorros mensuales'), cuentas, NOMBRES)).toBe(true);
+    // Y un recibo sigue sin disparar la lectura: nunca es un traspaso propio.
+    expect(pareceTraspasoPropio(mov(49, 1, -500, 'Recibo Iberdrola'), cuentas, NOMBRES)).toBe(false);
   });
 
   it('fuera de la ventana de ±3 días no hay cruce', () => {
