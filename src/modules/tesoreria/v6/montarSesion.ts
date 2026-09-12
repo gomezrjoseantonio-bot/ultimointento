@@ -88,6 +88,13 @@ export interface SesionDelLote {
  * salían cuatro asteriscos sueltos, que no identifican nada y encima parecen un
  * dato que no se ha cargado.
  */
+/** El nombre de la cuenta para el hero de conciliar · «Santander Alquileres · ****2715». */
+export function nombreDeLaCuenta(cuenta: Account | null): string {
+  if (!cuenta) return 'Cuenta sin identificar';
+  const cuatro = cuenta.ultimosCuatro?.trim();
+  return [cuenta.alias, cuatro ? `****${cuatro}` : null].filter(Boolean).join(' · ');
+}
+
 export function tituloDeLaSesion(cuenta: Account | null, cuantasLineas: number): string {
   const lineas = `${cuantasLineas} ${cuantasLineas === 1 ? 'línea' : 'líneas'}`;
   if (!cuenta) return lineas;

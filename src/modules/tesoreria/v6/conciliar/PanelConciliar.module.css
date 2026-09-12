@@ -1,13 +1,12 @@
 /* ===========================================================================
-   Conciliar extracto · la pantalla (mockup `atlas-conciliar-v1.html`)
+   Conciliar extracto · la pantalla (mockup `mockup-conciliacion_11.html`)
    ---------------------------------------------------------------------------
-   GESTIÓN: cabecera navy con KPIs (la guía V5 §prohibiciones lo exige: nada de
-   cabeceras blancas en pantallas de gestión). Todo el color sale de los tokens
-   `--atlas-v5-*`; en el mockup eran hex sueltos porque era un HTML de una pieza.
+   GESTIÓN: hero navy (`HeroConciliar.module.css`) y tres zonas en una sola
+   columna que hace scroll. Todo el color sale de los tokens `--atlas-v5-*`.
 
-   Regla sin-scroll: la pantalla entera cabe en un viewport. Lo que crece son las
-   DOS columnas, cada una con su scroll acotado. Así la cabecera —donde vive el
-   cuadre, que es la promesa de esta pantalla— nunca se va de la vista.
+   Regla de importes (guía V5 §2.2.1, vinculante): TINTA siempre; oro solo para
+   el veredicto y la acción principal; ámbar solo para lo que pide atención (el
+   nº de «Confirma el destino»); verde/rojo solo estado. Cero fondos amarillos.
    =========================================================================== */
 
 /* La superficie empieza donde acaba la barra lateral: la navegación sigue ahí,
@@ -29,221 +28,228 @@
   .superficie { left: 0; }
 }
 
-/* ── Cabecera GESTIÓN · navy ─────────────────────────────────────────────── */
-
-.cab {
-  background: var(--atlas-v5-brand);
-  color: var(--atlas-v5-on-navy-1);
-  padding: 16px 26px 0;
-  flex-shrink: 0;
-}
-.cabTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-.cabTitulo {
-  font-size: 21px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0;
-  color: var(--atlas-v5-on-navy-1);
-}
-.cabSub {
-  font-size: 12px;
-  color: var(--atlas-v5-on-navy-3);
-  margin-top: 3px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.cabMask {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-}
-.punto {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--atlas-v5-gold-soft);
-  flex-shrink: 0;
-}
-.btnCab {
-  border: none;
-  border-radius: 7px;
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  padding: 8px 14px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--atlas-v5-navy-line-soft);
-  color: var(--atlas-v5-on-navy-1);
-  white-space: nowrap;
-}
-.btnCab:hover { background: var(--atlas-v5-navy-line); }
-
-/* Barra de reparto · los cuatro montones a escala. No lleva números: los números
-   están justo debajo. Es orientación periférica, no un dato que se lea. */
-.barra {
-  margin-top: 16px;
-  display: flex;
-  height: 8px;
-  border-radius: 5px;
-  overflow: hidden;
-  background: var(--atlas-v5-navy-line);
-}
-.barra i { display: block; }
-.segResueltas { background: var(--atlas-v5-gold-soft); }
-.segNecesitan { background: var(--atlas-v5-on-navy-1); }
-.segPersonal  { background: var(--atlas-v5-on-navy-4); }
-.segIgnorados { background: var(--atlas-v5-on-navy-6); }
-
-.kpis {
-  display: flex;
-  gap: 26px;
-  padding: 12px 0 15px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.kpi {
+/* El cuerpo · UNA columna con scroll · hero + zonas. Sus hijos no encogen:
+   un hijo de un contenedor flex encoge por defecto, y en una columna de altura
+   fija con 95 tarjetas cada una acababa en un píxel. */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  padding: 20px 28px 40px;
+  gap: 0;
+}
+.scroll > * { flex-shrink: 0; }
+
+/* ── Sección · título, contador y nota ──────────────────────────────────── */
+
+.sec { margin-bottom: 22px; }
+.secTitle { display: flex; align-items: baseline; gap: 9px; margin-bottom: 3px; }
+.secTitle h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.secN {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-4);
+}
+/* Ámbar SOLO aquí · el nº de lo que pide atención (guía §2.2.1). */
+.secNWarn { color: var(--atlas-v5-warn); }
+.secNota { font-size: 12.5px; color: var(--atlas-v5-ink-4); margin-bottom: 14px; }
+
+/* ── Entidad · un CUPS, un contrato, una persona, un traspaso ───────────── */
+
+.ent {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border-left: 3px solid var(--atlas-v5-brand);
+}
+.entConfirmar { border-left-color: var(--atlas-v5-gold); }
+.entElegida { box-shadow: 0 0 0 2px var(--atlas-v5-gold-soft) inset; }
+.entCab { display: flex; align-items: center; gap: 10px; padding: 0 16px 0 0; }
+/* La cabecera es un botón (plegar) · recupera lo que el navegador le quita. */
+.entToggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 16px;
   background: none;
   border: none;
-  padding: 0;
   text-align: left;
-  cursor: pointer;
   font-family: inherit;
+  color: inherit;
+  cursor: pointer;
 }
-.kpiN {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-variant-numeric: tabular-nums;
-  font-size: 23px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--atlas-v5-on-navy-1);
-  letter-spacing: -0.02em;
-}
-/* La cifra-veredicto sobre navy va en oro claro · nunca `--gold-ink` (guía §5). */
-.kpiNecesitan .kpiN { color: var(--atlas-v5-gold-soft); }
-.kpiL {
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  color: var(--atlas-v5-on-navy-3);
-  text-transform: uppercase;
-  font-weight: 600;
-}
-.kpiOn .kpiL { color: var(--atlas-v5-on-navy-1); }
-.kpiOn .kpiN { text-decoration: underline; text-underline-offset: 4px; }
-
-/* El cuadre · lo que esta pantalla promete, escrito donde no se puede no leer. */
-.cuadre {
-  margin-left: auto;
+.entToggle:hover { background: var(--atlas-v5-card-alt); }
+.entIco {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--atlas-v5-navy-line-soft);
-  border: 1px solid var(--atlas-v5-border-translucent);
-  border-radius: 9px;
-  padding: 8px 13px;
-  font-size: 11.5px;
-  color: var(--atlas-v5-on-navy-2);
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
 }
-.cuadre svg { color: var(--atlas-v5-gold-soft); flex-shrink: 0; }
-.cuadre b {
-  color: var(--atlas-v5-on-navy-1);
-  font-weight: 700;
-  font-family: var(--atlas-v5-font-mono-num);
-}
-/* Descuadre · esto sí es una alerta, y `--neg` es exactamente para eso. */
-.cuadre[data-cuadra='no'] {
-  background: var(--atlas-v5-neg-wash);
-  border-color: var(--atlas-v5-neg);
-  color: var(--atlas-v5-neg);
-}
-.cuadre[data-cuadra='no'] svg,
-.cuadre[data-cuadra='no'] b { color: var(--atlas-v5-neg); }
-
-/* ── Cuerpo · dos columnas ───────────────────────────────────────────────── */
-
-.cuerpo {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1.55fr 1fr;
-  gap: 16px;
-  padding: 16px 26px;
-  overflow: hidden;
-  min-height: 0;
-}
-@media (max-width: 1100px) {
-  .cuerpo { grid-template-columns: 1fr; }
-}
-.col {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.colCab {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 9px;
-  gap: 12px;
-}
-.colT {
-  font-size: 13px;
+.entConfirmar .entIco { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
+.entInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.entNom {
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
   letter-spacing: -0.01em;
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
-.colT svg { color: var(--atlas-v5-ink-3); flex-shrink: 0; }
-.colC {
-  font-size: 11px;
+.entChip { flex-shrink: 0; }
+.entSub {
+  display: block;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entCount {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
   color: var(--atlas-v5-ink-4);
-  font-weight: 600;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* El importe · EN TINTA · nunca verde ni rojo (guía §2.2.1). */
+.entMonto {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 96px;
   text-align: right;
 }
-.scroll {
-  overflow-y: auto;
-  flex: 1;
+.entNeutro { font-family: var(--atlas-v5-font-ui); font-size: 12px; font-weight: 500; color: var(--atlas-v5-ink-4); }
+.chev { color: var(--atlas-v5-ink-4); display: flex; transition: transform 0.2s; flex-shrink: 0; }
+.entToggle[aria-expanded='true'] .chev { transform: rotate(180deg); }
+.entAccion { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+
+/* La banda de la Zona 2 · la pregunta y los botones · debajo de la cabecera. */
+.entBanda { padding: 0 0 14px; }
+.entAcciones { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 0 16px 0 63px; }
+
+/* El detalle desplegable · los movimientos de esa entidad, cada uno su fecha. */
+.entDet { padding: 2px 16px 12px 63px; border-top: 1px solid var(--atlas-v5-line-2); }
+.entLinea { padding: 6px 0; border-top: 1px solid var(--atlas-v5-line-3); }
+.entLinea:first-child { border-top: none; }
+.dentroF {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-v5-ink-4);
+  width: 66px;
+  font-size: 11.5px;
+  flex-shrink: 0;
+}
+.dentroPie { display: flex; justify-content: center; padding-top: 8px; }
+
+/* ── Botones · oro para la acción principal, fantasma para el resto ──────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btnOro { color: var(--atlas-v5-on-gold); background: var(--atlas-v5-gold); border-color: var(--atlas-v5-gold); }
+.btnOro:hover { background: var(--atlas-v5-gold-ink); border-color: var(--atlas-v5-gold-ink); }
+.btnGhost { color: var(--atlas-v5-ink-2); background: var(--atlas-v5-card); border-color: var(--atlas-v5-line); }
+.btnGhost:hover { border-color: var(--atlas-v5-ink-5); }
+.btnMini { padding: 5px 10px; font-size: 12px; }
+
+/* La barra de visto bueno · en bloque · el único fondo oro-wash de la zona. */
+.barraConfirmar {
   display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding-right: 4px;
-  min-height: 0;
+  align-items: center;
+  gap: 12px;
+  background: var(--atlas-v5-gold-wash-2);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: 10px;
+  padding: 11px 16px;
+  margin-bottom: 14px;
 }
-/* Un hijo de un contenedor flex encoge por defecto (`flex-shrink: 1`), y el
-   encogido ocurre ANTES que el desbordamiento: con 95 tarjetas dentro de una
-   columna de altura fija, cada una se comprimía a un píxel y el `overflow:
-   hidden` de `.tarjeta` se tragaba su contenido. La columna salía en blanco:
-   95 rayas y ni una letra. Esto lo prohíbe para todo hijo, ahora y después. */
-.scroll > * { flex-shrink: 0; }
-
-/* ── Tarjeta de acción · columna izquierda ───────────────────────────────── */
-
-.tarjeta {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 11px;
-  border-left: 3px solid var(--atlas-v5-gold);
-  overflow: hidden;
+.barraConfirmar > svg { color: var(--atlas-v5-gold-ink); flex-shrink: 0; }
+.barraTxt { flex: 1; font-size: 13px; color: var(--atlas-v5-ink-2); }
+.barraTxt strong { color: var(--atlas-v5-ink); font-weight: 600; }
+/* «OK» por entidad · oro, NO verde. */
+.entOk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--atlas-v5-gold);
+  color: var(--atlas-v5-gold-ink);
+  background: var(--atlas-v5-gold-wash);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
 }
+.entOk:hover { background: var(--atlas-v5-gold-light); }
+
+/* Las dadas por buenas · plegadas, con vuelta atrás. */
+.buenas { margin: 4px 0 14px; font-size: 12.5px; color: var(--atlas-v5-ink-3); }
+.buenas summary { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.buenas[open] summary { margin-bottom: 6px; }
+.bloqueSuelto { margin-bottom: 10px; }
+
+/* ── El pie destacado · cuando ya no queda nada por confirmar (P2) ───────── */
+.pieDestacado { border-top-color: var(--atlas-v5-gold); background: var(--atlas-v5-gold-wash-2); }
+
+/* ── La banda de propuesta · dentro de la tarjeta de entidad (Zona 2) ─────── */
+
 /* «Sé qué es pero el importe bailó» · advertencia, no pérdida: `--warn`. */
-.tarjetaConfirma { border-left-color: var(--atlas-v5-warn); }
+.tonoConfirma .propIco {
+  background: var(--atlas-v5-warn-wash);
+  color: var(--atlas-v5-warn);
+}
 /* «No sé qué es» · no es alarma de nada, solo una pregunta abierta. */
-.tarjetaPregunta { border-left-color: var(--atlas-v5-ink-5); }
+.tonoPregunta .propIco {
+  background: var(--atlas-v5-line-3);
+  color: var(--atlas-v5-ink-3);
+}
 
 .propuesta {
-  margin: 11px 13px 0;
+  margin: 0 16px 10px 63px;
   background: var(--atlas-v5-card-alt);
   border: 1px solid var(--atlas-v5-line-2);
   border-radius: 9px;
@@ -262,14 +268,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-.tarjetaConfirma .propIco {
-  background: var(--atlas-v5-warn-wash);
-  color: var(--atlas-v5-warn);
-}
-.tarjetaPregunta .propIco {
-  background: var(--atlas-v5-line-3);
-  color: var(--atlas-v5-ink-3);
 }
 .propTxt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .propQ {
@@ -712,7 +710,7 @@
   cursor: pointer;
   margin: 0;
 }
-.tarjetaElegida {
+.entElegida {
   outline: 2px solid var(--atlas-v5-brand);
   outline-offset: -1px;
 }

@@ -1,19 +1,23 @@
 // ============================================================================
-// Conciliar extracto · LA PANTALLA (mockup `atlas-conciliar-v1.html`)
+// Conciliar extracto · LA PANTALLA (mockup `mockup-conciliacion_11.html`)
 // ============================================================================
 //
-// Sustituye a la lista corrida del drawer. La lista no estaba mal dibujada:
-// estaba mal PLANTEADA. Enseñaba ciento y pico líneas del banco en el mismo tono,
-// así que las seis que necesitaban al usuario pesaban lo mismo que las ciento
-// dieciocho que no. Aquí se separan: a la izquierda lo que hay que contestar, a
-// la derecha lo que ya está.
+// Tres zonas, agrupando por ENTIDAD (un CUPS, un contrato, una persona, «los
+// traspasos entre tus cuentas»), no por texto del banco ni por familia:
+//
+//   1 · HERO navy · la cuenta, el rango real, el saldo del último día y lo
+//       que entró y salió con sus familias gordas.
+//   2 · «Confirma el destino» · las entidades que piden decisión. Una respuesta
+//       coloca todos sus movimientos.
+//   3 · «Colocado en su sitio» · lo que ATLAS colocó solo, plegado, con visto
+//       bueno en bloque y por entidad. Se corrige solo lo que falle.
 //
 // Esta pantalla no escribe nada. Recibe el estado de la sesión y devuelve los
 // gestos del usuario a quien los sabe aplicar (el drawer, que sigue siendo el
-// dueño del `confirmDecisions`). En particular `renderLinea` es una función que
-// pasa el drawer: así el `LineaExtractoItem` de siempre —con sus acciones ya
-// probadas— sigue montándose donde están sus manejadores, y esta pantalla se
-// ocupa solo de dónde va cada cosa y de qué se le dice al usuario.
+// dueño del `confirmDecisions`). `renderLinea` es una función que pasa el
+// drawer: así el `LineaExtractoItem` de siempre —con sus acciones ya
+// probadas— sigue montándose donde están sus manejadores. «OK» y «Está todo
+// bien» son estado de VISTA (P2 · Jose): lo único que escribe es Guardar.
 // ============================================================================
 
 import React from 'react';
@@ -22,19 +26,20 @@ import type { LineaExtracto } from '../extractoSesion';
 import type { Cuadre } from '../conciliarBuckets';
 import type { Propuesta } from './propuestaDeLinea';
 import type { LoQueYaReconoce } from './loQueYaReconoce';
-import TarjetaAccion from './TarjetaAccion';
-import CuadreConElBanco from './CuadreConElBanco';
-import YaEstaban from './YaEstaban';
 import type { LineaExtractoPersistida } from '../../../../services/db/types-lineasExtracto';
 import type { PropuestaDeApertura } from '../../../../services/aperturaDerivada';
-import ColumnaResto from './ColumnaResto';
+import HeroConciliar from './HeroConciliar';
+import TarjetaAccion from './TarjetaAccion';
+import ZonaColocado from './ZonaColocado';
+import CuadreConElBanco from './CuadreConElBanco';
+import YaEstaban from './YaEstaban';
+import { agruparPorEntidad, resumenDelFlujo } from './agruparPorEntidad';
 import { atajosDeBusqueda, filtrarPorTexto } from './buscarLineas';
 import styles from './PanelConciliar.module.css';
 
 export interface PanelConciliarProps {
-  /** «Santander · ····2715 · 124 líneas · ago 2026». */
+  /** El nombre de la cuenta · «Santander Alquileres». */
   titularCuenta: string;
-  colorBanco?: string;
   elCuadre: Cuadre;
   necesitan: LineaExtracto[];
   resueltas: LineaExtracto[];
@@ -53,36 +58,40 @@ export interface PanelConciliarProps {
   onAplicarApertura?: (aplicar: boolean) => void;
   /** Las filas del fichero que ya estaban en ATLAS · se enseñan plegadas. */
   yaEstaban?: ReadonlyArray<LineaExtractoPersistida>;
+  /** Los pisos del usuario · para los botones de piso de una entidad. */
+  inmuebles?: ReadonlyArray<{ id: number; alias: string }>;
   /** El drawer monta aquí su `LineaExtractoItem`, con sus manejadores. */
   renderLinea: (linea: LineaExtracto) => React.ReactNode;
   onRecuperar: (lineaId: number) => void;
-  /** «No es esto» sobre una línea que ATLAS colocó solo · vuelve a «te necesitan». */
+  /** «No es esto» sobre una línea que ATLAS colocó solo · vuelve a «Confirma el destino». */
   onNoEsEsto: (lineaId: number) => void;
-  /** Ignorar de un gesto todas las elegidas · el remate de buscar y marcar. */
   onIgnorarVarias: (lineaIds: number[]) => void;
-  /** Cuentas a las que se puede traspasar en bloque · vacío si no hay ninguna. */
   cuentasTraspaso?: Array<{ id: number; nombre: string }>;
-  /** «Son traspaso a esta cuenta» sobre todas las elegidas de un gesto. */
   onTraspasarVarias?: (lineaIds: number[], cuentaDestinoId: number) => void;
-  /**
-   * «Clasificar las N como…» · abre la ficha UNA vez para todas las elegidas.
-   *
-   * Es la acción que faltaba y la única que resuelve una línea de verdad:
-   * ignorar y traspasar son lo que NO se hace con cinco recibos del agua.
-   */
+  /** «Clasificar los N como…» · abre la ficha UNA vez para todos. */
   onClasificarVarias?: (lineaIds: number[]) => void;
+  /** El botón de piso · la misma ficha, prerrellenada con ese piso (`null` = personal). */
+  onClasificarVariasEnPiso?: (lineaIds: number[], inmuebleId: number | null) => void;
   onGuardar: () => void;
   onOtroFichero: () => void;
 }
 
-/** Porcentaje de la barra · con cero líneas no se divide por cero. */
-function pct(n: number, total: number): string {
-  return total > 0 ? `${(n / total) * 100}%` : '0%';
+const SIN_PROPUESTA: Propuesta = {
+  tono: 'pregunta',
+  titular: 'No sé qué es · dímelo tú una vez',
+  ayuda: 'si subes la factura, la leo y relleno proveedor e importe solo',
+  seRecuerda: false,
+};
+
+function alternarEn(previas: ReadonlySet<string>, clave: string): Set<string> {
+  const siguiente = new Set(previas);
+  if (siguiente.has(clave)) siguiente.delete(clave);
+  else siguiente.add(clave);
+  return siguiente;
 }
 
 const PanelConciliar: React.FC<PanelConciliarProps> = ({
   titularCuenta,
-  colorBanco,
   elCuadre,
   necesitan,
   resueltas,
@@ -98,6 +107,7 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   aplicarApertura = false,
   onAplicarApertura,
   yaEstaban = [],
+  inmuebles = [],
   renderLinea,
   onRecuperar,
   onNoEsEsto,
@@ -105,159 +115,84 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
   cuentasTraspaso = [],
   onTraspasarVarias,
   onClasificarVarias,
+  onClasificarVariasEnPiso,
   onGuardar,
   onOtroFichero,
 }) => {
-  const total = elCuadre.delBanco;
   const b = elCuadre.porBucket;
-  const elResto = b.resueltas + b.personal + b.ignorados;
 
-  // ── Buscar y elegir ──────────────────────────────────────────────────────
-  //
-  // Con 95 líneas delante, contestarlas de una en una no es un trabajo
-  // razonable. El buscador estrecha y la casilla acumula; la barra de abajo
-  // remata. Los tres viven aquí, en la pantalla, y no en el drawer: son estado
-  // de VISTA —lo que estoy mirando y lo que llevo marcado— y no sobreviven a
-  // guardar ni tienen por qué.
+  // ── Estado de VISTA · no sobrevive a guardar ni tiene por qué ──────────
   const [consulta, setConsulta] = React.useState('');
-  const [elegidas, setElegidas] = React.useState<ReadonlySet<number>>(new Set());
+  const [elegidas, setElegidas] = React.useState<ReadonlySet<string>>(new Set());
+  const [abiertas, setAbiertas] = React.useState<ReadonlySet<string>>(new Set());
+  const [dadasPorBuenas, setDadasPorBuenas] = React.useState<ReadonlySet<string>>(new Set());
 
-  const atajos = React.useMemo(() => atajosDeBusqueda(necesitan), [necesitan]);
-  const visibles = React.useMemo(() => filtrarPorTexto(necesitan, consulta), [necesitan, consulta]);
-
-  // Lo que la barra puede tocar es lo elegido QUE SE VE. Si eliges el gas,
-  // buscas «bizum» y le das a ignorar, no puede llevarse por delante el gas que
-  // ya no tienes delante: lo que no se ve, no se toca.
-  const enJuego = React.useMemo(
-    () => visibles.filter((l) => elegidas.has(l.lineaId)).map((l) => l.lineaId),
-    [visibles, elegidas],
+  const aliasPorInmueble = React.useMemo(
+    () => new Map(inmuebles.map((i) => [i.id, i.alias] as const)),
+    [inmuebles],
   );
 
-  const alternarElegida = (lineaId: number) =>
-    setElegidas((previas) => {
-      const siguiente = new Set(previas);
-      if (siguiente.has(lineaId)) siguiente.delete(lineaId);
-      else siguiente.add(lineaId);
-      return siguiente;
-    });
+  // El hero · todo lo que trae el fichero, ignoradas incluidas (son dinero del banco).
+  const flujo = React.useMemo(
+    () => resumenDelFlujo([...necesitan, ...resueltas, ...personales, ...ignoradas]),
+    [necesitan, resueltas, personales, ignoradas],
+  );
+  const saldo = apertura ? { fecha: apertura.fecha, importe: apertura.saldoBanco } : null;
 
+  // ── Zona 2 · buscar estrecha, la casilla acumula, la barra remata ────────
+  const atajos = React.useMemo(() => atajosDeBusqueda(necesitan), [necesitan]);
+  const visibles = React.useMemo(() => filtrarPorTexto(necesitan, consulta), [necesitan, consulta]);
+  const entidades = React.useMemo(() => agruparPorEntidad(visibles, aliasPorInmueble), [visibles, aliasPorInmueble]);
   const filtrando = consulta.trim().length > 0;
 
-  // El traspaso en bloque sólo cabe sobre CARGOS. La pata de salida de un
-  // traspaso es un cargo; ofrecerlo sobre un abono sería invitar a crear el
-  // traspaso al revés, que es dinero inventado. Ignorar, en cambio, vale para
-  // cualquier signo, y por eso sigue ahí en los dos casos.
+  // Lo que la barra puede tocar es lo elegido QUE SE VE: lo que no se ve, no se toca.
+  const enJuego = React.useMemo(
+    () => entidades.filter((e) => elegidas.has(e.clave)).flatMap((e) => e.lineas.map((l) => l.lineaId)),
+    [entidades, elegidas],
+  );
   const todoSonCargos =
-    enJuego.length > 0 && visibles.every((l) => !elegidas.has(l.lineaId) || l.importe < 0);
+    enJuego.length > 0 && entidades.every((e) => !elegidas.has(e.clave) || e.lineas.every((l) => l.importe < 0));
   const cabeTraspaso = todoSonCargos && cuentasTraspaso.length > 0 && onTraspasarVarias != null;
+
+  // P2 · cuando ya no queda nada por confirmar y todo se dio por bueno, Guardar es el paso obvio.
+  const colocadas = React.useMemo(
+    () => agruparPorEntidad([...resueltas, ...personales], aliasPorInmueble),
+    [resueltas, personales, aliasPorInmueble],
+  );
+  const todoVisto = necesitan.length === 0 && colocadas.every((e) => dadasPorBuenas.has(e.clave));
 
   return (
     <section className={styles.superficie} aria-label="Conciliar extracto">
-      {/* ── Cabecera GESTIÓN · navy ───────────────────────────────────── */}
-      <div className={styles.cab}>
-        <div className={styles.cabTop}>
-          <div>
-            <h1 className={styles.cabTitulo}>Conciliar extracto</h1>
-            <div className={styles.cabSub}>
-              {colorBanco && (
-                <span
-                  className={styles.punto}
-                  style={{ background: colorBanco }}
-                  aria-hidden="true"
-                />
-              )}
-              <span className={styles.cabMask}>{titularCuenta}</span>
-              <span className={styles.punto} aria-hidden="true" />
-              <span>
-                {aprendido.total > 0
-                  ? `ATLAS ya reconoce ${aprendido.total} ${aprendido.total === 1 ? 'cosa' : 'cosas'} de esta cuenta`
-                  : 'ATLAS todavía no reconoce nada de esta cuenta'}
-              </span>
-            </div>
-          </div>
-          <button type="button" className={styles.btnCab} onClick={onOtroFichero}>
-            <Icons.ArrowLeft size={15} />
-            Otro fichero
-          </button>
-        </div>
+      <div className={styles.scroll}>
+        <HeroConciliar nombreCuenta={titularCuenta} flujo={flujo} saldo={saldo} onOtroFichero={onOtroFichero} />
 
-        {/* El reparto a escala · orientación periférica, sin cifras. */}
-        <div className={styles.barra} aria-hidden="true">
-          <i className={styles.segResueltas} style={{ width: pct(b.resueltas, total) }} />
-          <i className={styles.segNecesitan} style={{ width: pct(b.te_necesitan, total) }} />
-          <i className={styles.segPersonal} style={{ width: pct(b.personal, total) }} />
-          <i className={styles.segIgnorados} style={{ width: pct(b.ignorados, total) }} />
-        </div>
+        {avisos.map((a, i) => (
+          <div key={i} className={styles.aviso}>
+            {a}
+          </div>
+        ))}
+        {pregunta}
+        {error && <div className={`${styles.aviso} ${styles.avisoError}`}>{error}</div>}
+        {apertura && onAplicarApertura && (
+          <CuadreConElBanco propuesta={apertura} aplicar={aplicarApertura} onAplicar={onAplicarApertura} desactivado={guardando} />
+        )}
+        <YaEstaban lineas={yaEstaban} />
 
-        <div className={styles.kpis}>
-          <div className={styles.kpi}>
-            <span className={styles.kpiN}>{b.resueltas}</span>
-            <span className={styles.kpiL}>resueltas solas</span>
+        {/* ── Zona 2 · Confirma el destino ─────────────────────────────── */}
+        <div className={styles.sec} data-testid="zona-confirmar">
+          <div className={styles.secTitle}>
+            <h2>Confirma el destino</h2>
+            <span className={`${styles.secN} ${necesitan.length > 0 ? styles.secNWarn : ''}`}>
+              {filtrando ? `${entidades.length} de ` : ''}
+              {agruparPorEntidad(necesitan).length}
+            </span>
           </div>
-          <div className={`${styles.kpi} ${styles.kpiNecesitan}`}>
-            <span className={styles.kpiN}>{b.te_necesitan}</span>
-            <span className={styles.kpiL}>te necesitan · una vez</span>
-          </div>
-          <div className={styles.kpi}>
-            <span className={styles.kpiN}>{b.personal}</span>
-            <span className={styles.kpiL}>personal</span>
-          </div>
-          <div className={styles.kpi}>
-            <span className={styles.kpiN}>{b.ignorados}</span>
-            <span className={styles.kpiL}>ignorados</span>
+          <div className={styles.secNota}>
+            {necesitan.length === 0
+              ? `Nada que preguntarte. Las ${elCuadre.delBanco} líneas del banco están colocadas.`
+              : 'ATLAS agrupó por entidad · confirma adónde va cada una y coloca todos sus movimientos de golpe'}
           </div>
 
-          {/* El cuadre · la promesa de esta pantalla, siempre a la vista. */}
-          <div className={styles.cuadre} data-cuadra={elCuadre.cuadra ? 'si' : 'no'}>
-            <Icons.Check size={15} />
-            {elCuadre.cuadra ? (
-              <span>
-                <b>{elCuadre.delBanco}</b> del banco · <b>{elCuadre.colocadas}</b> colocadas ·{' '}
-                <b>ninguna se pierde</b>
-              </span>
-            ) : (
-              <span>
-                <b>{elCuadre.delBanco}</b> del banco pero solo <b>{elCuadre.colocadas}</b>{' '}
-                colocadas · faltan {elCuadre.delBanco - elCuadre.colocadas}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {avisos.map((a, i) => (
-        <div key={i} className={styles.aviso}>
-          {a}
-        </div>
-      ))}
-      {pregunta}
-      {error && <div className={`${styles.aviso} ${styles.avisoError}`}>{error}</div>}
-      {apertura && onAplicarApertura && (
-        <CuadreConElBanco
-          propuesta={apertura}
-          aplicar={aplicarApertura}
-          onAplicar={onAplicarApertura}
-          desactivado={guardando}
-        />
-      )}
-      <YaEstaban lineas={yaEstaban} />
-
-      {/* ── Cuerpo · dos columnas, cada una con su scroll ──────────────── */}
-      <div className={styles.cuerpo}>
-        <div className={styles.col}>
-          <div className={styles.colCab}>
-            <div className={styles.colT}>
-              <Icons.Clock size={16} />
-              Te necesitan · una vez cada una
-            </div>
-            <div className={styles.colC}>
-              {filtrando
-                ? `viendo ${visibles.length} de ${necesitan.length}`
-                : 'responder crea lo que falta · y no se vuelve a preguntar'}
-            </div>
-          </div>
-
-          {/* ── Buscar · con los atajos que salen de este fichero ────────── */}
           {necesitan.length > 0 && (
             <div className={styles.buscar}>
               <label className={styles.campo}>
@@ -268,15 +203,10 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
                   value={consulta}
                   onChange={(e) => setConsulta(e.target.value)}
                   placeholder="Buscar en el extracto · texto o importe"
-                  aria-label="Buscar en las líneas que te necesitan"
+                  aria-label="Buscar en las líneas que piden decisión"
                 />
                 {filtrando && (
-                  <button
-                    type="button"
-                    className={styles.campoX}
-                    onClick={() => setConsulta('')}
-                    aria-label="Vaciar la búsqueda"
-                  >
+                  <button type="button" className={styles.campoX} onClick={() => setConsulta('')} aria-label="Vaciar la búsqueda">
                     <Icons.Close size={14} />
                   </button>
                 )}
@@ -296,15 +226,15 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
                   ))}
                 </div>
               )}
-              {visibles.length > 1 && (
+              {entidades.length > 1 && (
                 <button
                   type="button"
                   className={styles.enlace}
                   style={{ marginTop: 0 }}
-                  onClick={() => setElegidas(new Set(visibles.map((l) => l.lineaId)))}
+                  onClick={() => setElegidas(new Set(entidades.map((e) => e.clave)))}
                 >
                   <Icons.Check size={13} />
-                  elegir las {visibles.length} que se ven
+                  elegir las {entidades.length} entidades que se ven
                 </button>
               )}
             </div>
@@ -316,19 +246,10 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
               <span className={styles.enBloqueN}>
                 {enJuego.length === 1 ? '1 elegida' : `${enJuego.length} elegidas`}
               </span>
-              {/* Clasificar va PRIMERO · es lo que de verdad resuelve la línea.
-                  Ignorar la aparta y traspasar la mueve; sólo clasificar dice
-                  qué es, y es lo que el usuario viene a hacer. */}
               {onClasificarVarias && (
-                <button
-                  type="button"
-                  className={`${styles.btnBloque} ${styles.btnBloqueFuerte}`}
-                  onClick={() => onClasificarVarias(enJuego)}
-                >
+                <button type="button" className={`${styles.btnBloque} ${styles.btnBloqueFuerte}`} onClick={() => onClasificarVarias(enJuego)}>
                   <Icons.Tag size={14} />
-                  {enJuego.length === 1
-                    ? 'Clasificar la 1 como…'
-                    : `Clasificar las ${enJuego.length} como…`}
+                  {enJuego.length === 1 ? 'Clasificar la 1 como…' : `Clasificar las ${enJuego.length} como…`}
                 </button>
               )}
               <button
@@ -365,107 +286,85 @@ const PanelConciliar: React.FC<PanelConciliarProps> = ({
                   </select>
                 </label>
               )}
-              <button
-                type="button"
-                className={styles.enlace}
-                style={{ marginTop: 0 }}
-                onClick={() => setElegidas(new Set())}
-              >
+              <button type="button" className={styles.enlace} style={{ marginTop: 0 }} onClick={() => setElegidas(new Set())}>
                 Quitar la selección
               </button>
             </div>
           )}
 
-          <div className={styles.scroll}>
-            {necesitan.length === 0 ? (
-              <div className={styles.bloque}>
-                <div className={styles.vacioBloque}>
-                  Nada que preguntarte. Las {elCuadre.delBanco} líneas del banco están colocadas.
-                </div>
-              </div>
-            ) : visibles.length === 0 ? (
-              // Filtro sin resultados · se dice qué se buscó y se ofrece la
-              // vuelta. Una lista vacía sin explicación parece una pantalla rota.
-              <div className={styles.bloque}>
-                <div className={styles.vacioBloque}>
-                  Ninguna de las {necesitan.length} dice «{consulta.trim()}».
-                </div>
-                <button type="button" className={styles.enlace} onClick={() => setConsulta('')}>
-                  <Icons.Refresh size={13} />
-                  Quitar el filtro
-                </button>
-              </div>
-            ) : (
-              visibles.map((l) => (
-                <TarjetaAccion
-                  key={l.lineaId}
-                  propuesta={
-                    propuestas.get(l.lineaId) ?? {
-                      tono: 'pregunta',
-                      titular: 'No sé qué es · dímelo tú una vez',
-                      ayuda: 'si subes la factura, la leo y relleno proveedor e importe solo',
-                      seRecuerda: false,
-                    }
-                  }
-                  elegible={{
-                    etiqueta: l.textoBanco,
-                    elegida: elegidas.has(l.lineaId),
-                    onElegir: () => alternarElegida(l.lineaId),
-                  }}
-                >
-                  {renderLinea(l)}
-                </TarjetaAccion>
-              ))
-            )}
-          </div>
+          {necesitan.length > 0 && visibles.length === 0 && (
+            // Filtro sin resultados · se dice qué se buscó y se ofrece la vuelta.
+            <div className={styles.bloque}>
+              <div className={styles.vacioBloque}>Ninguna de las {necesitan.length} dice «{consulta.trim()}».</div>
+              <button type="button" className={styles.enlace} onClick={() => setConsulta('')}>
+                <Icons.Refresh size={13} />
+                Quitar el filtro
+              </button>
+            </div>
+          )}
+
+          {entidades.map((e) => (
+            <TarjetaAccion
+              key={e.clave}
+              entidad={e}
+              propuesta={propuestas.get(e.lineas[0].lineaId) ?? SIN_PROPUESTA}
+              abierta={abiertas.has(e.clave)}
+              onAbrir={() => setAbiertas((p) => alternarEn(p, e.clave))}
+              elegible={{ elegida: elegidas.has(e.clave), onElegir: () => setElegidas((p) => alternarEn(p, e.clave)) }}
+              inmuebles={inmuebles}
+              cuentasTraspaso={cuentasTraspaso}
+              onClasificar={(ids) => onClasificarVarias?.(ids)}
+              onClasificarEnPiso={onClasificarVariasEnPiso}
+              onIgnorar={onIgnorarVarias}
+              onTraspasar={onTraspasarVarias}
+              renderLinea={renderLinea}
+            />
+          ))}
         </div>
 
-        <div className={styles.col}>
-          <div className={styles.colCab}>
-            <div className={styles.colT}>
-              <Icons.Check size={16} />
-              El resto · {elResto}
-            </div>
-            <div className={styles.colC}>nada que hacer</div>
-          </div>
-          <div className={styles.scroll}>
-            <ColumnaResto
-              resueltas={resueltas}
-              personales={personales}
-              ignoradas={ignoradas}
-              aprendido={aprendido}
-              onRecuperar={onRecuperar}
-              onNoEsEsto={onNoEsEsto}
-            />
-          </div>
-        </div>
+        {/* ── Zona 3 · Colocado en su sitio ────────────────────────────── */}
+        <ZonaColocado
+          resueltas={resueltas}
+          personales={personales}
+          ignoradas={ignoradas}
+          aprendido={aprendido}
+          aliasPorInmueble={aliasPorInmueble}
+          dadasPorBuenas={dadasPorBuenas}
+          onDarPorBuena={(clave) => setDadasPorBuenas((p) => new Set(p).add(clave))}
+          onDeshacerBuena={(clave) =>
+            setDadasPorBuenas((p) => {
+              const s = new Set(p);
+              s.delete(clave);
+              return s;
+            })
+          }
+          onDarTodasPorBuenas={(claves) => setDadasPorBuenas((p) => new Set([...Array.from(p), ...claves]))}
+          onRecuperar={onRecuperar}
+          onNoEsEsto={onNoEsEsto}
+        />
       </div>
 
-      {/* ── Pie ────────────────────────────────────────────────────────── */}
-      <div className={styles.pie}>
+      {/* ── Pie · el único botón que escribe ──────────────────────────── */}
+      <div className={`${styles.pie} ${todoVisto ? styles.pieDestacado : ''}`}>
         <div className={styles.pieNota} data-cuadra={elCuadre.cuadra ? 'si' : 'no'}>
           {elCuadre.cuadra ? (
             <>
               <b>
                 {elCuadre.delBanco} del banco = {elCuadre.colocadas} colocadas.
               </b>{' '}
-              Se crea lo que decidas de las {b.te_necesitan}; el resto queda como está. Nada se
-              aparta ni se borra en silencio.
+              {todoVisto
+                ? 'Todo confirmado · guarda y esta cuenta queda conciliada.'
+                : `Se crea lo que decidas de las ${b.te_necesitan}; el resto queda como está. Nada se aparta ni se borra en silencio.`}
             </>
           ) : (
             <>
-              <b>No cuadra.</b> {elCuadre.delBanco - elCuadre.colocadas} línea(s) del banco no han
-              quedado colocadas · no se guarda hasta que cuadre.
+              <b>No cuadra.</b> {elCuadre.delBanco - elCuadre.colocadas} línea(s) del banco no han quedado colocadas · no se
+              guarda hasta que cuadre.
             </>
           )}
         </div>
         <div className={styles.pieAcciones}>
-          <button
-            type="button"
-            className={`${styles.btnPie} ${styles.btnPieOro}`}
-            onClick={onGuardar}
-            disabled={guardando}
-          >
+          <button type="button" className={`${styles.btnPie} ${styles.btnPieOro}`} onClick={onGuardar} disabled={guardando}>
             <Icons.Check size={15} />
             {guardando ? 'Guardando…' : 'Guardar extracto'}
           </button>
