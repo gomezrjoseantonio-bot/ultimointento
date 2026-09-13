@@ -35,14 +35,36 @@ export function contieneConcepto(textoBancoNormalizado: string, concepto: string
   // está en «CONCEPTO» ni «GAS» en «GASTO». La única tolerancia es el recorte
   // del banco (cinco letras o más y una es prefijo de la otra).
   const delBanco = textoBancoNormalizado.split(' ').filter((p) => p.length > 0);
-  return palabras.every((p) => delBanco.some((t) => mismaPalabraEntera(t, p)));
+  return palabras.every((p) =>
+    delBanco.some((t, i) => mismaPalabraEntera(t, p, i === delBanco.length - 1)),
+  );
 }
 
 const MINIMO_PARA_PREFIJO = 5;
 
-/** Igual, o un recorte del banco («COMERCIALIZA» ↔ «COMERCIALIZACION»). */
-export function mismaPalabraEntera(delBanco: string, buscada: string): boolean {
+/**
+ * Igual, o un RECORTE del banco («COMERCIALIZA» ↔ «COMERCIALIZACION»).
+ *
+ * E3.3 · §P2 · la tolerancia al recorte era simétrica y sin sitio, y por ahí se
+ * colaban dos cosas que no son un recorte:
+ *
+ *   · «TRANSFERENCIA A CB Santa Catalina» se leía como el seguro de decesos
+ *     SANTALUCIA, porque SANTA es prefijo de SANTALUCIA;
+ *   · «COMPRAVENTA» se leía como el método COMPRA, porque COMPRA es prefijo de
+ *     COMPRAVENTA — y una compraventa de un piso no es un pago con tarjeta.
+ *
+ * Un recorte de verdad tiene dos señas, y ahora se exigen las dos:
+ *
+ *   · deja la palabra MÁS CORTA, nunca más larga (eso mata «COMPRAVENTA»);
+ *   · ocurre donde el banco corta el campo, o sea AL FINAL del texto (eso mata
+ *     «SANTA», que va en medio de «Santa Catalina»).
+ *
+ * `esLaUltimaDelTexto` lo dice quien recorre las palabras, que es el único que
+ * sabe en qué posición va cada una.
+ */
+export function mismaPalabraEntera(delBanco: string, buscada: string, esLaUltimaDelTexto = false): boolean {
   if (delBanco === buscada) return true;
+  if (!esLaUltimaDelTexto) return false;
   if (delBanco.length < MINIMO_PARA_PREFIJO || buscada.length < MINIMO_PARA_PREFIJO) return false;
-  return delBanco.startsWith(buscada) || buscada.startsWith(delBanco);
+  return delBanco.length < buscada.length && buscada.startsWith(delBanco);
 }
