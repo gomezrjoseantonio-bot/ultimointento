@@ -49,6 +49,7 @@ import {
   type Naturaleza,
   type Sentido,
 } from '../catalogo/catalogoUnico';
+import type { EntidadNacional } from '../catalogoNacional/entidadesNacionales';
 import { metodoDelConcepto } from './metodoDelConcepto';
 import { porConcepto } from './reglasDuras';
 import type { ClasificacionLinea, OrigenEje, Parcial } from './tipos';
@@ -306,40 +307,65 @@ function porCatalogo(m: Movement, ctx: ContextoClasificacion): Parcial | undefin
   const ids = identificadoresDeMovimiento(m);
   for (const id of ids) {
     const e = id.tipo === 'nif' ? entidadPorNif(cat, id.valor) : undefined;
-    if (e) {
-      return {
-        naturaleza: naturalezaDe(e.familia),
-        familia: e.familia,
-        ...(e.subtipo ? { subtipo: e.subtipo } : {}),
-        ...(e.ambito ? { ambito: e.ambito } : {}),
-        motivo: `catálogo · NIF ${id.valor} = ${e.nombre}`,
-      };
-    }
+    if (e) return delCatalogo(m, e, `NIF ${id.valor}`);
   }
   for (const id of ids) {
     const e = id.tipo === 'acreedor' ? entidadPorNombre(cat, id.texto ?? id.valor) : undefined;
-    if (e) {
-      return {
-        naturaleza: naturalezaDe(e.familia),
-        familia: e.familia,
-        ...(e.subtipo ? { subtipo: e.subtipo } : {}),
-        ...(e.ambito ? { ambito: e.ambito } : {}),
-        motivo: `catálogo · ${id.texto ?? id.valor} = ${e.nombre}`,
-      };
-    }
+    if (e) return delCatalogo(m, e, id.texto ?? id.valor);
   }
   // Sin acreedor extraído, el nombre que el banco puso como contraparte.
   const porContraparte = entidadPorNombre(cat, m.counterparty);
-  if (porContraparte) {
-    return {
-      naturaleza: naturalezaDe(porContraparte.familia),
-      familia: porContraparte.familia,
-      ...(porContraparte.subtipo ? { subtipo: porContraparte.subtipo } : {}),
-      ...(porContraparte.ambito ? { ambito: porContraparte.ambito } : {}),
-      motivo: `catálogo · ${m.counterparty} = ${porContraparte.nombre}`,
-    };
-  }
+  if (porContraparte) return delCatalogo(m, porContraparte, `${m.counterparty}`);
+  // E3.3 · §7.5 · y si tampoco, el CONCEPTO ENTERO.
+  //
+  // Hasta aquí solo se le preguntaba por el NIF o por el nombre del acreedor que
+  // sacan dos patrones concretos (el «N nº NOMBRE» de BBVA, el «RECIBO …» del
+  // Santander). Los bancos que no escriben ninguna de las dos cosas —Abanca,
+  // Bankinter, Unicaja, ING— no llegaban al catálogo nunca, y por eso
+  // «TRANSFERENCIA CURENERGIA SAU» lo tenía que coger una lista de marcas.
+  //
+  // Preguntar con el texto entero solo es seguro desde que el buscador de alias
+  // respeta el límite de palabra (`aliasEnLaClave`): antes encontraba «REALE»
+  // dentro de «Alisser REAL Estate» y convertía 18 rentas en recibos de seguro.
+  const porElTexto = entidadPorNombre(cat, `${m.description ?? ''} ${m.counterparty ?? ''}`);
+  if (porElTexto) return delCatalogo(m, porElTexto, 'el concepto');
   return undefined;
+}
+
+/** Las familias que son un RECIBO · las únicas que admiten devolución (§7). */
+const FAMILIAS_DE_RECIBO: ReadonlySet<FamiliaId> = new Set<FamiliaId>([
+  'suministro',
+  'seguros_alarmas',
+  'comunidad',
+  'gestion',
+  'impuestos_tasas',
+]);
+
+/**
+ * Lo que el catálogo sabe de una entidad, puesto en forma de propuesta.
+ *
+ * E3.3 · §7 · con el signo al revés y una familia de RECIBO, la propuesta sigue
+ * siendo la misma familia: lo que Curenergía te abona es del suministro de ese
+ * piso —mismo proveedor, mismo CUPS—, y así RESTA de la luz en vez de inflar
+ * los ingresos. Es la decisión de Jose de E2.4.2-fix, que hasta ahora solo
+ * conocían las listas de marcas.
+ *
+ * Solo las familias de recibo: un abono de una FINANCIERA no es la devolución
+ * de una cuota —es una disposición, o un rendimiento—, y llamarlo préstamo
+ * taparía lo que de verdad es.
+ */
+function delCatalogo(m: Movement, e: EntidadNacional, porQue: string): Parcial | undefined {
+  const devolucion = m.amount > 0 && naturalezaDe(e.familia) === 'gasto';
+  if (devolucion && !FAMILIAS_DE_RECIBO.has(e.familia)) return undefined;
+  return {
+    naturaleza: naturalezaDe(e.familia),
+    familia: e.familia,
+    ...(e.subtipo ? { subtipo: e.subtipo } : {}),
+    ...(e.ambito ? { ambito: e.ambito } : {}),
+    motivo: devolucion
+      ? `catálogo · ${porQue} = ${e.nombre} · devolución de ese gasto`
+      : `catálogo · ${porQue} = ${e.nombre}`,
+  };
 }
 
 /**

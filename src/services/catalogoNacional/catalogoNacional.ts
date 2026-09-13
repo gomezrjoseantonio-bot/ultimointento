@@ -33,6 +33,7 @@ import { esCif } from '../identificadoresDelConcepto';
 import { claveDeProveedor } from '../db/types-proveedores';
 import {
   semillaDelCatalogo,
+  claveConPalabras,
   claveDeNombreCatalogo,
   MINIMO_ALIAS,
   type EntidadNacional,
@@ -102,12 +103,35 @@ export function porNif(cat: CatalogoNacional, nif: string | null | undefined): E
  */
 export function porNombre(cat: CatalogoNacional, nombre: string | null | undefined): EntidadNacional | undefined {
   if (!nombre) return undefined;
-  const clave = claveDeNombreCatalogo(nombre);
+  const { clave, inicios, finales } = claveConPalabras(nombre);
   if (clave.length < MINIMO_ALIAS) return undefined;
   for (const [alias, entidad] of cat.porAlias) {
-    if (clave.includes(alias)) return entidad;
+    if (aliasEnLaClave(alias, clave, inicios, finales)) return entidad;
   }
   return undefined;
+}
+
+/**
+ * E3.3 · ¿El alias está en la clave, EMPEZANDO y ACABANDO en palabra?
+ *
+ * `includes` a secas encontraba «REALE» dentro de «ALISSERREALESTATE» —la
+ * aseguradora dentro de una inmobiliaria— y en el corpus real eso convertía 18
+ * rentas en recibos de seguro. El alias puede cruzar por dentro los espacios
+ * que el banco se comió («orange-france telecom» ↔ `ORANGEFRANCETELECOM`), pero
+ * no puede empezar ni acabar a media palabra.
+ */
+function aliasEnLaClave(
+  alias: string,
+  clave: string,
+  inicios: ReadonlySet<number>,
+  finales: ReadonlySet<number>,
+): boolean {
+  let desde = clave.indexOf(alias);
+  while (desde !== -1) {
+    if (inicios.has(desde) && finales.has(desde + alias.length)) return true;
+    desde = clave.indexOf(alias, desde + 1);
+  }
+  return false;
 }
 
 // ─── aprender ───────────────────────────────────────────────────────────────

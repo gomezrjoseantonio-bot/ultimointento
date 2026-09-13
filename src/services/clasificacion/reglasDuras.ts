@@ -90,13 +90,16 @@ const APORTACION_PLAN = ['PLAN DE PENSIONES', 'PLAN PENSIONES', 'APORTACION PLAN
 // municipio: «Comunitat de Propietaris» (31 recibos en el corpus real),
 // «Ajuntament de Manresa» (19), «Aigües de Manresa» (5). Sin estas grafías,
 // medio Cataluña, Valencia, Galicia y Euskadi caían a «sin clasificar».
-const COMUNIDAD = ['COMUNIDAD', 'COMUNIDAD PROPIETARIOS', 'COMUNIDAD DE PROPIETARIOS', 'CCPP', 'ADMIN FINCAS', 'ADMINISTRACION FINCAS', 'FINCAS URBANAS', 'GESTION DE FINCAS', 'COMUNITAT', 'COMUNITAT DE PROPIETARIS', 'COMUNIDADE', 'COMUNIDADE DE PROPIETARIOS', 'JABEKIDEEN'];
+const COMUNIDAD = ['COMUNIDAD', 'COMUNIDAD PROPIETARIOS', 'COMUNIDAD DE PROPIETARIOS', 'CCPP', 'ADMIN FINCAS', 'ADMIN DE FINCAS', 'ADMINISTRACION FINCAS', 'ADMINISTRACION DE FINCAS', 'AD DE FINCAS', 'GESTION DE FINCAS', 'FINCAS URBANAS', 'COMUNITAT', 'COMUNITAT DE PROPIETARIS', 'COMUNIDADE', 'COMUNIDADE DE PROPIETARIOS', 'JABEKIDEEN'];
 const SUMINISTRO_LUZ = ['ELECTRICIDAD', 'LUZ'];
 const SUMINISTRO_GAS = ['GAS NATURAL', 'GAS'];
 const SUMINISTRO_AGUA = ['AGUAS DE', 'AGUA', 'AIGUES', 'AIGUES DE', 'AUGAS', 'AUGAS DE', 'URAK'];
 const SUMINISTRO_TELEFONIA = ['DIGI', 'O2'];
 const SEGUROS = ['SEGURO', 'SEGUROS', 'SEGUR', 'AXA'];
-const SEGUROS_SALUD = ['DKV'];
+// El catálogo nacional NO tiene seguro de SALUD (sus categorías son coche,
+// hogar, vida y decesos), así que estas cuatro se quedan aquí: sacarlas daría
+// la familia pero perdería el subtipo, y media verdad no es la verdad.
+const SEGUROS_SALUD = ['ADESLAS', 'SANITAS', 'DKV', 'ASISA'];
 const SEGUROS_DECESOS = ['DECESOS'];
 const IBI = ['IBI'];
 const IMPUESTOS = ['AYUNTAMIENTO', 'AYTO', 'AJUNTAMENT', 'CONCELLO', 'UDALA', 'UDALETXEA', 'TASA', 'TASAS', 'TRIBUTOS', 'RECAUDACION', 'AEAT', 'AGENCIA TRIBUTARIA', 'HACIENDA', 'SUMA GESTION', 'DIPUTACION', 'CONTRIBUCION URBANA', 'BASURAS'];

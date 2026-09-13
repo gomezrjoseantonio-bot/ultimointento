@@ -1,6 +1,8 @@
 // E2.4.2 · las diez reglas duras · cada una fija un bug real de 4.000 líneas.
 
 import { clasificarLinea, type ContextoClasificacion } from '../clasificarLinea';
+import { construirCatalogo } from '../../catalogoNacional/catalogoNacional';
+import { semillaDelCatalogo } from '../../catalogoNacional/entidadesNacionales';
 import { metodoDelConcepto } from '../metodoDelConcepto';
 import { tienePalabra } from '../palabras';
 import type { Movement } from '../../db';
@@ -12,6 +14,10 @@ const ctx = (over: Partial<ContextoClasificacion> = {}): ContextoClasificacion =
   ],
   tarjetas: [],
   nombresTitular: ['Nombre Apellido Apellido'],
+  // E3.3 · el catálogo va SIEMPRE en el bolsillo del motor: desde que las
+  // marcas salieron de las reglas duras, es él quien reconoce a Curenergía o a
+  // Segurcaixa. Un contexto sin catálogo ya no es el contexto de producción.
+  catalogo: construirCatalogo(semillaDelCatalogo()),
   ...over,
 });
 
