@@ -66,6 +66,32 @@ const COLUMN_ALIASES = {
   ]
 };
 
+/**
+ * E3.3b · El texto de un CSV, en la codificación que de verdad trae.
+ *
+ * Se leía siempre como UTF-8, y la mitad de los bancos españoles no lo usan:
+ * el export de Abanca viene en ISO-8859 y sus eñes llegaban como «A\uFFFDADIDO».
+ * En el fichero de Jose son cinco líneas —«IMPTO. SOBRE EL VALOR AÑADIDO», un
+ * «Ahorro más»— porque Abanca escribe casi todo en ASCII; el día que el cliente
+ * se apellide Muñoz o Peña, el nombre llega roto en TODAS sus líneas, y encima
+ * roto de formas distintas según el banco. Eso envenena lo que viene detrás: la
+ * clave de aprendizaje, el nombre de la contraparte y las palabras del catálogo
+ * trabajan todas sobre ese texto.
+ *
+ * No se adivina: se PRUEBA. UTF-8 en modo estricto falla con un byte que no es
+ * UTF-8 válido, y esa excepción es la prueba de que el fichero no lo es. Solo
+ * entonces se vuelve a leer como windows-1252, que es lo que mandan los bancos
+ * españoles (ISO-8859-1 con las comillas tipográficas encima). Un fichero que
+ * SÍ es UTF-8 se lee como UTF-8 y nada cambia para él.
+ */
+export function textoDelCsv(bytes: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder('windows-1252').decode(bytes);
+  }
+}
+
 export class BankParserService {
   
   /**
@@ -963,13 +989,8 @@ export class BankParserService {
   /**
    * Read file as text
    */
-  private readFileAsText(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsText(file, 'UTF-8');
-    });
+  private async readFileAsText(file: File): Promise<string> {
+    return textoDelCsv(await this.readFileAsArrayBuffer(file));
   }
 
   /**
