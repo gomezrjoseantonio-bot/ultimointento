@@ -426,6 +426,21 @@ export interface MovementLearningRule {
   /** La otra mitad del alias · el nombre al que resultó pertenecer. */
   contraparteCanonica?: string;
   /**
+   * E3.2 · §7.4 · DE QUIÉN es esta regla, en forma de clave.
+   *
+   * Cuando el concepto no trae identificador estable pero sí un nombre —una
+   * transferencia, un Bizum—, la regla se agrupa por la PERSONA y no por el
+   * texto, y esto es lo que se comparó para encontrarla. Se guarda para que
+   * `reglaEncaja` pueda confirmar por lo mismo que agrupó: sin esto habría que
+   * volver a leer el nombre del texto ya normalizado de la regla, que no es el
+   * texto del banco.
+   *
+   * Distinto de `aliasContraparte`/`contraparteCanonica`, que son el NOMBRE tal
+   * cual lo escriben banco y contrato, para enseñarlos. Opcional · las reglas
+   * anteriores a E3.2 no lo llevan y siguen encontrándose por su clave vieja.
+   */
+  contraparteClave?: string;
+  /**
    * E2.1 · los identificadores estables que traía el texto del banco cuando
    * se aprendió («contrato:8078716546», «cups:ES00…», «nif:B67686782»). Son
    * los que entran en la clave v2 y distinguen dos recibos del mismo

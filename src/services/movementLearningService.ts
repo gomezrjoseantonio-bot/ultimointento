@@ -1,7 +1,9 @@
 import { initDB, Movement, MovementLearningRule } from './db';
 import type { FamiliaId } from './catalogo/catalogoUnico';
 import { contraparteDeBizum } from './bizum';
-import { claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
+import { claveDeContraparte, claveDeNombre, nivelDeCoincidencia } from './coincidenciaNombre';
+import { parteDeLaTransferencia } from './deterministas/traspasosPropios';
+import { normalizarTexto } from './deterministas/texto';
 import { claveDeIdentificador, identificadoresDeMovimiento } from './identificadoresDelConcepto';
 
 /**
@@ -194,6 +196,31 @@ function piezasV1(movement: Movement): string | null {
   return ['v1', signoDe(movement), ...ngramsDelMovimiento(movement)].join('|');
 }
 
+/**
+ * E3.2 · §7.4 · QUIÉN está al otro lado, reducido a clave · '' si no se sabe.
+ */
+export function claveDeContraparteDelMovimiento(movement: Movement): string {
+  const nombre = nombreDeContraparte(movement);
+  return nombre ? claveDeContraparte(nombre) : '';
+}
+
+/**
+ * Las piezas de la clave v3 · `v3|signo|cp=<nombre ordenado>`.
+ *
+ * La agrupación es la PERSONA, no el texto. Sin esto, el trigrama que manda en
+ * «Transferencia Inmediata A Favor De <quien sea>» es «transferencia inmediata
+ * favor» —cabecera del banco, no la persona—, y 198 apuntes de 33 personas
+ * distintas caían en la MISMA clave: clasificar uno clasificaba los 198. Es el
+ * cajón común de #1866 reapareciendo por otra puerta.
+ *
+ * Al revés también: los apuntes de una persona se partían en varias reglas
+ * porque el banco los encabeza distinto («TRANSFERENCIA A Eloy Gómez Ramírez» y
+ * «Bizum A Favor De Eloy Gómez Ramírez»). Con la persona por delante, son una.
+ */
+function piezasV3(movement: Movement, clave: string): string {
+  return ['v3', signoDe(movement), `cp=${clave}`].join('|');
+}
+
 function piezasV2(movement: Movement, claves: readonly string[]): string {
   return ['v2', signoDe(movement), ...ngramsDelMovimiento(movement, true), ...claves.map((c) => `id=${c}`)].join('|');
 }
@@ -236,11 +263,15 @@ export function buildLearnKeyV1(movement: Movement): string | null {
  */
 export function buildLearnKey(movement: Movement): string | null {
   const ids = clavesEstables(movement);
-  // Sin identificador, la v1 manda · y puede decir que no hay con qué agrupar.
-  if (ids.length === 0) return buildLearnKeyV1(movement);
   // Con identificador SÍ hay con qué: un CUPS o un NIF agrupa por sí solo,
-  // aunque del texto no quede un n-gram.
-  return simpleHash(piezasV2(movement, ids.map(claveDeIdentificador)));
+  // aunque del texto no quede un n-gram. Manda sobre todo lo demás.
+  if (ids.length > 0) return simpleHash(piezasV2(movement, ids.map(claveDeIdentificador)));
+  // E3.2 · §7.4 · sin identificador, QUIÉN está al otro lado manda sobre el
+  // texto: es lo único que no cambia de un banco a otro ni de un mes a otro.
+  const contraparte = claveDeContraparteDelMovimiento(movement);
+  if (contraparte) return simpleHash(piezasV3(movement, contraparte));
+  // Y sin nombre, la v1 de siempre · que puede decir que no hay con qué agrupar.
+  return buildLearnKeyV1(movement);
 }
 
 /**
@@ -268,13 +299,20 @@ export function identificadoresDeRegla(movement: Movement): string[] {
  */
 export function patronesDeRegla(
   movement: Movement,
-): Pick<MovementLearningRule, 'counterpartyPattern' | 'descriptionPattern' | 'amountSign' | 'identificadores'> {
+): Pick<
+  MovementLearningRule,
+  'counterpartyPattern' | 'descriptionPattern' | 'amountSign' | 'identificadores' | 'contraparteClave'
+> {
   const identificadores = identificadoresDeRegla(movement);
+  // E3.2 · de quién es la regla · solo cuando es ELLO lo que la agrupa, o sea
+  // cuando no hay identificador: con un CUPS delante, quien paga es lo de menos.
+  const contraparteClave = identificadores.length === 0 ? claveDeContraparteDelMovimiento(movement) : '';
   return {
     counterpartyPattern: normalizeText(movement.counterparty || ''),
     descriptionPattern: removeVolatileTokens(normalizeText(movement.description || '')),
     amountSign: signoDe(movement),
     ...(identificadores.length > 0 ? { identificadores } : {}),
+    ...(contraparteClave ? { contraparteClave } : {}),
   };
 }
 
@@ -301,6 +339,22 @@ export function reglaEncaja(movement: Movement, rule: MovementLearningRule): boo
   if (clavesMov.length > 0 && clavesRegla.length > 0) {
     return piezasV2(movement, clavesMov) === piezasV2(deLaRegla, clavesRegla);
   }
+  // E3.2 · v3 · la regla agrupa por PERSONA, así que la persona es lo que se
+  // confirma. No se vuelve a leer el nombre del texto guardado en la regla: ese
+  // texto está normalizado y sin lo volátil, no es el del banco, y el lector de
+  // nombres espera el del banco. Por eso la clave se guardó con la regla.
+  const cpMov = claveDeContraparteDelMovimiento(movement);
+  const cpRegla = rule.contraparteClave ?? '';
+  // D3 sigue en pie: una regla SIN texto guardado no se aplica a nada. Es el
+  // hueco por el que se colaba la regla que el orquestador creaba sin
+  // movimiento delante, y el nombre no lo tapa — una regla de verdad guarda
+  // siempre las dos cosas a la vez (`patronesDeRegla`).
+  if (cpMov && cpRegla && rule.descriptionPattern) {
+    return piezasV3(movement, cpMov) === piezasV3(deLaRegla, cpRegla);
+  }
+  // Si solo una de las dos trae nombre, se comprueba por el texto como siempre:
+  // una regla de ANTES de E3.2 no lo lleva y se encontró por su clave v1, que es
+  // la que hay que confirmar. Exigirle un nombre que nunca guardó la apagaría.
   const piezas = piezasV1(movement);
   return piezas !== null && piezas === piezasV1(deLaRegla);
 }
@@ -318,7 +372,13 @@ export function reglaEncaja(movement: Movement, rule: MovementLearningRule): boo
 export function nombreDeContraparte(movement: Movement): string | undefined {
   const propia = movement.counterparty?.trim();
   if (propia) return propia;
-  return contraparteDeBizum(movement.description ?? '');
+  const texto = movement.description ?? '';
+  // E3.2 · la columna de contraparte existe en el modelo pero NINGÚN banco la
+  // rellena: de los 4.166 movimientos de los diez extractos reales de Jose,
+  // cero. El nombre hay que leerlo del concepto, y de eso ya sabían dos sitios
+  // —los Bizum aquí al lado y la parte de una transferencia en el cruce de
+  // traspasos—, cada uno para lo suyo. Se preguntan los dos.
+  return contraparteDeBizum(texto) ?? parteDeLaTransferencia(normalizarTexto(texto)) ?? undefined;
 }
 
 /**
@@ -460,8 +520,14 @@ export async function createOrUpdateRule(params: {
         resolucion,
         cuentaDestinoId,
       });
-      rule.familia = familia;
-      rule.subtipo = subtipo;
+      // E3.2 · enseñar SOLO el piso no borra la familia que la regla ya sabía.
+      // Este upsert escribía todos los campos siempre, así que una confirmación
+      // sin familia —ahora posible— dejaría la regla peor de lo que estaba. Es
+      // el mismo fallo que E3.1b encontró en el alta de agencias.
+      if (familia !== undefined) {
+        rule.familia = familia;
+        rule.subtipo = subtipo;
+      }
       rule.ambito = ambito;
       rule.inmuebleId = inmuebleId;
       rule.resolucion = resolucion;
@@ -478,6 +544,10 @@ export async function createOrUpdateRule(params: {
       }
       if (derivedIdentificadores.length > 0) {
         rule.identificadores = derivedIdentificadores;
+      }
+      // E3.2 · de quién es · igual que los patrones, se rellena si faltaba.
+      if (patrones?.contraparteClave && !rule.contraparteClave) {
+        rule.contraparteClave = patrones.contraparteClave;
       }
       // B1 · this call counts as one application · E2.2: salvo que sea una
       // corrección, que la devuelve al principio (esta es su primera aplicación
@@ -551,9 +621,13 @@ function esCambioDeOpinion(
   const mismoPiso = (rule.inmuebleId ?? '') === (nuevo.inmuebleId ?? '');
   const mismaResolucion = (rule.resolucion ?? 'clasificar') === nuevo.resolucion;
   const mismaCuenta = (rule.cuentaDestinoId ?? null) === (nuevo.cuentaDestinoId ?? null);
+  // E3.2 · una confirmación que no dice familia no CONTRADICE la que hubiera:
+  // no enseña nada sobre eso, así que no es cambiar de opinión.
+  const mismaFamilia = nuevo.familia === undefined || rule.familia === nuevo.familia;
+  const mismoSubtipo = nuevo.familia === undefined || (rule.subtipo ?? '') === (nuevo.subtipo ?? '');
   return !(
-    rule.familia === nuevo.familia &&
-    (rule.subtipo ?? '') === (nuevo.subtipo ?? '') &&
+    mismaFamilia &&
+    mismoSubtipo &&
     rule.ambito === nuevo.ambito &&
     mismoPiso &&
     mismaResolucion &&

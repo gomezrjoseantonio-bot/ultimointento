@@ -70,6 +70,35 @@ export function claveDeNombre(nombre: string): string {
   return Array.from(palabrasDe(nombre)).sort().join(' ');
 }
 
+/**
+ * E3.2 · §7.4 · el nombre reducido a la clave con la que se AGRUPA un apunte.
+ *
+ * Como `claveDeNombre`, pero acotado a las cuatro primeras palabras
+ * comparables. El motivo es el banco: detrás del nombre suele pegar texto libre
+ * SIN avisar de dónde acaba uno y empieza el otro —«GOMEZ RAMIREZ JOSE ANTONIO
+ * Ahorro», «… Enviado por Banco Santander», «FEEBBO SOLUTIONS SL PAGO MEDUX
+ * MAYO»—. Con el nombre entero, cada cola estrena clave y el mismo pagador se
+ * parte en una regla por mes; con las cuatro primeras, las colas se caen solas.
+ *
+ * Cuatro y no tres porque el segundo apellido es lo único que separa a dos
+ * hermanos («Eloy Gómez Ramírez» y «Eloy Gómez López»), y no cinco porque a la
+ * quinta ya entra la cola (medido sobre el corpus real: con cinco, un mismo
+ * pagador mensual se parte en doce reglas).
+ *
+ * El corte es en ORDEN DE LECTURA y el orden alfabético viene después, para que
+ * «JOSE ANTONIO GOMEZ RAMIREZ» y «GOMEZ RAMIREZ JOSE ANTONIO» —el mismo hombre
+ * en dos bancos— den la misma clave.
+ *
+ * Cadena vacía con menos de dos palabras: un nombre de pila suelto («CONCEPCIÓN»)
+ * no identifica a nadie, y agrupar por él juntaría a dos personas distintas.
+ */
+const PALABRAS_DE_UN_NOMBRE = 4;
+
+export function claveDeContraparte(nombre: string): string {
+  const enOrden = Array.from(palabrasDe(nombre)).slice(0, PALABRAS_DE_UN_NOMBRE);
+  return enOrden.length >= 2 ? enOrden.sort().join(' ') : '';
+}
+
 export type NivelCoincidencia = 'ninguna' | 'parcial' | 'fuerte';
 
 /**

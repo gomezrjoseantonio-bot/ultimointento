@@ -74,6 +74,9 @@ jest.mock('../movementLearningService', () => ({
   buildLearnKey: () => 'hash:any',
   buildLearnKeyV1: () => 'hash:any',
   createOrUpdateRule: jest.fn(async () => ({})),
+  // E3.2 · el reconocedor determinista pregunta por los alias aprendidos para
+  // las rentas del pasado. Aquí no hay base: sin alias, como al principio.
+  cargarAliasContraparte: async () => new Map(),
 }));
 // El cierre determinista de verdad necesita el cuadro del préstamo, la venta…
 // Aquí se prueba el CABLEADO: que se le pasa el movimiento que acaba de nacer.

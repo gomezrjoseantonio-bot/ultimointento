@@ -232,12 +232,27 @@ describe('Treasury Learning Engine', () => {
       expect(prestamo1).not.toBe(prestamo2);
     });
 
-    test('E2.1 · sin identificador la clave v2 ES la v1 · las reglas de antes siguen encontrándose', () => {
+    test('E2.1 · sin identificador NI contraparte la clave v2 ES la v1 · las reglas de antes siguen encontrándose', () => {
+      // Ni identificador ni nombre de quien cobra: no hay nada mejor que el
+      // texto, y la clave es la de siempre.
+      const m = createTestMovement({
+        description: 'RECIBO LUZ ENE2024 REF123456',
+        counterparty: '',
+      });
+      expect(buildLearnKey(m)).toBe(buildLearnKeyV1(m));
+    });
+
+    test('E3.2 · con contraparte y sin identificador la clave es la v3 · la v1 sigue siendo el respaldo', () => {
+      // Cambio de E3.2: cuando se sabe QUIÉN está al otro lado, agrupa la
+      // persona y no el texto. La v1 no desaparece —`movementSuggestionService`
+      // la sigue cargando y probando—, así que las reglas de antes siguen
+      // encontrándose; lo que cambia es dónde nacen las nuevas.
       const m = createTestMovement({
         description: 'ENDESA ESPAÑA SA RECIBO LUZ ENE2024 REF123456',
         counterparty: 'ENDESA ESPAÑA SA',
       });
-      expect(buildLearnKey(m)).toBe(buildLearnKeyV1(m));
+      expect(buildLearnKey(m)).not.toBe(buildLearnKeyV1(m));
+      expect(buildLearnKeyV1(m)).not.toBeNull();
     });
 
     test('E2.1 · con identificador la v2 y la v1 difieren · la v1 queda como respaldo de lectura', () => {
