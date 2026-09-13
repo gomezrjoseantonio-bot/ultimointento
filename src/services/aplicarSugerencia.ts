@@ -29,34 +29,42 @@ import { aprenderEnCatalogo, type BaseParaCatalogo } from './catalogoNacional/ca
  * propuesta aceptada.
  */
 export interface DerivedCategory {
-  familia: FamiliaId;
+  /**
+   * E3.2 · OPCIONAL. Decir «esto es de Fuertes Acevedo 32» sin decir de qué
+   * familia es sigue siendo algo que aprender: el piso es la mitad del trabajo
+   * y la que más cuesta. Hasta E3.2 esa enseñanza se tiraba entera.
+   */
+  familia?: FamiliaId;
   subtipo?: string;
   ambito: 'personal' | 'inmueble';
   inmuebleId?: string;
 }
 
 export function deriveCategoryFromEvent(event: TreasuryEvent): DerivedCategory | null {
-  const familia = event.familia;
-  if (!familia) return null;
+  const inmuebleId = event.inmuebleId != null ? String(event.inmuebleId) : undefined;
+  // E3.2 · sin familia Y sin piso no queda nada que aprender: «personal» es lo
+  // que ya se supone, y una regla que solo diga eso no dice nada.
+  if (!event.familia && !inmuebleId) return null;
   return {
-    familia,
+    familia: event.familia,
     subtipo: event.subtipo,
-    ambito: event.ambito ?? 'personal',
-    inmuebleId: event.inmuebleId != null ? String(event.inmuebleId) : undefined,
+    ambito: event.ambito ?? (inmuebleId ? 'inmueble' : 'personal'),
+    inmuebleId,
   };
 }
 
 /**
  * E2.2 · lo mismo, leído del MOVIMIENTO ya clasificado · vale para lo que
- * cierra el reconocedor determinista y para lo que clasifica la ficha. Sin
- * categoría no hay nada que aprender (`null`).
+ * cierra el reconocedor determinista y para lo que clasifica la ficha.
+ *
+ * E3.2 · basta con QUE HAYA ALGO: familia, o piso. Antes se exigía familia y
+ * marcar solo el piso no enseñaba nada.
  */
 export function deriveCategoryFromMovement(m: Movement): DerivedCategory | null {
-  const familia = m.familia;
-  if (!familia) return null;
   const inmuebleId = m.inmuebleId != null && m.inmuebleId !== '' ? String(m.inmuebleId) : undefined;
+  if (!m.familia && !inmuebleId) return null;
   return {
-    familia,
+    familia: m.familia,
     subtipo: m.subtipo,
     ambito: m.ambito ?? (inmuebleId ? 'inmueble' : 'personal'),
     inmuebleId,
@@ -81,7 +89,17 @@ export async function feedLearningRule(
     // Sin clave no se aprende NADA. De un concepto del que no queda con qué
     // agrupar no se puede sacar una regla: la que naciera se aplicaría a
     // cualquier otro apunte igual de anónimo. Mejor volver a preguntar.
-    if (!learnKey) return;
+    //
+    // E3.2 · pero se DICE. Antes se volvía en silencio y el usuario clasificaba
+    // la misma línea todos los meses sin entender por qué ATLAS no aprendía;
+    // nadie podía saber siquiera cuántas veces pasaba.
+    if (!learnKey) {
+      console.warn(
+        '[aprendizaje] no se ha aprendido nada de esta línea: su concepto no da con qué agrupar',
+        { concepto: movement.description, importe: movement.amount }
+      );
+      return;
+    }
     // T16-fix-functional · pasar el movimiento permite a createOrUpdateRule
     // rellenar counterpartyPattern/descriptionPattern/amountSign y propagar
     // movimientoId al history[] (B2 + B8 del audit T16).

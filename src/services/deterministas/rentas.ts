@@ -23,8 +23,10 @@ import type { Movement } from '../db';
 import type { Contract } from '../db/types-contratos';
 import type { OrigenDeterminista } from './tipos';
 import { mismoImporte } from './igualdad';
+import { parteDeLaTransferencia } from './traspasosPropios';
 import { normalizarTexto } from './texto';
-import { nivelDeCoincidencia } from '../coincidenciaNombre';
+import { claveDeNombre, nivelDeCoincidencia } from '../coincidenciaNombre';
+import { contraparteDeBizum } from '../bizum';
 
 const MS_DIA = 86_400_000;
 const MARGEN_GRACIA_DEFECTO = 5;
@@ -74,9 +76,43 @@ export function tituloDeRenta(c: Contract): string {
 }
 
 /**
+ * E3.2 · §7.4 · los alias que el usuario YA enseñó · clave del banco → a quién
+ * resultó ser. Vacío si no se le pasan: esto sigue siendo puro.
+ */
+export type AliasAprendidos = ReadonlyMap<string, ReadonlySet<string>>;
+
+/** El nombre que escribe el banco en esta línea · '' si no lo dice. */
+function quienPagaSegunElBanco(m: Movement): string {
+  const texto = m.description ?? '';
+  return (m.counterparty?.trim() || contraparteDeBizum(texto) || parteDeLaTransferencia(normalizarTexto(texto)) || '');
+}
+
+/**
+ * ¿El usuario ya enseñó que quien firma este abono es este inquilino?
+ *
+ * Es la otra mitad de V85. El alias se guardaba —«MPARWEZ» es «Adnan Parwez
+ * Khan»— y lo leía el emparejador contra las PREVISIONES, pero no esto, que es
+ * justo lo que reconoce las rentas del PASADO, donde no hay previsión que
+ * emparejar. Enseñárselo una vez no servía para el resto de sus meses.
+ */
+function elAliasDiceQueEsEl(m: Movement, c: Contract, alias: AliasAprendidos): boolean {
+  if (alias.size === 0) return false;
+  const banco = claveDeNombre(quienPagaSegunElBanco(m));
+  const inquilino = claveDeNombre(nombreDelInquilino(c));
+  // Sin nombre a los dos lados no hay nada que preguntar: una clave vacía
+  // casaría con cualquier contrato anónimo.
+  if (!banco || !inquilino) return false;
+  return alias.get(banco)?.has(inquilino) === true;
+}
+
+/**
  * Reconoce los abonos que son la renta de un contrato.
  */
-export function rentasQueCuadran(movimientos: Movement[], contratos: Contract[]): OrigenDeterminista[] {
+export function rentasQueCuadran(
+  movimientos: Movement[],
+  contratos: Contract[],
+  alias: AliasAprendidos = new Map(),
+): OrigenDeterminista[] {
   const out: OrigenDeterminista[] = [];
   const vivos = contratos.filter(contratoQueCobra);
   if (vivos.length === 0) return out;
@@ -93,7 +129,9 @@ export function rentasQueCuadran(movimientos: Movement[], contratos: Contract[])
       if (!vigenteEn(c, m.date)) continue;
       if (!mismoImporte(rentaVigenteEn(c, m.date), m.amount)) continue;
 
-      const porNombre = nivelDeCoincidencia(texto, nombreDelInquilino(c)) === 'fuerte';
+      const porNombre =
+        nivelDeCoincidencia(texto, nombreDelInquilino(c)) === 'fuerte' ||
+        elAliasDiceQueEsEl(m, c, alias);
       const porPalabra = PALABRAS_DE_RENTA.test(textoNorm) && c.cuentaCobroId === m.accountId;
       if (!porNombre && !porPalabra) continue;
 

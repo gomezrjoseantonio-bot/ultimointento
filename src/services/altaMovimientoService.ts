@@ -509,7 +509,10 @@ export async function gastoDesdeMovimiento(params: {
     // escribió en la ficha: la regla tiene que casar con lo que traerá el
     // próximo extracto. Si lo que hace es reclasificar un movimiento que una
     // regla ya había resuelto, `createOrUpdateRule` lo cuenta como corrección.
-    if (params.familia) {
+    // E3.2 · también se aprende cuando solo se dice el PISO. Marcar «esto es de
+    // Fuertes Acevedo 32» sin decir de qué familia es enseña la mitad del
+    // trabajo —y la que más cuesta—, y hasta aquí se tiraba entera.
+    if (params.familia || params.inmuebleId != null) {
       await feedLearningRule(
         { ...clasificado, description: movimiento.description, counterparty: movimiento.counterparty },
         deriveCategoryFromMovement({

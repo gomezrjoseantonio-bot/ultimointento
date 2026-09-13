@@ -28,6 +28,7 @@ import { cuotasDeInversionQueCuadran } from './cuotasDeInversion';
 import { nominasQueSeReconocen } from './nominas';
 import { recurrentesQueCuadran } from './recurrentes';
 import { rentasQueCuadran } from './rentas';
+import { cargarAliasContraparte } from '../movementLearningService';
 import { nombresDelTitular, pareceTraspasoPropio, traspasosPropios, type QuienEsElTitular } from './traspasosPropios';
 import { atribucionesDeclaradas } from './gastoDeclaradoPorInmueble';
 import type { LineaExtractoPersistida } from '../db/types-lineasExtracto';
@@ -85,6 +86,7 @@ export async function reconocerDeterministas(movimientos: Movement[]): Promise<L
   // Los traspasos propios buscan su espejo en `movements`, que es el store
   // grande. Solo se lee si alguna línea parece un traspaso propio.
   const nombres = nombresDelTitular(personas, cuentas);
+  const alias = await cargarAliasContraparte();
   const otrosMovimientos = movimientos.some((m) => pareceTraspasoPropio(m, cuentas, nombres))
     ? await leer<Movement>('movements')
     : [];
@@ -107,7 +109,9 @@ export async function reconocerDeterministas(movimientos: Movement[]): Promise<L
     ...nominasQueSeReconocen(movimientos, ingresos),
     ...traspasosPropios(movimientos, cuentas, nombres, otrosMovimientos),
     ...recurrentesQueCuadran(movimientos, compromisos.filter((c) => c.estado === 'activo')),
-    ...rentasQueCuadran(movimientos, contratos),
+    // E3.2 · §7.4 · con los alias que el usuario ya enseñó: «MPARWEZ» es
+    // «Adnan Parwez Khan», y sus rentas del pasado se reconocen solas.
+    ...rentasQueCuadran(movimientos, contratos, alias),
   ]) {
     if (!origenes.has(o.movementId)) origenes.set(o.movementId, o);
   }
