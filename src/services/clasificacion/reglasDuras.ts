@@ -90,16 +90,17 @@ const APORTACION_PLAN = ['PLAN DE PENSIONES', 'PLAN PENSIONES', 'APORTACION PLAN
 // municipio: «Comunitat de Propietaris» (31 recibos en el corpus real),
 // «Ajuntament de Manresa» (19), «Aigües de Manresa» (5). Sin estas grafías,
 // medio Cataluña, Valencia, Galicia y Euskadi caían a «sin clasificar».
-const COMUNIDAD = ['COMUNIDAD', 'COMUNIDAD PROPIETARIOS', 'COMUNIDAD DE PROPIETARIOS', 'CCPP', 'ADMIN FINCAS', 'ADMINISTRACION FINCAS', 'FINCAS', 'COMUNITAT', 'COMUNITAT DE PROPIETARIS', 'COMUNIDADE', 'COMUNIDADE DE PROPIETARIOS', 'JABEKIDEEN'];
-const SUMINISTRO_LUZ = ['IBERDROLA', 'ENDESA', 'CURENERGIA', 'ELECTRICIDAD', 'HOLALUZ', 'OCTOPUS ENERGY', 'LUZ'];
-const SUMINISTRO_GAS = ['GAS NATURAL', 'VISALIA', 'NEDGIA', 'GAS'];
-const SUMINISTRO_AGUA = ['AQUALIA', 'CANAL ISABEL', 'CANAL DE ISABEL', 'EMASESA', 'AGUAS DE', 'AGUA', 'AIGUES', 'AIGUES DE', 'AUGAS', 'AUGAS DE', 'URAK'];
-const SUMINISTRO_TELEFONIA = ['SIMYO', 'PEPEPHONE', 'LOWI', 'DIGI', 'FINETWORK', 'O2'];
-const SUMINISTRO_SIN_SUBTIPO = ['NATURGY', 'REPSOL LUZ', 'TOTAL ENERGIES', 'TOTALENERGIES', 'MOVISTAR', 'VODAFONE', 'ORANGE', 'YOIGO', 'MASMOVIL', 'JAZZTEL', 'EUSKALTEL'];
-const SEGUROS = ['SEGURO', 'SEGUROS', 'SEGUR', 'SEGURCAIXA', 'MAPFRE', 'ALLIANZ', 'AXA', 'GENERALI', 'ZURICH', 'REALE', 'PELAYO', 'MUTUA MADRILENA'];
+const COMUNIDAD = ['COMUNIDAD', 'COMUNIDAD PROPIETARIOS', 'COMUNIDAD DE PROPIETARIOS', 'CCPP', 'ADMIN FINCAS', 'ADMIN DE FINCAS', 'ADMINISTRACION FINCAS', 'ADMINISTRACION DE FINCAS', 'AD DE FINCAS', 'GESTION DE FINCAS', 'FINCAS URBANAS', 'COMUNITAT', 'COMUNITAT DE PROPIETARIS', 'COMUNIDADE', 'COMUNIDADE DE PROPIETARIOS', 'JABEKIDEEN'];
+const SUMINISTRO_LUZ = ['ELECTRICIDAD', 'LUZ'];
+const SUMINISTRO_GAS = ['GAS NATURAL', 'GAS'];
+const SUMINISTRO_AGUA = ['AGUAS DE', 'AGUA', 'AIGUES', 'AIGUES DE', 'AUGAS', 'AUGAS DE', 'URAK'];
+const SUMINISTRO_TELEFONIA = ['DIGI', 'O2'];
+const SEGUROS = ['SEGURO', 'SEGUROS', 'SEGUR', 'AXA'];
+// El catálogo nacional NO tiene seguro de SALUD (sus categorías son coche,
+// hogar, vida y decesos), así que estas cuatro se quedan aquí: sacarlas daría
+// la familia pero perdería el subtipo, y media verdad no es la verdad.
 const SEGUROS_SALUD = ['ADESLAS', 'SANITAS', 'DKV', 'ASISA'];
-const SEGUROS_DECESOS = ['OCASO', 'SANTALUCIA', 'SANTA LUCIA', 'DECESOS'];
-const SEGUROS_VEHICULO = ['LINEA DIRECTA', 'GENESIS SEGUROS', 'VERTI'];
+const SEGUROS_DECESOS = ['DECESOS'];
 const IBI = ['IBI'];
 const IMPUESTOS = ['AYUNTAMIENTO', 'AYTO', 'AJUNTAMENT', 'CONCELLO', 'UDALA', 'UDALETXEA', 'TASA', 'TASAS', 'TRIBUTOS', 'RECAUDACION', 'AEAT', 'AGENCIA TRIBUTARIA', 'HACIENDA', 'SUMA GESTION', 'DIPUTACION', 'CONTRIBUCION URBANA', 'BASURAS'];
 const MULTAS = ['MULTA', 'MULTAS', 'SANCION', 'DGT'];
@@ -267,13 +268,15 @@ const REGLAS: Regla[] = [
   (m) => porComercio(m, IMPUESTOS, 'impuestos_tasas'),
   (m) => porComercio(m, COMUNIDAD, 'comunidad'),
   (m) => porComercio(m, SUMINISTRO_AGUA, 'suministro', 'agua'),
-  (m) => porComercio(m, SUMINISTRO_GAS, 'suministro', 'gas'),
+  // E3.3 · §P2 · la LUZ antes que el GAS. El recibo de Sabadell se llama
+  // «ELECTRICIDAD IBERDROLA COMERCIALIZACION DE U IBERDROLA GAS 105»: lleva las
+  // dos palabras, y «GAS» ahí no es el gas, es el final del nombre del emisor.
+  // Con el gas delante, 58 recibos de LUZ del corpus se contaban como gas.
   (m) => porComercio(m, SUMINISTRO_LUZ, 'suministro', 'luz'),
+  (m) => porComercio(m, SUMINISTRO_GAS, 'suministro', 'gas'),
   (m) => porComercio(m, SUMINISTRO_TELEFONIA, 'suministro', 'telefonia'),
-  (m) => porComercio(m, SUMINISTRO_SIN_SUBTIPO, 'suministro'),
   (m) => porComercio(m, SEGUROS_SALUD, 'seguros_alarmas', 'salud'),
   (m) => porComercio(m, SEGUROS_DECESOS, 'seguros_alarmas', 'decesos'),
-  (m) => porComercio(m, SEGUROS_VEHICULO, 'seguros_alarmas', 'vehiculo'),
   (m) => porComercio(m, SEGUROS, 'seguros_alarmas'),
   // El alquiler que ENTRA es la renta, y va ANTES que su regla de comercio: sin
   // este orden, al abrir los comercios a los dos signos (E2.4.2-fix) una renta

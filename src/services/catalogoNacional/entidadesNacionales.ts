@@ -71,9 +71,53 @@ export interface EntidadNacional {
 export function claveDeNombreCatalogo(s: string): string {
   return s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * E3.3 · La clave, y DÓNDE empieza y acaba cada palabra dentro de ella.
+ *
+ * Los alias se comparan sin espacios a propósito: el banco escribe «Orange
+ * Espagne», «orange-france telecom» y «ORANGEESPAGNE» para la misma empresa, y
+ * quitando los separadores las tres son iguales.
+ *
+ * El precio de quitarlos era perder el límite de palabra, y con él se colaba
+ * justo lo que `palabras.ts` prohíbe al otro lado de la casa: «Alisser REAL
+ * Estate» contiene «REALE», la aseguradora, y en el corpus real eso convertía
+ * 18 rentas de un piso en recibos de seguro. Guardando dónde empieza y acaba
+ * cada palabra, el alias solo cuenta si empieza donde empieza una y acaba donde
+ * acaba otra — cruzando por en medio los espacios que el banco se comió.
+ */
+export interface ClaveConPalabras {
+  clave: string;
+  /** Posiciones de la clave en las que empieza una palabra del texto. */
+  inicios: ReadonlySet<number>;
+  /** Posiciones de la clave en las que acaba una palabra del texto. */
+  finales: ReadonlySet<number>;
+}
+
+export function claveConPalabras(s: string): ClaveConPalabras {
+  const limpio = (s ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+  let clave = '';
+  const inicios = new Set<number>();
+  const finales = new Set<number>();
+  let dentro = false;
+  for (const ch of limpio) {
+    if (/[A-Z0-9]/.test(ch)) {
+      if (!dentro) { inicios.add(clave.length); dentro = true; }
+      clave += ch;
+    } else if (dentro) {
+      finales.add(clave.length);
+      dentro = false;
+    }
+  }
+  if (dentro) finales.add(clave.length);
+  return { clave, inicios, finales };
 }
 
 /** Lo mínimo de un alias para que no se cuele cualquier cosa. */
@@ -93,7 +137,13 @@ const FINANCIERAS: readonly EntidadNacional[] = [
   { nombre: 'Servicios Financieros Carrefour', alias: ['FINANCIERACARREFOUR', 'SERVICIOSFINANCIEROSCARREFOUR', 'CARREFOURPASS'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
   { nombre: 'Financiera El Corte Inglés', alias: ['FINANCIERAELCORTEINGLES', 'FINANCIERACORTEINGLES'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
   { nombre: 'Sabadell Consumer Finance', alias: ['SABADELLCONSUMER'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
-  { nombre: 'Smartflip', alias: ['SMARTFLIP'], familia: 'prestamo_hipoteca', subtipo: 'credito_consumo', ambito: 'personal' },
+  // E3.3 · «Smartflip» SALE del catálogo. Entró en E3.1 como financiera de
+  // crédito al consumo y es lo contrario: en el corpus real salen 45.000 € en
+  // tres transferencias y vuelven 607,50 € todos los meses. Eso es una
+  // inversión que RINDE, no una cuota que se paga, y con la entrada puesta cada
+  // cobro mensual se habría contado como el pago de un préstamo suyo. Mientras
+  // no haya familia de inversión en el catálogo, ATLAS dice que no lo sabe —
+  // que es la verdad— en vez de decir lo contrario de lo que pasa (regla 8).
 ];
 
 // ─── Suministros ────────────────────────────────────────────────────────────

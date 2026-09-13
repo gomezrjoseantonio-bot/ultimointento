@@ -10,6 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { BankParserService } from '../bankParser';
 import { clasificarLinea, type ContextoClasificacion } from '../../../../services/clasificacion/clasificarLinea';
+import { construirCatalogo } from '../../../../services/catalogoNacional/catalogoNacional';
+import { semillaDelCatalogo } from '../../../../services/catalogoNacional/entidadesNacionales';
 import type { Movement } from '../../../../services/db';
 import { traspasosPropios } from '../../../../services/deterministas/traspasosPropios';
 import { cuotasDeInversionQueCuadran } from '../../../../services/deterministas/cuotasDeInversion';
@@ -28,6 +30,9 @@ const ctx: ContextoClasificacion = {
   ],
   tarjetas: [{ id: 9, ultimosCuatro: '0940', activa: true }],
   nombresTitular: ['Nombre Apellido Apellido'],
+  // E3.3 · el catálogo va siempre con el motor · desde que las marcas salieron
+  // de las reglas duras, Simyo, Curenergía y Sanitas los reconoce él.
+  catalogo: construirCatalogo(semillaDelCatalogo()),
 };
 
 async function clasificarFixture(banco: string, accountId: number) {

@@ -41,7 +41,7 @@ export function tienePalabra(texto: string, palabraOFrase: string): boolean {
   for (let i = 0; i + buscadas.length <= del.length; i++) {
     let ok = true;
     for (let j = 0; j < buscadas.length; j++) {
-      if (!mismaPalabra(del[i + j], buscadas[j])) { ok = false; break; }
+      if (!mismaPalabra(del[i + j], buscadas[j], i + j === del.length - 1)) { ok = false; break; }
     }
     if (ok) return true;
   }
